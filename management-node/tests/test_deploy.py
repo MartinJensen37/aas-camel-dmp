@@ -44,7 +44,8 @@ def test_deploy_mounts_config_and_sets_heap(deployer):
     assert run_cmd[:3] == ["docker", "run", "-d"]
     assert "--name" in run_cmd and "dmp-syntegonStopperingSystem" in run_cmd
     assert "-v" in run_cmd and "/tmp/config:/usr/share/config" in run_cmd
-    assert "-e" in run_cmd and "JAVA_OPTS=-Xmx512m" in run_cmd
+    # Gson needs --add-opens to serialize Throwable (health DTO) on Java 17.
+    assert "-e" in run_cmd and "JAVA_OPTS=-Xmx512m --add-opens java.base/java.lang=ALL-UNNAMED" in run_cmd
     assert "--network" in run_cmd and "host" in run_cmd
     assert run_cmd[-1] == "eclipsebasyx/databridge:1.0.0-SNAPSHOT"
 

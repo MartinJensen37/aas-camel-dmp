@@ -114,3 +114,152 @@ def test_mqtt_broker_override(tmp_path):
     assert entry["serverUrl"] == "localhost"
     assert entry["serverPort"] == 1883
     assert entry["topic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/State"
+
+
+def _operations_models():
+    """AID + AIMC with a bidirectional Halt mapping (as compiled by tests above)."""
+    aid_model = aid.AidModel(
+        id_short="AID",
+        interfaces={
+            "interface_rest": aid.AidInterface(
+                name="interface_rest",
+                base="http://dmp-syntegonstopperingsystemaas:8080",
+                actions={
+                    "Halt": aid.AidAction(
+                        name="Halt",
+                        synchronous=True,
+                        forms=[aid.AidForm(href="/operations/syntegonStopperingSystemAAS/Halt", method="POST")],
+                    ),
+                },
+            ),
+            "interface_mqtt": aid.AidInterface(
+                name="interface_mqtt",
+                base="mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering",
+                actions={
+                    "Halt": aid.AidAction(
+                        name="Halt",
+                        forms=[aid.AidForm(href="/CMD/Halt", response=aid.AidForm(href="/DATA/Halt"))],
+                    ),
+                },
+            ),
+        },
+    )
+    ref = aimc.AimcReference(
+        type="ModelReference",
+        keys=[
+            aimc.AimcReferenceKey(type="Submodel", value="a/submodels/AID"),
+            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="interface_rest"),
+            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="InteractionMetadata"),
+            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="actions"),
+            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="Halt"),
+        ],
+    )
+    mqtt_ref = aimc.AimcReference(
+        type="ModelReference",
+        keys=[
+            aimc.AimcReferenceKey(type="Submodel", value="a/submodels/AID"),
+            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="interface_mqtt"),
+            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="InteractionMetadata"),
+            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="actions"),
+            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="Halt"),
+        ],
+    )
+    aimc_model = aimc.AimcModel(
+        id_short="AIMC",
+        mappings=[
+            aimc.AimcMapping(
+                id_short="HaltRequest",
+                sources=[aimc.AimcSource(id_short="Halt", source_id="Halt", source=ref)],
+                sinks=[aimc.AimcSink(id_short="Halt", sink_id="Halt", sink=mqtt_ref)],
+                transformation="function aimc_main(sources) return { Halt = sources.Halt } end",
+            ),
+            aimc.AimcMapping(
+                id_short="Halt",
+                sources=[aimc.AimcSource(id_short="Halt", source_id="Halt", source=mqtt_ref)],
+                sinks=[aimc.AimcSink(id_short="Halt", sink_id="Halt", sink=ref)],
+                transformation="function aimc_main(sources) return { Halt = sources.Halt } end",
+            ),
+        ],
+    )
+    return resolve(aimc_model, aid_model)
+
+
+def test_emits_operation_route_and_entities():
+    """An operation is a route whose REST endpoint is a datasource and whose
+    MQTT command is a datasink, with request/response Lua transformers."""
+    from management_node.descriptor import (
+        LUA_TRANSFORMERS_FILE, MQTT_CONSUMER_FILE, MQTT_SINK_FILE,
+        REST_SOURCES_FILE, ROUTES_FILE,
+    )
+
+    resolution = _operations_models()
+    descriptor = compile_descriptor(
+        resolution,
+        aas_base_url="http://aas-server:8081",
+        aas_id="syntegonStopperingSystemAAS",
+        aas_id_short="syntegonStopperingSystem",
+    )
+
+    # Operation route in routes.json.
+    routes = json.loads(descriptor.files[ROUTES_FILE])
+    op_routes = [r for r in routes if r["trigger"] == "operation"]
+    assert len(op_routes) == 1
+    op = op_routes[0]
+    assert op["routeId"] == "syntegonStopperingSystem_Halt_operation"
+    assert op["datasource"] == "syntegonStopperingSystem_Halt_rest"
+    assert op["transformers"] == ["syntegonStopperingSystem_Halt_request_transformer"]
+    assert op["datasinks"] == ["syntegonStopperingSystem_Halt_command_sink"]
+    assert op["triggerData"]["responseDatasource"] == "syntegonStopperingSystem_Halt_response_source"
+    assert op["triggerData"]["responseTransformer"] == "syntegonStopperingSystem_Halt_response_transformer"
+    assert op["triggerData"]["timeoutSeconds"] == 30
+
+    # REST datasource (the operation's exposed endpoint).
+    rests = json.loads(descriptor.files[REST_SOURCES_FILE])
+    rest = next(r for r in rests if r["uniqueId"] == op["datasource"])
+    assert rest["restMethod"] == "POST"
+    assert rest["restPath"] == "/operations/syntegonStopperingSystemAAS/Halt"
+    assert rest["contentType"] == "application/json"
+
+    # MQTT command datasink + response datasource.
+    mqtt_sinks = json.loads(descriptor.files[MQTT_SINK_FILE])
+    cmd = next(s for s in mqtt_sinks if s["uniqueId"] == op["datasinks"][0])
+    assert cmd["serverUrl"] == "192.168.0.104"
+    assert cmd["serverPort"] == 1883
+    assert cmd["topic"] == "NN/Nybrovej/InnoLab/Stoppering/CMD/Halt"
+    assert cmd["clientId"].startswith("dmp-")
+
+    mqtt_sources = json.loads(descriptor.files[MQTT_CONSUMER_FILE])
+    resp = next(s for s in mqtt_sources if s["uniqueId"] == op["triggerData"]["responseDatasource"])
+    assert resp["topic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/Halt"
+
+    # Both directional Lua transformers + materialized blobs.
+    lua = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
+    request_t = next(t for t in lua if t["uniqueId"] == op["transformers"][0])
+    response_t = next(t for t in lua if t["uniqueId"] == op["triggerData"]["responseTransformer"])
+    assert request_t["sourceKeys"] == "Halt"
+    assert response_t["sourceKeys"] == "Halt"
+    assert "function aimc_main" in descriptor.files[request_t["queryPath"]]
+    assert "function aimc_main" in descriptor.files[response_t["queryPath"]]
+
+
+def test_operations_honour_mqtt_broker_override():
+    from management_node.descriptor import (
+        MQTT_CONSUMER_FILE, MQTT_SINK_FILE, REST_SOURCES_FILE, ROUTES_FILE,
+    )
+
+    resolution = _operations_models()
+    descriptor = compile_descriptor(
+        resolution,
+        aas_base_url="http://aas-server:8081",
+        aas_id="syntegonStopperingSystemAAS",
+        aas_id_short="syntegonStopperingSystem",
+        mqtt_broker=("localhost", 1883),
+    )
+
+    op = next(r for r in json.loads(descriptor.files[ROUTES_FILE]) if r["trigger"] == "operation")
+    cmd = next(s for s in json.loads(descriptor.files[MQTT_SINK_FILE]) if s["uniqueId"] == op["datasinks"][0])
+    resp = next(s for s in json.loads(descriptor.files[MQTT_CONSUMER_FILE]) if s["uniqueId"] == op["triggerData"]["responseDatasource"])
+    assert cmd["serverUrl"] == "localhost"
+    assert cmd["serverPort"] == 1883
+    assert resp["serverUrl"] == "localhost"
+    assert resp["serverPort"] == 1883

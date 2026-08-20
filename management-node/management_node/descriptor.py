@@ -29,8 +29,10 @@ logger = logging.getLogger(__name__)
 #: Default file names consumed by the DataBridge runtime (see databridge.camel-*).
 ROUTES_FILE = "routes.json"
 MQTT_CONSUMER_FILE = "mqttconsumer.json"
+MQTT_SINK_FILE = "mqttdatasink.json"
 LUA_TRANSFORMERS_FILE = "luatransformers.json"
 AAS_SERVER_FILE = "aasserver.json"
+REST_SOURCES_FILE = "restsources.json"
 
 _MACRO = re.compile(r"\{[a-zA-Z0-9_:-]+\}")
 
@@ -105,6 +107,8 @@ class DescriptorCompiler:
 
         routes: list[dict[str, Any]] = []
         mqtt_sources: list[dict[str, Any]] = []
+        mqtt_sinks: list[dict[str, Any]] = []
+        rest_sources: list[dict[str, Any]] = []
         lua_transformers: list[dict[str, Any]] = []
         aas_sinks: list[dict[str, Any]] = []
 
@@ -113,10 +117,22 @@ class DescriptorCompiler:
             if route:
                 routes.append(route)
 
+        # Operation-delegation routes: REST endpoint as datasource, native MQTT
+        # command as datasink, request/response Lua blobs as transformers. The
+        # REST endpoints are sources/sinks of these routes and are asset-
+        # dependent — only present when the asset's AIMC declares the operation.
+        self._compile_operations(
+            resolution, routes, mqtt_sources, mqtt_sinks, rest_sources,
+            lua_transformers, descriptor.files)
+
         if routes:
             descriptor.files[ROUTES_FILE] = json.dumps(routes, indent=2)
         if mqtt_sources:
             descriptor.files[MQTT_CONSUMER_FILE] = json.dumps(mqtt_sources, indent=2)
+        if mqtt_sinks:
+            descriptor.files[MQTT_SINK_FILE] = json.dumps(mqtt_sinks, indent=2)
+        if rest_sources:
+            descriptor.files[REST_SOURCES_FILE] = json.dumps(rest_sources, indent=2)
         if lua_transformers:
             descriptor.files[LUA_TRANSFORMERS_FILE] = json.dumps(lua_transformers, indent=2)
         if aas_sinks:
@@ -140,6 +156,13 @@ class DescriptorCompiler:
         source = mapping.sources[0]
         datasource_id = self._add_mqtt_source(source, mqtt_sources)
         if datasource_id is None:
+            if source.protocol in ("rest", "http"):
+                # REST operation-delegation request mapping — compiled into the
+                # operation-delegation config by _compile_operations.
+                logger.debug(
+                    "mapping %s is a REST operation-delegation request mapping; "
+                    "compiled as an operation", mapping.id_short)
+                return None
             logger.warning("mapping %s: no supported datasource (protocol=%s); skipping",
                            mapping.id_short, source.protocol)
             return None
@@ -151,20 +174,26 @@ class DescriptorCompiler:
         # Only sinks on the asset's Variables submodel are writable AAS
         # properties (the DMP data-flow mapping). Skill mappings (REST
         # operation-delegation <-> MQTT action) reference AID action metadata
-        # and need REST operation sinks, which are not implemented yet —
-        # skip them so the DMP starts cleanly.
+        # and are compiled into the operation-delegation config instead (see
+        # _compile_operations) — skip them here so the DMP starts cleanly.
         variables_sink_refs = [
             (ref, sid)
             for ref, sid in zip(mapping.sink_refs, mapping.sink_ids)
             if _sink_targets_variables(ref)
         ]
         if len(variables_sink_refs) != len(mapping.sink_refs):
-            logger.warning(
-                "mapping %s: %d sink(s) target non-Variables submodels (REST "
-                "operation-delegation not yet supported); skipping those",
-                mapping.id_short, len(mapping.sink_refs) - len(variables_sink_refs))
+            if variables_sink_refs:
+                # Mixed: some sinks write variables, others are delegation sinks.
+                logger.warning(
+                    "mapping %s: %d sink(s) target non-Variables submodels "
+                    "(operation-delegation); skipping those",
+                    mapping.id_short, len(mapping.sink_refs) - len(variables_sink_refs))
+            else:
+                # Pure operation-delegation mapping — handled by _compile_operations.
+                logger.debug(
+                    "mapping %s is an operation-delegation mapping (no Variables "
+                    "sinks); compiled as an operation", mapping.id_short)
         if not variables_sink_refs:
-            logger.warning("mapping %s: no writable Variables sinks; skipping", mapping.id_short)
             return None
 
         sink_ids = []
@@ -258,6 +287,128 @@ class DescriptorCompiler:
             files[query_path] = mapping.transformation
 
         return unique_id
+
+    # -- operations (REST <-> MQTT operation delegation) ------------------- #
+    def _compile_operations(
+        self,
+        resolution: ResolutionResult,
+        routes: list[dict[str, Any]],
+        mqtt_sources: list[dict[str, Any]],
+        mqtt_sinks: list[dict[str, Any]],
+        rest_sources: list[dict[str, Any]],
+        lua_transformers: list[dict[str, Any]],
+        files: dict[str, str],
+    ) -> None:
+        """Compile the bidirectional (request/response) mappings into routes.
+
+        Each bidirectional AIMC mapping becomes an operation route whose REST
+        endpoint is a datasource and whose native MQTT command is a datasink
+        (with the request/response Lua blobs as transformers). The DMP exposes
+        ``restPath`` via camel-rest and, on invocation, publishes the request
+        blob result to the MQTT command topic, waits for the correlated reply
+        on the response topic, runs the response blob and answers the HTTP
+        request (SPEC §10.x / M7).
+
+        The routes/entities are asset-dependent: only emitted for assets whose
+        AIMC declares the corresponding operation mapping."""
+        for bidi in resolution.bidirectional:
+            if bidi.unresolved:
+                logger.warning(
+                    "operation %s unresolved (%s); skipping",
+                    bidi.id_short, "; ".join(bidi.unresolved))
+                continue
+            if not bidi.rest_path or not bidi.mqtt_command_topic or not bidi.mqtt_response_topic:
+                logger.warning("operation %s: missing endpoint; skipping", bidi.id_short)
+                continue
+
+            host, port, _ = _split_mqtt_base(bidi.mqtt_base)
+            if not host or not port:
+                logger.warning("operation %s: incomplete MQTT base %r", bidi.id_short, bidi.mqtt_base)
+                continue
+            if self.mqtt_broker:
+                host, port = self.mqtt_broker
+
+            action = bidi.id_short
+            asset = self.aas_id_short
+            method = (bidi.rest_method or "POST").upper()
+
+            rest_source_id = f"{asset}_{action}_rest"
+            request_transformer_id = f"{asset}_{action}_request_transformer"
+            command_sink_id = f"{asset}_{action}_command_sink"
+            response_source_id = f"{asset}_{action}_response_source"
+            response_transformer_id = f"{asset}_{action}_response_transformer"
+            route_id = f"{asset}_{action}_operation"
+
+            request_path = f"queries/{asset}_{action}_request.lua"
+            response_path = f"queries/{asset}_{action}_response.lua"
+
+            # REST datasource (the operation's exposed endpoint).
+            rest_sources.append({
+                "uniqueId": rest_source_id,
+                "restMethod": method,
+                "restPath": bidi.rest_path,
+                "contentType": "application/json",
+            })
+
+            # Request-direction Lua transformer (REST operation variables ->
+            # native MQTT command message).
+            lua_transformers.append({
+                "uniqueId": request_transformer_id,
+                "queryLanguage": "LUA",
+                "queryPath": request_path,
+                "inputType": "JsonString",
+                "outputType": "JsonString",
+                "sourceKeys": action,
+            })
+            # Response-direction Lua transformer (native MQTT response -> REST).
+            lua_transformers.append({
+                "uniqueId": response_transformer_id,
+                "queryLanguage": "LUA",
+                "queryPath": response_path,
+                "inputType": "JsonString",
+                "outputType": "JsonString",
+                "sourceKeys": action,
+            })
+
+            # Native MQTT command topic datasink (paho producer).
+            mqtt_sinks.append({
+                "uniqueId": command_sink_id,
+                "serverUrl": host,
+                "serverPort": port,
+                "topic": bidi.mqtt_command_topic,
+                "clientId": f"dmp-{asset}-{action}-cmd",
+                "userName": "",
+                "password": "",
+            })
+            # Native MQTT response topic datasource (paho consumer) for the
+            # Uuid-correlated reply.
+            mqtt_sources.append({
+                "uniqueId": response_source_id,
+                "serverUrl": host,
+                "serverPort": port,
+                "topic": bidi.mqtt_response_topic,
+                "clientId": f"dmp-{asset}-{action}-resp",
+            })
+
+            # The operation route: REST datasource, request Lua transformer,
+            # command datasink; the response half lives in triggerData.
+            routes.append({
+                "routeId": route_id,
+                "trigger": "operation",
+                "datasource": rest_source_id,
+                "transformers": [request_transformer_id],
+                "datasinks": [command_sink_id],
+                "triggerData": {
+                    "responseDatasource": response_source_id,
+                    "responseTransformer": response_transformer_id,
+                    "timeoutSeconds": 30,
+                },
+            })
+
+            if bidi.request_blob:
+                files[request_path] = bidi.request_blob
+            if bidi.response_blob:
+                files[response_path] = bidi.response_blob
 
     # -- sinks ------------------------------------------------------------- #
     #: BaSyx 2.0 submodel-elements path separator used in idShortPath.

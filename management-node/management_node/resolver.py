@@ -51,15 +51,37 @@ class ResolvedMapping:
 
 
 @dataclass
+class ResolvedBidirectionalMapping:
+    """A resolved operation-delegation (request/response) mapping.
+
+    REST side: the endpoint the DMP exposes. MQTT side: the native command/
+    response topics plus the two directional Lua blobs.
+    """
+
+    id_short: str
+    rest_base: str | None = None
+    rest_path: str | None = None
+    rest_method: str | None = None
+    mqtt_base: str | None = None
+    mqtt_command_topic: str | None = None
+    mqtt_response_topic: str | None = None
+    request_blob: str | None = None
+    response_blob: str | None = None
+    unresolved: list[str] = field(default_factory=list)
+
+
+@dataclass
 class ResolutionResult:
     """All mappings of an asset, with sources resolved against its AID."""
 
     asset_id_short: str
     mappings: list[ResolvedMapping] = field(default_factory=list)
+    bidirectional: list[ResolvedBidirectionalMapping] = field(default_factory=list)
 
     @property
     def all_resolved(self) -> bool:
-        return all(not m.unresolved for m in self.mappings)
+        return all(not m.unresolved for m in self.mappings) and \
+            all(not m.unresolved for m in self.bidirectional)
 
 
 def _protocol_from_interface(interface: str) -> str:
@@ -128,4 +150,110 @@ def resolve(aimc: AimcModel, aid: AidModel) -> ResolutionResult:
                 default_polling_interval=mapping.default_polling_interval,
             )
         )
+    result.bidirectional = _pair_bidirectional(aimc.mappings, aid)
     return result
+
+
+def _pair_bidirectional(mappings: list[AimcMapping], aid: AidModel) -> list[ResolvedBidirectionalMapping]:
+    """Group the directional mappings into request/response operation pairs.
+
+    A skill's operation delegation is modeled as TWO plain IDTA
+    MappingConfigurations; the direction is derived from the Source/Sink
+    references:
+
+    - request  = source ``interface_rest`` action → sink ``interface_mqtt`` action
+    - response = source ``interface_mqtt`` action → sink ``interface_rest`` action
+
+    Mappings with the same action name are paired into one operation.
+    """
+    requests: dict[str, AimcMapping] = {}
+    responses: dict[str, AimcMapping] = {}
+    for mapping in mappings:
+        if not mapping.sources or not mapping.sinks:
+            continue
+        src_path = mapping.sources[0].source.as_path()
+        snk_path = mapping.sinks[0].sink.as_path()
+        if "interface_rest" in src_path and "interface_mqtt" in snk_path:
+            action = src_path[-1] if src_path else mapping.id_short
+            requests[action] = mapping
+        elif "interface_mqtt" in src_path and "interface_rest" in snk_path:
+            action = src_path[-1] if src_path else mapping.id_short
+            responses[action] = mapping
+
+    result = []
+    for action, req in requests.items():
+        result.append(_resolve_bidirectional_pair(action, req, responses.get(action), aid))
+    return result
+
+
+def _resolve_bidirectional_pair(
+    action: str,
+    req: AimcMapping,
+    resp: AimcMapping | None,
+    aid: AidModel,
+) -> ResolvedBidirectionalMapping:
+    """Resolve one request/response operation pair against the AID.
+
+    The REST action (interface_rest) provides the exposed endpoint
+    (base + path + method); the MQTT action (interface_mqtt) provides the
+    native command topic (form href, e.g. /CMD/Halt) and the response topic
+    (form response href, e.g. /DATA/Halt).
+    """
+    resolved = ResolvedBidirectionalMapping(id_short=action)
+
+    rest_interface = aid.interfaces.get("interface_rest")
+    mqtt_interface = aid.interfaces.get("interface_mqtt")
+
+    rest_action = None
+    mqtt_action = None
+    if rest_interface is not None:
+        rest_action = rest_interface.actions.get(action)
+    if mqtt_interface is not None:
+        mqtt_action = mqtt_interface.actions.get(action)
+
+    if rest_interface is None or rest_action is None or not rest_interface.base:
+        resolved.unresolved.append(f"{action}: REST action not found in AID")
+    else:
+        resolved.rest_base = rest_interface.base
+        rest_form = next((f for f in rest_action.forms if f.href), None)
+        resolved.rest_path = rest_form.href if rest_form else None
+        resolved.rest_method = rest_form.method if rest_form and rest_form.method else "POST"
+
+    if mqtt_interface is None or mqtt_action is None or not mqtt_interface.base:
+        resolved.unresolved.append(f"{action}: MQTT action not found in AID")
+    else:
+        resolved.mqtt_base = mqtt_interface.base
+        mqtt_form = next((f for f in mqtt_action.forms if f.href), None)
+        if mqtt_form is not None:
+            _, _, base_path = _split_mqtt_path(mqtt_interface.base)
+            resolved.mqtt_command_topic = (base_path + mqtt_form.href).lstrip("/")
+            response_href = None
+            if mqtt_form.response is not None:
+                href = mqtt_form.response.href
+                if isinstance(href, str) and href.startswith("/"):
+                    response_href = href
+            if response_href is None:
+                # derive from the command topic (/CMD/ -> /DATA/)
+                response_href = mqtt_form.href.replace("/CMD/", "/DATA/")
+            resolved.mqtt_response_topic = (base_path + response_href).lstrip("/")
+        if not resolved.mqtt_command_topic:
+            resolved.unresolved.append(f"{action}: no MQTT command topic")
+
+    resolved.request_blob = req.transformation
+    if resp is not None:
+        resolved.response_blob = resp.transformation
+    if not resolved.request_blob or not resolved.response_blob:
+        resolved.unresolved.append(f"{action}: missing request/response blob")
+
+    return resolved
+
+
+def _split_mqtt_path(base: str) -> tuple[str | None, int | None, str]:
+    """``mqtt://host:port/path`` -> (host, port, path)."""
+    import re
+    if not base:
+        return None, None, ""
+    m = re.match(r"^(?:mqtts?|tcp)://([^:/]+):?(\d*)(.*)$", base)
+    if not m:
+        return None, None, base
+    return m.group(1), int(m.group(2)) if m.group(2) else None, m.group(3) or ""

@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.event.EventRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.operation.OperationRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.request.RequestRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.timer.TimerRouteConfiguration;
 
@@ -79,6 +80,8 @@ public class RoutesConfigurationFactory extends ConfigurationFactory {
 				mapped.add(new TimerRouteConfiguration(configuration));
 			} else if (isRequestConfiguration(configuration)) {
 				mapped.add(new RequestRouteConfiguration(configuration));
+			} else if (isOperationConfiguration(configuration)) {
+				mapped.add(new OperationRouteConfiguration(configuration));
 			}
 		}
 
@@ -95,5 +98,9 @@ public class RoutesConfigurationFactory extends ConfigurationFactory {
 	
 	private boolean isRequestConfiguration(RouteConfiguration configuration) {
 		return configuration.getRouteTrigger().equals(RequestRouteConfiguration.ROUTE_TRIGGER);
+	}
+
+	private boolean isOperationConfiguration(RouteConfiguration configuration) {
+		return configuration.getRouteTrigger().equals(OperationRouteConfiguration.ROUTE_TRIGGER);
 	}
 }

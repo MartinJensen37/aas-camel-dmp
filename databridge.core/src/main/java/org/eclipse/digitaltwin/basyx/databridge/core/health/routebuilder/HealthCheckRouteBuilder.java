@@ -28,22 +28,41 @@ import javax.ws.rs.core.MediaType;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.model.rest.RestBindingMode;
 import org.apache.camel.model.dataformat.JsonLibrary;
 import org.eclipse.digitaltwin.basyx.databridge.core.health.processor.HealthCheckProcessor;
 import org.eclipse.digitaltwin.basyx.databridge.core.health.utility.HealthCheckUtils;
 
 /**
- * Builds the health check route by extending the RouteBuilder
+ * Builds the health check route via the consolidated camel-rest surface
+ * (M7). The DMP exposes BOTH {@code /health} and the REST operation-delegation
+ * interfaces of the AID on ONE HTTP surface (camel-rest backed by
+ * camel-jetty), so the health route is a plain {@code GET /health} rest
+ * definition sharing the rest configuration with the operation routes.
  *
- * @author danish
- *
+ * @author danish, aas-camel-dmp
  */
 public class HealthCheckRouteBuilder extends RouteBuilder {
 
 	@Override
 	public void configure() throws Exception {
-		from(HealthCheckUtils.getHealthCheckEndpoint()).id(HealthCheckUtils.ROUTE_ID)
-				.setHeader(Exchange.CONTENT_TYPE).constant(MediaType.APPLICATION_JSON).bean(HealthCheckProcessor.class)
+		restConfiguration()
+				.component("jetty")
+				.host("0.0.0.0")
+				.port(HealthCheckUtils.getHealthCheckPort())
+				.bindingMode(RestBindingMode.off);
+
+		rest("/health")
+				.get()
+				.produces(MediaType.APPLICATION_JSON)
+				.to("direct:health");
+
+		// Camel merges the rest consumer and the direct route it targets into a
+		// single route; the direct route's id (the canonical health route id) wins.
+		from("direct:health")
+				.routeId(HealthCheckUtils.ROUTE_ID)
+				.setHeader(Exchange.CONTENT_TYPE).constant(MediaType.APPLICATION_JSON)
+				.bean(HealthCheckProcessor.class)
 				.marshal().json(JsonLibrary.Gson);
 	}
 }

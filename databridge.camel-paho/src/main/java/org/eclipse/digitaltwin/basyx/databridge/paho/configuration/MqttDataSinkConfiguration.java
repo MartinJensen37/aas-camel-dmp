@@ -124,13 +124,13 @@ public class MqttDataSinkConfiguration extends DataSinkConfiguration {
 
 	@Override
 	public String getConnectionURI() {
-		
+		// brokerUrl already carries the port; do NOT append it again (bug fix:
+		// the trailing getServerPort() produced a malformed paho: URI).
 		StringBuilder connUri = new StringBuilder();
 		connUri.append("paho:");
 		connUri.append(getTopic());
 		connUri.append(buildOptions());
-		connUri.append(getServerPort());
-		
+
 		return connUri.toString();
 	}
 }

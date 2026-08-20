@@ -23,7 +23,8 @@ class DmpDeployer:
         self,
         image: str = "eclipsebasyx/databridge:1.0.0-SNAPSHOT",
         *,
-        jvm_opts: str = "-Xmx512m",
+        # Gson needs --add-opens to serialize Throwable (health DTO) on Java 17.
+        jvm_opts: str = "-Xmx512m --add-opens java.base/java.lang=ALL-UNNAMED",
         network: str | None = "host",
         health_port: int = 18085,
     ) -> None:

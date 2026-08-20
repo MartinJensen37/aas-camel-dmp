@@ -74,3 +74,95 @@ def test_unresolved_source_when_interface_missing():
     aid_model = aid.AidModel(id_short="AID")
     result = resolve(aimc_model, aid_model)
     assert not result.all_resolved
+
+
+def _halt_aid() -> aid.AidModel:
+    """AID with interface_rest + interface_mqtt Halt actions."""
+    return aid.AidModel(
+        id_short="AID",
+        interfaces={
+            "interface_rest": aid.AidInterface(
+                name="interface_rest",
+                base="http://dmp-syntegonstopperingsystemaas:8080",
+                actions={
+                    "Halt": aid.AidAction(
+                        name="Halt",
+                        synchronous=True,
+                        forms=[aid.AidForm(
+                            href="/operations/syntegonStopperingSystemAAS/Halt",
+                            method="POST",
+                        )],
+                    ),
+                },
+            ),
+            "interface_mqtt": aid.AidInterface(
+                name="interface_mqtt",
+                base="mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering",
+                actions={
+                    "Halt": aid.AidAction(
+                        name="Halt",
+                        forms=[aid.AidForm(
+                            href="/CMD/Halt",
+                            response=aid.AidForm(href="/DATA/Halt"),
+                        )],
+                    ),
+                },
+            ),
+        },
+    )
+
+
+def _refs():
+    """Reference key builder for the two directional Halt mappings."""
+    def ref(interface):
+        return aimc.AimcReference(
+            type="ModelReference",
+            keys=[
+                aimc.AimcReferenceKey(type="Submodel", value="a/submodels/AID"),
+                aimc.AimcReferenceKey(type="SubmodelElementCollection", value=interface),
+                aimc.AimcReferenceKey(type="SubmodelElementCollection", value="InteractionMetadata"),
+                aimc.AimcReferenceKey(type="SubmodelElementCollection", value="actions"),
+                aimc.AimcReferenceKey(type="SubmodelElementCollection", value="Halt"),
+            ],
+        )
+    return ref("interface_rest"), ref("interface_mqtt")
+
+
+def _halt_aimc() -> aimc.AimcModel:
+    rest_ref, mqtt_ref = _refs()
+    # A bidirectional (operation-delegation) mapping = TWO plain directional
+    # MappingConfigurations: request (REST -> MQTT) + response (MQTT -> REST).
+    return aimc.AimcModel(
+        id_short="AIMC",
+        mappings=[
+            aimc.AimcMapping(
+                id_short="HaltRequest",
+                sources=[aimc.AimcSource(
+                    id_short="Halt", source_id="Halt", source=rest_ref)],
+                sinks=[aimc.AimcSink(id_short="Halt", sink_id="Halt", sink=mqtt_ref)],
+                transformation="function aimc_main(sources) return { Halt = sources.Halt } end",
+            ),
+            aimc.AimcMapping(
+                id_short="Halt",
+                sources=[aimc.AimcSource(
+                    id_short="Halt", source_id="Halt", source=mqtt_ref)],
+                sinks=[aimc.AimcSink(id_short="Halt", sink_id="Halt", sink=rest_ref)],
+                transformation="function aimc_main(sources) return { Halt = sources.Halt } end",
+            ),
+        ],
+    )
+
+
+def test_resolves_bidirectional_mapping_to_rest_and_mqtt_endpoints():
+    result = resolve(_halt_aimc(), _halt_aid())
+
+    assert result.all_resolved, result.bidirectional[0].unresolved
+    bidi = result.bidirectional[0]
+    assert bidi.id_short == "Halt"
+    assert bidi.rest_base == "http://dmp-syntegonstopperingsystemaas:8080"
+    assert bidi.rest_path == "/operations/syntegonStopperingSystemAAS/Halt"
+    assert bidi.rest_method == "POST"
+    assert bidi.mqtt_command_topic == "NN/Nybrovej/InnoLab/Stoppering/CMD/Halt"
+    assert bidi.mqtt_response_topic == "NN/Nybrovej/InnoLab/Stoppering/DATA/Halt"
+    assert "function aimc_main" in bidi.request_blob
+    assert "function aimc_main" in bidi.response_blob

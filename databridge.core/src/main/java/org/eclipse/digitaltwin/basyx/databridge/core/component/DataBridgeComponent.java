@@ -36,6 +36,8 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IR
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.event.EventRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.event.EventRouteCreatorFactory;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.operation.OperationRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.operation.OperationRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.request.RequestRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.request.RequestRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.timer.TimerRouteConfiguration;
@@ -68,6 +70,7 @@ public class DataBridgeComponent implements IComponent {
 		defaultRouteCreatorFactoryMap.put(EventRouteConfiguration.ROUTE_TRIGGER, new EventRouteCreatorFactory());
 		defaultRouteCreatorFactoryMap.put(TimerRouteConfiguration.ROUTE_TRIGGER, new TimerRouteCreatorFactory());
 		defaultRouteCreatorFactoryMap.put(RequestRouteConfiguration.ROUTE_TRIGGER, new RequestRouteCreatorFactory());
+		defaultRouteCreatorFactoryMap.put(OperationRouteConfiguration.ROUTE_TRIGGER, new OperationRouteCreatorFactory());
 
 		return defaultRouteCreatorFactoryMap;
 	}

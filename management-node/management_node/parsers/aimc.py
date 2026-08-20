@@ -69,7 +69,13 @@ class AimcSink:
 
 @dataclass
 class AimcMapping:
-    """One logical mapping (sources -> transformation -> sinks)."""
+    """One logical mapping (sources -> transformation -> sinks).
+
+    A skill's operation delegation is bidirectional and expressed as TWO of
+    these directional mappings (one per direction, identified by the
+    Source/Sink references): request = REST action -> MQTT action,
+    response = MQTT action -> REST action.
+    """
 
     id_short: str
     sources: list[AimcSource] = field(default_factory=list)
@@ -207,10 +213,8 @@ def _normalize_aimc(submodel: dict[str, Any]) -> dict[str, Any]:
     """Normalize the AIMC as delivered by BaSyx REST.
 
     BaSyx serializes the AIMC with ``submodelElements``: ``MappingConfigurations``
-    is a SubmodelElementList of SMCs whose children
-    (``Sources``/``Sinks``/``Transformation``) live under ``value``. Flatten
-    that into the internal form the parser consumes (``MappingConfigurations``
-    list with direct ``Sources``/``Sinks``/``Transformation`` keys).
+    is a SubmodelElementList of SMCs whose children live under ``value``.
+    Flatten them into the internal form the parser consumes.
     """
     normalized: dict[str, Any] = {"MappingConfigurations": []}
     if not isinstance(submodel, dict):
@@ -220,7 +224,6 @@ def _normalize_aimc(submodel: dict[str, Any]) -> dict[str, Any]:
     for elem in submodel.get("submodelElements", []):
         if elem.get("idShort") == "MappingConfigurations":
             normalized["MappingConfigurations"] = _unwrap_sml(elem)
-            break
 
     mcs = []
     for mc in normalized["MappingConfigurations"]:
@@ -260,7 +263,10 @@ def parse_aimc(submodel: dict[str, Any] | str) -> AimcModel:
             )
         )
 
-    return AimcModel(id_short=_get_name(submodel), mappings=mappings)
+    return AimcModel(
+        id_short=_get_name(submodel),
+        mappings=mappings,
+    )
 
 
 def _mapping_name(mc: dict) -> str:

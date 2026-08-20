@@ -28,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
@@ -54,6 +56,7 @@ import com.google.gson.JsonSyntaxException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 
 /**
  * Test class for health check implementation behavior
@@ -114,11 +117,10 @@ class HealthCheckTest extends CamelTestSupport {
 		HttpResponse response = getResponseFromHealthEndpoint(
 				HealthCheckUtils.getHealthCheckEndpointRequestURI());
 
-		String expectedRouteId = getRouteIdFromResponse(response, 0);
-
 		assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
 
-		assertThat(expectedRouteId, equalTo(HealthCheckUtils.ROUTE_ID));
+		// The health route (camel-rest consumer) keeps the canonical route id.
+		assertRouteIds(response, HealthCheckUtils.ROUTE_ID);
 	}
 
 	@Test
@@ -132,11 +134,10 @@ class HealthCheckTest extends CamelTestSupport {
 		HttpResponse response = getResponseFromHealthEndpoint(
 				HealthCheckUtils.getHealthCheckEndpointRequestURI());
 
-		String expectedRouteId = getRouteIdFromResponse(response, 0);
-
 		assertEquals(HttpStatus.SC_SERVICE_UNAVAILABLE, response.getStatusLine().getStatusCode());
 
-		assertThat(expectedRouteId, equalTo("test.endpoint"));
+		// The stopped route is reported as unhealthy.
+		assertRouteIds(response, "test.endpoint");
 	}
 
 	private void stopDummyRoute() throws Exception {
@@ -167,5 +168,21 @@ class HealthCheckTest extends CamelTestSupport {
 		String expectedValue = jsonObject.getAsJsonObject("details").get("route.id").getAsString();
 
 		return expectedValue;
+	}
+
+	private void assertRouteIds(HttpResponse response, String... expectedRouteIds)
+			throws JsonSyntaxException, ParseException, IOException {
+		JsonArray jsonArray = JsonParser.parseString(EntityUtils.toString(response.getEntity())).getAsJsonArray();
+
+		Set<String> reportedRouteIds = new HashSet<>();
+		for (int i = 0; i < jsonArray.size(); i++) {
+			JsonObject jsonObject = jsonArray.get(i).getAsJsonObject();
+			reportedRouteIds.add(jsonObject.getAsJsonObject("details").get("route.id").getAsString());
+		}
+
+		for (String expectedRouteId : expectedRouteIds) {
+			assertThat("reported route ids: " + reportedRouteIds, reportedRouteIds,
+					hasItem(expectedRouteId));
+		}
 	}
 }
