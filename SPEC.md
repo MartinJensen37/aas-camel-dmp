@@ -58,7 +58,7 @@ Out of scope: the AAS server itself, the AAS registration service, ontology gene
 - G7. A local harness + contract tests so blobs are verifiable before deployment.
 
 ### Non-goals
-- NG1. Running the DMP on Camel K / Kubernetes in the first iteration (see ADR-002; revisited at a decision gate).
+- NG1. Running the DMP on Camel K / Kubernetes (see ADR-002; **resolved at M5**: plain Apache Camel in Docker containers — no cluster fleet in scope).
 - NG2. Replacing the AAS server or registration service.
 - NG3. Guaranteeing hard per-script memory isolation inside the JVM (see §14.4).
 
@@ -293,13 +293,13 @@ New Maven module mirroring `databridge.camel-jsonata`.
 ### 9.1 Runtime: plain Apache Camel container (ADR-002)
 
 - **Camel version:** **4.x** (Java 17) — baseline upgraded in M0.5 (ADR-009).
-- **Decision:** deploy the DMP as a **plain Apache Camel JVM container** (as today via `databridge.component` → `eclipsebasyx/databridge`-style image), **not** Camel K, for the first iteration.
+- **Decision (confirmed at M5):** deploy the DMP as a **plain Apache Camel JVM container** (as today via `databridge.component` → `eclipsebasyx/databridge`-style image), **not** Camel K.
 - Rationale (see decision record §15):
   - Same engine, same protocol catalog, same per-message speed as Camel K.
   - Camel K's headline benefit (native image) is **blocked by LuaJ** (reflection) → JVM mode anyway.
   - Per-asset DMPs may run on edge/compose without a cluster; Camel K adds operator + cluster infra with no protocol/speed gain.
   - Camel K compiles routes at build time; our Lua blobs arrive **at runtime** — plain Camel reads all config/scripts at startup, strictly more flexible.
-- **Portability:** `databridge.camel-lua` is a standard Camel component — if a later decision gate (M5) selects Camel K, the component is reused unchanged (write YAML routes, ship jar as `-d mvn:` dependency).
+- **Portability:** `databridge.camel-lua` is a standard Camel component. The M5 gate (now resolved) confirmed plain containers, so no Camel K work is planned; if a cluster fleet ever materializes, the component would be reused unchanged (write YAML routes, ship jar as `-d mvn:` dependency).
 
 ### 9.2 One DMP per asset
 
@@ -432,7 +432,7 @@ Feasible: the DMP is a plain container and can run anywhere, including on the as
 1. **Docker Engine API over SSH/TLS (recommended, lab scale).** Management node controls each edge's Docker daemon remotely (Java: `docker-java` over SSH or TLS), delivering image + config + Lua blobs, then create/start/stop/remove the DMP container. Requires edge reachability from the management node.
 2. **Compose-over-SSH.** Ship a compose file + config dir to the edge and run `docker compose up -d` over SSH. Simplest; reuses existing compose artifacts; more brittle orchestration.
 3. **Pull-based edge agent (for NAT'd / edge-unreachable devices).** A tiny agent per edge subscribes to **Kafka** deploy commands (reuses ADR-010 Kafka-only eventing) and applies the DMP locally (Docker, or systemd for the plain JVM jar). Use when the management node cannot initiate connections to the edge.
-4. **K3s / KubeEdge (fleet scale).** When scheduling, restart-on-failure, and rolling updates across many edges are required — this is the **M5 decision gate**; Camel K becomes viable there (still JVM mode due to LuaJ).
+4. **K3s / KubeEdge (fleet scale, out of scope).** Scheduling/rolling updates across many edges are not current requirements — the **M5 gate resolved against it** (plain Docker containers confirmed). If a fleet ever materializes, revisit; Camel K would still run JVM mode due to LuaJ.
 
 Considerations (all mechanisms):
 - Runtime config + Lua blobs are delivered to the edge before container start; blobs remain runtime data (Q2).
@@ -480,14 +480,14 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 | ID | Decision | Rationale |
 |---|---|---|
 | ADR-001 | Lua engine = **LuaJ** (`org.luaj:luaj-jse:3.0.1`) | Pure Java, arch-independent, on Maven Central; **no** `camel-lua` exists anywhere (never published). |
-| ADR-002 | DMP deployment = **plain Apache Camel container**; Camel K deferred | Same engine/protocols/speed; native blocked by LuaJ; no cluster needed for per-asset/compose; scripts arrive at runtime (Camel K compiles at build time). Revisit at gate M5 if a cluster + many assets materialize. |
+| ADR-002 | DMP deployment = **plain Apache Camel container** (Docker); Camel K rejected | Same engine/protocols/speed; native blocked by LuaJ; no cluster needed for per-asset/compose; scripts arrive at runtime (Camel K compiles at build time). **Resolved at M5 (2026-08): no cluster fleet — plain containers only.** |
 | ADR-003 | `sources` = map keyed by `SourceId`; return = map keyed by `SinkId` (JSON object both ways) | Mandated by AIMC 2.0 template semantics. |
 | ADR-004 | JSON handled by host; blobs are table-in/table-out | Keeps blobs simple; matches reference prototype. |
 | ADR-005 | Sandbox + CPU timeout + JVM-level memory bound | Blobs are untrusted, per-asset code. |
 | ADR-006 | Scripts loaded at runtime from files, cached with reload | AIMC blobs arrive at runtime; per-asset iteration without rebuild. |
 | ADR-007 | Normalize at protocol boundary; Lua is protocol-agnostic | Enables interface transforms for any protocol pair with one transform contract. |
 | ADR-008 | One DMP per asset (process isolation) | A bad blob/connection can only take down its own asset; aligns with event-driven instantiation. |
-| ADR-009 | Camel baseline upgrade: **3.21 → latest 4.x** (4.22.x), Java 11 → **17** | 3.x is EOL; every Camel component used by this repo exists in 4.x (verified: paho, jms, activemq, http, jsonata, jackson, kafka, milo, plc4x, sql, support); Hono module uses Eclipse Hono client libs directly (unaffected); aligns with future Camel K path (M5), which is Camel 4.x-based; build `databridge.camel-lua` against the final version, not 3.x. |
+| ADR-009 | Camel baseline upgrade: **3.21 → latest 4.x** (4.22.x), Java 11 → **17** | 3.x is EOL; every Camel component used by this repo exists in 4.x (verified: paho, jms, activemq, http, jsonata, jackson, kafka, milo, plc4x, sql, support); Hono module uses Eclipse Hono client libs directly (unaffected); aligns with Camel 4.x (the M5 gate later confirmed plain containers, not Camel K); build `databridge.camel-lua` against the final version, not 3.x. |
 | ADR-010 | Management-node eventing = **Kafka only**, following `kg-bridge` conventions (`KAFKA_BOOTSTRAP`, `KAFKA_TOPIC_PATTERN`, `KAFKA_CONSUMER_GROUP`, `KAFKA_AUTO_OFFSET_RESET`) | Q1; reuse existing BaSyx Kafka backbone; `kg-bridge` may be replaced by a DMP route later — keep conventions shared. |
 | ADR-011 | Transformation blob is pulled **only** from the AIMC `MappingConfiguration.Transformation` Blob | Q2; single source of truth per the IDTA template; no external blob references. |
 | ADR-012 | **1 DMP container per asset, N `MappingConfigurations` inside** | Q4; asset-level isolation with multiple mappings per asset in one process. |
@@ -505,6 +505,7 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 6. **DMP state registry — in-memory** at the management node (lab scale; externalize later if needed).
 7. **MQTT publish/retain semantics — strictly follow the AID interface spec** (`mqv_retain`, `mqv_qos`, `mqv_control_packet`, `synchronous` as declared in the AID `InteractionMetadata`).
 8. **Management-node language — Python (ADR-013).** Orchestrator glue only; Java/Camel stays with the DMP data plane. Reuses the existing Python AID/AIMC pydantic models and `kg-bridge` Kafka conventions.
+9. **Deployment — plain Apache Camel in Docker containers (ADR-002; M5 gate resolved 2026-08).** No Camel K / Kubernetes: per-asset DMPs run as plain JVM containers via Docker/compose (the management node drives `docker run`, §11.5 mechanism 1/2); `databridge.camel-lua` stays a standard Camel component, reusable unchanged if a cluster fleet ever appears.
 
 ---
 
@@ -518,7 +519,7 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 | **M2** | DMP container integration | `luatransformers.json`, env-var config (LUA equivalent of `JSONATA_ENV_VAR`), runtime mount of blobs, `-Xmx`, reload verified |
 | **M3** | Management node | Subscribes to AAS events; parses AID+AIMC; compiles descriptor; instantiates/updates/stops per-asset DMPs; idempotent reconcile |
 | **M4** | Interface transforms | OPC UA-only resource decorated with MQTT interface (both directions); pattern reusable for other protocol pairs |
-| **M5** | Decision gate: plain containers vs Camel K | Adopt Camel K only if cluster + many assets + operator lifecycle are real requirements; Lua component reused unchanged |
+| **M5** | Decision gate: plain containers vs Camel K | **Resolved (2026-08): plain Apache Camel in Docker containers only** — no cluster fleet in scope; Camel K rejected; Lua component reused unchanged |
 
 ---
 
