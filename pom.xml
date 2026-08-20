@@ -16,6 +16,7 @@
 		<module>databridge.camel-hono</module>
 		<module>databridge.camel-httppolling</module>
 		<module>databridge.camel-jsonata</module>
+		<module>databridge.camel-lua</module>
 		<module>databridge.camel-jsonjackson</module>
 		<module>databridge.camel-kafka</module>
 		<module>databridge.camel-opcua</module>
@@ -44,7 +45,10 @@
 	</developers>
 
 	<properties>
-		<java.version>11</java.version>
+		<java.version>17</java.version>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<maven.compiler.release>17</maven.compiler.release>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<revision>1.0.0-SNAPSHOT</revision>
@@ -53,7 +57,7 @@
 		<docker.image.name>NOT_DEFINED_IN_MODULE</docker.image.name>
 		<docker.image.tag>${revision}</docker.image.tag>
 		<docker.target.platforms>linux/amd64, linux/arm64, linux/arm/v7</docker.target.platforms>
-		<camel.version>3.21.0</camel.version>
+		<camel.version>4.22.0</camel.version>
 	</properties>
 
 	<build>

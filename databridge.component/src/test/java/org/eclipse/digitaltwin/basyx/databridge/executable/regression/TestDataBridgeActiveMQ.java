@@ -26,8 +26,8 @@ package org.eclipse.digitaltwin.basyx.databridge.executable.regression;
 
 import java.io.IOException;
 
-import javax.jms.Connection;
-import javax.jms.JMSException;
+import jakarta.jms.Connection;
+import jakarta.jms.JMSException;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.broker.BrokerService;

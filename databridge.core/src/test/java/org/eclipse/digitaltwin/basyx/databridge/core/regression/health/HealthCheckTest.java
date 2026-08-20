@@ -75,7 +75,8 @@ class HealthCheckTest extends CamelTestSupport {
 
 		DefaultHealthCheckRegistry registry = configureHealthCheckRegistry();
 
-		context.setExtension(HealthCheckRegistry.class, registry);
+		// Camel 4.x: setExtension() was removed; use the context plugin API instead
+		context.getCamelContextExtension().addContextPlugin(HealthCheckRegistry.class, registry);
 
 		return context;
 	}

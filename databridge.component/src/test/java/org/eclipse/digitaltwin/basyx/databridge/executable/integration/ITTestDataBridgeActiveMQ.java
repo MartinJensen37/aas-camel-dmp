@@ -24,8 +24,8 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.databridge.executable.integration;
 
-import javax.jms.Connection;
-import javax.jms.JMSException;
+import jakarta.jms.Connection;
+import jakarta.jms.JMSException;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.eclipse.basyx.aas.aggregator.api.IAASAggregator;
 import org.eclipse.basyx.aas.aggregator.proxy.AASAggregatorProxy;

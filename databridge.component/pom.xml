@@ -25,14 +25,13 @@
 	<!-- Plugin configuration is done in parent project(s) -->
 	<build>
 		<plugins>
-			<!-- Compile Java sources using Java 11 -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.12.1</version>
-				<configuration>
-					<source>11</source>
-					<target>11</target>
+<!-- Compile Java sources using Java 17 -->
+                        <plugin>
+                                <groupId>org.apache.maven.plugins</groupId>
+                                <artifactId>maven-compiler-plugin</artifactId>
+                                <version>3.12.1</version>
+                                <configuration>
+                                        <release>17</release>
 				</configuration>
 			</plugin>
 
@@ -59,6 +58,17 @@
 					<excludes>
 						<exclude>**/logback.xml</exclude>
 					</excludes>
+				</configuration>
+			</plugin>
+
+			<!-- JUnit tests: regression helpers mutate System.getenv() via reflection,
+			     which the Java 17 module system blocks without add-opens flags -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.2.5</version>
+				<configuration>
+					<argLine>--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED</argLine>
 				</configuration>
 			</plugin>
 		</plugins>
@@ -93,6 +103,12 @@
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
 			<artifactId>databridge.camel-jsonata</artifactId>
+			<version>${revision}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<artifactId>databridge.camel-lua</artifactId>
 			<version>${revision}</version>
 		</dependency>
 
@@ -235,6 +251,14 @@
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.13.2</version>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- ActiveMQ broker (matches activemq-client-jakarta pulled by camel-activemq 4.x) -->
+		<dependency>
+			<groupId>org.apache.activemq</groupId>
+			<artifactId>activemq-broker</artifactId>
+			<version>5.19.9</version>
 			<scope>test</scope>
 		</dependency>
 

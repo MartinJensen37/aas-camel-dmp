@@ -14,8 +14,8 @@
 	<packaging>jar</packaging>
 
 	<properties>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
@@ -44,7 +44,7 @@
 		<!-- testing -->
 		<dependency>
 			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-test</artifactId>
+			<artifactId>camel-test-junit5</artifactId>
 			<scope>test</scope>
 		</dependency>
 
@@ -86,7 +86,7 @@
 			<plugin>
 				<groupId>org.apache.camel</groupId>
 				<artifactId>camel-component-maven-plugin</artifactId>
-				<version>3.21.0</version>
+				<version>4.22.0</version>
 				<executions>
 					<execution>
                         <?m2e ignore?>

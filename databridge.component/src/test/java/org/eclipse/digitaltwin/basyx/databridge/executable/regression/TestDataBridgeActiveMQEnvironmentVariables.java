@@ -28,8 +28,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
-import javax.jms.Connection;
-import javax.jms.JMSException;
+import jakarta.jms.Connection;
+import jakarta.jms.JMSException;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.broker.BrokerService;

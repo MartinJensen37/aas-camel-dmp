@@ -14,8 +14,8 @@
 	<packaging>jar</packaging>
 
 	<properties>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
@@ -49,6 +49,12 @@
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-core</artifactId>
+		</dependency>
+
+		<!-- Camel 4.x moved the health check classes into the camel-health module -->
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-health</artifactId>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.apache.camel/camel-jetty -->

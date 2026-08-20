@@ -43,11 +43,11 @@ import org.eclipse.digitaltwin.basyx.databridge.jsonata.configuration.factory.Js
 import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.factory.OpcuaDefaultSinkConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.timer.configuration.factory.TimerDefaultConfigurationFactory;
 import org.eclipse.milo.examples.server.ExampleServer;
+import org.eclipse.milo.opcua.sdk.client.DiscoveryClient;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
-import org.eclipse.milo.opcua.sdk.client.api.config.OpcUaClientConfig;
-import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
-import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
-import org.eclipse.milo.opcua.stack.client.DiscoveryClient;
+import org.eclipse.milo.opcua.sdk.client.OpcUaClientConfig;
+import org.eclipse.milo.opcua.sdk.client.identity.AnonymousProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.IdentityProvider;
 import org.eclipse.milo.opcua.stack.core.StatusCodes;
 import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
@@ -128,42 +128,42 @@ public class TestOPCUAUpdater {
 		OpcUaClient client = createClientConnection(endpointUrl);
 		
 		NodeId nodeId1 = new NodeId(2, "HelloWorld/ScalarTypes/Variant");
-		String value1 = client.readValue(0.0, TimestampsToReturn.Both, nodeId1).get().getValue().getValue().toString();
+		String value1 = client.readValue(0.0, TimestampsToReturn.Both, nodeId1).getValue().getValue().toString();
 		System.out.println("Value of node " + nodeId1 + ": " + value1);
 
 		assertEquals("103.5585973", value1);
 
-		client.disconnect().get();
+		client.disconnect();
 	}
 
 	private static OpcUaClient createClientConnection(String endpointUrl) throws UaException {
+		List<EndpointDescription> endpoints;
 		try {
-			List<EndpointDescription> endpoints = DiscoveryClient.getEndpoints(endpointUrl).get();
-
-			IdentityProvider identityProvider = new AnonymousProvider();
-
-			UaException connectionException = null;
-
-			for (EndpointDescription endpoint : endpoints) {
-				try {
-					OpcUaClientConfig config = OpcUaClientConfig.builder().setEndpoint(endpoint).setIdentityProvider(identityProvider).setRequestTimeout(UInteger.valueOf(5000)).build();
-
-					OpcUaClient client = OpcUaClient.create(config);
-					client.connect().get();
-					return client;
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					throw e;
-				} catch (ExecutionException e) {
-					connectionException = new UaException(StatusCodes.Bad_CommunicationError, "Error connecting to endpoint: " + endpoint.getEndpointUrl(), e.getCause());
-				}
-			}
-
-			throw connectionException != null ? connectionException : new UaException(StatusCodes.Bad_ConfigurationError, "No endpoints could be connected to.");
-
-		} catch (InterruptedException | ExecutionException e) {
-			throw new UaException(StatusCodes.Bad_InternalError, "Error obtaining server endpoints.", e);
+			endpoints = DiscoveryClient.getEndpoints(endpointUrl).get();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new UaException(StatusCodes.Bad_InternalError, "Interrupted while obtaining server endpoints.", e);
+		} catch (ExecutionException e) {
+			throw new UaException(StatusCodes.Bad_InternalError, "Error obtaining server endpoints.", e.getCause());
 		}
+
+		IdentityProvider identityProvider = new AnonymousProvider();
+
+		UaException connectionException = null;
+
+		for (EndpointDescription endpoint : endpoints) {
+			try {
+				OpcUaClientConfig config = OpcUaClientConfig.builder().setEndpoint(endpoint).setIdentityProvider(identityProvider).setRequestTimeout(UInteger.valueOf(5000)).build();
+
+				OpcUaClient client = OpcUaClient.create(config);
+				client.connect();
+				return client;
+			} catch (UaException e) {
+				connectionException = new UaException(StatusCodes.Bad_CommunicationError, "Error connecting to endpoint: " + endpoint.getEndpointUrl(), e.getCause());
+			}
+		}
+
+		throw connectionException != null ? connectionException : new UaException(StatusCodes.Bad_ConfigurationError, "No endpoints could be connected to.");
 	}
 
 	private static void startOpcUaServer() throws Exception {

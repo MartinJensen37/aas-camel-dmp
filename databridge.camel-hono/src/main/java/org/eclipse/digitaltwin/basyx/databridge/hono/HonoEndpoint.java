@@ -37,7 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @UriEndpoint(firstVersion = "1.0.0-SNAPSHOT", scheme = "hono", title = "HONO", syntax = "hono:name",
-category = {Category.JAVA})
+category = {Category.IOT})
 public class HonoEndpoint extends DefaultEndpoint {
 	private static final Logger logger = LoggerFactory.getLogger(HonoEndpoint.class);
 	

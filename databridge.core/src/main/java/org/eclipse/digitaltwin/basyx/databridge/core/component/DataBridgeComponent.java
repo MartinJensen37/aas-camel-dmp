@@ -94,7 +94,9 @@ public class DataBridgeComponent implements IComponent {
 
 	private void configureHealthCheck() throws Exception {
 		camelContext.setLoadHealthChecks(true);
-		camelContext.setExtension(HealthCheckRegistry.class, configureHealthCheckRegistry());
+		// Camel 4.x: setExtension() was removed; use the context plugin API instead
+		camelContext.getCamelContextExtension().addContextPlugin(HealthCheckRegistry.class,
+				configureHealthCheckRegistry());
 		camelContext.addRoutes(new HealthCheckRouteBuilder());
 	}
 

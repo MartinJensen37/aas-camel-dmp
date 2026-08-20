@@ -56,7 +56,7 @@ public class RoutesConfigurationLoader {
 
 	private final static String TEMPORARY_CONFIG_DIRECTORY = System.getProperty("java.io.tmpdir") + "/dataBridge";
 	public static final String JSONATA_ENV_VAR_NAME = "jsonatatransformers";
-	
+		public static final String LUA_ENV_VAR_NAME = "luatransformers";
 	public RoutesConfigurationLoader() {
 		resetFileDirectory();
 		createFilesFromEnvironmentVariables();
@@ -87,6 +87,7 @@ public class RoutesConfigurationLoader {
 		createRoutesFile();
 		createConfigurationFactoryFiles();
 		createJSONataFiles();
+		createLuaFiles();
 	}
 
 	private static void createJSONataFiles() {
@@ -104,6 +105,38 @@ public class RoutesConfigurationLoader {
 			return new String[0];
 
 		return gson.fromJson(jsonataFilesFromEnv, String[].class);
+	}
+
+	/**
+	 * Creates Lua blob files from the {@code luatransformers} environment
+	 * variable (M2, LUA equivalent of {@link #JSONATA_ENV_VAR_NAME}).
+	 */
+	private static void createLuaFiles() {
+		String[] luaFiles = getLuaFilesFromEnv();
+
+		for (String luaFile : luaFiles) {
+			createLuaFileFromEnvironmentVariable(luaFile);
+		}
+	}
+
+	private static String[] getLuaFilesFromEnv() {
+		Gson gson = new Gson();
+		String luaFilesFromEnv = System.getenv(LUA_ENV_VAR_NAME);
+		if (luaFilesFromEnv == null)
+			return new String[0];
+
+		return gson.fromJson(luaFilesFromEnv, String[].class);
+	}
+
+	private static void createLuaFileFromEnvironmentVariable(String variableName) {
+		String fileContent = System.getenv(variableName);
+		if (fileContent == null)
+			fileContent = System.getenv(variableName.replaceAll("\\.", "_"));
+		if (fileContent == null)
+			return;
+
+		logger.info("Creating Lua blob file " + variableName + ".lua from environment");
+		writeFileToTempDirectory(variableName + ".lua", fileContent);
 	}
 
 	private static void createConfigurationFactoryFiles() {

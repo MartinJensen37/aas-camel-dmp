@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
  * registry
  */
 @UriEndpoint(firstVersion = "1.0.0-SNAPSHOT", scheme = "aas", title = "AAS", syntax = "aas:name", category = {
-		Category.JAVA })
+		Category.API })
 public class AASEndpoint extends DefaultEndpoint {
 	private static final Logger logger = LoggerFactory.getLogger(AASEndpoint.class);
 

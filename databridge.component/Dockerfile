@@ -1,4 +1,4 @@
-FROM eclipse-temurin:11
+FROM eclipse-temurin:17-jre
 
 # Install wget to check health status
 RUN apt update && apt install -y wget && apt clean
