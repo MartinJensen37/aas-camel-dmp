@@ -25,10 +25,12 @@ class DmpDeployer:
         *,
         jvm_opts: str = "-Xmx512m",
         network: str | None = "host",
+        health_port: int = 18085,
     ) -> None:
         self.image = image
         self.jvm_opts = jvm_opts
         self.network = network
+        self.health_port = health_port
         if shutil.which("docker") is None:
             raise DockerError("docker CLI not found on PATH")
 
@@ -49,6 +51,9 @@ class DmpDeployer:
             "--name", name,
             "-v", f"{config_dir}:/usr/share/config",
             "-e", f"JAVA_OPTS={self.jvm_opts}",
+            # health endpoint on a dedicated port (the default 8085 collides
+            # with the lab's dashboard-api when the DMP uses host networking)
+            "-e", f"DATABRIDGE_HEALTH_PORT={self.health_port}",
         ]
         if self.network:
             cmd += ["--network", self.network]

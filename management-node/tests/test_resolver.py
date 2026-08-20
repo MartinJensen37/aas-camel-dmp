@@ -26,7 +26,7 @@ def test_resolves_mqtt_sources_to_concrete_endpoints(models):
     result = resolve(aimc_model, aid_model)
 
     assert result.all_resolved, result.mappings
-    mqtt = next(m for m in result.mappings if m.id_short == "MQTT")
+    mqtt = next(m for m in result.mappings if m.id_short == "StationState")
 
     source = mqtt.sources[0]
     assert source.protocol == "mqtt"
@@ -42,7 +42,7 @@ def test_resolves_mqtt_sources_to_concrete_endpoints(models):
 def test_keeps_sink_references_and_blob(models):
     aid_model, aimc_model = models
     result = resolve(aimc_model, aid_model)
-    mqtt = next(m for m in result.mappings if m.id_short == "MQTT")
+    mqtt = next(m for m in result.mappings if m.id_short == "StationState")
 
     assert mqtt.transformation is not None and "function aimc_main" in mqtt.transformation
     assert len(mqtt.sink_ids) == 2

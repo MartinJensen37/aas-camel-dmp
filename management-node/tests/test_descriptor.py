@@ -48,7 +48,8 @@ def test_emits_mqtt_consumer_config(descriptor):
     entry = next(c for c in consumers if c["uniqueId"] == "StationState")
     assert entry["serverUrl"] == "192.168.0.104"
     assert entry["serverPort"] == 1883
-    assert entry["topic"] == "/NN/Nybrovej/InnoLab/Stoppering/DATA/State"
+    # AID base + href, without a leading slash (matches the station's topic)
+    assert entry["topic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/State"
 
 
 def test_emits_lua_transformers_and_blob_files(descriptor):
@@ -62,17 +63,29 @@ def test_emits_lua_transformers_and_blob_files(descriptor):
 
 
 def test_emits_aas_sink_config(descriptor):
+    import base64
+
     sinks = json.loads(descriptor.files[AAS_SERVER_FILE])
     assert sinks
     for s in sinks:
         assert s["type"] == "PROPERTY"
-        assert s["submodelEndpoint"].startswith("http://aas-server:8081/")
-        assert "/submodels/" in s["submodelEndpoint"]
+        assert s["submodelEndpoint"].startswith("http://aas-server:8081/submodels/")
         assert s["idShortPath"]
+        assert s["api"] == "DotAasV3"
+        # the endpoint id is the UTF8-BASE64-URL-encoded submodel id
+        b64 = s["submodelEndpoint"].rsplit("/", 1)[-1]
+        decoded = base64.urlsafe_b64decode(b64 + "=" * (-len(b64) % 4)).decode()
+        assert "/submodels/" in decoded
 
     # the MQTT mapping writes its variables back to the asset's Variables submodel
-    variable_sinks = [s for s in sinks if "submodels/Variables" in s["submodelEndpoint"]]
+    variable_sinks = [
+        s for s in sinks
+        if "/submodels/Variables" in base64.urlsafe_b64decode(
+            s["submodelEndpoint"].rsplit("/", 1)[-1] + "=" * (-len(s["submodelEndpoint"].rsplit("/", 1)[-1]) % 4)
+        ).decode()
+    ]
     assert variable_sinks, "expected at least one sink on the Variables submodel"
+    assert all(s["idShortPath"].endswith(".variable") for s in variable_sinks)
 
 
 def test_write_to_directory(descriptor, tmp_path):
@@ -81,3 +94,23 @@ def test_write_to_directory(descriptor, tmp_path):
     assert (tmp_path / LUA_TRANSFORMERS_FILE).exists()
     # blob files live under queries/
     assert list((tmp_path / "queries").glob("*.lua"))
+
+
+def test_mqtt_broker_override(tmp_path):
+    """A broker override replaces the AID base host/port in MQTT sources
+    (simulated stations publish on the local broker, not the AID's physical one)."""
+    aid_model = aid.parse_aid(json.loads(DATA_AID.read_text()))
+    aimc_model = aimc.parse_aimc(json.loads(DATA_AIMC.read_text()))
+    resolution = resolve(aimc_model, aid_model)
+    descriptor = compile_descriptor(
+        resolution,
+        aas_base_url="http://aas-server:8081",
+        aas_id="syntegonStopperingSystemAAS",
+        aas_id_short="syntegonStopperingSystem",
+        mqtt_broker=("localhost", 1883),
+    )
+    consumers = json.loads(descriptor.files[MQTT_CONSUMER_FILE])
+    entry = next(c for c in consumers if c["uniqueId"] == "StationState")
+    assert entry["serverUrl"] == "localhost"
+    assert entry["serverPort"] == 1883
+    assert entry["topic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/State"

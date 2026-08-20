@@ -148,9 +148,16 @@ public class LuaProducer extends DefaultProducer {
 			sources.set("body", LuaJsonCodec.toLua(body));
 			return sources;
 		}
+		String[] parts = keys.split(",");
+		if (parts.length == 1) {
+			// single SourceId: the whole payload IS that source's data message
+			// (AIMC contract: sources[SourceId] = the data from that source)
+			sources.set(parts[0].trim(), LuaJsonCodec.toLua(body));
+			return sources;
+		}
 		// comma-separated list: extract each key from the payload object
 		LuaValue payload = LuaJsonCodec.toLua(body);
-		for (String key : keys.split(",")) {
+		for (String key : parts) {
 			key = key.trim();
 			if (!key.isEmpty()) {
 				sources.set(key, payload.get(key));

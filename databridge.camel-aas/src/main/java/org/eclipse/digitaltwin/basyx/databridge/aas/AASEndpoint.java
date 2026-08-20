@@ -73,6 +73,16 @@ public class AASEndpoint extends DefaultEndpoint {
 	@UriParam(defaultValue = "BaSyx")
 	private ApiType api;
 
+	/**
+	 * Optional JSON field to extract from the message body before writing
+	 * (the AIMC SinkId out of the Lua blob output object).
+	 */
+	@UriParam(defaultValue = "")
+	private String valuePath;
+
+	private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER =
+			new com.fasterxml.jackson.databind.ObjectMapper();
+
 	public AASEndpoint() {
 	}
 
@@ -133,13 +143,38 @@ public class AASEndpoint extends DefaultEndpoint {
 	}
 
 	public void setPropertyValue(Object content) throws IOException {
+		Object value = extractValuePath(content);
 		if (api.equals(ApiType.BASYX)) {
-			setPropertyValueUsingBaSyxAPI(content);
+			setPropertyValueUsingBaSyxAPI(value);
 		} else {
-			setPropertyValueUsingDotAasV3Api(AASComponentUtil.wrapContent(content.toString()));
+			setPropertyValueUsingDotAasV3Api(AASComponentUtil.wrapContent(value.toString()));
 		}
 
-		logger.info("Transferred message={}", content.toString());
+		logger.info("Transferred message={}", value.toString());
+	}
+
+	/**
+	 * When configured, extracts the SinkId field (valuePath) out of the JSON
+	 * message body so each sink writes only its own value.
+	 */
+	private Object extractValuePath(Object content) throws IOException {
+		if (valuePath == null || valuePath.isBlank() || content == null) {
+			return content;
+		}
+		com.fasterxml.jackson.databind.JsonNode node = MAPPER.readTree(content.toString());
+		com.fasterxml.jackson.databind.JsonNode field = node.get(valuePath);
+		if (field == null) {
+			return content;
+		}
+		return field.isContainerNode() ? field.toString() : field.asText();
+	}
+
+	public String getValuePath() {
+		return valuePath;
+	}
+
+	public void setValuePath(String valuePath) {
+		this.valuePath = valuePath;
 	}
 
 	/**

@@ -52,11 +52,17 @@ def main() -> None:
         raise SystemExit("MANAGED_ASSETS_FILE is required (JSON: aas_id -> asset ref)")
     assets = load_assets(assets_file)
 
+    mqtt_broker = None
+    if raw := os.getenv("DMP_MQTT_BROKER"):
+        host, _, port = raw.partition(":")
+        mqtt_broker = (host.strip(), int(port or 1883))
+
     orchestrator = Orchestrator(
         aas_base_url=aas_base_url,
         config_root=os.getenv("DMP_CONFIG_ROOT", "./dmp-config"),
         assets=assets,
         image=os.getenv("DMP_IMAGE", "eclipsebasyx/databridge:1.0.0-SNAPSHOT"),
+        mqtt_broker=mqtt_broker,
     )
 
     listener = AimcEventListener(

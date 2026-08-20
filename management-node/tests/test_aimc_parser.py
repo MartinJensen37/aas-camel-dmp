@@ -29,7 +29,9 @@ def test_parses_mapping_configurations(submodel):
 
 def test_parses_sources_with_references(submodel):
     model = aimc.parse_aimc(submodel)
-    mqtt = next(m for m in model.mappings if m.id_short == "MQTT")
+    # raw AAS mapping configs carry no idShort; the name falls back to the
+    # first SourceId
+    mqtt = next(m for m in model.mappings if m.id_short == "StationState")
 
     assert len(mqtt.sources) == 1
     source = mqtt.sources[0]
@@ -43,7 +45,7 @@ def test_parses_sources_with_references(submodel):
 
 def test_parses_transformation_lua_blob(submodel):
     model = aimc.parse_aimc(submodel)
-    mqtt = next(m for m in model.mappings if m.id_short == "MQTT")
+    mqtt = next(m for m in model.mappings if m.id_short == "StationState")
 
     assert mqtt.transformation is not None
     assert "function aimc_main" in mqtt.transformation
@@ -51,7 +53,7 @@ def test_parses_transformation_lua_blob(submodel):
 
 def test_parses_sinks(submodel):
     model = aimc.parse_aimc(submodel)
-    mqtt = next(m for m in model.mappings if m.id_short == "MQTT")
+    mqtt = next(m for m in model.mappings if m.id_short == "StationState")
 
     assert len(mqtt.sinks) == 2
     sink_ids = {s.sink_id for s in mqtt.sinks}

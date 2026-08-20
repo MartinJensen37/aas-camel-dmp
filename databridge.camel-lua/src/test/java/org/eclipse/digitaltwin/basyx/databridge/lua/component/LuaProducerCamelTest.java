@@ -75,6 +75,35 @@ class LuaProducerCamelTest extends CamelTestSupport {
 	}
 
 	@Test
+	void singleSourceKeyWrapsWholePayload() throws Exception {
+		// AIMC contract: sources[SourceId] = the whole payload of that source.
+		// A single sourceKeys value must key the whole payload (not extract a
+		// field from it, as the comma-list form does).
+		Path blob = tempDir.resolve("stationstate.lua");
+		Files.writeString(blob, """
+				function aimc_main(sources)
+				    local st = sources.StationState or {}
+				    return { State = st.State }
+				end
+				""", StandardCharsets.UTF_8);
+		String uri = "lua:file:" + blob + "?sourceKeys=StationState&timeoutSeconds=2";
+
+		context.getRouteDefinitions().clear();
+		context.addRoutes(new RouteBuilder() {
+			@Override
+			public void configure() throws Exception {
+				from("direct:start").to(uri).to("mock:result");
+			}
+		});
+		context.start();
+
+		template.sendBody("direct:start", "{\"State\": \"EXECUTE\", \"ProcessQueue\": []}");
+		String result = getMockEndpoint("mock:result").getExchanges().get(0).getMessage().getBody(String.class);
+
+		assertEquals("{\"State\":\"EXECUTE\"}", result);
+	}
+
+	@Test
 	void malformedBlobFailsRouteWithClearError() throws Exception {
 		String script = writeBlob("nonTable.lua");
 		String uri = "lua:file:" + script;

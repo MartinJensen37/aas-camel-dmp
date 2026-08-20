@@ -188,6 +188,51 @@ def _parse_sinks(raw: Any) -> list[AimcSink]:
 
 
 # --------------------------------------------------------------------------- #
+# Raw AAS REST normalization
+# --------------------------------------------------------------------------- #
+def _flatten_smc(raw: Any) -> dict:
+    """An SMC serializes its children under ``value``; promote them to keys."""
+    if not isinstance(raw, dict):
+        return {}
+    flat = dict(raw)
+    children = flat.pop("value", None)
+    if isinstance(children, list):
+        for child in children:
+            if isinstance(child, dict) and child.get("idShort"):
+                flat[child["idShort"]] = child
+    return flat
+
+
+def _normalize_aimc(submodel: dict[str, Any]) -> dict[str, Any]:
+    """Normalize the AIMC as delivered by BaSyx REST.
+
+    BaSyx serializes the AIMC with ``submodelElements``: ``MappingConfigurations``
+    is a SubmodelElementList of SMCs whose children
+    (``Sources``/``Sinks``/``Transformation``) live under ``value``. Flatten
+    that into the internal form the parser consumes (``MappingConfigurations``
+    list with direct ``Sources``/``Sinks``/``Transformation`` keys).
+    """
+    normalized: dict[str, Any] = {"MappingConfigurations": []}
+    if not isinstance(submodel, dict):
+        return normalized
+    normalized.update(submodel)
+
+    for elem in submodel.get("submodelElements", []):
+        if elem.get("idShort") == "MappingConfigurations":
+            normalized["MappingConfigurations"] = _unwrap_sml(elem)
+            break
+
+    mcs = []
+    for mc in normalized["MappingConfigurations"]:
+        flat_mc = _flatten_smc(mc)
+        for key in ("Sources", "Sinks"):
+            flat_mc[key] = [_flatten_smc(item) for item in _unwrap_sml(flat_mc.get(key))]
+        mcs.append(flat_mc)
+    normalized["MappingConfigurations"] = mcs
+    return normalized
+
+
+# --------------------------------------------------------------------------- #
 # Parser entry point
 # --------------------------------------------------------------------------- #
 def parse_aimc(submodel: dict[str, Any] | str) -> AimcModel:
@@ -199,13 +244,15 @@ def parse_aimc(submodel: dict[str, Any] | str) -> AimcModel:
     if isinstance(submodel, str):
         submodel = json.loads(submodel)
 
+    submodel = _normalize_aimc(submodel)
+
     mappings = []
     for mc in _unwrap_sml(submodel.get("MappingConfigurations")):
         if not isinstance(mc, dict):
             continue
         mappings.append(
             AimcMapping(
-                id_short=_get_name(mc),
+                id_short=_mapping_name(mc),
                 sources=_parse_sources(mc.get("Sources")),
                 sinks=_parse_sinks(mc.get("Sinks")),
                 transformation=_blob_text(mc.get("Transformation")),
@@ -214,3 +261,17 @@ def parse_aimc(submodel: dict[str, Any] | str) -> AimcModel:
         )
 
     return AimcModel(id_short=_get_name(submodel), mappings=mappings)
+
+
+def _mapping_name(mc: dict) -> str:
+    """Raw AAS mapping configs (SMCs) carry no idShort; fall back to the
+    first SourceId so transformer/blob names stay meaningful."""
+    name = _get_name(mc)
+    if name:
+        return name
+    for src in _unwrap_sml(mc.get("Sources")):
+        if isinstance(src, dict):
+            source_id = _unwrap_property(src.get("SourceId"))
+            if source_id:
+                return str(source_id)
+    return "mapping"

@@ -15,6 +15,7 @@ into the asset's DMP config directory (mounted at ``/usr/share/config``).
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import re
@@ -52,6 +53,13 @@ def _split_mqtt_base(base: str | None) -> tuple[str | None, int | None, str]:
     return host, port, path
 
 
+def _sink_targets_variables(sink_ref) -> bool:
+    """True when the sink reference targets the asset's ``Variables`` submodel
+    (a writable data variable), not e.g. the AID action metadata."""
+    path = sink_ref.as_path()
+    return bool(path) and "/submodels/Variables" in path[0]
+
+
 @dataclass
 class DmpDescriptor:
     """Config files for one DMP container (1 DMP per asset, ADR-012)."""
@@ -79,10 +87,15 @@ class DescriptorCompiler:
         aas_base_url: str,
         aas_id: str | None = None,
         aas_id_short: str | None = None,
+        mqtt_broker: tuple[str, int] | None = None,
     ) -> None:
         self.aas_base_url = aas_base_url.rstrip("/")
         self.aas_id = aas_id or "{aas_id}"
         self.aas_id_short = aas_id_short or "{aas_id_short}"
+        # Optional (host, port) override for all MQTT sources: the AID base
+        # may point at the physical lab broker (e.g. 192.168.0.104), while the
+        # simulated stations publish to the local broker the DMPs can reach.
+        self.mqtt_broker = mqtt_broker
 
     def compile(self, resolution: ResolutionResult) -> DmpDescriptor:
         descriptor = DmpDescriptor(
@@ -135,8 +148,27 @@ class DescriptorCompiler:
         if mapping.transformation:
             transformer_id = self._add_lua_transformer(mapping, lua_transformers, files)
 
+        # Only sinks on the asset's Variables submodel are writable AAS
+        # properties (the DMP data-flow mapping). Skill mappings (REST
+        # operation-delegation <-> MQTT action) reference AID action metadata
+        # and need REST operation sinks, which are not implemented yet —
+        # skip them so the DMP starts cleanly.
+        variables_sink_refs = [
+            (ref, sid)
+            for ref, sid in zip(mapping.sink_refs, mapping.sink_ids)
+            if _sink_targets_variables(ref)
+        ]
+        if len(variables_sink_refs) != len(mapping.sink_refs):
+            logger.warning(
+                "mapping %s: %d sink(s) target non-Variables submodels (REST "
+                "operation-delegation not yet supported); skipping those",
+                mapping.id_short, len(mapping.sink_refs) - len(variables_sink_refs))
+        if not variables_sink_refs:
+            logger.warning("mapping %s: no writable Variables sinks; skipping", mapping.id_short)
+            return None
+
         sink_ids = []
-        for sink_ref, sink_id in zip(mapping.sink_refs, mapping.sink_ids):
+        for sink_ref, sink_id in variables_sink_refs:
             sink_key = self._add_aas_sink(sink_ref, sink_id, aas_sinks)
             if sink_key:
                 sink_ids.append(sink_key)
@@ -149,7 +181,11 @@ class DescriptorCompiler:
             "datasource": datasource_id,
             "transformers": [transformer_id] if transformer_id else [],
             "datasinks": sink_ids,
-            "trigger": "event" if source.synchronous is not True else "timer",
+            # trigger matches the datasource kind: MQTT (and other event-driven
+            # sources) use "event"; a real timer/polling source would use
+            # "timer" (the AID `synchronous` flag is a REST semantics, not a
+            # polling hint — it must not switch an MQTT source to timer).
+            "trigger": "timer" if source.protocol == "timer" else "event",
         }
         if transformer_id and len(sink_ids) > 1:
             route["datasinkMappingConfiguration"] = {
@@ -168,11 +204,17 @@ class DescriptorCompiler:
         if not host or not port:
             logger.warning("source %s: incomplete MQTT base %r", source.source_id, source.base)
             return None
+        if self.mqtt_broker:
+            host, port = self.mqtt_broker
 
         topic = source.topic or ""
         if topic and not topic.startswith("/"):
             topic = "/" + topic
         full_topic = (base_path.rstrip("/") + topic) if base_path else topic
+        # MQTT topic of the AID base + href (e.g. NN/.../DATA/State): the base
+        # path carries a leading '/' from the mqtt:// URL, but the broker topic
+        # must not (the stations publish without one).
+        full_topic = full_topic.lstrip("/")
 
         mqtt_sources.append(
             {
@@ -194,6 +236,11 @@ class DescriptorCompiler:
         unique_id = f"{self.aas_id_short}_{mapping.id_short}_transformer"
         query_path = f"queries/{self.aas_id_short}_{mapping.id_short}.lua"
 
+        # AIMC blobs address sources by SourceId (e.g. sources.StationState),
+        # so the Lua component must key the incoming payload by that id rather
+        # than the default "body".
+        source_keys = mapping.sources[0].source_id if mapping.sources else "body"
+
         lua_transformers.append(
             {
                 "uniqueId": unique_id,
@@ -201,6 +248,7 @@ class DescriptorCompiler:
                 "queryPath": query_path,
                 "inputType": "JsonString",
                 "outputType": "JsonString",
+                "sourceKeys": source_keys,
             }
         )
 
@@ -212,15 +260,25 @@ class DescriptorCompiler:
         return unique_id
 
     # -- sinks ------------------------------------------------------------- #
+    #: BaSyx 2.0 submodel-elements path separator used in idShortPath.
+    _VALUE_PROPERTY = "variable"
+
     def _add_aas_sink(self, sink_ref, sink_id: str, aas_sinks: list[dict[str, Any]]) -> str | None:
         path = sink_ref.as_path()
         if not path:
             return None
 
         # reference keys: [Submodel=<aas_id>/submodels/<smId>, SMC=<propPath>...]
-        submodel_path = _substitute(path[0], self.aas_id, self.aas_id_short)
-        submodel_endpoint = f"{self.aas_base_url}/{submodel_path.lstrip('/')}"
+        submodel_id = _substitute(path[0], self.aas_id, self.aas_id_short)
+        # BaSyx AAS 2.0 addresses submodels via UTF8-BASE64-URL-encoded id
+        # (verified against the live aas-env: /submodels/<b64url>).
+        b64 = base64.urlsafe_b64encode(submodel_id.encode("utf-8")).decode("ascii").rstrip("=")
+        submodel_endpoint = f"{self.aas_base_url}/submodels/{b64}"
         id_short_path = "/".join(path[1:]) if len(path) > 1 else path[0]
+        # The AIMC SinkId points at a SubmodelElementCollection; the actual
+        # writable value lives in its `variable` property (apex model).
+        if id_short_path:
+            id_short_path = f"{id_short_path}.{self._VALUE_PROPERTY}"
 
         unique_id = f"{self.aas_id_short}_{sink_id}_sink"
         aas_sinks.append(
@@ -229,7 +287,10 @@ class DescriptorCompiler:
                 "type": "PROPERTY",
                 "submodelEndpoint": submodel_endpoint,
                 "idShortPath": id_short_path,
-                "api": "BASYX",
+                "api": "DotAasV3",
+                # the AIMC blob returns {SinkId: value, ...}; each sink writes
+                # only its own SinkId value out of that object
+                "valuePath": sink_id,
             }
         )
         return unique_id
@@ -241,6 +302,10 @@ def compile_descriptor(
     aas_base_url: str,
     aas_id: str | None = None,
     aas_id_short: str | None = None,
+    mqtt_broker: tuple[str, int] | None = None,
 ) -> DmpDescriptor:
     """Convenience factory for :class:`DescriptorCompiler`."""
-    return DescriptorCompiler(aas_base_url=aas_base_url, aas_id=aas_id, aas_id_short=aas_id_short).compile(resolution)
+    return DescriptorCompiler(
+        aas_base_url=aas_base_url, aas_id=aas_id, aas_id_short=aas_id_short,
+        mqtt_broker=mqtt_broker,
+    ).compile(resolution)

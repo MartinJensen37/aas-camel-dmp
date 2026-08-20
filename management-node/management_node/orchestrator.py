@@ -43,11 +43,13 @@ class Orchestrator:
         config_root: str | Path,
         assets: dict[str, AssetRef],
         image: str = "eclipsebasyx/databridge:1.0.0-SNAPSHOT",
+        mqtt_broker: tuple[str, int] | None = None,
     ) -> None:
+        self.aas_base_url = aas_base_url
         self.aas = AasClient(aas_base_url)
         self.assets = dict(assets)
         self.deployer = DmpDeployer(image=image)
-        self.compiler = DescriptorCompiler(aas_base_url=aas_base_url)
+        self.mqtt_broker = mqtt_broker
         self.config_root = Path(config_root)
         self._inflight: set[str] = set()
 
@@ -91,7 +93,16 @@ class Orchestrator:
             unresolved = {m.id_short: m.unresolved for m in resolution.mappings if m.unresolved}
             logger.warning("unresolved sources for %s: %s", asset.aas_id_short, unresolved)
 
-        descriptor = self.compiler.compile(resolution)
+        # aas_id / aas_id_short are per-asset; they resolve the {aas_id} /
+        # {aas_id_short} macros in the AIMC references (AAS-sink endpoints,
+        # Lua transformer/blob names).
+        compiler = DescriptorCompiler(
+            aas_base_url=self.aas_base_url,
+            aas_id=asset.aas_id,
+            aas_id_short=asset.aas_id_short,
+            mqtt_broker=self.mqtt_broker,
+        )
+        descriptor = compiler.compile(resolution)
         if not descriptor.files:
             logger.warning("no DMP config produced for %s; skipping deploy", asset.aas_id_short)
             return
