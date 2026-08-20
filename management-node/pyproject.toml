@@ -1,0 +1,17 @@
+[project]
+name = "aas-dmp-management-node"
+version = "0.1.0"
+description = "Management node for aas-camel-dmp: reacts to AAS events, parses AID+AIMC, compiles DMP descriptors and deploys per-asset DMP containers (SPEC §11, ADR-013)."
+requires-python = ">=3.11"
+dependencies = [
+    "confluent-kafka>=2.5",
+    "requests>=2.31",
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
