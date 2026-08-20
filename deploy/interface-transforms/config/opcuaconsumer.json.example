@@ -1,0 +1,14 @@
+[
+  {
+    "uniqueId": "opcState",
+    "serverUrl": "<asset-ip-or-hostname>",
+    "serverPort": 4840,
+    "pathToService": "milo",
+    "nodeInformation": "ns=2;s=State",
+    "parameters": {
+      "requestedPublishingInterval": 1000,
+      "monitorFilterType": "dataChangeFilter",
+      "allowedSecurityPolicies": "None"
+    }
+  }
+]

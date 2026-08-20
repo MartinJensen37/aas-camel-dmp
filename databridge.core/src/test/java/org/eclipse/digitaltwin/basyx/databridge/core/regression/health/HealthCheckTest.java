@@ -27,6 +27,7 @@ package org.eclipse.digitaltwin.basyx.databridge.core.regression.health;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 
 import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
@@ -61,6 +62,20 @@ import static org.hamcrest.CoreMatchers.equalTo;
  *
  */
 class HealthCheckTest extends CamelTestSupport {
+
+	/**
+	 * The health port is resolved statically at {@code HealthCheckUtils} class
+	 * load. Reserve a free port up front so the test does not collide with a
+	 * running service on the default 8085.
+	 */
+	static {
+		try (ServerSocket socket = new ServerSocket(0)) {
+			System.setProperty(HealthCheckUtils.HEALTH_PORT_SYSTEM_PROPERTY,
+					String.valueOf(socket.getLocalPort()));
+		} catch (IOException e) {
+			throw new ExceptionInInitializerError(e);
+		}
+	}
 
 	CamelContext context;
 

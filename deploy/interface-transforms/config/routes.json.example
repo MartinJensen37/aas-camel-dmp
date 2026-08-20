@@ -1,0 +1,22 @@
+[
+  {
+    "datasource": "opcState",
+    "transformers": [
+      "opc2mqttTransformer"
+    ],
+    "datasinks": [
+      "mqttStateSink"
+    ],
+    "trigger": "event"
+  },
+  {
+    "datasource": "mqttCmdSource",
+    "transformers": [
+      "mqtt2opcTransformer"
+    ],
+    "datasinks": [
+      "opcCmdSink"
+    ],
+    "trigger": "event"
+  }
+]

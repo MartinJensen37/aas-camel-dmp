@@ -359,11 +359,22 @@ The existing `databridge.camel-plc4x` / `databridge.camel-opcua` plugins define 
 | Protocol | Camel component body | Canonical JSON value for `sources[SourceId]` |
 |---|---|---|
 | MQTT (paho) | `byte[]` / String | payload parsed as JSON; string if not JSON |
-| OPC UA (milo-client) | `UaMonitoredItemValue` | `{ "nodeId": <id>, "value": <typed>, "status": <code>, "timestamp": <time> }` |
+| OPC UA (milo-client) | `org.eclipse.milo.opcua.stack.core.types.builtin.DataValue` | `{ "nodeId": <id>, "value": <typed>, "status": <code>, "timestamp": <time> }` |
 | PLC4X | `PlcReadResponse` | `{ "<tagName>": <value>, ... }` (tag name → value map) |
 | HTTP / SQL | component-specific | documented per binding; Lua stays JSON-only |
 
 These bindings live in the protocol adapters; blobs never see protocol types.
+
+> **M4 note (camel-milo 4.22):** the milo-client consumer puts a raw Milo
+> `DataValue` on the body (the `UaMonitoredItemValue` wrapper of older
+> camel-milo versions no longer exists). `databridge.camel-opcua` therefore
+> ships `OpcUaCanonicalConverter` — registered Camel type converters
+> (`DataValue → String/Map`) that produce the canonical JSON form above and are
+> auto-invoked when the Lua component reads the body — plus
+> `OpcUaNormalizer` for the write direction (canonical `{ "value": … }` →
+> Milo `Variant`, which the milo-client producer writes). Monitored items are
+> enabled with `monitorFilterType=dataChangeFilter`. See
+> `deploy/interface-transforms/` for the full bidirectional example.
 
 ---
 

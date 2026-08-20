@@ -1,0 +1,16 @@
+[
+  {
+    "uniqueId": "opc2mqttTransformer",
+    "queryLanguage": "LUA",
+    "queryPath": "queries/opc2mqtt.lua",
+    "inputType": "JsonString",
+    "outputType": "JsonString"
+  },
+  {
+    "uniqueId": "mqtt2opcTransformer",
+    "queryLanguage": "LUA",
+    "queryPath": "queries/mqtt2opc.lua",
+    "inputType": "JsonString",
+    "outputType": "JsonString"
+  }
+]
