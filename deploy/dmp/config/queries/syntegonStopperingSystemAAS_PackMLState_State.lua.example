@@ -1,0 +1,9 @@
+-- AIMC-compliant transformation blob (aas-camel-dmp)
+-- sources: map keyed by SourceId; return: map keyed by SinkId
+-- Example: forward the "State" field of the incoming payload.
+function aimc_main(sources)
+    local payload = sources["body"]
+    return {
+        ["State"] = payload["State"]
+    }
+end

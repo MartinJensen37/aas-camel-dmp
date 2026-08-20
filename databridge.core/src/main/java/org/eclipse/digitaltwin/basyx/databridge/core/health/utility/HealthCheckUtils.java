@@ -34,15 +34,33 @@ import org.springframework.http.HttpMethod;
  */
 public class HealthCheckUtils {
 	public static final String ROUTE_ID = "app.health.context";
+	public static final String DEFAULT_PORT = "8085";
+
+	/** Env var / system property that overrides the health endpoint port (per-asset DMPs). */
+	public static final String HEALTH_PORT_ENV_VAR = "DATABRIDGE_HEALTH_PORT";
+	public static final String HEALTH_PORT_SYSTEM_PROPERTY = "databridge.health.port";
+
 	private static final String COMPONENT = "jetty";
 	private static final String PROTOCOL = "http";
 	private static final String HOST = "0.0.0.0";
-	private static final String PORT = "8085";
+	private static final String PORT = resolvePort();
 	private static final String PATH = "/health";
 	private static final String HTTP_METHOD_RESTRICT_PARAMETER = "httpMethodRestrict=" + HttpMethod.GET;
 
 	private HealthCheckUtils() {
 		throw new IllegalStateException("Utility class");
+	}
+
+	private static String resolvePort() {
+		String fromEnv = System.getenv(HEALTH_PORT_ENV_VAR);
+		if (fromEnv != null && !fromEnv.isBlank()) {
+			return fromEnv;
+		}
+		String fromProperty = System.getProperty(HEALTH_PORT_SYSTEM_PROPERTY);
+		if (fromProperty != null && !fromProperty.isBlank()) {
+			return fromProperty;
+		}
+		return DEFAULT_PORT;
 	}
 
 	public static String getHealthCheckEndpoint() {
@@ -51,5 +69,9 @@ public class HealthCheckUtils {
 	
 	public static String getHealthCheckEndpointRequestURI() {
 		return PROTOCOL + "://" + HOST + ":" + PORT + PATH;
+	}
+
+	public static String getHealthCheckPort() {
+		return PORT;
 	}
 }

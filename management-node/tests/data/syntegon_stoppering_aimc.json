@@ -1,0 +1,416 @@
+{
+  "id_short": "AssetInterfacesMappingConfiguration",
+  "MappingConfigurations": {
+    "value": [
+      {
+        "id_short": "MQTT",
+        "Sources": {
+          "value": [
+            {
+              "id_short": "StationState",
+              "Source": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/AssetInterfacesDescription"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "interface_mqtt"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "InteractionMetadata"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "properties"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "StationState"
+                    }
+                  ]
+                }
+              },
+              "SourceId": {
+                "value": "StationState"
+              }
+            }
+          ]
+        },
+        "Sinks": {
+          "value": [
+            {
+              "id_short": "PackMLState",
+              "Sink": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/Variables"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "PackMLState"
+                    }
+                  ]
+                }
+              },
+              "SinkId": {
+                "value": "PackMLState"
+              }
+            },
+            {
+              "id_short": "OccupationState",
+              "Sink": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/Variables"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "OccupationState"
+                    }
+                  ]
+                }
+              },
+              "SinkId": {
+                "value": "OccupationState"
+              }
+            }
+          ]
+        },
+        "Transformation": {
+          "value": "function aimc_main(sources)\n    return {\n        PackMLState     = sources.StationState.State,\n        OccupationState = sources.StationState.ProcessQueue,\n    }\nend\n"
+        }
+      },
+      {
+        "id_short": "Halt",
+        "Sources": {
+          "value": [
+            {
+              "id_short": "Halt",
+              "Source": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/AssetInterfacesDescription"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "interface_mqtt"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "InteractionMetadata"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "actions"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "Halt"
+                    }
+                  ]
+                }
+              },
+              "SourceId": {
+                "value": "Halt"
+              }
+            }
+          ]
+        },
+        "Sinks": {
+          "value": [
+            {
+              "id_short": "Halt",
+              "Sink": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/AssetInterfacesDescription"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "interface_rest"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "InteractionMetadata"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "actions"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "Halt"
+                    }
+                  ]
+                }
+              },
+              "SinkId": {
+                "value": "Halt"
+              }
+            }
+          ]
+        },
+        "Transformation": {
+          "value": "-- Skill 'Halt': operation-delegation REST endpoint <-> native MQTT action.\n-- Request  (REST -> MQTT): the DMP packs the AAS OperationVariables into the\n--   native command message:\n--     command = { Uuid = rest.Uuid }\n-- Response (MQTT -> REST): aimc_main rebuilds the OperationVariables from\n--   the native MQTT response payload (/DATA/Halt):\nfunction aimc_main(sources)\n    local mqtt = sources.Halt\n    return {\n        Halt = {\n            Uuid    = mqtt.Uuid,\n            State   = mqtt.State,\n            Outcome = mqtt.Outcome,\n        },\n    }\nend\n"
+        }
+      },
+      {
+        "id_short": "Occupy",
+        "Sources": {
+          "value": [
+            {
+              "id_short": "Occupy",
+              "Source": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/AssetInterfacesDescription"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "interface_mqtt"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "InteractionMetadata"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "actions"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "Occupy"
+                    }
+                  ]
+                }
+              },
+              "SourceId": {
+                "value": "Occupy"
+              }
+            }
+          ]
+        },
+        "Sinks": {
+          "value": [
+            {
+              "id_short": "Occupy",
+              "Sink": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/AssetInterfacesDescription"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "interface_rest"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "InteractionMetadata"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "actions"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "Occupy"
+                    }
+                  ]
+                }
+              },
+              "SinkId": {
+                "value": "Occupy"
+              }
+            }
+          ]
+        },
+        "Transformation": {
+          "value": "-- Skill 'Occupy': operation-delegation REST endpoint <-> native MQTT action.\n-- Request  (REST -> MQTT): the DMP packs the AAS OperationVariables into the\n--   native command message:\n--     command = { Uuid = rest.Uuid }\n-- Response (MQTT -> REST): aimc_main rebuilds the OperationVariables from\n--   the native MQTT response payload (/DATA/Occupy):\nfunction aimc_main(sources)\n    local mqtt = sources.Occupy\n    return {\n        Occupy = {\n            Uuid    = mqtt.Uuid,\n            State   = mqtt.State,\n            Outcome = mqtt.Outcome,\n        },\n    }\nend\n"
+        }
+      },
+      {
+        "id_short": "Release",
+        "Sources": {
+          "value": [
+            {
+              "id_short": "Release",
+              "Source": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/AssetInterfacesDescription"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "interface_mqtt"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "InteractionMetadata"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "actions"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "Release"
+                    }
+                  ]
+                }
+              },
+              "SourceId": {
+                "value": "Release"
+              }
+            }
+          ]
+        },
+        "Sinks": {
+          "value": [
+            {
+              "id_short": "Release",
+              "Sink": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/AssetInterfacesDescription"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "interface_rest"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "InteractionMetadata"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "actions"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "Release"
+                    }
+                  ]
+                }
+              },
+              "SinkId": {
+                "value": "Release"
+              }
+            }
+          ]
+        },
+        "Transformation": {
+          "value": "-- Skill 'Release': operation-delegation REST endpoint <-> native MQTT action.\n-- Request  (REST -> MQTT): the DMP packs the AAS OperationVariables into the\n--   native command message:\n--     command = { Uuid = rest.Uuid }\n-- Response (MQTT -> REST): aimc_main rebuilds the OperationVariables from\n--   the native MQTT response payload (/DATA/Release):\nfunction aimc_main(sources)\n    local mqtt = sources.Release\n    return {\n        Release = {\n            Uuid    = mqtt.Uuid,\n            State   = mqtt.State,\n            Outcome = mqtt.Outcome,\n        },\n    }\nend\n"
+        }
+      },
+      {
+        "id_short": "Stoppering",
+        "Sources": {
+          "value": [
+            {
+              "id_short": "Stoppering",
+              "Source": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/AssetInterfacesDescription"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "interface_mqtt"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "InteractionMetadata"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "actions"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "Stoppering"
+                    }
+                  ]
+                }
+              },
+              "SourceId": {
+                "value": "Stoppering"
+              }
+            }
+          ]
+        },
+        "Sinks": {
+          "value": [
+            {
+              "id_short": "Stoppering",
+              "Sink": {
+                "value": {
+                  "type": "ModelReference",
+                  "keys": [
+                    {
+                      "type": "Submodel",
+                      "value": "{aas_id}/submodels/AssetInterfacesDescription"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "interface_rest"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "InteractionMetadata"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "actions"
+                    },
+                    {
+                      "type": "SubmodelElementCollection",
+                      "value": "Stoppering"
+                    }
+                  ]
+                }
+              },
+              "SinkId": {
+                "value": "Stoppering"
+              }
+            }
+          ]
+        },
+        "Transformation": {
+          "value": "-- Skill 'Stoppering': operation-delegation REST endpoint <-> native MQTT action.\n-- Request  (REST -> MQTT): the DMP packs the AAS OperationVariables into the\n--   native command message:\n--     command = { Uuid = rest.Uuid }\n-- Response (MQTT -> REST): aimc_main rebuilds the OperationVariables from\n--   the native MQTT response payload (/DATA/Stoppering):\nfunction aimc_main(sources)\n    local mqtt = sources.Stoppering\n    return {\n        Stoppering = {\n            Uuid    = mqtt.Uuid,\n            State   = mqtt.State,\n            Outcome = mqtt.Outcome,\n        },\n    }\nend\n"
+        }
+      }
+    ]
+  }
+}

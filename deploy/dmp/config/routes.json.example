@@ -1,0 +1,12 @@
+[
+  {
+    "datasource": "timer1",
+    "transformers": [
+      "syntegonStopperingSystemAAS_PackMLState_State_transformer"
+    ],
+    "datasinks": [
+      "syntegonStopperingSystemAAS_PackMLState_sink_State"
+    ],
+    "trigger": "timer"
+  }
+]
