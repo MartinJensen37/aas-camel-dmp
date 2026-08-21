@@ -28,6 +28,7 @@ import java.io.IOException;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.support.DefaultProducer;
+import org.eclipse.digitaltwin.basyx.databridge.lua.sandbox.CompiledLuaScript;
 import org.eclipse.digitaltwin.basyx.databridge.lua.sandbox.LuaJsonCodec;
 import org.eclipse.digitaltwin.basyx.databridge.lua.sandbox.LuaSandbox;
 import org.eclipse.digitaltwin.basyx.databridge.lua.sandbox.LuaScriptLoader;
@@ -44,11 +45,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Executes the AIMC-compliant Lua blob for each exchange.
  *
  * <p>
- * Per invocation (SPEC §7.5 — LuaJ {@code Globals} are not thread-safe):
+ * The blob is compiled ONCE per route ({@link CompiledLuaScript}); per
+ * invocation (SPEC §7.5 — LuaJ {@code Globals} are not thread-safe):
  * <ol>
- * <li>load the script (cached, reload on change) from the endpoint path</li>
+ * <li>load the cached compiled prototype (recompiled only on change)</li>
  * <li>build a fresh sandboxed {@link Globals} with the whitelist</li>
  * <li>install the CPU timeout hook</li>
+ * <li>bind the pre-compiled prototype to the fresh environment (defines
+ * {@code aimc_main}) — no re-parsing/re-compiling</li>
  * <li>decode the exchange body (host-side JSON, ADR-004)</li>
  * <li>call {@code aimc_main(sources)} where {@code sources} is keyed by
  * {@code SourceId}</li>
@@ -73,9 +77,12 @@ public class LuaProducer extends DefaultProducer {
 
 	@Override
 	public void process(Exchange exchange) throws Exception {
-		String script;
+		// The blob is compiled ONCE per route and reused; only the sandbox is
+		// rebuilt per invocation (SPEC §7.5: LuaJ Globals are not thread-safe,
+		// and blobs may mutate their environment — full isolation per message).
+		CompiledLuaScript compiled;
 		try {
-			script = getScriptLoader().load(endpoint.getScriptPath());
+			compiled = getScriptLoader().loadCompiled(endpoint.getScriptPath());
 		} catch (IOException e) {
 			throw new IllegalStateException(
 					"Unable to load Lua blob '" + endpoint.getScriptPath() + "': " + e.getMessage(), e);
@@ -84,8 +91,9 @@ public class LuaProducer extends DefaultProducer {
 		Globals globals = LuaSandbox.createGlobals();
 		LuaTimeoutHook.install(globals, endpoint.getTimeoutSeconds());
 
-		LuaValue chunk = globals.load(script, "@" + endpoint.getScriptPath());
-		chunk.call();
+		// Bind the pre-compiled prototype to the fresh environment and run the
+		// top-level chunk (defines aimc_main) — no re-parsing/re-compiling.
+		CompiledLuaScript.runChunk(compiled.prototype(), globals);
 
 		LuaValue aimcMain = globals.get("aimc_main");
 		if (!aimcMain.isfunction()) {

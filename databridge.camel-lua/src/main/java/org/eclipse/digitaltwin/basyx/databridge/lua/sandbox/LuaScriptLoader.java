@@ -40,9 +40,10 @@ import java.util.HexFormat;
  * The blob content originates only from the AIMC
  * {@code MappingConfiguration.Transformation} Blob, materialized by the
  * management node into a file. With {@code contentCache=true} (default) the
- * script is cached and reloaded when its mtime or content hash changes, so a
+ * script is cached AND pre-compiled (see {@link CompiledLuaScript}) and
+ * reloaded/recompiled when its mtime or content hash changes, so a
  * dropped-in replacement (e.g. an updated AIMC blob) is picked up without a
- * restart.
+ * restart — while steady-state messages reuse the compiled prototype.
  *
  * @author aas-camel-dmp
  */
@@ -63,12 +64,27 @@ public final class LuaScriptLoader {
 	 * and the max blob size.
 	 */
 	public String load(String path) throws IOException {
+		return loadEntry(path).content;
+	}
+
+	/**
+	 * Returns the blob compiled ONCE (prototype), honoring the cache and the
+	 * max blob size. Recompiles only when the file's content actually changed,
+	 * so incoming messages are transformed by the pre-compiled script (SPEC
+	 * §7.5, M7.1).
+	 */
+	public CompiledLuaScript loadCompiled(String path) throws IOException {
+		return loadEntry(path).compiled;
+	}
+
+	private CachedScript loadEntry(String path) throws IOException {
 		Path file = Paths.get(path);
 		long lastModified = Files.getLastModifiedTime(file).toMillis();
 		long size = Files.size(file);
 
-		if (contentCache && cached != null && cached.matches(lastModified, size)) {
-			return cached.content;
+		CachedScript current = cached;
+		if (contentCache && current != null && current.matches(lastModified, size)) {
+			return current;
 		}
 
 		if (size > maxScriptBytes) {
@@ -79,14 +95,17 @@ public final class LuaScriptLoader {
 		String content = new String(bytes, StandardCharsets.UTF_8);
 		String sha = sha256(bytes);
 
-		if (contentCache && cached != null && cached.sha.equals(sha)) {
-			// content unchanged; only refresh metadata
-			cached = new CachedScript(lastModified, size, sha, cached.content);
-			return cached.content;
+		if (contentCache && current != null && current.sha.equals(sha)) {
+			// content unchanged; only refresh metadata (keep the compiled prototype)
+			current = new CachedScript(lastModified, size, sha, current.content, current.compiled);
+			cached = current;
+			return current;
 		}
 
-		cached = new CachedScript(lastModified, size, sha, content);
-		return content;
+		CompiledLuaScript compiled = CompiledLuaScript.compile(content, path);
+		current = new CachedScript(lastModified, size, sha, content, compiled);
+		cached = current;
+		return current;
 	}
 
 	private static String sha256(byte[] bytes) {
@@ -103,12 +122,14 @@ public final class LuaScriptLoader {
 		final long size;
 		final String sha;
 		final String content;
+		final CompiledLuaScript compiled;
 
-		CachedScript(long lastModified, long size, String sha, String content) {
+		CachedScript(long lastModified, long size, String sha, String content, CompiledLuaScript compiled) {
 			this.lastModified = lastModified;
 			this.size = size;
 			this.sha = sha;
 			this.content = content;
+			this.compiled = compiled;
 		}
 
 		boolean matches(long lastModified, long size) {

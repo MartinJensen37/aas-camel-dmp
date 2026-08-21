@@ -25,7 +25,9 @@
 package org.eclipse.digitaltwin.basyx.databridge.lua.harness;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -35,8 +37,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 
+import org.eclipse.digitaltwin.basyx.databridge.lua.sandbox.CompiledLuaScript;
+import org.eclipse.digitaltwin.basyx.databridge.lua.sandbox.LuaJsonCodec;
 import org.eclipse.digitaltwin.basyx.databridge.lua.sandbox.LuaSandbox;
 import org.eclipse.digitaltwin.basyx.databridge.lua.sandbox.LuaScriptLoader;
+import org.eclipse.digitaltwin.basyx.databridge.lua.sandbox.LuaTimeoutHook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.luaj.vm2.Globals;
@@ -177,5 +182,63 @@ class LuaContractTest {
 		String script = loader.load(scriptFile.toString());
 		assertNotNull(script);
 		return LuaHarness.run(script, scriptFile.toString(), sources, TEST_TIMEOUT_SECONDS);
+	}
+
+	@Test
+	void test07CompiledPrototypeIsReusedAcrossInvocations() throws IOException {
+		Path scriptFile = tempDir.resolve("reuse.lua");
+		Files.writeString(scriptFile, blob("simple.lua"));
+
+		LuaScriptLoader loader = new LuaScriptLoader(true, 1048576);
+
+		// Two "incoming messages": the loader returns the SAME compiled
+		// prototype (no re-parsing/re-compiling on the hot path).
+		CompiledLuaScript first = loader.loadCompiled(scriptFile.toString());
+		CompiledLuaScript second = loader.loadCompiled(scriptFile.toString());
+		assertSame(first, second);
+		assertSame(first.prototype(), second.prototype());
+
+		// Both invocations still run in fresh, isolated environments.
+		java.util.Map<String, Object> r1 = runCompiled(loader, scriptFile, java.util.Map.of("a", 3.0, "b", 4.0));
+		java.util.Map<String, Object> r2 = runCompiled(loader, scriptFile, java.util.Map.of("a", 10.0, "b", 5.0));
+		assertEquals(7.0, r1.get("sum"));
+		assertEquals(15.0, r2.get("sum"));
+	}
+
+	@Test
+	void test08CompiledReloadRecompilesOnBlobChange() throws IOException {
+		Path scriptFile = tempDir.resolve("reload-compiled.lua");
+		Files.writeString(scriptFile, blob("simple.lua"));
+
+		LuaScriptLoader loader = new LuaScriptLoader(true, 1048576);
+
+		CompiledLuaScript first = loader.loadCompiled(scriptFile.toString());
+
+		// drop in a replacement blob (updated AIMC transformation)
+		Files.writeString(scriptFile,
+				"function aimc_main(sources)\n"
+						+ "    return { [\"sum\"] = (sources[\"a\"] or 0) - (sources[\"b\"] or 0) }\n"
+						+ "end\n");
+
+		CompiledLuaScript second = loader.loadCompiled(scriptFile.toString());
+		assertNotSame(first.prototype(), second.prototype(), "blob change must recompile");
+
+		java.util.Map<String, Object> result = runCompiled(loader, scriptFile, java.util.Map.of("a", 3.0, "b", 4.0));
+		assertEquals(-1.0, result.get("sum"), "recompiled blob must use the new code");
+	}
+
+	private java.util.Map<String, Object> runCompiled(
+			LuaScriptLoader loader, Path scriptFile, Object sources) throws IOException {
+		CompiledLuaScript compiled = loader.loadCompiled(scriptFile.toString());
+		Globals globals = LuaSandbox.createGlobals();
+		LuaTimeoutHook.install(globals, TEST_TIMEOUT_SECONDS);
+		CompiledLuaScript.runChunk(compiled.prototype(), globals);
+
+		LuaValue aimcMain = globals.get("aimc_main");
+		if (!aimcMain.isfunction()) {
+			throw new IllegalArgumentException("Blob must define aimc_main");
+		}
+		LuaValue result = aimcMain.invoke(LuaJsonCodec.toLua(sources)).arg1();
+		return (java.util.Map<String, Object>) LuaJsonCodec.fromLua(result);
 	}
 }
