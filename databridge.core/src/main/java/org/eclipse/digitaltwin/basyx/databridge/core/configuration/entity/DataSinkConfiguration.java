@@ -30,6 +30,7 @@ package org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity;
  *
  */
 public abstract class DataSinkConfiguration extends RouteEntity {
+	private String sinkId;
 
 	public DataSinkConfiguration() {
 		super();
@@ -37,5 +38,19 @@ public abstract class DataSinkConfiguration extends RouteEntity {
 	
 	public DataSinkConfiguration(String uniqueId) {
 		super(uniqueId);
+	}
+
+	/**
+	 * The AIMC SinkId this sink writes out of the transform's return object
+	 * (SPEC §6.4). Mirrors the source-side {@code sourceId}: the key whose
+	 * value this sink consumes. Concrete sinks (e.g. AAS) may expose this as
+	 * {@code valuePath}.
+	 */
+	public String getSinkId() {
+		return sinkId;
+	}
+
+	public void setSinkId(String sinkId) {
+		this.sinkId = sinkId;
 	}
 }

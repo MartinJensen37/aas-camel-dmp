@@ -28,11 +28,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.RestDataSourceConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.parser.JsonParser;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.operation.OperationRouteConfiguration;
 import org.junit.jupiter.api.Test;
 
-import com.google.gson.Gson;
+import java.io.StringReader;
 
 /**
  * Unit tests for the REST operation-delegation route configuration (M7).
@@ -67,12 +68,12 @@ class OperationRouteConfigurationTest {
 	void operationRouteConfigurationCarriesResponseHalfInTriggerData() {
 		// Gson deserializes the routes.json entry (timeoutSeconds becomes a
 		// Double), exactly as the DMP runtime sees it.
-		RouteConfiguration base = new Gson().fromJson(ROUTE_JSON, RouteConfiguration.class);
+		RouteConfiguration base = (RouteConfiguration) new JsonParser(RouteConfiguration.class).getConfiguration(new StringReader(ROUTE_JSON));
 		OperationRouteConfiguration config = new OperationRouteConfiguration(base);
 
 		assertEquals(OperationRouteConfiguration.ROUTE_TRIGGER, config.getRouteTrigger());
 		assertEquals("halt_operation", config.getRouteId());
-		assertEquals("halt_rest", config.getDatasource());
+		assertEquals("halt_rest", config.getDatasources().get(0));
 		assertEquals("halt_response_source", config.getResponseDatasource());
 		assertEquals("halt_response_transformer", config.getResponseTransformer());
 		assertEquals(30L, config.getTimeoutSeconds());
@@ -82,7 +83,7 @@ class OperationRouteConfigurationTest {
 	@Test
 	void timeoutSecondsDefaultsToThirtyWhenAbsent() {
 		String json = ROUTE_JSON.replace(",\"timeoutSeconds\":30", "");
-		RouteConfiguration base = new Gson().fromJson(json, RouteConfiguration.class);
+		RouteConfiguration base = (RouteConfiguration) new JsonParser(RouteConfiguration.class).getConfiguration(new StringReader(json));
 		OperationRouteConfiguration config = new OperationRouteConfiguration(base);
 
 		assertEquals(30L, config.getTimeoutSeconds());
@@ -90,7 +91,7 @@ class OperationRouteConfigurationTest {
 
 	@Test
 	void routeIdFromTriggerDataIsPresent() {
-		RouteConfiguration base = new Gson().fromJson(ROUTE_JSON, RouteConfiguration.class);
+		RouteConfiguration base = (RouteConfiguration) new JsonParser(RouteConfiguration.class).getConfiguration(new StringReader(ROUTE_JSON));
 		OperationRouteConfiguration config = new OperationRouteConfiguration(base);
 
 		assertTrue(config.getResponseDatasource().equals("halt_response_source"));

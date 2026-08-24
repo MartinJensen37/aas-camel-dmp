@@ -35,7 +35,7 @@ import java.util.Map;
 public class RouteConfiguration {
 	private String trigger;
 	private String routeId;
-	private String datasource;
+	private List<String> datasources = new ArrayList<>();
 	private List<String> transformers = new ArrayList<>();
 	private List<String> datasinks = new ArrayList<>();
 	private Map<String, String[]> datasinkMappingConfiguration;
@@ -53,8 +53,8 @@ public class RouteConfiguration {
 	 *            the trigger for the route configuration
 	 * @param routeId
 	 *            the ID of the route
-	 * @param datasource
-	 *            the datasource associated with the route
+	 * @param datasources
+	 *            the datasources associated with the route (fan-in)
 	 * @param transformers
 	 *            the list of transformers to be applied in the route
 	 * @param datasinks
@@ -63,9 +63,9 @@ public class RouteConfiguration {
 	 *            the mapping configuration for datasinks, mapping each datasink to
 	 *            its corresponding configuration
 	 */
-	public RouteConfiguration(String trigger, String datasource, List<String> transformers, List<String> datasinks, Map<String, String[]> datasinkMappingConfiguration) {
+	public RouteConfiguration(String trigger, List<String> datasources, List<String> transformers, List<String> datasinks, Map<String, String[]> datasinkMappingConfiguration) {
 		this.trigger = trigger;
-		this.datasource = datasource;
+		this.datasources = datasources;
 		this.transformers = transformers;
 		this.datasinks = datasinks;
 		this.datasinkMappingConfiguration = datasinkMappingConfiguration;
@@ -80,22 +80,36 @@ public class RouteConfiguration {
 	 *            the trigger for the route configuration
 	 * @param routeId
 	 *            the ID of the route (optional, can be null)
-	 * @param datasource
-	 *            the datasource associated with the route
+	 * @param datasources
+	 *            the datasources associated with the route (fan-in)
 	 * @param transformers
 	 *            the list of transformers to be applied in the route
 	 * @param datasinks
 	 *            the list of datasinks to which data should be routed
 	 */
-	public RouteConfiguration(String trigger, String datasource, List<String> transformers, List<String> datasinks) {
+	public RouteConfiguration(String trigger, List<String> datasources, List<String> transformers, List<String> datasinks) {
 		this.trigger = trigger;
-		this.datasource = datasource;
+		this.datasources = datasources;
 		this.transformers = transformers;
 		this.datasinks = datasinks;
 	}
 
+	/**
+	 * Convenience constructor for a single-source route.
+	 */
+	public RouteConfiguration(String trigger, String datasource, List<String> transformers, List<String> datasinks) {
+		this(trigger, java.util.Collections.singletonList(datasource), transformers, datasinks);
+	}
+
+	/**
+	 * Convenience constructor for a single-source route with a sink mapping.
+	 */
+	public RouteConfiguration(String trigger, String datasource, List<String> transformers, List<String> datasinks, Map<String, String[]> datasinkMappingConfiguration) {
+		this(trigger, java.util.Collections.singletonList(datasource), transformers, datasinks, datasinkMappingConfiguration);
+	}
+
 	public RouteConfiguration(RouteConfiguration configuration) {
-		this(configuration.getRouteTrigger(), configuration.getDatasource(), configuration.getTransformers(), configuration.getDatasinks(), configuration.getDatasinkMappingConfiguration());
+		this(configuration.getRouteTrigger(), configuration.getDatasources(), configuration.getTransformers(), configuration.getDatasinks(), configuration.getDatasinkMappingConfiguration());
 		setRouteId(configuration.getRouteId());
 		this.triggerData = configuration.triggerData;
 	}
@@ -104,8 +118,16 @@ public class RouteConfiguration {
 		return triggerData;
 	}
 
+	public void setTriggerData(Map<String, Object> triggerData) {
+		this.triggerData = triggerData;
+	}
+
 	public List<String> getDatasinks() {
 		return datasinks;
+	}
+
+	public void setDatasinks(List<String> datasinks) {
+		this.datasinks = datasinks;
 	}
 
 	public String getRouteId() {
@@ -120,6 +142,10 @@ public class RouteConfiguration {
 		return trigger;
 	}
 
+	public void setRouteTrigger(String trigger) {
+		this.trigger = trigger;
+	}
+
 	public List<String> getTransformers() {
 		return transformers;
 	}
@@ -128,12 +154,16 @@ public class RouteConfiguration {
 		this.transformers = transformers;
 	}
 
-	public String getDatasource() {
-		return datasource;
+	/**
+	 * The datasource ids feeding this route (fan-in, SPEC §6.4). A route may
+	 * aggregate multiple sources into one exchange before the transform.
+	 */
+	public List<String> getDatasources() {
+		return datasources;
 	}
 
-	public void setDatasource(String datasource) {
-		this.datasource = datasource;
+	public void setDatasources(List<String> datasources) {
+		this.datasources = datasources;
 	}
 
 	public Map<String, String[]> getDatasinkMappingConfiguration() {

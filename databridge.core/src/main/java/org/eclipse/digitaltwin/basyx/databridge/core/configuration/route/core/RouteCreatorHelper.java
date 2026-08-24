@@ -43,6 +43,17 @@ public class RouteCreatorHelper {
 				.getConnectionURI();
 	}
 
+	/**
+	 * Resolves a list of datasource ids to their endpoint URIs (fan-in, SPEC
+	 * §6.4). The first entry is the route trigger; the rest are aggregated in.
+	 */
+	public static String[] getDataSourceEndpoints(RoutesConfiguration routesConfiguration, List<String> dataSourceIdList) {
+		return dataSourceIdList.stream()
+				.map(routesConfiguration.getDatasources()::get)
+				.map(dataSourceConfiguration -> dataSourceConfiguration.getConnectionURI())
+				.toArray(String[]::new);
+	}
+
 	public static String getDataSinkEndpoint(RoutesConfiguration routesConfiguration, String dataSinkId) {
 		return routesConfiguration.getDatasinks()
 				.get(dataSinkId)

@@ -52,8 +52,8 @@ public class RequestRouteCreator extends AbstractRouteCreator {
 	}
 
 	@Override
-	protected void configureRoute(RouteConfiguration routeConfig, String dataSourceEndpoint, String[] dataSinkEndpoints, String[] dataTransformerEndpoints, String routeId) {
-		RouteDefinition routeDefinition = startRouteDefinition((RequestRouteConfiguration) routeConfig, dataSourceEndpoint, routeId);
+	protected void configureRoute(RouteConfiguration routeConfig, String[] dataSourceEndpoints, String[] dataSinkEndpoints, String[] dataTransformerEndpoints, String routeId) {
+		RouteDefinition routeDefinition = startRouteDefinition((RequestRouteConfiguration) routeConfig, dataSourceEndpoints[0], routeId);
 
 		if (!(dataTransformerEndpoints == null || dataTransformerEndpoints.length == 0)) {
 			routeDefinition.to(dataTransformerEndpoints)
@@ -64,8 +64,8 @@ public class RequestRouteCreator extends AbstractRouteCreator {
 	}
 
 	@Override
-	protected void configureRoute(RouteConfiguration routeConfig, String dataSourceEndpoint, String[] dataSinkEndpoints, String[] dataTransformerEndpoints, Map<String, String[]> dataSinkMapping, String routeId) {
-		MulticastDefinition routeDefinition = startRouteDefinition((RequestRouteConfiguration) routeConfig, dataSourceEndpoint, routeId).multicast();
+	protected void configureRoute(RouteConfiguration routeConfig, String[] dataSourceEndpoints, String[] dataSinkEndpoints, String[] dataTransformerEndpoints, Map<String, String[]> dataSinkMapping, String routeId) {
+		MulticastDefinition routeDefinition = startRouteDefinition((RequestRouteConfiguration) routeConfig, dataSourceEndpoints[0], routeId).multicast();
 		dataSinkMapping.forEach((dataSink, dataTransformers) -> routeDefinition.pipeline()
 				.to(dataTransformers)
 				.to(dataSink)

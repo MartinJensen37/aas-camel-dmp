@@ -32,7 +32,8 @@ package org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity;
 public abstract class DataSourceConfiguration extends RouteEntity {
 	private String serverUrl;
 	private int serverPort;
-	
+	private String sourceId;
+
 	public DataSourceConfiguration() {
 		super();
 	}
@@ -57,5 +58,18 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 
 	public void setServerPort(int serverPort) {
 		this.serverPort = serverPort;
+	}
+
+	/**
+	 * The AIMC SourceId this source contributes to the {@code sources} map
+	 * (SPEC §6.4). Mirrors the sink-side {@code valuePath}: the key under
+	 * which this source's payload is placed for the Lua transform.
+	 */
+	public String getSourceId() {
+		return sourceId;
+	}
+
+	public void setSourceId(String sourceId) {
+		this.sourceId = sourceId;
 	}
 }

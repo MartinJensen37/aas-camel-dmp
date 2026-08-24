@@ -29,7 +29,10 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 
 /**
  * A generic core implementation of Json message parser-
@@ -48,8 +51,10 @@ public class JsonParser {
 	 * @param mapperClass
 	 */
 	public JsonParser(Class<?> mapperClass) {
-		gson = new Gson();
 		this.mapperClass = mapperClass;
+		this.gson = new GsonBuilder()
+				.registerTypeAdapter(RouteConfiguration.class, new RouteConfigurationDeserializer())
+				.create();
 	}
 	
 	/**

@@ -25,6 +25,7 @@
 package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.operation;
 
 import java.util.Collections;
+import java.util.List;
 
 import org.apache.camel.builder.RouteBuilder;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.RestDataSourceConfiguration;
@@ -141,7 +142,12 @@ public class OperationRouteCreator implements IRouteCreator {
 	}
 
 	private RestDataSourceConfiguration getRestDataSource(OperationRouteConfiguration operationConfig) {
-		Object source = routesConfiguration.getDatasources().get(operationConfig.getDatasource());
+		// Operation routes are single-source: use the first (only) datasource.
+		List<String> datasources = operationConfig.getDatasources();
+		if (datasources == null || datasources.isEmpty()) {
+			return null;
+		}
+		Object source = routesConfiguration.getDatasources().get(datasources.get(0));
 		if (source instanceof RestDataSourceConfiguration) {
 			return (RestDataSourceConfiguration) source;
 		}

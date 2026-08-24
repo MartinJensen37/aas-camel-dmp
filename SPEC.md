@@ -168,6 +168,79 @@ The management node compiles each `MappingConfiguration` into DMP config:
 | `DefaultPollingInterval` / `Source.PollingInterval` | polling/timer config for synchronous sources |
 | `synchronous = false` (from AID) | event-driven route (MQTT/Kafka) |
 
+### 6.4 Symmetric route model: fan-in → transform → fan-out
+
+The AIMC 2.0 model defines `Sources[]` and `Sinks[]` as **lists**, and the Lua
+contract is already fan-in-shaped (`aimc_main(sources)` where `sources` is keyed
+by `SourceId`) and fan-out-shaped (return table keyed by `SinkId`). The DMP route
+model must therefore be **symmetric**: many sources may feed one transform, and
+one transform may feed many sinks.
+
+```
+Sources[] ──► (aggregate by SourceId) ──► aimc_main(sources) ──► (multicast by SinkId) ──► Sinks[]
+```
+
+**Current state (as of this extension):** fan-out is native (a route has a
+`List<String> datasinks` and `EventRouteCreator` uses Camel `.multicast()`), but
+fan-in is **not** — `RouteConfiguration.datasource` was a single `String`, so a
+route was hard-wired to exactly one source.
+
+**Extension (this section):**
+
+1. **`RouteConfiguration.datasources` is a single `List<String>`.** The
+   redundant singular `datasource` field is removed. A route may declare
+   multiple sources. For backward compatibility, the Gson deserializer
+   (`RouteConfigurationDeserializer`) accepts both the legacy singular
+   `"datasource"` (string) and the plural `"datasources"` (array) JSON keys,
+   mapping either onto the list — so existing `routes.json` files keep working.
+2. **Fan-in aggregation (synchronized):** when a route has multiple sources,
+   each source gets its own `from()` route that tags the exchange with its
+   `SourceId` and forwards it to a shared in-memory aggregator (`seda:`). The
+   aggregator fires the transform only when **every** source has delivered at
+   least once, using each source's **latest** value (completion predicate on
+   map size, with a timeout safety net). Single-source routes keep the existing
+   `from(source)` behavior.
+3. **Symmetric AIMC selectors:** the base config classes carry the AIMC key
+   each side maps to/from, mirroring each other:
+
+   | Side | Selector | Meaning |
+   |---|---|---|
+   | Source | `DataSourceConfiguration.sourceId` | key under which this source's payload lands in `sources` |
+   | Sink | `DataSinkConfiguration.sinkId` | key (`SinkId`) whose value this sink writes out of the return object (concrete sinks, e.g. AAS, expose it as `valuePath`) |
+
+4. **No Lua changes required:** `aimc_main(sources)` already consumes a
+   `SourceId`-keyed map and returns a `SinkId`-keyed map. The extension is
+   confined to the route assembly layer (config model + route creator +
+   aggregation strategy).
+
+**Example — combine two sources in one math transform:**
+
+```json
+{
+  "routeId": "combine",
+  "datasources": ["station_state", "station_mode"],
+  "transformers": ["combine_lua"],
+  "datasinks": ["packml_state", "packml_mode"]
+}
+```
+
+```lua
+function aimc_main(sources)
+    local state = sources["station_state"]
+    local mode  = sources["station_mode"]
+    return {
+        ["packml_state"] = state,
+        ["packml_mode"]  = mode
+    }
+end
+```
+
+**Aggregation semantics:** each source's latest payload is retained per
+`SourceId`; the transform fires when the first source delivers (or on a
+configurable completion condition). This matches the AIMC intent that a mapping
+may read from any SubmodelElement in any Asset, combine the values, and write
+the result to any sink.
+
 ---
 
 ## 7. Lua Transformation Blob Contract
