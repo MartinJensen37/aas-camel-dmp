@@ -60,6 +60,12 @@ class EventRouteFanInFanOutTest extends CamelTestSupport {
 			setSourceId(sourceId);
 		}
 
+		TestSourceConfiguration(String uniqueId, String sourceId, String valuePath) {
+			super(uniqueId, null, 0);
+			setSourceId(sourceId);
+			setValuePath(valuePath);
+		}
+
 		@Override
 		public String getConnectionURI() {
 			return "direct:" + getUniqueId();
@@ -70,6 +76,12 @@ class EventRouteFanInFanOutTest extends CamelTestSupport {
 	private static final class TestSinkConfiguration extends DataSinkConfiguration {
 		TestSinkConfiguration(String uniqueId) {
 			super(uniqueId);
+		}
+
+		TestSinkConfiguration(String uniqueId, String sinkId, String valuePath) {
+			super(uniqueId);
+			setSinkId(sinkId);
+			setValuePath(valuePath);
 		}
 
 		@Override
@@ -145,5 +157,114 @@ class EventRouteFanInFanOutTest extends CamelTestSupport {
 		Map<?, ?> sources = (Map<?, ?>) body;
 		assertEquals("NEW", sources.get("station_state"));
 		assertEquals("AUTO", sources.get("station_mode"));
+	}
+
+	@Test
+	void sinkAssemblyConstructsOutgoingPayloadAroundSinkValue() throws Exception {
+		// SPEC §8.4 #10 (fine sink): the datasink valuePath places the SinkId
+		// value at the target field of the outgoing payload (assembly).
+		DataSinkConfiguration sink = new TestSinkConfiguration("stageOut", "SetPoint", "$.SetPoint");
+
+		context.addRoutes(new RouteBuilder() {
+			@Override
+			public void configure() {
+				RoutesConfiguration routes = new RoutesConfiguration(
+						Arrays.asList(new TestSourceConfiguration("stageSrc", "station")),
+						Arrays.asList(),
+						Arrays.asList(sink),
+						Arrays.asList());
+				RouteConfiguration route = new RouteConfiguration(
+						"event",
+						Arrays.asList("stageSrc"),
+						Arrays.asList(),
+						Arrays.asList("stageOut"));
+				route.setRouteId("sink-assemble");
+				new EventRouteCreator(this, routes).addRouteToRouteBuilder(route);
+			}
+		});
+
+		MockEndpoint result = getMockEndpoint("mock:stageOut");
+		result.expectedMessageCount(1);
+
+		// A "transform result" keyed by SinkId.
+		template.sendBody("direct:stageSrc", "{\"State\": \"EXECUTE\", \"SetPoint\": \"25.5\"}");
+		result.assertIsSatisfied(1000);
+
+		String body = result.getExchanges().get(0).getMessage().getBody(String.class);
+		assertEquals("{\"SetPoint\":\"25.5\"}", body, "fine sink must construct the outgoing payload");
+	}
+
+	@Test
+	void coarseSinkWritesWholeSinkIdValue() throws Exception {
+		// SPEC §8.4 #10 (coarse sink, write whole SinkId value as-is).
+		DataSinkConfiguration sink = new TestSinkConfiguration("coarseOut", "State", null);
+
+		context.addRoutes(new RouteBuilder() {
+			@Override
+			public void configure() {
+				RoutesConfiguration routes = new RoutesConfiguration(
+						Arrays.asList(new TestSourceConfiguration("coarseSrc", "station")),
+						Arrays.asList(),
+						Arrays.asList(sink),
+						Arrays.asList());
+				RouteConfiguration route = new RouteConfiguration(
+						"event",
+						Arrays.asList("coarseSrc"),
+						Arrays.asList(),
+						Arrays.asList("coarseOut"));
+				route.setRouteId("sink-coarse");
+				new EventRouteCreator(this, routes).addRouteToRouteBuilder(route);
+			}
+		});
+
+		MockEndpoint result = getMockEndpoint("mock:coarseOut");
+		result.expectedMessageCount(1);
+
+		template.sendBody("direct:coarseSrc", "{\"State\": \"EXECUTE\", \"SetPoint\": \"25.5\"}");
+		result.assertIsSatisfied(1000);
+
+		String body = result.getExchanges().get(0).getMessage().getBody(String.class);
+		assertEquals("EXECUTE", body, "coarse sink must write the whole SinkId value");
+	}
+
+	@Test
+	void fineSourceIsDisassembledBeforeAggregation() throws Exception {
+		// SPEC §8.4 #9: one coarse + one fine source fanned-in → the aggregated
+		// sources map mixes whole-payload (coarse) and leaf (fine) values.
+		DataSourceConfiguration fine = new TestSourceConfiguration("fineA", "station_state", "$.State");
+		DataSourceConfiguration coarse = new TestSourceConfiguration("fineB", "station_mode");
+
+		// Distinct endpoint names — the shared createRouteBuilder fixture already
+		// consumes direct:srcA/srcB -> mock:result.
+		context.addRoutes(new RouteBuilder() {
+			@Override
+			public void configure() {
+				DataSinkConfiguration sink = new TestSinkConfiguration("fineResult");
+				RoutesConfiguration routes = new RoutesConfiguration(
+						Arrays.asList(fine, coarse),
+						Arrays.asList(),
+						Arrays.asList(sink),
+						Arrays.asList());
+				RouteConfiguration route = new RouteConfiguration(
+						"event",
+						Arrays.asList("fineA", "fineB"),
+						Arrays.asList(),
+						Arrays.asList("fineResult"));
+				route.setRouteId("fanin-fine");
+				new EventRouteCreator(this, routes).addRouteToRouteBuilder(route);
+			}
+		});
+
+		MockEndpoint result = getMockEndpoint("mock:fineResult");
+		result.expectedMessageCount(1);
+
+		template.sendBody("direct:fineA", "{\"State\": \"EXECUTE\", \"ProcessQueue\": {}}");
+		template.sendBody("direct:fineB", "AUTO");
+		result.assertIsSatisfied(1000);
+
+		Object body = result.getExchanges().get(0).getMessage().getBody();
+		Map<?, ?> sources = (Map<?, ?>) body;
+		assertEquals("EXECUTE", sources.get("station_state"), "fine source must deliver the extracted leaf");
+		assertEquals("AUTO", sources.get("station_mode"), "coarse source must deliver the whole payload");
 	}
 }

@@ -55,6 +55,7 @@ public class LuaTransformerConfiguration extends DataTransformerConfiguration {
 	private String contentCache;
 	private String maxScriptBytes;
 	private String sourceKeys;
+	private String valuePath;
 
 	public LuaTransformerConfiguration() {
 		this.inputType = DEFAULT_INPUT_TYPE;
@@ -90,13 +91,17 @@ public class LuaTransformerConfiguration extends DataTransformerConfiguration {
 		File luaFile = new File(path);
 		String resource = luaFile.exists() ? "file:" + path : path;
 
-		return "lua:" + resource
-				+ "?inputType=" + getInputType()
-				+ "&outputType=" + getOutputType()
-				+ "&timeoutSeconds=" + getTimeoutSeconds()
-				+ "&contentCache=" + getContentCache()
-				+ "&maxScriptBytes=" + getMaxScriptBytes()
-				+ "&sourceKeys=" + getSourceKeys();
+		StringBuilder uri = new StringBuilder("lua:" + resource);
+		uri.append("?inputType=").append(getInputType());
+		uri.append("&outputType=").append(getOutputType());
+		uri.append("&timeoutSeconds=").append(getTimeoutSeconds());
+		uri.append("&contentCache=").append(getContentCache());
+		uri.append("&maxScriptBytes=").append(getMaxScriptBytes());
+		uri.append("&sourceKeys=").append(getSourceKeys());
+		if (getValuePath() != null && !getValuePath().isBlank()) {
+			uri.append("&valuePath=").append(getValuePath());
+		}
+		return uri.toString();
 	}
 
 	public String getInputType() {
@@ -145,5 +150,18 @@ public class LuaTransformerConfiguration extends DataTransformerConfiguration {
 
 	public void setSourceKeys(String sourceKeys) {
 		this.sourceKeys = sourceKeys;
+	}
+
+	/**
+	 * Optional source-side fine resolution (ADR-014 / SPEC §8.3): a JSON
+	 * Pointer applied to the incoming canonical payload before it is placed
+	 * under a {@code SourceId}. Absent → coarse (whole payload).
+	 */
+	public String getValuePath() {
+		return valuePath;
+	}
+
+	public void setValuePath(String valuePath) {
+		this.valuePath = valuePath;
 	}
 }

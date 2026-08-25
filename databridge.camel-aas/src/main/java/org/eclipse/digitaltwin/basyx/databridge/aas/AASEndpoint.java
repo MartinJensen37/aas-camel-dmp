@@ -155,18 +155,25 @@ public class AASEndpoint extends DefaultEndpoint {
 
 	/**
 	 * When configured, extracts the SinkId field (valuePath) out of the JSON
-	 * message body so each sink writes only its own value.
+	 * message body so each sink writes only its own value. The valuePath is a
+	 * JSON Pointer (SPEC §6.5.4), so both a bare key ({@code "PackMLState"})
+	 * and a nested pointer ({@code "$.SetPoint"}) work; absent → write the body
+	 * as-is (coarse sink).
 	 */
 	private Object extractValuePath(Object content) throws IOException {
 		if (valuePath == null || valuePath.isBlank() || content == null) {
 			return content;
 		}
-		com.fasterxml.jackson.databind.JsonNode node = MAPPER.readTree(content.toString());
-		com.fasterxml.jackson.databind.JsonNode field = node.get(valuePath);
-		if (field == null) {
+		Object node = MAPPER.readValue(content.toString(), Object.class);
+		java.util.Optional<Object> field = org.eclipse.digitaltwin.basyx.databridge.core.util.JsonPointer.extract(node, valuePath);
+		if (field.isEmpty()) {
 			return content;
 		}
-		return field.isContainerNode() ? field.toString() : field.asText();
+		Object value = field.get();
+		if (value instanceof java.util.Map || value instanceof java.util.List) {
+			return MAPPER.writeValueAsString(value);
+		}
+		return String.valueOf(value);
 	}
 
 	public String getValuePath() {

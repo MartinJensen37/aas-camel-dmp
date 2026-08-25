@@ -57,8 +57,17 @@ public class EventRouteCreator extends AbstractRouteCreator {
 					.to("log:" + routeId);
 		}
 
-		routeDefinition.to(dataSinkEndpoints)
-				.to("log:" + routeId);
+		// Per-sink assembly (fine sinks, ADR-014 / SPEC §6.5.4): the transform
+		// output is a return object keyed by SinkId; each sink consumes only its
+		// own value (or a constructed payload around it).
+		List<String> sinkIds = routeConfiguration.getDatasinks();
+		for (int i = 0; i < dataSinkEndpoints.length; i++) {
+			if (i < sinkIds.size()) {
+				applySinkAssembly(routeDefinition, sinkIds.get(i));
+			}
+			routeDefinition.to(dataSinkEndpoints[i])
+					.to("log:" + routeId);
+		}
 	}
 
 	@Override
@@ -66,6 +75,7 @@ public class EventRouteCreator extends AbstractRouteCreator {
 		MulticastDefinition routeDefinition = startRouteDefinition(routeConfig, dataSourceEndpoints, routeId).multicast();
 		dataSinkMapping.forEach((dataSink, dataTransformers) -> routeDefinition.pipeline()
 				.to(dataTransformers)
+				.process(exchange -> applySinkAssemblyProcessor(exchange, sinkIdForEndpoint(routeConfig, dataSink)))
 				.to(dataSink)
 				.to("log:" + routeId));
 
@@ -73,6 +83,90 @@ public class EventRouteCreator extends AbstractRouteCreator {
 				.to("log: " + routeId));
 
 		routeDefinition.end();
+	}
+
+	/**
+	 * Inserts the post-transform assembly processor for one sink when the sink
+	 * declares a {@code valuePath} / {@code sinkId} and does not handle its
+	 * {@code valuePath} internally (e.g. the AAS sink self-extracts).
+	 */
+	private void applySinkAssembly(RouteDefinition routeDefinition, String dataSinkId) {
+		org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSinkConfiguration config =
+				getRoutesConfiguration().getDatasinks().get(dataSinkId);
+		if (config == null || config.handlesValuePathInternally()) {
+			return;
+		}
+		String valuePath = config.getValuePath();
+		String sinkId = config.getSinkId();
+		if ((valuePath == null || valuePath.isBlank()) && (sinkId == null || sinkId.isBlank())) {
+			return;
+		}
+		routeDefinition.process(exchange -> applySinkAssemblyProcessor(exchange, dataSinkId));
+	}
+
+	private void applySinkAssemblyProcessor(org.apache.camel.Exchange exchange, String dataSinkId) {
+		if (dataSinkId == null) {
+			return;
+		}
+		org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSinkConfiguration config =
+				getRoutesConfiguration().getDatasinks().get(dataSinkId);
+		if (config == null || config.handlesValuePathInternally()) {
+			return;
+		}
+		String valuePath = config.getValuePath();
+		String sinkId = config.getSinkId();
+
+		Object body = exchange.getMessage().getBody();
+		Object json = body;
+		if (body instanceof String s) {
+			json = parseSinkPayload(s, dataSinkId);
+		} else if (body instanceof byte[] bytes) {
+			json = parseSinkPayload(new String(bytes, java.nio.charset.StandardCharsets.UTF_8), dataSinkId);
+		}
+
+		Object value = json;
+		if (sinkId != null && !sinkId.isBlank()) {
+			if (!(json instanceof java.util.Map<?, ?> map) || !map.containsKey(sinkId)) {
+				throw new IllegalArgumentException("Sink '" + dataSinkId
+						+ "': SinkId '" + sinkId + "' not present in the transform result");
+			}
+			value = map.get(sinkId);
+		}
+
+		com.google.gson.Gson gson = new com.google.gson.Gson();
+		if (valuePath == null || valuePath.isBlank()) {
+			// coarse: write the whole SinkId value
+			exchange.getMessage().setBody(value instanceof String ? (String) value : gson.toJson(value));
+		} else {
+			// fine: construct the outgoing payload with the value at the pointer
+			java.util.Map<String, Object> assembled = new java.util.LinkedHashMap<>();
+			assembled.put(org.eclipse.digitaltwin.basyx.databridge.core.util.JsonPointer.parse(valuePath).leafKey(), value);
+			exchange.getMessage().setBody(gson.toJson(assembled));
+		}
+	}
+
+	private Object parseSinkPayload(String text, String dataSinkId) {
+		try {
+			return new com.google.gson.Gson().fromJson(text, Object.class);
+		} catch (Exception e) {
+			throw new IllegalArgumentException("Sink '" + dataSinkId
+					+ "': payload is not valid JSON: " + text, e);
+		}
+	}
+
+	/**
+	 * Reverse-looks-up the sink config id for a resolved endpoint URI (used in
+	 * the sink-mapped multicast path whose keys are endpoint URIs).
+	 */
+	private String sinkIdForEndpoint(RouteConfiguration routeConfig, String endpointUri) {
+		for (String id : routeConfig.getDatasinks()) {
+			org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSinkConfiguration config =
+					getRoutesConfiguration().getDatasinks().get(id);
+			if (config != null && endpointUri.equals(config.getConnectionURI())) {
+				return id;
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -95,8 +189,10 @@ public class EventRouteCreator extends AbstractRouteCreator {
 	 */
 	private RouteDefinition startRouteDefinition(RouteConfiguration routeConfig, String[] dataSourceEndpoints, String routeId) {
 		if (dataSourceEndpoints.length <= 1) {
+			String dataSourceId = routeConfig.getDatasources().get(0);
 			return getRouteBuilder().from(dataSourceEndpoints[0])
 					.routeId(routeId)
+					.process(exchange -> disassembleSource(exchange, dataSourceId))
 					.to("log:" + routeId);
 		}
 
@@ -108,13 +204,14 @@ public class EventRouteCreator extends AbstractRouteCreator {
 		java.util.concurrent.ConcurrentHashMap<String, Boolean> delivered = new java.util.concurrent.ConcurrentHashMap<>();
 
 		for (int i = 0; i < dataSourceEndpoints.length; i++) {
-			String sourceId = resolveSourceId(sourceIds.get(i));
+			String dataSourceId = sourceIds.get(i);
+			String sourceId = resolveSourceId(dataSourceId);
 			getRouteBuilder().from(dataSourceEndpoints[i])
 					.routeId(routeId + "-source-" + i)
 					.setHeader(SOURCE_ID_HEADER, constant(sourceId))
 					.process(exchange -> {
 						String sid = exchange.getMessage().getHeader(SOURCE_ID_HEADER, String.class);
-						latest.put(sid, exchange.getMessage().getBody());
+						latest.put(sid, disassembleSource(exchange, dataSourceId));
 						delivered.put(sid, Boolean.TRUE);
 					})
 					.to(aggregatorUri);
@@ -126,6 +223,46 @@ public class EventRouteCreator extends AbstractRouteCreator {
 				.routeId(routeId)
 				.process(new AllSourcesTrigger(latest, delivered, dataSourceEndpoints.length));
 		return route;
+	}
+
+	/**
+	 * Applies this source's {@code valuePath} (fine resolution, ADR-014 /
+	 * SPEC §6.3+§6.5.4) at the DMP boundary: reduces the source's canonical
+	 * payload to the pinned JSON-Pointer leaf before it is placed under the
+	 * {@code SourceId} (disassembly). Absent → coarse (whole payload). A
+	 * pointer on a missing path is a clear route error (SPEC §8.4 #8).
+	 */
+	private Object disassembleSource(org.apache.camel.Exchange exchange, String dataSourceId) {
+		org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSourceConfiguration config =
+				getRoutesConfiguration().getDatasources().get(dataSourceId);
+		String pointer = config == null ? null : config.getValuePath();
+		if (pointer == null || pointer.isBlank()) {
+			return exchange.getMessage().getBody();
+		}
+
+		Object body = exchange.getMessage().getBody();
+		Object json = body;
+		if (body instanceof String text) {
+			json = parseSourcePayload(text, pointer, dataSourceId);
+		} else if (body instanceof byte[] bytes) {
+			json = parseSourcePayload(new String(bytes, java.nio.charset.StandardCharsets.UTF_8), pointer, dataSourceId);
+		}
+
+		java.util.Optional<Object> leaf = org.eclipse.digitaltwin.basyx.databridge.core.util.JsonPointer.extract(json, pointer);
+		if (leaf.isEmpty()) {
+			throw new IllegalArgumentException("Source '" + dataSourceId
+					+ "': valuePath '" + pointer + "' does not resolve in the incoming payload");
+		}
+		return leaf.get();
+	}
+
+	private Object parseSourcePayload(String text, String pointer, String dataSourceId) {
+		try {
+			return new com.google.gson.Gson().fromJson(text, Object.class);
+		} catch (Exception e) {
+			throw new IllegalArgumentException("Source '" + dataSourceId
+					+ "': valuePath '" + pointer + "' set but the payload is not valid JSON: " + text, e);
+		}
 	}
 
 	/**

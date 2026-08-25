@@ -91,7 +91,8 @@ public class AASDatasinkConfiguration extends DataSinkConfiguration {
 	/**
 	 * Optional JSON field to extract from the (Lua blob) message body before
 	 * writing — the AIMC SinkId (e.g. {@code "PackMLState"}) selects the value
-	 * for this sink out of the mapping output object.
+	 * for this sink out of the mapping output object. A JSON Pointer (e.g.
+	 * {@code $.SetPoint}) is also accepted for nested fields (SPEC §6.5.4).
 	 */
 	public String getValuePath() {
 		return valuePath;
@@ -99,6 +100,11 @@ public class AASDatasinkConfiguration extends DataSinkConfiguration {
 
 	public void setValuePath(String valuePath) {
 		this.valuePath = valuePath;
+	}
+
+	@Override
+	public boolean handlesValuePathInternally() {
+		return true;
 	}
 
 	@Override

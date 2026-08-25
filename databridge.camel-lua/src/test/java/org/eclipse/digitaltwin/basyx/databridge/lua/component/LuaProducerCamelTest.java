@@ -122,4 +122,86 @@ class LuaProducerCamelTest extends CamelTestSupport {
 		Throwable cause = ex.getCause();
 		assertEquals(true, cause.getMessage().contains("must return a table"));
 	}
+
+	@Test
+	void fineSourceValuePathDisassemblesPayloadToLeaf() throws Exception {
+		// SPEC §8.4 #8 (fine source): valuePath=$.State auto-extracts the nested
+		// property into sources[SourceId] at the DMP boundary — the blob sees
+		// the leaf value, no in-blob traversal needed (it must NOT see the full
+		// payload object).
+		Path blob = tempDir.resolve("fine.lua");
+		Files.writeString(blob, """
+				function aimc_main(sources)
+				    local st = sources.StationState
+				    if type(st) == "table" then
+				        return { error = "expected leaf, got object" }
+				    end
+				    return { State = st }
+				end
+				""", StandardCharsets.UTF_8);
+		String uri = "lua:file:" + blob + "?sourceKeys=StationState&valuePath=$.State&timeoutSeconds=2";
+
+		context.getRouteDefinitions().clear();
+		addRoute(uri);
+		context.start();
+
+		template.sendBody("direct:start", "{\"State\": \"EXECUTE\", \"ProcessQueue\": {\"mode\": \"AUTO\"}}");
+		String result = getMockEndpoint("mock:result").getExchanges().get(0).getMessage().getBody(String.class);
+
+		assertEquals("{\"State\":\"EXECUTE\"}", result);
+	}
+
+	@Test
+	void coarseSourceDeliversWholePayloadToBlob() throws Exception {
+		// SPEC §8.4 #7 (coarse source): no valuePath → sources[SourceId] is the
+		// whole decoded payload; nested access happens in-blob.
+		Path blob = tempDir.resolve("coarse.lua");
+		Files.writeString(blob, """
+				function aimc_main(sources)
+				    local st = sources.StationState or {}
+				    local state = st.State  -- in-blob drill-down (coarse)
+				    local mode  = (st.ProcessQueue or {}).mode
+				    return { State = state, Mode = mode }
+				end
+				""", StandardCharsets.UTF_8);
+		String uri = "lua:file:" + blob + "?sourceKeys=StationState&timeoutSeconds=2";
+
+		context.getRouteDefinitions().clear();
+		addRoute(uri);
+		context.start();
+
+		template.sendBody("direct:start", "{\"State\": \"EXECUTE\", \"ProcessQueue\": {\"mode\": \"AUTO\"}}");
+		String result = getMockEndpoint("mock:result").getExchanges().get(0).getMessage().getBody(String.class);
+
+		assertEquals("{\"State\":\"EXECUTE\",\"Mode\":\"AUTO\"}", result);
+	}
+
+	@Test
+	void fineSourceMissingValuePathFailsClearly() throws Exception {
+		// SPEC §8.4 #8: pointer on a missing path → clear route error.
+		Path blob = tempDir.resolve("fine-missing.lua");
+		Files.writeString(blob, """
+				function aimc_main(sources)
+				    return { State = sources.StationState or "none" }
+				end
+				""", StandardCharsets.UTF_8);
+		String uri = "lua:file:" + blob + "?sourceKeys=StationState&valuePath=$.Missing&timeoutSeconds=2";
+
+		context.getRouteDefinitions().clear();
+		addRoute(uri);
+		context.start();
+
+		CamelExecutionException ex = assertThrows(CamelExecutionException.class,
+				() -> template.sendBody("direct:start", "{\"State\": \"EXECUTE\"}"));
+		assertEquals(true, ex.getCause().getMessage().contains("does not resolve"));
+	}
+
+	private void addRoute(String luaUri) throws Exception {
+		context.addRoutes(new RouteBuilder() {
+			@Override
+			public void configure() throws Exception {
+				from("direct:start").to(luaUri).to("mock:result");
+			}
+		});
+	}
 }

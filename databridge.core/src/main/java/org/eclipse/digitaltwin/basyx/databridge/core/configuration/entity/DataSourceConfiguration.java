@@ -33,6 +33,7 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 	private String serverUrl;
 	private int serverPort;
 	private String sourceId;
+	private String valuePath;
 
 	public DataSourceConfiguration() {
 		super();
@@ -71,5 +72,21 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 
 	public void setSourceId(String sourceId) {
 		this.sourceId = sourceId;
+	}
+
+	/**
+	 * Source-side fine resolution (ADR-014 / SPEC §6.3): a JSON Pointer
+	 * (e.g. {@code $.State}) applied to this source's canonical payload at the
+	 * DMP boundary. When set, only the extracted leaf is delivered under the
+	 * {@code SourceId} (disassembly); absent → the whole payload (coarse,
+	 * current behaviour). The management node pins it per fine source; the DMP
+	 * only applies what it was given.
+	 */
+	public String getValuePath() {
+		return valuePath;
+	}
+
+	public void setValuePath(String valuePath) {
+		this.valuePath = valuePath;
 	}
 }

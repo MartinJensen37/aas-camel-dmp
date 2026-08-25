@@ -58,6 +58,11 @@
             "title": "Source Keys",
             "type": "string",
             "description": "How to assemble the sources map: 'body' wraps the whole payload, or a comma-separated list of keys to extract from the payload object"
+        },
+        "valuePath": {
+            "title": "Value Path",
+            "type": "string",
+            "description": "Optional source-side fine resolution (ADR-014): a JSON Pointer (e.g. $.State) applied to the incoming canonical payload before it is placed under a SourceId. Absent -> coarse (whole payload delivered)."
         }
     }
 }

@@ -153,14 +153,16 @@ public class LuaProducer extends DefaultProducer {
 		LuaValue sources = LuaValue.tableOf();
 		String keys = endpoint.getSourceKeys();
 		if (keys == null || keys.trim().isEmpty() || "body".equalsIgnoreCase(keys.trim())) {
-			sources.set("body", LuaJsonCodec.toLua(body));
+			sources.set("body", LuaJsonCodec.toLua(disassemble(body)));
 			return sources;
 		}
 		String[] parts = keys.split(",");
 		if (parts.length == 1) {
 			// single SourceId: the whole payload IS that source's data message
-			// (AIMC contract: sources[SourceId] = the data from that source)
-			sources.set(parts[0].trim(), LuaJsonCodec.toLua(body));
+			// (AIMC contract: sources[SourceId] = the data from that source).
+			// A valuePath (fine resolution, SPEC §6.5) disassembles the payload
+			// into exactly the leaf the mapping needs.
+			sources.set(parts[0].trim(), LuaJsonCodec.toLua(disassemble(body)));
 			return sources;
 		}
 		// comma-separated list: extract each key from the payload object
@@ -172,6 +174,26 @@ public class LuaProducer extends DefaultProducer {
 			}
 		}
 		return sources;
+	}
+
+	/**
+	 * Source-side fine resolution (ADR-014 / SPEC §6.5): when a {@code valuePath}
+	 * is configured, reduces the incoming canonical payload to the pinned leaf
+	 * (disassembly) before it is placed under the {@code SourceId}; absent →
+	 * coarse (whole payload delivered). A pointer on a missing path is a clear
+	 * route error (SPEC §8.4 #8).
+	 */
+	private Object disassemble(Object body) {
+		String pointer = endpoint.getValuePath();
+		if (pointer == null || pointer.isBlank() || body == null) {
+			return body;
+		}
+		java.util.Optional<Object> leaf = org.eclipse.digitaltwin.basyx.databridge.core.util.JsonPointer.extract(body, pointer);
+		if (leaf.isEmpty()) {
+			throw new IllegalArgumentException("Lua source valuePath '" + pointer
+					+ "' does not resolve in the incoming payload for script '" + endpoint.getScriptPath() + "'");
+		}
+		return leaf.get();
 	}
 
 	private void setBody(Exchange exchange, Object value) throws IOException {

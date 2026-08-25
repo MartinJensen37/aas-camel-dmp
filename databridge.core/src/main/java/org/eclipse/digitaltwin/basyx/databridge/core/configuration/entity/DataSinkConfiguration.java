@@ -31,6 +31,7 @@ package org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity;
  */
 public abstract class DataSinkConfiguration extends RouteEntity {
 	private String sinkId;
+	private String valuePath;
 
 	public DataSinkConfiguration() {
 		super();
@@ -52,5 +53,30 @@ public abstract class DataSinkConfiguration extends RouteEntity {
 
 	public void setSinkId(String sinkId) {
 		this.sinkId = sinkId;
+	}
+
+	/**
+	 * Sink-side fine resolution / assembly (ADR-014 / SPEC §6.5.4): a JSON
+	 * Pointer (e.g. {@code $.SetPoint}) at which the {@code SinkId} value is
+	 * placed in the outgoing payload after the transform. Absent → coarse
+	 * (write the whole {@code SinkId} value as-is). The management node pins it
+	 * per fine sink; the DMP only applies what it was given.
+	 */
+	public String getValuePath() {
+		return valuePath;
+	}
+
+	public void setValuePath(String valuePath) {
+		this.valuePath = valuePath;
+	}
+
+	/**
+	 * Whether this sink producer applies its {@code valuePath} internally (e.g.
+	 * the AAS sink extracts {@code node.get(valuePath)} itself) and therefore
+	 * must NOT additionally be wrapped by the generic route-level assembly
+	 * processor.
+	 */
+	public boolean handlesValuePathInternally() {
+		return false;
 	}
 }
