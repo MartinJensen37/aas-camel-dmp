@@ -1,9 +1,9 @@
 # aas-camel-dmp — Design Specification
 
-> **Status:** Draft for implementation guidance
-> **Date:** 2026-08-19
-> **Applies to:** this repository, currently checked out as `aas-camel-k-dmp`, to be renamed **`aas-camel-dmp`**
-> **Companion artifacts:** `databridge/routes.json`, `databridge/luatransformers.json` (planned), `databridge.camel-lua/` (planned), `management-node/` (planned)
+> **Status:** Implemented — milestones M0–M9 complete; **M10 in progress** (shared `aas_model`, ADR-016)
+> **Date:** 2026-08-19 · **Last updated:** 2026-08-25
+> **Applies to:** this repository, checked out as **`aas-camel-dmp`** (renamed from `aas-camel-k-dmp`, M0)
+> **Companion artifacts (implemented):** `databridge.camel-lua/` (Lua component + harness), `databridge.camel-jsonata/` (secondary engine, ADR-015), `databridge.core/…/EventRouteCreator.java` (fan-in + coarse/fine, ADR-014), `management-node/` (Python orchestrator), per-protocol config catalog (`mqttconsumer.json`, `mqttdatasink.json`, `aasserver.json`, `restsources.json`, …)
 
 ---
 
@@ -12,7 +12,7 @@
 This document is the implementation guideline for reworking the current Eclipse BaSyx DataBridge fork into the **aas-camel-dmp**: a per-asset, deployable **DMP** (DataBridge MQTT Platform) container that
 
 1. consumes data from industrial protocols (OPC UA, PLC, MQTT, Kafka, HTTP, …),
-2. transforms incoming data **exclusively with Lua** in compliance with the **AIMC** transformation contract, and
+2. transforms incoming data with **Lua** in compliance with the **AIMC** transformation contract (a JSONata expression is available as a fast/simple secondary engine, declared via the blob's semantic id, §7.6), and
 3. writes transformed data to sinks (AAS submodel elements, MQTT topics, other protocols).
 
 The DMP instances are **instantiated by a management node** that is triggered by **AAS eventing (Kafka or MQTT)** and parses the asset's **AID** and **AIMC** submodels to derive the DMP configuration, including the Lua transformation blobs.
@@ -27,8 +27,11 @@ Out of scope: the AAS server itself, the AAS registration service, ontology gene
 |---|---|
 | **AAS** | Asset Administration Shell (IEC 63278 / IDTA). |
 | **AID** | **Asset Interfaces Description** submodel — describes each protocol interface of an asset (MQTT endpoints, OPC UA nodes, …) with `EndpointMetadata` and `InteractionMetadata`. |
-| **AIMC** | **Asset Interfaces Mapping Configuration** submodel (IDTA `.../AssetInterfacesMappingConfiguration/2/0`) — describes how data is mapped asset→AAS or AAS→AAS: sources, sinks, and the Lua transformation. |
+| **AIMC** | **Asset Interfaces Mapping Configuration** submodel (IDTA `.../AssetInterfacesMappingConfiguration/2/0`) — describes how data is mapped asset→AAS or AAS→AAS: sources, sinks, and the Lua transformation. A `Source`/`Sink` reference may resolve at coarse (whole data point) or fine (one nested property) granularity — see §6.5. |
+| **Coarse source** | A source resolved to the **whole AID data point** (one MQTT topic / OPC UA node). The full JSON payload is delivered under the `SourceId`; any nested structure is navigated inside the Lua blob (`sources.X.Y`). Default and currently implemented. |
+| **Fine source** | A source resolved to **one nested property** of an AID data point. The management node's `Resolver` pins a JSON Pointer (e.g. `$.State`) that auto-extracts that field into `sources[SourceId]` at the DMP boundary. §6.5. |
 | **Transformation Blob** | The Lua script stored in an AIMC `MappingConfiguration.Transformation`. Must expose `function aimc_main(sources)`. |
+| **Delivery style** | How a *source* hands data to the DMP, classified **per data point from the AID** and **protocol-agnostic** (§6.1): **async** = push/event (MQTT, Kafka, observable/monitored OPC UA, `InteractionMetadata.events`), **sync** = request/response / polled (HTTP, Modbus/PLC, OPC UA reads, AAS-element). The DMP route trigger and fan-in strategy key on this, not on the protocol string. |
 | **DMP** | DataBridge MQTT Platform — the per-asset integration container (this project). |
 | **Management node** | Orchestrator that reacts to AAS events, parses AID/AIMC, and instantiates/updates/removes DMPs. |
 
@@ -36,26 +39,58 @@ Out of scope: the AAS server itself, the AAS registration service, ontology gene
 
 ## 3. Background & Current State
 
-- The current `aas-camel-k-dmp` is the **Eclipse BaSyx DataBridge** as a **plain Apache Camel 3.21.0 JVM application** (`DataBridgeExecutable` → `DefaultCamelContext` → `DataBridgeRouteBuilder`), **not** running on Camel K.
-- **Planned baseline upgrade:** Camel **4.x** (latest, currently 4.22.x) with Java **17**, executed as milestone **M0.5** (see ADR-009) before the Lua module work.
-- Routes are built at startup from JSON configs (`routes.json` + per-category config files, e.g. `jsonatatransformer.json`, `mqttconsumer.json`).
-- Transformations today use **JSONata** (`databridge.camel-jsonata` → `jsonata:file:<path>`).
-- **Problem 1 — expressiveness:** JSONata lacks sufficient mathematical operators for the required mappings.
-- **Problem 2 — compliance:** the AIMC specification requires that **all transformations are Lua scripts** with an `aimc_main(sources)` entry point.
-- The repo already ships a Kafka-based AAS eventing backbone (BaSyx `BASYX_FEATURE_KAFKA_ENABLED`, topics `aas-events` / `submodel-events`, consumed e.g. by `kg-bridge`) — the management node reuses this.
+- This repository is a fork of the **Eclipse BaSyx DataBridge**, running as a
+  **plain Apache Camel 4.x JVM application** (`DataBridgeExecutable` →
+  `DefaultCamelContext` → `DataBridgeRouteBuilder`), **not** on Camel K (M5,
+  ADR-002). Renamed `aas-camel-k-dmp` → **`aas-camel-dmp`** (M0); baseline
+  upgraded to **Camel 4.22.x / Java 17** (M0.5, ADR-009).
+- Routes are built at startup from JSON configs (`routes.json` + per-category
+  config files, e.g. `luatransformers.json`, `mqttconsumer.json`).
+- The default/compliance transformation is **Lua** with an `aimc_main(sources)`
+  entry point (`databridge.camel-lua` → `lua:file:<path>`, §7) — sandboxed
+  (§7.2/§7.3), harness-verified (§8.4). **JSONata**
+  (`databridge.camel-jsonata` → `jsonata:file:<path>`) remains as a fast/simple
+  secondary engine, selected by the transformation blob's semantic id (M9,
+  ADR-015, §7.6).
+- This resolves the two problems that motivated the Lua work: **Problem 1 —
+  expressiveness** (JSONata lacked the required mathematical operators) and
+  **Problem 2 — compliance** (the AIMC specification requires Lua + `aimc_main`).
+- **Reference granularity (M8, ADR-014)** implements coarse/fine on source AND
+  sink: a `valuePath` (JSON Pointer) disassembles the payload pre-transform and
+  assembles the outgoing payload post-transform (§6.5). **Fan-in
+  aggregation is native (§6.4)** — a route may aggregate several sources into
+  one `sources{}` map before the transform.
+- **Use-case 2 (AAS→AAS) is supported (R1–R4).** A non-interface source (any
+  submodel element) becomes an **AAS polling consumer**
+  (`aaspollingconsumer.json`) driven by a timer whose period is the AIMC
+  `DefaultPollingInterval`/`PollingInterval`; AAS sinks may target **any**
+  submodel (not just the asset's Variables); a mapping with **no
+  Transformation** emits a passthrough identity Lua blob (SourceId↔SinkId
+  linking per the AIMC template); OPC UA, Modbus/PLC and synchronous HTTP
+  interfaces emit `opcuaconsumer.json` / `plc4xconsumer.json` /
+  `httpconsumer.json` (+ `timerconsumer.json`) respectively.
+- The repo ships a Kafka-based AAS eventing backbone (BaSyx
+  `BASYX_FEATURE_KAFKA_ENABLED`, topics `aas-events` / `submodel-events`) that
+  the **management node** (`management-node/`, Python, M3) consumes (ADR-010):
+  it parses AID + AIMC, pins `valuePath` per fine source/sink, selects the
+  engine from the blob semantic id, and compiles the DMP descriptor (routes,
+  `mqttconsumer.json`, `mqttdatasink.json`, `aasserver.json`, `restsources.json`,
+  Lua/JSONata transformer blobs).
 
 ---
 
 ## 4. Goals / Non-Goals
 
 ### Goals
-- G1. All transformations are Lua scripts conforming to the AIMC contract.
+- G1. The default/compliance transformation is a **Lua** script conforming to the AIMC contract (`aimc_main`); a JSONata expression is supported as a fast/simple secondary engine, selected by the blob's semantic id (G9 / ADR-015).
 - G2. One deployable DMP container per asset, configured from AID + AIMC submodels.
 - G3. A management node that reacts to AAS events and instantiates/updates/removes DMPs.
 - G4. Runtime-loaded Lua scripts (blobs arrive at runtime via the AIMC submodel, not at build time).
 - G5. Protocol bridging ("interface transforms") so a resource with only OPC UA can be decorated with an MQTT interface (and vice versa / any protocol pair).
 - G6. A hardened Lua sandbox: module whitelist, CPU timeout, bounded memory.
 - G7. A local harness + contract tests so blobs are verifiable before deployment.
+- G8. Reference granularity (**coarse** vs **fine**), symmetric on **source and sink**: let an author point at an AID data point and resolve nested structure in the transform (**coarse**), or point at a specific nested property and have that resolution performed **automatically** (**fine**, via a JSON Pointer `valuePath`) — disassembly pre-transform, assembly post-transform (§6.5) — while the DMP stays a declarative, minimally-configured router (ADR-014).
+- G9. Transformation engine selection by the blob's semantic id: **Lua** (`aimc_main`) for complex/mathematical transforms (AIMC-compliant), **JSONata** for fast/simple transforms — both as "the transformation blob" from the AAS side (ADR-015, §7.6).
 
 ### Non-goals
 - NG1. Running the DMP on Camel K / Kubernetes (see ADR-002; **resolved at M5**: plain Apache Camel in Docker containers — no cluster fleet in scope).
@@ -118,8 +153,30 @@ Per interface (e.g. `interface_mqtt`):
     - `key`
     - `synchronous` (bool)
     - `forms[]` with `href`, `op`, and protocol-specific fields, e.g. MQTT: `mqv_retain`, `mqv_control_packet` (`subscribe`/`publish`), `mqv_qos`.
+  - `properties.<name>` with `observable`, `forms[]` (`href`, `op`, `subprotocol`, protocol-specific fields)
+  - `events.<name>` (WoT EventAffordance) — transient **push** sources, always async.
+
+**Delivery style (async vs sync) — protocol-agnostic classification.** How a
+source delivers is declared **per data point/affordance in the AID**, not by the
+protocol string (this replaces any `SYNC_PROTOCOLS`-style protocol lookup; §6.4):
+
+| Indicator (in AID) | Meaning |
+|---|---|
+| `InteractionMetadata.events` entry | **async** by definition (push) |
+| `forms[].op` ∈ {`observeproperty`, `subscribeevent`, …observe/subscribe…} | **async** (subscription) |
+| `forms[].subprotocol` ∈ {`sse`, `websub`, `longpoll`, monitored-item, …} | **async** mechanism |
+| `property_name.observable = true` | observation **capability** (e.g. OPC UA monitorable) — treated as async when `op` is unset |
+| `forms[].op` ∈ {`readproperty`, `writeproperty`, `invokeaction`} or absent | **sync** (request/response) |
+| protocol default | MQTT/Kafka → async; HTTP/Modbus/PLC/AAS → sync |
+
+The resolver (`resolver.py::ResolvedSource.delivery`) derives a single
+`delivery ∈ {async, sync}` per source; the descriptor (`descriptor.py`) picks the
+route trigger (`event` vs `timer`) and the fan-in strategy from it, independent
+of protocol.
 
 **Interpretation rule for the DMP:** every `InteractionMetadata` form that is addressable as a data point becomes a candidate **source** or **sink** endpoint. Protocol and addressing are fully derived from the AID; the DMP maps `href`/`base` + `mqv_*`/OPC-UA node identifiers onto Camel endpoint URIs (see §10).
+
+**Reference granularity (coarse vs fine):** a `Source`/`Sink` reference may point at either an entire AID data point (`properties`/`actions` entry → its topic/node) **or** at a specific nested property within it. *Coarse* resolution delivers the whole data-point payload under the `SourceId` and leaves nested structure to the Lua blob (`sources.X.Y`); *fine* resolution additionally pins a JSON Pointer (`valuePath`, e.g. `$.State`) that auto-extracts the nested property into `sources[SourceId]` at the DMP boundary. Both modes share the same AID endpoint/topic resolution (interface → base → form `href`); they differ only in how much of the payload is delivered and who does the drill-down (see §6.5, ADR-014).
 
 ### 6.2 AIMC — Asset Interfaces Mapping Configuration (v2.0)
 
@@ -161,12 +218,36 @@ The management node compiles each `MappingConfiguration` into DMP config:
 |---|---|
 | `MappingConfiguration` (one per logical mapping) | one entry in `routes.json` (or one route) |
 | `Sources[].Source` + AID resolution | `datasource` endpoint (MQTT topic / OPC UA node / polling source) |
+| `Sources[].Source` **nested target** (fine mode, §6.5) | a `valuePath` (JSON Pointer, e.g. `$.State`) on the datasource that auto-extracts the nested property into `sources[SourceId]` at the DMP boundary |
 | `Sources[].SourceId` | the key under which the payload is placed in `sources` |
 | `Transformation` (blob content — **only source**, Q2) | extracted by the management node from the AIMC submodel → written as a `.lua` file in the DMP's `queries/` (or mounted path) |
 | `Sinks[].Sink` + AID resolution | `datasink` endpoint (AAS element write / MQTT publish / …) |
+| `Sinks[].Sink` **nested target** (fine mode, §6.5) | a `valuePath` (JSON Pointer) on the datasink that places/reads the `SinkId` value at the target field of the outgoing payload (assembly) |
 | `Sinks[].SinkId` | key in the returned object mapped to the sink |
 | `DefaultPollingInterval` / `Source.PollingInterval` | polling/timer config for synchronous sources |
-| `synchronous = false` (from AID) | event-driven route (MQTT/Kafka) |
+| source `delivery` (async/sync, from AID §6.1) | route trigger: async → event, sync → timer |
+
+**Per-asset, per-protocol config selection.** The descriptor emits **exactly
+the datasource/datasink config files for the protocols an asset's interfaces
+declare**, each from the fixed catalog:
+
+| Protocol/kind | Config file |
+|---|---|
+| MQTT source | `mqttconsumer.json` |
+| OPC UA source | `opcuaconsumer.json` |
+| PLC / timer / SQL / HTTP / Kafka | `plc4x.json` / `timerconsumer.json` / `sqlconsumer.json` / `httpproducer.json` / `kafkaconsumer.json` |
+| AAS sink | `aasserver.json` |
+| MQTT datasink | `mqttdatasink.json` |
+| REST datasource (operations) | `restsources.json` |
+
+So an asset with only an MQTT interface ships only `mqttconsumer.json`; an
+asset with an OPC UA interface ships an `opcuaconsumer.json`; an asset involved
+in a PLC4X→MQTT remap ships both `plc4x.json` and `mqttdatasink.json`. The DMP
+reads whatever datasource/sink config files are present and builds the
+corresponding Camel endpoints — the presence/absence of a per-protocol file is
+the *only* protocol signal the DMP needs. "Protocol-agnostic" refers to the
+transform and route model (canonical JSON, §10), **not** to the endpoint
+configs, which are inherently per-protocol.
 
 ### 6.4 Symmetric route model: fan-in → transform → fan-out
 
@@ -180,10 +261,21 @@ one transform may feed many sinks.
 Sources[] ──► (aggregate by SourceId) ──► aimc_main(sources) ──► (multicast by SinkId) ──► Sinks[]
 ```
 
-**Current state (as of this extension):** fan-out is native (a route has a
-`List<String> datasinks` and `EventRouteCreator` uses Camel `.multicast()`), but
-fan-in is **not** — `RouteConfiguration.datasource` was a single `String`, so a
-route was hard-wired to exactly one source.
+**Current state (implemented, M8 + delivery):** fan-out is native and fan-in is
+**implemented** — a route has a `List<String> datasinks` and `EventRouteCreator`
+uses Camel `.multicast()` (or `.pipeline()` per `datasinkMappingConfiguration`),
+and `RouteConfiguration.datasources` is a single `List<String>`; the legacy
+singular `"datasource"` JSON key is still accepted by
+`RouteConfigurationDeserializer` for backward compatibility. Each async source
+gets its own `from()` route and is disassembled per-source (fine `valuePath`,
+§6.5) before a shared aggregator fires the transform; a single synchronous
+source drives a timer route (R1/R4). See the extension below and §8.4 #9.
+
+**Trigger and fan-in key on delivery, not protocol.** Every source is classified
+`async` (push) or `sync` (polled) from the AID (§6.1). A mapping is compiled as
+an **event** route when all its sources are async (fan-in aggregator), and as a
+**timer** route when it has a single sync source. Async sinks/sources combine by
+"latest value"; sync sources are read each cycle.
 
 **Extension (this section):**
 
@@ -235,15 +327,192 @@ function aimc_main(sources)
 end
 ```
 
-**Aggregation semantics:** each source's latest payload is retained per
-`SourceId`; the transform fires when the first source delivers (or on a
-configurable completion condition). This matches the AIMC intent that a mapping
-may read from any SubmodelElement in any Asset, combine the values, and write
-the result to any sink.
+**Aggregation semantics (implemented):** each source's latest payload is
+retained per `SourceId`; the transform fires only when **every** source has
+delivered at least once (completion predicate on delivered-source count, guarded
+by a timeout safety net); single-source routes keep the direct `from(source)`
+behavior. This matches the AIMC intent that a mapping may read from any
+SubmodelElement in any Asset, combine the values, and write the result to any
+sink.
+
+**Unified fan-in across protocols (next increment).** The fan-in aggregator is
+currently wired only for **async** sources (MQTT; an async OPC UA source
+compiles its `opcuaconsumer.json` and joins the same event route). Synchronous
+sources are supported **one per mapping** (timer route); **multiple**
+synchronous sources, or a **sync+async mix** in one mapping, are skipped with a
+warning until the unified barrier aggregator lands: a single coalescing loop that
+*reads* all sync sources on every cycle (timer-driven, or triggered by an async
+event when the mapping interval is 0) and *combines* them with the **latest**
+values of the async sources, then waits for all sync responses (barrier), with a
+bounded timeout — see §12 and the delivery design in §6.1. This is the target
+route model (same logic for all protocols, no MQTT-specific path).
 
 ---
 
-## 7. Lua Transformation Blob Contract
+### 6.5 Source / Sink reference resolution: coarse vs fine
+
+A `MappingConfiguration` `Source`/`Sink` is an AAS `ModelReference` — a key
+path into an AID interface. Its resolution is therefore **two independent
+steps that may target different granularities**:
+
+1. **Endpoint resolution (always coarse):** the reference names an AID
+   interface (`interface_*`) and a data point (a `properties`/`actions`
+   entry) → the interface's `base` plus that data point's form `href` yield
+   the **protocol endpoint** (MQTT topic / OPC UA node / polling source).
+2. **Payload granularity (coarse *or* fine):** how much of that data point's
+   incoming payload is delivered under the `SourceId`, and **who does the
+   drill-down** into the nested structure.
+
+> **The user goal.** The DMP author wants *either* mode to work with no extra
+> mental model: point at the interface/data point and resolve the nesting
+> inside the Lua blob (coarse), **or** point at one specific property within
+> the AID interface and have that resolution done **automatically** (fine) —
+> without hand-writing the traversal and without hard-coding topics in the
+> DMP.
+
+| Mode | AIMC reference | Payload delivered under `SourceId` | Drill-down done by | Blob sees |
+|---|---|---|---|---|
+| **Coarse** (default, current) | interface + data point + *optional* nested path ignored | whole JSON payload of that data point/topic | the Lua blob (`sources.X.Y`) | the full object |
+| **Fine** | … + **nested property** (extends the reference to a JSON Pointer like `$.State`) | **only** the extracted nested property | the management node (pins `valuePath`) | the leaf value |
+
+Both modes share the same endpoint/topic resolution; they differ only in what
+is placed under the `SourceId` and who navigates the nesting. `SourceId`,
+`sources` shape and the `aimc_main(sources)` / return-table contract are
+identical in both modes (§7.1).
+
+#### 6.5.1 JSON Pointer as the fine-resolution unit (source & sink)
+
+A fine reference extends the AIMC `Source`/`Sink` reference with a
+**JSON Pointer** (RFC 6901), e.g. `$.State` or `$.ProcessQueue.mode`:
+
+```
+Source  -> [ AID submodel, interface_mqtt, InteractionMetadata,
+             properties, StationState ]        # coarse: topic/endpoint + whole payload
+           + valuePath = "$.State"             # fine: auto-extract sources.StationState = payload.State
+
+Sink    -> [ AID submodel, interface_rest, InteractionMetadata, ... ]
+           + valuePath = "$.SetPoint"          # fine: place the SinkId value under $.SetPoint of the
+                                               # constructed outgoing JSON (or extract it outright)
+```
+
+- **Public representation:** `valuePath` on the datasource entry **and** on the
+  datasink entry of the DMP descriptor, realized at the DMP boundary by the
+  transformer/adapter `valuePath` URI option (§8.3). This **mirrors the
+  existing AAS sink `valuePath`** already used for AAS variable writes
+  (§6.3/§16.7; `AASEndpoint` extracts `node.get(valuePath)`).
+- **Symmetric on both sides:** a source `valuePath` performs **disassembly**
+  (select the leaf out of the incoming payload *before* the transform); a sink
+  `valuePath` performs **assembly** (place/write the `SinkId` value at the
+  path in the outgoing payload *after* the transform). Together they form the
+  JSON dis/assembly pipeline of §6.5.4.
+- **Syntax (JSON Pointer, RFC 6901):** object keys (`$.State`) and **0-based
+  array indices** (`$.WorkOrders[0].id`) are supported. **Non-goal:** "apply
+  the transform to *every* element of an array" (per-element fan-out) is **not**
+  expressed by `valuePath` and is deferred until the AID template your
+  registration service emits models array payloads as a first-class type.
+- **Handling convention (three sub-cases):**
+  - *No `valuePath`* ⇒ coarse. Deliver the whole payload keyed by `SourceId`
+    (source) / write the whole `SinkId` value (sink) — the blob drills down /
+    the sink writes as-is. Current implementation.
+  - *Fine source but **no** data-point anchor* ⇒ the payload is treated as
+    **self-describing** (this is the OPC UA canonical form, §10.6: the whole
+    body already is `{ value, status, timestamp, nodeId }`). The DMP delivers
+    the payload unchanged as `sources[SourceId]` and the blob reads
+    `sources.X.value` — no artificial pointer needed.
+  - *Fine sink but **no** target anchor* ⇒ the sink payload is treated as
+    **self-describing** — the `SinkId` value *is* the outgoing payload, so the
+    sink publishes/writes it unchanged (extract-only).
+
+#### 6.5.2 Where each part lives: management node vs DMP
+
+The **management node** owns all AID/AIMC intelligence; the **DMP** stays a
+*dumb, declaratively-configured router* (this split keeps the per-asset DMP
+config minimal — the management node's whole job is to compile a simple,
+self-contained config from the rich AID/AIMC submodels).
+
+| Concern | Owner | Responsibility |
+|---|---|---|
+| Parse AID + AIMC | **Management node** | AID/AIMC parsers + resolver (existing). |
+| Resolve reference → interface / data point / endpoint | **Management node** | Protocol, `base`, form `href` → MQTT topic / OPC UA node (existing `resolver.py`). |
+| Fine-resolution **detection** (source & sink) | **Management node** | Decide coarse vs fine from the reference shape (nested key vs data-point key) and/or the AID datatype. |
+| Fine-resolution **unit** (JSON Pointer) | **Management node** | Pin `valuePath` per fine source and per fine sink. **The DMP never computes this.** |
+| **Disassemble** incoming payload (source `valuePath`) | **DMP** (transformer/adapter) | If the datasource has `valuePath`, apply the pointer to the canonical payload and place the **leaf** under `SourceId`; else place the whole payload. No routing decisions. |
+| **Assemble** outgoing payload (sink `valuePath`) | **DMP** (datasink/adapter) | Place/write the `SinkId` value at the sink's `valuePath` when set (AAS does this via `AASEndpoint.node.get(valuePath)`), else write it as-is. No routing decisions. |
+| Navigate nested structure (coarse) | **DMP transformation blob** | `sources.X.Y` — the blob's existing responsibility. |
+
+**Why this split is correct:**
+- The DMP is spawned with a **simple config that explains all the routing** —
+  `routes.json`, datasource(s) with optional `valuePath`, transformer refs,
+  datasinks. All resolution intelligence (which AID property → which topic,
+  and at what granularity) happened in the management node *before* the DMP
+  started; the DMP only routes and applies pointers it was given.
+- Fine resolution stays **single-flight per source** in the DMP (one type
+  converter / one pointer application), stays inside the existing per-message
+  sandbox path, and needs **no Lua changes**.
+- The AID is a *runtime-data* description; the management node is the only
+  component with both AID + AIMC + the RDF/JSON datatype context needed to
+  interpret nested structure. Putting it there keeps that knowledge in one
+  place (ADR-013 separation of concerns).
+
+#### 6.5.3 Generation & sequencing
+
+The management node compiles fine sources in the same pass that resolves
+endpoints (no extra round-trips): for each `Source`, resolve the interface
+and data point as today (§6.3), then — where the reference (or the AID
+property datatype) indicates a nested property — emit `valuePath` on the
+datasource entry. The DMP applies the pointer (or delivers whole payload) at
+runtime. Because the DMP config is derived state, changing a reference's
+granularity only regenerates the asset's config dir + restart of that DMP
+(idempotent reconcile, §11.2.8).
+
+**Out of scope (non-goals):** fine resolution does **not** imply per-nested-
+property `SourceId`s or per-property split of a single MQTT message into
+multiple sources — a `Source` remains **one endpoint / one `SourceId`**.
+Multiple *routing* fan-ins remain the province of §6.4. If a single incoming
+message must feed several *independent* `SourceId`s, that is a fan-in/routing
+config decision, not a reference-granularity one.
+
+#### 6.5.4 The JSON dis/assembly pipeline (source → transform → sink)
+
+Fine (and coarse) resolution together form an explicit **disassembly →
+transform → assembly** pipeline around `aimc_main`/the transform:
+
+```
+SourceFromAllInterfaces → SelectionOfDatapoints (disassemble, source valuePath)
+  → PassToTransform → Transform → PassOutputToJsonConstruction
+  → ConstructIndividualJsons (assemble, sink valuePath) → SendToSinks
+```
+
+**Disassembly (pre-transform, source `valuePath`):** each source's whole
+payload is reduced to exactly the field the mapping needs (`sources[SourceId]`
+= that leaf; coarse = the whole payload). This is what the DMP's
+transformer/adapter does with the pinned pointer.
+
+**Transform:** the blob receives the disassembled `sources{}` map and returns
+a `{ SinkId: value }` map. The blob is **agnostic to protocol and to
+disassembly/assembly** — it only ever sees/returns JSON under
+`SourceId`/`SinkId` keys.
+
+**Assembly (post-transform, sink `valuePath`):** each `SinkId` value is then
+**placed into / extracted from** the outgoing payload of its sink — the DMP
+writes the value at the sink's `valuePath` (e.g. a MQTT or REST sink expects
+`{ "SetPoint": <v> }`, so the value lands under `$.SetPoint`; the AAS sink
+already does this via `AASEndpoint.node.get(valuePath)`).
+
+**Why this is worth it:** it keeps the **AIMC submodel in control** of *which*
+fields of *which* interface payloads flow into and out of the transform,
+without the blob or the DMP hard-coding payload shapes. The author selects
+data points, the management node pins the pointers, and the DMP does the
+mechanical placement both sides of the transformation.
+
+**A `valuePath` is expected on every sink (and every fine source).** For each
+output the mapping writes, the management node pins the sink `valuePath` that
+selects the field to write (or to construct the outgoing JSON around). Coarse
+sinks (write the whole `SinkId` value as the outgoing payload) omit it.
+
+---
+
+## 7. Transformation Blob Contract
 
 ### 7.1 Entry point
 
@@ -259,9 +528,14 @@ function aimc_main(sources)
 end
 ```
 
-- **Input:** `sources` is a Lua table (map) keyed by `SourceId`; values are the JSON-decoded payloads.
-- **Output:** the return value is a Lua table (map) keyed by `SinkId`; the host JSON-encodes it for the sinks.
-- The host (not the blob) performs JSON ↔ table conversion; the blob never touches JSON.
+- **Input:** `sources` is a table (map) keyed by `SourceId`; values are the JSON-decoded payloads (post **disassembly**, §6.5.4).
+- **Output:** the return value is a table (map) keyed by `SinkId`; the host JSON-encodes it, then **assembly** places each `SinkId` value at its sink's `valuePath` (§6.5.4).
+- The host (not the blob) performs JSON ↔ table conversion and the dis/assembly; the blob never touches JSON or payload shape.
+- **Engine selection (ADR-015):** the transformation is **either** a Lua script (this chapter, `aimc_main`, AIMC-compliant) **or** a JSONata expression — selected by the `Transformation` blob's **semantic id** (§7.6). Both are "one transformation contract, two engines."
+- **What each `sources[SourceId]` value contains is a resolution-granularity decision (coarse vs fine, §6.5):**
+  - **Coarse (default):** the whole JSON payload of the referenced data point/topic under that `SourceId`. Any nested structure (e.g. `sources.StationState.State`) is navigated by the blob — this is the current behaviour.
+  - **Fine:** only the nested property pinned by a JSON Pointer (`valuePath`, e.g. `$.State`) is present under that `SourceId`, so `sources.StationState` *is already* the extracted field. The blob should treat the value as the leaf, not re-descend.
+  - Both modes are invisible to the blob *contract* (still `SourceId`-keyed JSON); the modes change only the **shape of the value** delivered. The DMP never rewrites the blob — it honours whatever shape the management node resolved.
 
 ### 7.2 Available environment (sandbox whitelist)
 
@@ -299,6 +573,29 @@ The blob runs with a **whitelisted global environment**:
 - Use **one `Globals` per exchange** (simplest) or a small pooled set of precompiled chunks.
 - The CPU timeout prevents one slow blob from starving concurrent messages.
 
+### 7.6 Transformation engine selection: Lua vs JSONata (ADR-015)
+
+The AIMC `MappingConfiguration.Transformation` is a Blob whose **semantic id
+selects the transformation engine** — from the AAS side both are just "the
+transformation blob", differing only in that semantic id:
+
+| Engine | Blob semantic id (Transformation) | Blob content | Good for |
+|---|---|---|---|
+| **Lua** (`aimc_main`) | the AIMC/Lua one (`…/Lua` or the AIMC 2.0 default) | Lua script exposing `aimc_main(sources)` | complex / mathematical transforms — full `math`/`table`/`string` in the sandbox (§7.2) |
+| **JSONata** | a JSONata semantic id | a JSONata expression string | very simple transforms — fast and safe, no sandbox parsing needed |
+
+- **Dispatch:** the management node reads the blob's semantic id and emits the
+  matching transformer config → the DMP instantiates `lua:` or `jsonata:`
+  accordingly. The DMP routes on the declared semantic id; it does not guess.
+- **Compliance:** the **Lua** path is the AIMC-compliant one (G1). **JSONata
+  is an explicitly-marked non-AIMC option**, retained as a fast/simple
+  escape hatch for elementary maps and **not** emitted as the primary path by
+  the management node (it is available only where the AAS declares a JSONata
+  transformation). Both share the same coarse/fine `valuePath` dis/assembly
+  pipeline (§6.5.4) and the same `SourceId`/`SinkId` keyed contract.
+- This keeps the §8 `databridge.camel-lua` module the compliance engine while
+  acknowledging that not every transform warrants a full Lua sandbox.
+
 ---
 
 ## 8. `databridge.camel-lua` Module (Component Spec)
@@ -317,7 +614,7 @@ New Maven module mirroring `databridge.camel-jsonata`.
 | `LuaTransformerConfiguration` | mirrors `JsonataTransformerConfiguration`; `getConnectionURI()` → `lua:file:<path>?inputType=JsonString&outputType=JsonString` (+ options) |
 | `LuaDefaultConfigurationFactory` | mirrors `JsonataDefaultConfigurationFactory`; default file `luatransformers.json` |
 | `LuaComponent` / `LuaEndpoint` | Camel `lua:` scheme; parses URI options |
-| `LuaProducer` (or `Processor`) | loads script (with reload), builds sandboxed globals, runs `aimc_main(sources)`, encodes return |
+| `LuaProducer` (or `Processor`) | loads script (with reload), builds sandboxed globals, runs `aimc_main(sources)`, encodes return; **applies the source `valuePath` JSON Pointer** (when set) when disassembling `sources[SourceId]` — the DMP boundary that realizes fine resolution (§6.5). Sink-side assembly is applied by the datasink/adapter (e.g. AAS `valuePath`), not here. |
 | `LuaSandbox` | whitelisted globals factory (§7.2) |
 | `LuaTimeoutHook` | instruction-count + CPU-time hook (§7.3) |
 | `LuaHarness` | CLI/unit runner: load blob → call `aimc_main` with sample `sources` → print result |
@@ -332,6 +629,7 @@ New Maven module mirroring `databridge.camel-jsonata`.
 | `contentCache` | `true` | cache script; reload on mtime/sha change |
 | `maxScriptBytes` | `1048576` | max blob size |
 | `sourceKeys` | `body` | how to assemble `sources`: `body` → `{ ["body"]=payload }`, or comma list → `{ [key]=payload }` |
+| `valuePath` | *(absent → coarse)* | **Source-side fine resolution / disassembly (ADR-014 / §6.5):** a JSON Pointer (RFC 6901, e.g. `$.State`) applied to the incoming canonical payload *before* it is placed under a `SourceId`. When set, only the extracted leaf is delivered under `SourceId` (fine); when absent, the whole payload is delivered (coarse). Applies alongside a single `sourceKeys` entry; the management node pins it per fine source. The DMP never computes the pointer — it only applies what it was given. (Sink-side `valuePath` for **assembly** lives on the datasink/adapter, e.g. the AAS sink's `valuePath`, not on the transformer.) |
 
 ### 8.4 Contract test matrix (harness)
 
@@ -341,6 +639,11 @@ New Maven module mirroring `databridge.camel-jsonata`.
 4. Blob calling `os.execute` / `io` / `require` / `luajava` → must fail at load.
 5. Blob returning a non-table → route failure with clear error.
 6. Reload: modify blob file → next evaluation uses new code.
+7. **Coarse source:** no `valuePath` → `sources[SourceId]` = whole decoded payload; nested access (e.g. `sources.StationState.State`) works in-blob.
+8. **Fine source:** `valuePath=$.State` → `sources[SourceId]` *is* the extracted leaf (`payload.State`); no in-blob traversal needed. Pointer on a missing path → clear route error.
+9. **Both modes together** (one coarse + one fine source, §6.4 fan-in) → `sources` mixes whole-payload and leaf values correctly.
+10. **Sink assembly (fine sink):** the datasink `valuePath` places the `SinkId` value at the target field of the outgoing payload (AAS: `node.get(valuePath)`; MQTT/REST: into the constructed JSON), verifying the post-transform construction of §6.5.4.
+11. **Engine dispatch (ADR-015):** a JSONata `Transformation` semantic id → JSONata expression evaluated in the same dis/assembly pipeline; the DMP instantiates `jsonata:` instead of `lua:`.
 
 ### 8.5 Config file
 
@@ -352,12 +655,14 @@ New Maven module mirroring `databridge.camel-jsonata`.
     "queryLanguage": "LUA",
     "queryPath": "queries/<asset>_<mapping>.lua",
     "inputType": "JsonString",
-    "outputType": "JsonString"
+    "outputType": "JsonString",
+    "sourceKeys": "<SourceId>",
+    "valuePath": "$.<property>"      // optional; fine resolution (ADR-014 / §6.5)
   }
 ]
 ```
 
-`routes.json` format stays unchanged; only the transformer references point at `LUA` transformers.
+`routes.json` format stays unchanged; only the transformer references point at `LUA` transformers. The `sourceKeys` + optional `valuePath` pair is what the management node emits per fine source (coarse sources omit `valuePath`).
 
 ---
 
@@ -379,7 +684,8 @@ New Maven module mirroring `databridge.camel-jsonata`.
 - Each asset = one DMP container, isolated (process-level fault isolation).
 - **Granularity (Q4 / ADR-012): 1 DMP container per asset hosting N `MappingConfigurations`** (multiple mappings per asset, one process).
 - Config is provided at runtime via the existing mechanism: a config directory (`/usr/share/config` default) and/or environment variables (mirroring the current `JSONATA_ENV_VAR_NAME` pattern with a `LUA` equivalent).
-- Lua blob files are placed/mounted into the DMP at runtime (from the management node or a mounted volume/config map).
+- The config directory holds **exactly the per-protocol datasource/sink files the asset's interfaces declare** (§6.3: `mqttconsumer.json`, `opcuaconsumer.json`, `plc4x.json`, `mqttdatasink.json`, `aasserver.json`, …) plus `routes.json` and the transformer/lua configs.
+- Lua blob files (and, where the AAS declares a JSONata transformation, the JSONata files) are placed/mounted into the DMP at runtime (from the management node or a mounted volume/config map).
 
 ### 9.3 JVM sizing
 
@@ -462,11 +768,11 @@ These bindings live in the protocol adapters; blobs never see protocol types.
 
 ### 11.2 Responsibilities
 
-1. **Listen** for AAS events (Kafka/MQTT).
+1. **Listen** for AAS events (Kafka only, ADR-010).
 2. **Resolve** the affected AAS/submodel (registry/endpoint config).
 3. **Fetch & parse** the AIMC submodel and referenced **AID** submodels (AAS REST API).
-4. **Resolve references:** `Source`/`Sink` references → SubmodelElements, including AID `InteractionMetadata` forms → concrete protocol endpoints (MQTT topics, OPC UA nodes, polling config).
-5. **Compile the DMP descriptor** (§6.3): datasources, lua transformers (blob content → files), datasinks, routes, polling.
+4. **Resolve references:** `Source`/`Sink` references → SubmodelElements, including AID `InteractionMetadata` forms → concrete protocol endpoints (MQTT topics, OPC UA nodes, polling config) **and the source granularity** (coarse vs fine, §6.5): for a fine source the node pins a `valuePath` (JSON Pointer) on the datasource.
+5. **Compile the DMP descriptor** (§6.3): datasources (incl. optional `valuePath`), lua transformers (blob content → files), datasinks, routes, polling.
 6. **Materialize** the descriptor into the asset's DMP config directory, write the Lua blob files.
 7. **Instantiate / update / decommission** the per-asset DMP container (docker/compose in iteration 1).
 8. **Reconcile:** repeat events for the same asset are idempotent (keyed by asset id; single-flight per asset).
@@ -571,6 +877,9 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 | ADR-011 | Transformation blob is pulled **only** from the AIMC `MappingConfiguration.Transformation` Blob | Q2; single source of truth per the IDTA template; no external blob references. |
 | ADR-012 | **1 DMP container per asset, N `MappingConfigurations` inside** | Q4; asset-level isolation with multiple mappings per asset in one process. |
 | ADR-013 | Management node implemented in **Python** (not Java/Camel) | The management node is orchestrator glue, not a data plane — no Camel routing needed. Python is the easiest choice: the AID/AIMC pydantic models already exist in Python (`aas_pydantic` + `Registration_Service` templates); `kg-bridge` (the Kafka-convention reference, ADR-010) is Python; `docker` SDK covers container lifecycle. Boundary stays clean: Python orchestrator compiles `routes.json`/`luatransformers.json`/`.lua` blobs → starts the Java DMP container. Java is reserved for the DMP data plane. |
+| ADR-014 | Reference granularity = **coarse or fine**, symmetric on **source and sink**, chosen at the **management node**; fine resolution pins a `valuePath` (JSON Pointer) on the datasource **and** the datasink; the **DMP applies it** (or delivers the whole payload / writes as-is) at the boundary — **disassembly pre-transform, assembly post-transform** (§6.5.4) | Lets the author resolve nested AID properties **automatically** (fine) or navigate them in the transform (coarse), without hard-coding topics/payload shapes in the DMP; keeps the per-asset DMP config declarative and minimal; no transform contract change (both modes are `SourceId`/`SinkId`-keyed JSON, §6.5). Fine detection + pointer derivation is AID/AIMC/datatype knowledge → management node (ADR-013 separation); the DMP stays a dumb router that only applies what it was given. Sink `valuePath` reuses the existing AAS sink mechanism. See §6.5. |
+| ADR-015 | Transformation engine selected by the **blob's semantic id**: **Lua** (`aimc_main`) = AIMC-compliant path for complex/math transforms; **JSONata** = fast/safe path for simple transforms. Same dis/assembly pipeline, same `SourceId`/`SinkId` contract | From the AAS side both are just "the transformation blob", differing only in a semantic id → single AIMC concept, two engines. Keeps Lua as the compliance engine (§8) while acknowledging JSONata's fit for elementary maps; the DMP dispatches on the declared semantic id. See §7.6. |
+| ADR-016 | **Shared AAS data-model package (`aas-model`).** The management node parses AID+AIMC **through the same pydantic model classes** the registration service authors them with. `aas_model` is the **entire data model package** (own git submodule): it bundles vendored `aas_pydantic` (base framework + generated IDTA templates), the project submodel templates, the resource/instantiation templates and build/schema helpers (`builder`, `id_injector`, `json_schema_aid`, `schema_parser`), `MQTTSchemas`, and the AAS-JSON↔model `_serde` bridge. Shared by `Registration_Service` (instantiation) and `aas-camel-dmp/management-node` (parsing) | Forces the generator and parser into lockstep: a model change shows up on both sides and is enforced by shared round-trip/schema tests, eliminating drift between the registration-service templates and the management node's handwritten `parsers/`. The resolver/descriptor remain the **derived-state** layer (delivery, valuePath, ref_path) reading from the shared models; the DMP stays a dumb router. See §18. |
 
 ---
 
@@ -585,6 +894,9 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 7. **MQTT publish/retain semantics — strictly follow the AID interface spec** (`mqv_retain`, `mqv_qos`, `mqv_control_packet`, `synchronous` as declared in the AID `InteractionMetadata`).
 8. **Management-node language — Python (ADR-013).** Orchestrator glue only; Java/Camel stays with the DMP data plane. Reuses the existing Python AID/AIMC pydantic models and `kg-bridge` Kafka conventions.
 9. **Deployment — plain Apache Camel in Docker containers (ADR-002; M5 gate resolved 2026-08).** No Camel K / Kubernetes: per-asset DMPs run as plain JVM containers via Docker/compose (the management node drives `docker run`, §11.5 mechanism 1/2); `databridge.camel-lua` stays a standard Camel component, reusable unchanged if a cluster fleet ever appears.
+10. **Reference granularity — coarse or fine, symmetric on source and sink, chosen at the management node (ADR-014).** A `Source`/`Sink` points at an AID data point and, optionally, at a **nested property** within it (fine). The management node detects fine targets and pins `valuePath` (JSON Pointer) on the datasource **and** datasink; the DMP applies it (or delivers the whole payload / writes as-is) at the boundary — **disassembly pre-transform, assembly post-transform** (§6.5.4). Coarse (default) leaves nesting to the transform; fine auto-extracts/sets the nested property, so the author can either navigate in the transform or have the resolution done **automatically**. The DMP stays a declarative router; no transform contract change. Sink-side `valuePath` is the existing AAS sink mechanism generalized to all sinks. See §6.5.
+11. **Transformation engine selected by the blob semantic id — Lua or JSONata (ADR-015).** Lua (`aimc_main`) is the AIMC-compliant path for complex/mathematical transforms; JSONata is retained as a fast/safe option for very simple transforms. Both are "the transformation blob" with a different semantic id; the DMP dispatches accordingly, sharing the same dis/assembly pipeline and `SourceId`/`SinkId` contract (§7.6).
+12. **AID/AIMC models are a shared package (ADR-016).** Extracted into `aas_model` (own git submodule) consumed by both the registration service (authoring) and the management node (parsing). The management node's `resolver`/`descriptor` stay the derived-state layer; its parsers become thin reverse-parses of the shared models. See §18.
 
 ---
 
@@ -601,6 +913,9 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 | **M5** | Decision gate: plain containers vs Camel K | **Resolved (2026-08): plain Apache Camel in Docker containers only** — no cluster fleet in scope; Camel K rejected; Lua component reused unchanged |
 | **M6** | End-to-end live-data integration run | Simulated stopper station → MQTT → DMP → Lua → AAS Variables submodel verified live (PackMLState tracks IDLE/EXECUTE); broker override (`DMP_MQTT_BROKER`), BaSyx base64url addressing, per-sink `valuePath` |
 | **M7** | REST operation-delegation endpoints | Extended AIMC = **two plain directional MappingConfigurations** per skill (request: REST→MQTT; response: MQTT→REST). DMP exposes `/health` + `/operations/**` on ONE camel-rest (jetty) surface; `OperationRouteCreator` builds operation routes (REST datasource, MQTT command sink, request/response Lua transformers); `MqttRequestReplyBridge` does Uuid-correlated MQTT request/reply (timeout→504, error→500). Verified live: `POST /operations/.../Halt` → `/CMD/Halt` → station reply on `/DATA/Halt` → correlated 200 in ~0.4 s |
+| **M8** | Reference granularity: coarse vs fine, source **and** sink (ADR-014) | Management node detects coarse/fine and pins `valuePath` (JSON Pointer) per fine source **and** per fine sink; DMP applies it at the boundary (disassembly pre-transform, assembly post-transform, §6.5.4). Exit: a fine source at `$.State` yields `sources.StationState == payload.State`; a fine sink at `$.SetPoint` places the `SinkId` value into the outgoing JSON (`AASEndpoint.node.get(valuePath)` for AAS); coarse sources/sinks behave as today; DMP config stays declarative; contract/harness tests cover both shapes + sink assembly. **Implemented (2026-08-24):** `JsonPointer` util (RFC 6901); Lua `valuePath` URI option (§8.3); datasource-level, per-source disassembly in `EventRouteCreator` (single + fan-in); generic per-sink assembly + AAS `extractValuePath` generalized to JSON Pointer; management node detection/pinning (`resolver.py`/`descriptor.py`); tests §8.4 #7–#10 + `test_fine_resolution.py` |
+| **M9** | Transformation engine selection via semantic id (ADR-015) | Management node reads the `Transformation` blob's semantic id and emits the matching transformer config; DMP dispatches Lua vs JSONata. Exit: a Lua-blob mapping and a JSONata-expression mapping (both declared via semantic id) run in the same dis/assembly pipeline with correct `SourceId`/`SinkId` semantics; contract tests cover both engines. **Implemented (2026-08-24):** `aimc.py` captures the blob semantic ids and `transformation_engine()` selects LUA/JSONATA; `descriptor.py` emits `jsonatatransformer.json` + `.jsonata` blobs or the Lua path; `JsonataEngineContractTest` covers §8.4 #11 |
+| **M10** | Shared `aas_model` data-model package (ADR-016) | `aas_model` is the **entire data model package** (git submodule in the `AP2030-UNS` monorepo): vendored `aas_pydantic` + IDTA templates + project submodel templates + resource/instantiation templates + build/schema helpers + `MQTTSchemas` + the `_serde` AAS-JSON parse bridge. `Registration_Service` authors via it (its own `src/templates`, `schema_parser`, `third_party/aas_pydantic`, `MQTTSchemas` removed); the management node parses via it (`_serde` + shared-model validation gate), keeping the resolver/descriptor as derived-state. Exit: management-node `pytest` green via shared models; registration-service AAS JSON unchanged; generator change breaks parser CI. **Implemented (2026-08-25)** — see `plans/aas-model-PLAN.md` |
 
 ---
 
@@ -614,6 +929,9 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 - `Registration_Service/third_party/aas_pydantic/aas_pydantic/submodel_templates/asset_interfaces_mapping_configuration.py` — AIMC 2.0 template (verbatim contract)
 - `Registration_Service/third_party/aas_pydantic/aas_pydantic/submodel_templates/asset_interfaces_description.py` — AID template
 - `AASDescriptions/Resource/configs/*.json` — AID/AIMC instantiations (e.g. `syntegonStoppering.json`)
+- `plans/aas-model-PLAN.md` — extraction of the shared `aas_model` package (ADR-016, M10)
+- `@Registration_Service/third_party/aas_pydantic` — generated IDTA templates + reverse converter (`convert_submodel_to_model_instance`); the runtime mechanism the management node's shared-model parse uses
+- `@Registration_Service/src/templates/submodel_templates/` → (**moved**, ADR-016/M10) to the shared `aas_model` package
 - `compose/docker-compose.basyx.yml`, `compose/docker-compose.kg.yml` — Kafka eventing backbone
 - Upstream reference: Python/lupa AIMC transformation prototype (source of the sandbox/timeout/memory lessons)
 
