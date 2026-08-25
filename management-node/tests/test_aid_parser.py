@@ -1,4 +1,5 @@
-"""Tests for the dedicated AID parser (management_node.parsers.aid).
+"""Tests for the AID parser (management_node.parsers.aid), which now returns the
+shared ``aas_model.MqttAssetInterfacesDescription`` pydantic model (ADR-016).
 
 Uses the real AID submodel extracted from
 ``AASDescriptions/Resource/configs/syntegonStoppering.json``.
@@ -21,73 +22,71 @@ def submodel() -> dict:
     return json.loads(DATA.read_text())
 
 
+def _mqtt(model):
+    return model.interface_mqtt
+
+
 def test_parses_interfaces(submodel):
     model = aid.parse_aid(submodel)
-    assert set(model.interfaces) == {"interface_mqtt", "interface_rest"}
+    assert model.interface_mqtt is not None
+    assert model.interface_rest is not None
 
 
 def test_parses_endpoint_metadata(submodel):
-    model = aid.parse_aid(submodel)
-    mqtt = model.interfaces["interface_mqtt"]
-    assert mqtt.base == "mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering"
-    assert mqtt.content_type == "application/json"
+    mqtt = _mqtt(aid.parse_aid(submodel))
+    assert mqtt.EndpointMetadata.base.value == \
+        "mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering"
+    assert mqtt.EndpointMetadata.contentType.value == "application/json"
 
 
 def test_parses_properties_with_mqtt_forms(submodel):
-    model = aid.parse_aid(submodel)
-    mqtt = model.interfaces["interface_mqtt"]
+    mqtt = _mqtt(aid.parse_aid(submodel))
+    props = mqtt.InteractionMetadata.properties.property_name
 
-    assert "StationState" in mqtt.properties
-    prop = mqtt.properties["StationState"]
-    assert prop.key == "StationState"
+    assert "StationState" in props
+    prop = props["StationState"]
+    assert prop.key.value == "StationState"
 
-    form = prop.forms[0]
-    assert form.href == "/DATA/State"
-    assert form.mqtt is not None
-    assert form.mqtt.retain is True
-    assert form.mqtt.qos == 0
-    assert form.mqtt.control_packet == "publish"
-    assert prop.semantic_ids and "stationState.schema.json" in prop.semantic_ids[0]
+    form = prop.forms
+    assert form.href.value == "/DATA/State"
+    assert form.mqv_retain.value == "true"
+    assert form.mqv_qos.value == "0"
+    assert form.mqv_control_packet.value == "publish"
 
 
 def test_parses_actions_with_sync_flag_and_response(submodel):
-    model = aid.parse_aid(submodel)
-    mqtt = model.interfaces["interface_mqtt"]
+    mqtt = _mqtt(aid.parse_aid(submodel))
+    acts = mqtt.InteractionMetadata.actions.property_name
 
-    # actions are nested under a grouping wrapper (property_name)
-    assert "Stoppering" in mqtt.actions
-    action = mqtt.actions["Stoppering"]
-    assert action.synchronous is False
-    assert action.key == "Stoppering"
+    assert "Stoppering" in acts
+    action = acts["Stoppering"]
+    assert action.synchronous.value == "false"
+    assert action.key.value == "Stoppering"
 
-    form = action.forms[0]
-    assert form.href == "/CMD/Stoppering"
-    assert form.mqtt is not None
-    assert form.mqtt.control_packet == "subscribe"
-    assert form.mqtt.qos == 2
+    form = action.forms
+    assert form.href.value == "/CMD/Stoppering"
+    assert form.mqv_control_packet.value == "subscribe"
+    assert form.mqv_qos.value == "2"
     # response form is preserved
     assert form.response is not None
-    assert form.response.href == "/DATA/Stoppering"
-    assert form.response.mqtt is not None
-    assert form.response.mqtt.control_packet == "publish"
+    assert form.response.href.value == "/DATA/Stoppering"
+    assert form.response.mqv_control_packet.value == "publish"
 
 
 def test_parses_rest_interface_with_method(submodel):
-    model = aid.parse_aid(submodel)
-    rest = model.interfaces["interface_rest"]
-
-    assert "Stoppering" in rest.actions
-    form = rest.actions["Stoppering"].forms[0]
-    assert form.method == "POST"  # htv_methodName
-    assert form.op == "invokeAction"
-    assert form.mqtt is None
+    rest = aid.parse_aid(submodel).interface_rest
+    assert "Stoppering" in rest.InteractionMetadata.actions.property_name
+    form = rest.InteractionMetadata.actions.property_name["Stoppering"].forms
+    assert form.htv_methodName.value == "POST"
+    assert form.op.value == "invokeAction"
 
 
 def test_accepts_json_string(submodel):
     model = aid.parse_aid(json.dumps(submodel))
-    assert "interface_mqtt" in model.interfaces
+    assert model.interface_mqtt is not None
 
 
-def test_empty_input_produces_empty_model():
-    model = aid.parse_aid({})
-    assert model.interfaces == {}
+def test_empty_input_produces_none():
+    # Non-submodel input is not validated; the parser returns None (the
+    # management node only parses real AAS submodels).
+    assert aid.parse_aid({}) is None

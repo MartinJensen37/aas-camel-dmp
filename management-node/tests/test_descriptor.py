@@ -17,6 +17,11 @@ from management_node.descriptor import (
 from management_node.parsers import aid, aimc
 from management_node.resolver import resolve
 
+from aas_model.testing import (
+    build_aid, build_aimc, aimc_mapping, aimc_source, aimc_sink, aimc_ref,
+    mqtt_interface, rest_interface,
+)
+
 DATA_AID = pathlib.Path(__file__).parent / "data" / "syntegon_stoppering_aid.json"
 DATA_AIMC = pathlib.Path(__file__).parent / "data" / "syntegon_stoppering_aimc.json"
 
@@ -118,70 +123,30 @@ def test_mqtt_broker_override(tmp_path):
 
 def _operations_models():
     """AID + AIMC with a bidirectional Halt mapping (as compiled by tests above)."""
-    aid_model = aid.AidModel(
-        id_short="AID",
-        interfaces={
-            "interface_rest": aid.AidInterface(
-                name="interface_rest",
-                base="http://dmp-syntegonstopperingsystemaas:8080",
-                actions={
-                    "Halt": aid.AidAction(
-                        name="Halt",
-                        synchronous=True,
-                        forms=[aid.AidForm(href="/operations/syntegonStopperingSystemAAS/Halt", method="POST")],
-                    ),
-                },
-            ),
-            "interface_mqtt": aid.AidInterface(
-                name="interface_mqtt",
-                base="mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering",
-                actions={
-                    "Halt": aid.AidAction(
-                        name="Halt",
-                        forms=[aid.AidForm(href="/CMD/Halt", response=aid.AidForm(href="/DATA/Halt"))],
-                    ),
-                },
-            ),
-        },
+    aid_model = build_aid(
+        rest=rest_interface("http://dmp-syntegonstopperingsystemaas:8080",
+                            actions={"Halt": "/operations/syntegonStopperingSystemAAS/Halt"}),
+        mqtt=mqtt_interface(
+            "mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering",
+            actions={"Halt": ("/CMD/Halt", "/DATA/Halt")}),
     )
-    ref = aimc.AimcReference(
-        type="ModelReference",
-        keys=[
-            aimc.AimcReferenceKey(type="Submodel", value="a/submodels/AID"),
-            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="interface_rest"),
-            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="InteractionMetadata"),
-            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="actions"),
-            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="Halt"),
-        ],
+    rest_ref = aimc_ref("a/submodels/AID", "interface_rest", "InteractionMetadata",
+                        "actions", "Halt")
+    mqtt_ref = aimc_ref("a/submodels/AID", "interface_mqtt", "InteractionMetadata",
+                        "actions", "Halt")
+    request = aimc_mapping(
+        id_short="HaltRequest",
+        sources=[aimc_source("Halt", rest_ref)],
+        sinks=[aimc_sink("Halt", mqtt_ref)],
+        transformation="function aimc_main(sources) return { Halt = sources.Halt } end",
     )
-    mqtt_ref = aimc.AimcReference(
-        type="ModelReference",
-        keys=[
-            aimc.AimcReferenceKey(type="Submodel", value="a/submodels/AID"),
-            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="interface_mqtt"),
-            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="InteractionMetadata"),
-            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="actions"),
-            aimc.AimcReferenceKey(type="SubmodelElementCollection", value="Halt"),
-        ],
+    response = aimc_mapping(
+        id_short="Halt",
+        sources=[aimc_source("Halt", mqtt_ref)],
+        sinks=[aimc_sink("Halt", rest_ref)],
+        transformation="function aimc_main(sources) return { Halt = sources.Halt } end",
     )
-    aimc_model = aimc.AimcModel(
-        id_short="AIMC",
-        mappings=[
-            aimc.AimcMapping(
-                id_short="HaltRequest",
-                sources=[aimc.AimcSource(id_short="Halt", source_id="Halt", source=ref)],
-                sinks=[aimc.AimcSink(id_short="Halt", sink_id="Halt", sink=mqtt_ref)],
-                transformation="function aimc_main(sources) return { Halt = sources.Halt } end",
-            ),
-            aimc.AimcMapping(
-                id_short="Halt",
-                sources=[aimc.AimcSource(id_short="Halt", source_id="Halt", source=mqtt_ref)],
-                sinks=[aimc.AimcSink(id_short="Halt", sink_id="Halt", sink=ref)],
-                transformation="function aimc_main(sources) return { Halt = sources.Halt } end",
-            ),
-        ],
-    )
-    return resolve(aimc_model, aid_model)
+    return resolve(build_aimc(request, response), aid_model)
 
 
 def test_emits_operation_route_and_entities():
@@ -244,7 +209,7 @@ def test_emits_operation_route_and_entities():
 
 def test_operations_honour_mqtt_broker_override():
     from management_node.descriptor import (
-        MQTT_CONSUMER_FILE, MQTT_SINK_FILE, REST_SOURCES_FILE, ROUTES_FILE,
+        MQTT_CONSUMER_FILE, MQTT_SINK_FILE, ROUTES_FILE,
     )
 
     resolution = _operations_models()

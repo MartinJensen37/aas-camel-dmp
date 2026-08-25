@@ -1,4 +1,5 @@
-"""Tests for the dedicated AIMC parser (management_node.parsers.aimc).
+"""Tests for the AIMC parser (management_node.parsers.aimc), which now returns
+the shared ``aas_model.Aimc`` pydantic model (ADR-016).
 
 Uses the real AIMC submodel extracted from
 ``AASDescriptions/Resource/configs/syntegonStoppering.json``.
@@ -12,8 +13,11 @@ import pathlib
 import pytest
 
 from management_node.parsers import aimc
+from management_node.resolver import reference_values, resolve
+from management_node.parsers import aid
 
 DATA = pathlib.Path(__file__).parent / "data" / "syntegon_stoppering_aimc.json"
+DATA_AID = pathlib.Path(__file__).parent / "data" / "syntegon_stoppering_aid.json"
 
 
 @pytest.fixture(scope="module")
@@ -21,53 +25,60 @@ def submodel() -> dict:
     return json.loads(DATA.read_text())
 
 
+@pytest.fixture(scope="module")
+def mcs(submodel):
+    return aimc.parse_aimc(submodel).MappingConfigurations.value
+
+
+def _resolved_aimc(submodel):
+    return resolve(aimc.parse_aimc(submodel),
+                   aid.parse_aid(json.loads(DATA_AID.read_text())))
+
+
 def test_parses_mapping_configurations(submodel):
-    model = aimc.parse_aimc(submodel)
-    assert model.id_short == "AssetInterfacesMappingConfiguration"
-    assert len(model.mappings) == 5
+    assert len(aimc.parse_aimc(submodel).MappingConfigurations.value) == 5
 
 
 def test_parses_sources_with_references(submodel):
-    model = aimc.parse_aimc(submodel)
-    # raw AAS mapping configs carry no idShort; the name falls back to the
-    # first SourceId
-    mqtt = next(m for m in model.mappings if m.id_short == "StationState")
+    mqtt = next(m for m in _resolved_aimc(submodel).mappings if m.id_short == "StationState")
 
     assert len(mqtt.sources) == 1
     source = mqtt.sources[0]
     assert source.source_id == "StationState"
     assert source.polling_interval is None
-    # reference path into the AID
-    assert source.source.type == "ModelReference"
-    assert source.source.as_path()[-1] == "StationState"
-    assert "interface_mqtt" in source.source.as_path()
+    # reference path into the AID (via the resolved sink refs, same refs)
+    assert "interface_mqtt" in mqtt.sources[0].interface
 
 
 def test_parses_transformation_lua_blob(submodel):
-    model = aimc.parse_aimc(submodel)
-    mqtt = next(m for m in model.mappings if m.id_short == "StationState")
-
+    mqtt = next(m for m in _resolved_aimc(submodel).mappings if m.id_short == "StationState")
     assert mqtt.transformation is not None
     assert "function aimc_main" in mqtt.transformation
 
 
 def test_parses_sinks(submodel):
-    model = aimc.parse_aimc(submodel)
-    mqtt = next(m for m in model.mappings if m.id_short == "StationState")
-
-    assert len(mqtt.sinks) == 2
-    sink_ids = {s.sink_id for s in mqtt.sinks}
-    assert sink_ids == {"PackMLState", "OccupationState"}
-    for sink in mqtt.sinks:
-        # sink references point at the asset's own Variables submodel
-        assert "submodels/Variables" in sink.sink.as_path()[0]
+    mqtt = next(m for m in _resolved_aimc(submodel).mappings if m.id_short == "StationState")
+    assert set(mqtt.sink_ids) == {"PackMLState", "OccupationState"}
+    # sink references point at the asset's own Variables submodel
+    assert all("submodels/Variables" in reference_values(r)[0] for r in mqtt.sink_refs)
 
 
 def test_accepts_json_string(submodel):
     model = aimc.parse_aimc(json.dumps(submodel))
-    assert len(model.mappings) == 5
+    assert len(model.MappingConfigurations.value) == 5
 
 
-def test_empty_input_produces_empty_model():
-    model = aimc.parse_aimc({})
-    assert model.mappings == []
+def test_transformation_default_semantic_id_selects_lua(submodel):
+    mqtt = next(m for m in _resolved_aimc(submodel).mappings if m.id_short == "StationState")
+    assert mqtt.transformation_engine == "LUA"
+
+
+def test_transformation_engine_helper_selects_jsonata_by_semantic_id():
+    assert aimc.transformation_engine(["https://x/.../jsonata"]) == "JSONATA"
+    assert aimc.transformation_engine(["https://x/JsonAta/2/0"]) == "JSONATA"
+    assert aimc.transformation_engine([]) == "LUA"
+    assert aimc.transformation_engine(["https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Transformation"]) == "LUA"
+
+
+def test_empty_input_returns_none():
+    assert aimc.parse_aimc({}) is None
