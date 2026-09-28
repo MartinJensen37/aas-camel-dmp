@@ -13,7 +13,7 @@ To learn more on how to use and adapt the DataBridge component, visit the [docum
 This repository is a fork of the Eclipse BaSyx DataBridge, renamed to **`aas-camel-dmp`**. It reworks the DataBridge into the **DMP** (DataBridge MQTT Platform): a per-asset integration container that
 
 1. consumes data from industrial protocols (OPC UA, PLC, MQTT, Kafka, HTTP, …),
-2. transforms incoming data **exclusively with Lua** in compliance with the **AIMC** (Asset Interfaces Mapping Configuration v2.0) transformation contract, and
+2. transforms incoming data with **Lua by default** in compliance with the **AIMC** (Asset Interfaces Mapping Configuration v2.0) transformation contract, or with JSONata when the transformation semantic ID starts with the private `https://example.org/jsonata/` namespace, and
 3. writes transformed data to sinks (AAS submodel elements, MQTT topics, other protocols).
 
 See [SPEC.md](SPEC.md) for the full design specification, milestones, and decision records.

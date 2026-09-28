@@ -162,6 +162,46 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<!-- Pin the Spring Framework line to what camel-jms 4.22 was built
+			     against: transitive spring-core 5.3.11 (BaSyx spring-security
+			     5.5.3) or 6.2.x (BaSyx security 6.5.x) otherwise wins the
+			     nearest-wins resolution and breaks camel's classes
+			     (FixedBackOff NoSuchMethodError etc.). -->
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-core</artifactId>
+				<version>7.0.8</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-beans</artifactId>
+				<version>7.0.8</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-context</artifactId>
+				<version>7.0.8</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-aop</artifactId>
+				<version>7.0.8</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-expression</artifactId>
+				<version>7.0.8</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-jcl</artifactId>
+				<version>7.0.8</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-tx</artifactId>
+				<version>7.0.8</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
