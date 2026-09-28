@@ -37,8 +37,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.camel.Exchange;
 import org.apache.camel.support.DefaultMessage;
 import org.apache.camel.support.PollingConsumerSupport;
-import org.apache.http.ParseException;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -100,29 +98,32 @@ public class AASPollingConsumer extends PollingConsumerSupport {
 	
 	protected Exchange doReceive(long timeout) {
 		
-		String result;
-		
 		ExecutorService execService = Executors.newSingleThreadExecutor();
         Callable<String> runWithTimeout = this::getSerializedMetamodel;
         
         Future<String> responseFuture = execService.submit(runWithTimeout);
         
         try {
-        	result = responseFuture.get(timeout, TimeUnit.SECONDS); 
-        	
-        } catch (TimeoutException | InterruptedException | ExecutionException e) {
-        	
-        	logger.info("Time out after waiting");
-        	
-        	getExceptionHandler().handleException(e);
-        	
-        	result = "";
+			// Camel's PollingConsumer timeout is in milliseconds. A failed read
+			// must return no exchange: an empty string would enter the fan-in cache.
+			String result = timeout == WAIT_INDEFINITELY
+					? responseFuture.get() : responseFuture.get(timeout, TimeUnit.MILLISECONDS);
+			if (result == null) {
+				return null;
+			}
+			Exchange exchange = createExchange(result);
+			defaultConsumerCallback(exchange, true);
+			return exchange;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			getExceptionHandler().handleException(e);
+		} catch (TimeoutException | ExecutionException e) {
+			getExceptionHandler().handleException(e);
+        } finally {
+			responseFuture.cancel(true);
+			execService.shutdownNow();
         }
-        
-		Exchange exchange = createExchange(result);
-		defaultConsumerCallback(exchange, true);
-	
-		return exchange;
+		return null;
 	}
 	
 	/**
@@ -154,24 +155,43 @@ public class AASPollingConsumer extends PollingConsumerSupport {
 	 */
 	private String getSerializedMetamodel() throws IOException {
 		if(this.endpoint.getApi() == ApiType.BASYX) {
-			if (!getEndpoint().getPropertyPath().isEmpty()) {
+			if (!getEndpoint().getPropertyPath().isEmpty()
+					&& isPropertyElement()) {
 				ConnectedProperty prop = new ConnectedProperty(this.proxy);
 				return new GSONTools(new DefaultTypeFactory()).serialize(prop.getLocalCopy());
+			}
+			if (!getEndpoint().getPropertyPath().isEmpty()) {
+				return readElementJson();
 			}
 
 			ConnectedSubmodel sm = new ConnectedSubmodel(this.proxy);
 			return new GSONTools(new DefaultTypeFactory()).serialize(SubmodelElementMapCollectionConverter.smToMap(sm.getLocalCopy()));
 		}else{
-			String metamodelUrl = getMetamodelUrl().substring(2);
-			return EntityUtils.toString(executeGetOnURL(metamodelUrl).getEntity(), "UTF-8");
+			return readJson(getMetamodelUrl(), "AAS");
 		}
 	}
 
-	private static CloseableHttpResponse executeGetOnURL(String url) throws IOException {
-		CloseableHttpClient client = HttpClients.createDefault();
-		HttpGet getRequest = createGetRequestWithHeader(url);
+	private boolean isPropertyElement() {
+		String elementType = getEndpoint().getElementType();
+		return elementType == null || elementType.isBlank()
+				|| "Property".equalsIgnoreCase(elementType)
+				|| "SubmodelElementProperty".equalsIgnoreCase(elementType);
+	}
 
-		return client.execute(getRequest);
+	private String readElementJson() throws IOException {
+		return readJson(getMetamodelUrl(), "AAS element");
+	}
+
+	private static String readJson(String url, String description) throws IOException {
+		try (CloseableHttpClient client = HttpClients.createDefault();
+				CloseableHttpResponse response = client.execute(createGetRequestWithHeader(url))) {
+			if (response.getStatusLine().getStatusCode() < 200
+					|| response.getStatusLine().getStatusCode() >= 300) {
+				throw new IOException(description + " read failed with HTTP "
+						+ response.getStatusLine().getStatusCode());
+			}
+			return EntityUtils.toString(response.getEntity(), "UTF-8");
+		}
 	}
 
 	private static HttpGet createGetRequestWithHeader(String url) {

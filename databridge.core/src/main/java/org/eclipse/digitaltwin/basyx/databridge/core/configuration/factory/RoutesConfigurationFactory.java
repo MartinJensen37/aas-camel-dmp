@@ -27,11 +27,10 @@ package org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.bridge.ProtocolBridgeRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.writedelegation.WriteDelegationRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.event.EventRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.operation.OperationRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.request.RequestRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.timer.TimerRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy.ExecutionPolicyRouteConfiguration;
 
 /**
  * A generic implementation of routes configuration factory
@@ -43,7 +42,7 @@ public class RoutesConfigurationFactory extends ConfigurationFactory {
 	public static final String DEFAULT_FILE_PATH = "routes.json";
 
 	/**
-	 * This constructor uses the {@link EventRouteConfiguration} as the default
+	 * This constructor uses the {@link ExecutionPolicyRouteConfiguration} as the default
 	 * configuration
 	 *
 	 * @param filePath
@@ -55,7 +54,7 @@ public class RoutesConfigurationFactory extends ConfigurationFactory {
 
 	/**
 	 * This constructor uses the default path {@link #DEFAULT_FILE_PATH} and the
-	 * {@link EventRouteConfiguration} as the default configuration
+	 * {@link ExecutionPolicyRouteConfiguration} as the default configuration
 	 *
 	 * @param loader
 	 */
@@ -73,34 +72,33 @@ public class RoutesConfigurationFactory extends ConfigurationFactory {
 	private List<RouteConfiguration> mapToSpecificRouteConfigurations(List<RouteConfiguration> configurations) {
 		List<RouteConfiguration> mapped = new ArrayList<>();
 
-		for (RouteConfiguration configuration : configurations) {
-			if (isEventConfiguration(configuration)) {
-				mapped.add(new EventRouteConfiguration(configuration));
-			} else if (isTimerConfiguration(configuration)) {
-				mapped.add(new TimerRouteConfiguration(configuration));
-			} else if (isRequestConfiguration(configuration)) {
-				mapped.add(new RequestRouteConfiguration(configuration));
-			} else if (isOperationConfiguration(configuration)) {
-				mapped.add(new OperationRouteConfiguration(configuration));
+		for (int index = 0; index < configurations.size(); index++) {
+			RouteConfiguration configuration = configurations.get(index);
+			String label = configuration.getRouteId() != null
+					? configuration.getRouteId()
+					: "routes.json[" + index + "]";
+			String trigger = configuration.getRouteTrigger();
+			if (trigger == null || trigger.isBlank()) {
+				throw new IllegalArgumentException(
+						"route " + label + " declares no trigger (expected one of: "
+								+ ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER + ", "
+								+ ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER + ", "
+								+ WriteDelegationRouteConfiguration.ROUTE_TRIGGER + ")");
+			}
+			if (ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER.equals(trigger)) {
+				mapped.add(new ExecutionPolicyRouteConfiguration(configuration));
+			} else if (ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER.equals(trigger)) {
+				mapped.add(new ProtocolBridgeRouteConfiguration(configuration));
+			} else if (WriteDelegationRouteConfiguration.ROUTE_TRIGGER.equals(trigger)) {
+				mapped.add(new WriteDelegationRouteConfiguration(configuration));
+			} else {
+				throw new IllegalArgumentException("route " + label + " declares trigger '" + trigger
+						+ "' (supported: " + ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER + ", "
+						+ ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER + ", "
+						+ WriteDelegationRouteConfiguration.ROUTE_TRIGGER + ")");
 			}
 		}
 
 		return mapped;
-	}
-
-	private boolean isTimerConfiguration(RouteConfiguration configuration) {
-		return configuration.getRouteTrigger().equals(TimerRouteConfiguration.ROUTE_TRIGGER);
-	}
-
-	private boolean isEventConfiguration(RouteConfiguration configuration) {
-		return configuration.getRouteTrigger().equals(EventRouteConfiguration.ROUTE_TRIGGER);
-	}
-	
-	private boolean isRequestConfiguration(RouteConfiguration configuration) {
-		return configuration.getRouteTrigger().equals(RequestRouteConfiguration.ROUTE_TRIGGER);
-	}
-
-	private boolean isOperationConfiguration(RouteConfiguration configuration) {
-		return configuration.getRouteTrigger().equals(OperationRouteConfiguration.ROUTE_TRIGGER);
 	}
 }
