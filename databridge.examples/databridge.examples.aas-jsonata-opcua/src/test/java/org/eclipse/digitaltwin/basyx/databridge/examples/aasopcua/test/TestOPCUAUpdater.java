@@ -41,8 +41,7 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.Route
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.factory.OpcuaDefaultSinkConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.timer.configuration.factory.TimerDefaultConfigurationFactory;
-import org.eclipse.milo.examples.server.ExampleServer;
+import org.eclipse.digitaltwin.basyx.databridge.examples.milotestserver.MiloTestServer;
 import org.eclipse.milo.opcua.sdk.client.DiscoveryClient;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClientConfig;
@@ -64,7 +63,7 @@ public class TestOPCUAUpdater {
 	private static BaSyxContextConfiguration aasContextConfig;
 	private static InMemoryRegistry registry;
 	private static DataBridgeComponent updater;
-	protected static ExampleServer opcUaServer;
+	protected static MiloTestServer opcUaServer;
 
 	@BeforeClass
 	public static void setUp() throws Exception {
@@ -97,9 +96,6 @@ public class TestOPCUAUpdater {
 
 		RoutesConfigurationFactory routesFactory = new RoutesConfigurationFactory(loader);
 		configuration.addRoutes(routesFactory.create());
-
-		TimerDefaultConfigurationFactory timerConfigFactory = new TimerDefaultConfigurationFactory(loader);
-		configuration.addDatasources(timerConfigFactory.create());
 
 		AASPollingConsumerDefaultConfigurationFactory aasSourceConfigFactory = new AASPollingConsumerDefaultConfigurationFactory(loader);
 		configuration.addDatasources(aasSourceConfigFactory.create());
@@ -167,11 +163,11 @@ public class TestOPCUAUpdater {
 	}
 
 	private static void startOpcUaServer() throws Exception {
-		opcUaServer = new ExampleServer();
+		opcUaServer = new MiloTestServer(12686);
 		opcUaServer.startup().get();
 	}
 
-	private static void stopOpcUaServer() throws InterruptedException, ExecutionException {
+	private static void stopOpcUaServer() throws Exception {
 		opcUaServer.shutdown().get();
 	}
 

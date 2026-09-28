@@ -1,20 +1,26 @@
 [
-	{
-		"datasource": "exampleAAS1",
-		"transformers": ["jsonataA"],
-		"datasinks":["Server1"],
-		"trigger": "timer",
-		"triggerData": {
-			"timerName": "timer1"
-		}
-	},
-	{
-		"datasource": "exampleAAS2",
-		"transformers": ["jsonataB"],
-		"datasinks":["Server2"],
-		"trigger": "timer",
-		"triggerData": {
-			"timerName": "timer1"
-		}
-	}
+ {
+  "transformers": [
+   "jsonataA"
+  ],
+  "datasinks": [
+   "Server1"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "exampleAAS1"
+  ]
+ },
+ {
+  "transformers": [
+   "jsonataB"
+  ],
+  "datasinks": [
+   "Server2"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "exampleAAS2"
+  ]
+ }
 ]

@@ -1,20 +1,26 @@
 [
-  {
-    "datasource": "httpsource1",
-    "transformers": ["jsonataA"],
-    "datasinks": ["SubmodelSink1"],
-    "trigger": "timer",
-    "triggerData" : {
-    	"timerName": "timer1"
-    }
-  },
-  {
-    "datasource": "httpsource2",
-    "transformers": ["jsonataA"],
-    "datasinks": ["SubmodelSink2"],
-    "trigger": "timer",
-    "triggerData" : {
-      "timerName": "timer1"
-    }
-  }
+ {
+  "transformers": [
+   "jsonataA"
+  ],
+  "datasinks": [
+   "SubmodelSink1"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "httpsource1"
+  ]
+ },
+ {
+  "transformers": [
+   "jsonataB"
+  ],
+  "datasinks": [
+   "SubmodelSink2"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "httpsource2"
+  ]
+ }
 ]

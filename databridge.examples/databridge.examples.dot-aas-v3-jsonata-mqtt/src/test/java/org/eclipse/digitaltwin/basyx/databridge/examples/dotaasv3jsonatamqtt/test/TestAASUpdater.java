@@ -24,10 +24,13 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.databridge.examples.dotaasv3jsonatamqtt.test;
 
-import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
+
+import java.util.concurrent.TimeUnit;
+
+import org.awaitility.Awaitility;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,7 +56,6 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.Route
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.paho.configuration.factory.MqttDataSinkDefaultConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.timer.configuration.factory.TimerDefaultConfigurationFactory;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.junit.AfterClass;
@@ -83,7 +85,7 @@ public class TestAASUpdater {
 	private static String client_id = UUID.randomUUID().toString();
 
 	private static Logger logger = LoggerFactory.getLogger(TestAASUpdater.class);
-	private static Map<String,String> receivedMessage = new HashMap<>();
+	private static Map<String,String> receivedMessage = new java.util.concurrent.ConcurrentHashMap<>();
 
 	private static DataBridgeComponent updater;
 	protected static Server mqttBroker;
@@ -173,7 +175,11 @@ public class TestAASUpdater {
 			});
 
 			mqttClient.subscribe(currentTopic);
-			waitForPropagation();
+			// the execution policy has period-only timing (no legacy timer
+			// delay), so a publish may land before the subscription: await the
+			// next periodic evaluation instead of sleeping exactly one period
+			Awaitility.await().with().pollInterval(1, TimeUnit.SECONDS).atMost(12, TimeUnit.SECONDS)
+					.until(() -> receivedMessage.get(currentTopic) != null);
 			mqttClient.disconnect();
 			mqttClient.close();
 
@@ -228,9 +234,6 @@ public class TestAASUpdater {
 		RoutesConfigurationFactory routesFactory = new RoutesConfigurationFactory(loader);
 		configuration.addRoutes(routesFactory.create());
 
-		TimerDefaultConfigurationFactory timerConfigFactory = new TimerDefaultConfigurationFactory(loader);
-		configuration.addDatasources(timerConfigFactory.create());
-
 		AASPollingConsumerDefaultConfigurationFactory aasSourceConfigFactory = new AASPollingConsumerDefaultConfigurationFactory(
 				loader);
 		configuration.addDatasources(aasSourceConfigFactory.create());
@@ -243,10 +246,6 @@ public class TestAASUpdater {
 
 		updater = new DataBridgeComponent(configuration);
 		updater.startComponent();
-	}
-
-	private static void waitForPropagation() throws InterruptedException {
-		sleep(5000);
 	}
 
 	private static void configureAndStartMqttBroker() throws IOException {

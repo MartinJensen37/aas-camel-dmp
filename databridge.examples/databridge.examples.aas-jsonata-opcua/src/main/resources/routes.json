@@ -1,15 +1,14 @@
 [
-	{
-		"datasource": "exampleAAS1",
-		"transformers": [
-			"jsonataA"
-		],
-		"datasinks": [
-			"exampleOPCUA1"
-		],
-		"trigger": "timer",
-		"triggerData": {
-			"timerName": "timer1"
-		}
-	}
+ {
+  "transformers": [
+   "jsonataA"
+  ],
+  "datasinks": [
+   "exampleOPCUA1"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "exampleAAS1"
+  ]
+ }
 ]

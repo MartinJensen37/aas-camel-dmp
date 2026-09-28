@@ -1,14 +1,26 @@
 [
-	{
-		"datasource": "doublescalar",
-		"transformers": ["dataValueToJson", "jsonataExtractValue"],
-		"datasinks": ["ConnectedSubmodel/ConnectedPropertyA"],
-		"trigger": "event"
-	},
-	{
-		"datasource": "integerscalar",
-		"transformers": ["dataValueToJson", "jsonataExtractValue"],
-		"datasinks": ["ConnectedSubmodel/ConnectedPropertyB"],
-		"trigger": "event"
-	}
+ {
+  "transformers": [
+   "jsonataA"
+  ],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedPropertyA"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "doublescalar"
+  ]
+ },
+ {
+  "transformers": [
+   "jsonataB"
+  ],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedPropertyB"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "integerscalar"
+  ]
+ }
 ]

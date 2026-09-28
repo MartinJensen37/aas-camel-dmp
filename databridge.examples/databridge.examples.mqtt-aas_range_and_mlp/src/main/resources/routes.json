@@ -1,14 +1,22 @@
 [
-	{
-		"datasource": "property1",
-		"transformers": [],
-		"datasinks": ["ConnectedSubmodel/ConnectedMLP"],
-		"trigger": "event"
-	},
-	{
-		"datasource": "property2",
-		"transformers": [],
-		"datasinks": ["ConnectedSubmodel/ConnectedRange"],
-		"trigger": "event"
-	}
+ {
+  "transformers": [],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedMLP"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "property1"
+  ]
+ },
+ {
+  "transformers": [],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedRange"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "property2"
+  ]
+ }
 ]

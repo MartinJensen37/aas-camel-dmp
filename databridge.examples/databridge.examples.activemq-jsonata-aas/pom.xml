@@ -110,6 +110,23 @@
 			<version>5.19.9</version>
 			<scope>test</scope>
 		</dependency>
+		<!-- ActiveMQ classic broker is javax-compiled internally (its region
+			broker wires javax.jms types); routes/tests use the jakarta client
+			(activemq-client-jakarta via camel-activemq). Keep javax.jms-api
+			test-scoped so the BrokerService starts. -->
+		<dependency>
+			<groupId>javax.jms</groupId>
+			<artifactId>javax.jms-api</artifactId>
+			<version>2.0.1</version>
+			<scope>test</scope>
+		</dependency>
+		<!-- camel-jms's pooled connection-factory implementation. -->
+		<dependency>
+			<groupId>org.messaginghub</groupId>
+			<artifactId>pooled-jms</artifactId>
+			<version>3.1.7</version>
+			<scope>test</scope>
+		</dependency>
 
 	</dependencies>
 </project>

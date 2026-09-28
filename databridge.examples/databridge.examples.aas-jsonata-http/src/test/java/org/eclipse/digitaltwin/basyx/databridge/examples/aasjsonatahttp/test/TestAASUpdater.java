@@ -52,7 +52,6 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.Ro
 import org.eclipse.digitaltwin.basyx.databridge.examples.httpserver.HttpDataSource;
 import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.factory.HttpProducerDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.timer.configuration.factory.TimerDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.examples.aasjsonatahttp.*;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -113,21 +112,25 @@ public class TestAASUpdater {
 		String expectedValue = getExpectedValueFromFile();
 		
 		waitForPropagation();
-		
-		String actualValue = getContentFromEndPoint();
-		
+
+		String actualValue = getContentFromEndPoint("http://localhost:8091/data/machine/pressure_rotation");
+
 		ObjectMapper mapper = new ObjectMapper();
 		
 		assertEquals(mapper.readTree(actualValue), mapper.readTree(expectedValue));
 	}
 	
 	private String getContentFromEndPoint() throws ClientProtocolException, IOException, InterruptedException {
-		
+		return getContentFromEndPoint("http://localhost:8091/data/machine/pressure");
+	}
+
+	private String getContentFromEndPoint(String url) throws ClientProtocolException, IOException, InterruptedException {
+
 		CloseableHttpClient client = HttpClients.createDefault();
-		HttpGet request = new HttpGet("http://localhost:8091");
+		HttpGet request = new HttpGet(url);
 		CloseableHttpResponse resp = client.execute(request);
 		String content = new String(resp.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
-		
+
 		client.close();
 		return content;
 	}
@@ -150,9 +153,6 @@ public class TestAASUpdater {
 		
 		RoutesConfigurationFactory routesFactory = new RoutesConfigurationFactory(loader);
 		configuration.addRoutes(routesFactory.create());
-
-		TimerDefaultConfigurationFactory timerConfigFactory = new TimerDefaultConfigurationFactory(loader);
-		configuration.addDatasources(timerConfigFactory.create());
 
 		AASPollingConsumerDefaultConfigurationFactory aasSourceConfigFactory = new AASPollingConsumerDefaultConfigurationFactory(
 				loader);

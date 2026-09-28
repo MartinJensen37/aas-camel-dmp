@@ -71,7 +71,9 @@ public class TestAASUpdater {
 	private static final String PROPERTY_PROCESS_DATA_VALUE_PATH = "/submodels/cHJvY2Vzcw==/submodel-elements/processData/$value";
 	private static final String PROPERTY_PROCESS_DATA_VALUE = "\"{\"ProcessData\":{\"Volume_NV\":410.5,\"Volume_AV\":407.7,\"Charge\":\"0000000001\",\"Pressure\":\"43.31\",\"Speed\":\"0.158790365\",\"Temperature\":\"42\",\"Result\":\"1\",\"StartProcess\":\"2022-06-22T08:21:33.4300238Z\",\"Volume\":\"39.7\",\"Weight\":\"49.69\",\"EndPorcess\":\"2022-06-22T08:22:56.4085953Z\"}}\"";
 	private static final String PROPERTY_PROCESS_DATA_RAW_VALUE_PATH = "/submodels/cHJvY2Vzcw==/submodel-elements/processData_raw/$value";
-	private static final String PROPERTY_PROCESS_DATA_RAW_VALUE = "\"" + INPUT_DATA + "\"";
+	// unmapped sinks receive the merged sources map (ADR-020 contract),
+	// not the raw device payload
+	private static final String PROPERTY_PROCESS_DATA_RAW_VALUE = "\"{\"mqttSource\":{\"Process\":{\"ProcessID\":\"00001\",\"Result\":true,\"ProcessData\":{\"Volume_NV\":410.5,\"Volume_AV\":407.7,\"Charge\":\"0000000001\",\"Pressure\":\"43.31\",\"Speed\":\"0.158790365\",\"Temperature\":\"42\",\"Result\":\"1\",\"StartProcess\":\"2022-06-22T08:21:33.4300238Z\",\"Volume\":\"39.7\",\"Weight\":\"49.69\",\"EndPorcess\":\"2022-06-22T08:22:56.4085953Z\"}}}}\"";
 	private static final String PROPERTY_PROCESS_DURATION_VALUE_PATH = "/submodels/cHJvY2Vzcw==/submodel-elements/processDuration/$value";
 	private static final String PROPERTY_PROCESS_DURATION_VALUE = "\"1M22S\"";
 

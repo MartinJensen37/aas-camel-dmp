@@ -1,16 +1,16 @@
 [
-	{
-		"datasource": "mqttSource",
-		"transformers": 
-		[
-			"processData",
-			"processDuration"
-		],
-		"datasinks":
-		[
-			"one/duration",
-			"other/duration"
-		],
-		"trigger": "event"
-	}
+ {
+  "datasources": [
+   "mqttSource"
+  ],
+  "transformers": [
+   "processData",
+   "processDuration"
+  ],
+  "datasinks": [
+   "one/duration",
+   "other/duration"
+  ],
+  "trigger": "execution-policy"
+ }
 ]

@@ -1,16 +1,17 @@
 [
-	{
-		"uniqueId": "property1",
-		"serverUrl": "localhost",
-		"serverPort": 8095,
-		"driver": "modbus-tcp",
-		"servicePath": "",
-		"options": [],
-		"tags": [
-			{
-				"name": "value_1",
-				"value": "holding-register:1"
-			}
-		]
-	}
+ {
+  "uniqueId": "property1",
+  "serverUrl": "localhost",
+  "serverPort": 8095,
+  "driver": "modbus-tcp",
+  "servicePath": "",
+  "options": [],
+  "tags": [
+   {
+    "name": "value_1",
+    "value": "holding-register:1"
+   }
+  ],
+  "delivery": "sync"
+ }
 ]

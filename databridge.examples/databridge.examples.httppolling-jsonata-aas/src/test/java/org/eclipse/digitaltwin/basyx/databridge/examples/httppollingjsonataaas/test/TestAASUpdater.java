@@ -45,7 +45,6 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.Route
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.factory.HttpPollingDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.timer.configuration.factory.TimerDefaultConfigurationFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockserver.integration.ClientAndServer;
@@ -104,8 +103,6 @@ public class TestAASUpdater {
 		configuration.addTransformers(jsonataConfigFactory.create());
 
 		// Extend configuration for Timer
-		TimerDefaultConfigurationFactory timerConfigFactory = new TimerDefaultConfigurationFactory(loader);
-		configuration.addDatasources(timerConfigFactory.create());
 
 		updater = new DataBridgeComponent(configuration);
 		updater.startComponent();

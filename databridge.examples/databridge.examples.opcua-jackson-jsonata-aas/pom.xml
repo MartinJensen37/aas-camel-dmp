@@ -129,11 +129,14 @@
 			<scope>test</scope>
 		</dependency>
 		
+		<!-- Test OPC UA server built natively on the Milo 1.1.6 API (the same
+			generation camel-milo 4.22 requires). Milo 0.6.x ExampleServer is
+			binary-incompatible with the 1.1.6 stack. -->
 		<dependency>
-    		<groupId>org.eclipse.milo</groupId>
-    		<artifactId>server-examples</artifactId>
-    		<version>0.6.11</version>
-    		<scope>test</scope>
+			<groupId>org.eclipse.milo</groupId>
+			<artifactId>milo-sdk-server</artifactId>
+			<version>1.1.6</version>
+			<scope>test</scope>
 		</dependency>
 		
 		<dependency>

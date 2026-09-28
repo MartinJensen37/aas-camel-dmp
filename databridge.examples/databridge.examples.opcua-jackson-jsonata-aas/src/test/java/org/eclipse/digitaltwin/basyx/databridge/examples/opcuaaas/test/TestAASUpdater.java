@@ -46,7 +46,7 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.Ro
 import org.eclipse.digitaltwin.basyx.databridge.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.jsonjackson.configuration.factory.JsonJacksonDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.factory.OpcuaDefaultConfigurationFactory;
-import org.eclipse.milo.examples.server.ExampleServer;
+import org.eclipse.digitaltwin.basyx.databridge.examples.milotestserver.MiloTestServer;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -55,7 +55,7 @@ public class TestAASUpdater {
 	private static AASServerComponent aasServer;
 	private static DataBridgeComponent updater;
 	private static InMemoryRegistry registry;
-	protected static ExampleServer opcUaServer;
+	protected static MiloTestServer opcUaServer;
 
 	protected static IIdentifier deviceAAS = new CustomId("TestUpdatedDeviceAAS");
 	private static BaSyxContextConfiguration aasContextConfig;
@@ -130,11 +130,11 @@ public class TestAASUpdater {
 	}
 
 	private static void startOpcUaServer() throws Exception {
-		opcUaServer = new ExampleServer();
+		opcUaServer = new MiloTestServer(12686);
 		opcUaServer.startup().get();
 	}
 
-	private static void stopOpcUaServer() throws InterruptedException, ExecutionException {
+	private static void stopOpcUaServer() throws Exception {
 		opcUaServer.shutdown().get();
 	}
 }

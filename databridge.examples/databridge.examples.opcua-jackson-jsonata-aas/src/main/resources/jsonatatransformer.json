@@ -1,8 +1,14 @@
 [
-	{
-		"uniqueId": "jsonataExtractValue",
-		"queryPath": "classpath:jsonataExtractValue.json",
-		"inputType": "JsonString",
-		"outputType": "JsonString"
-	}
+ {
+  "uniqueId": "jsonataA",
+  "queryPath": "classpath:jsonataA.json",
+  "inputType": "JsonString",
+  "outputType": "JsonString"
+ },
+ {
+  "uniqueId": "jsonataB",
+  "queryPath": "jsonataB.json",
+  "inputType": "JsonString",
+  "outputType": "JsonString"
+ }
 ]

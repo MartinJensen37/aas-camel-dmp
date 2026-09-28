@@ -1,11 +1,14 @@
 [
-  {
-    "datasource": "httpsource",
-    "transformers": ["jsonataA"],
-    "datasinks": ["ConnectedSubmodel/ConnectedPropertyB"],
-    "trigger": "timer",
-    "triggerData" : {
-    	"timerName": "timer1"
-    }
-  }
+ {
+  "transformers": [
+   "jsonataA"
+  ],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedPropertyB"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "httpsource"
+  ]
+ }
 ]

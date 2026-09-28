@@ -1,8 +1,15 @@
 [
-	{
-		"datasource": "property1",
-		"transformers": ["jsonataA", "jsonataB"],
-		"datasinks": ["ConnectedSubmodel/ConnectedPropertyA"],
-		"trigger": "event"
-	}
+ {
+  "transformers": [
+   "jsonataA",
+   "jsonataB"
+  ],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedPropertyA"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "property1"
+  ]
+ }
 ]

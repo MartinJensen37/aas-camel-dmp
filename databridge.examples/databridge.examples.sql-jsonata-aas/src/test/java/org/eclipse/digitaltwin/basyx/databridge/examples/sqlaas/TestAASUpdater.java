@@ -40,7 +40,6 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.Ro
 import org.eclipse.digitaltwin.basyx.databridge.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.jsonjackson.configuration.factory.JsonJacksonDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.sql.configuration.factory.SqlDefaultConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.timer.configuration.factory.TimerDefaultConfigurationFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -103,9 +102,6 @@ public class TestAASUpdater {
 
 		SqlDefaultConfigurationFactory sqlConfigFactory = new SqlDefaultConfigurationFactory(loader);
 		configuration.addDatasources(sqlConfigFactory.create());
-
-		TimerDefaultConfigurationFactory timerConfigFactory = new TimerDefaultConfigurationFactory(loader);
-		configuration.addDatasources(timerConfigFactory.create());
 
 		AASProducerDefaultConfigurationFactory aasConfigFactory = new AASProducerDefaultConfigurationFactory(loader);
 		configuration.addDatasinks(aasConfigFactory.create());

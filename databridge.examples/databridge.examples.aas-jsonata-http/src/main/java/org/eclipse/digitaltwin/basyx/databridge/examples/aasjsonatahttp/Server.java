@@ -43,7 +43,12 @@ import org.eclipse.digitaltwin.basyx.databridge.examples.httpserver.DummyServlet
 public class Server extends DummyServlet {
 
 	private static final long serialVersionUID = 4918478763760299634L;
-	private String requestBodyValue = null;
+	/**
+	 * The two DMP routes write distinct paths; storing per path keeps the
+	 * assertions deterministic (a single shared slot races between the two
+	 * independent periodic routes).
+	 */
+	private final java.util.Map<String, String> requestBodyValues = new java.util.concurrent.ConcurrentHashMap<>();
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -57,13 +62,13 @@ public class Server extends DummyServlet {
 		while ((line = reader.readLine()) != null)
 			requestBody.append(line);
 
-		requestBodyValue = requestBody.toString();
+		requestBodyValues.put(req.getRequestURI(), requestBody.toString());
 	}
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		setAPIResponseProperty(resp);
-		setMessageToResponse(resp);
+		setMessageToResponse(resp, req.getRequestURI());
 	}
 
 	/**
@@ -79,16 +84,16 @@ public class Server extends DummyServlet {
 	}
 
 	/**
-	 * Sets retrieved message as a response
+	 * Sets the message stored for the request path as a response
 	 * 
 	 * @param response
 	 * @param resp
 	 * @throws IOException
 	 */
-	private void setMessageToResponse(HttpServletResponse resp) throws IOException {
+	private void setMessageToResponse(HttpServletResponse resp, String path) throws IOException {
 
 		PrintWriter out = resp.getWriter();
-		out.print(requestBodyValue);
+		out.print(requestBodyValues.get(path));
 		out.flush();
 		out.close();
 	}
