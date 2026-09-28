@@ -52,13 +52,16 @@ public class HealthCheckUtils {
 	}
 
 	private static String resolvePort() {
-		String fromEnv = System.getenv(HEALTH_PORT_ENV_VAR);
-		if (fromEnv != null && !fromEnv.isBlank()) {
-			return fromEnv;
-		}
+		// the SYSTEM PROPERTY wins (tests pick a free port via
+		// databridge.health.port; an inherited DATABRIDGE_HEALTH_PORT env var
+		// must not shadow it); env otherwise drives the per-asset deployments
 		String fromProperty = System.getProperty(HEALTH_PORT_SYSTEM_PROPERTY);
 		if (fromProperty != null && !fromProperty.isBlank()) {
 			return fromProperty;
+		}
+		String fromEnv = System.getenv(HEALTH_PORT_ENV_VAR);
+		if (fromEnv != null && !fromEnv.isBlank()) {
+			return fromEnv;
 		}
 		return DEFAULT_PORT;
 	}

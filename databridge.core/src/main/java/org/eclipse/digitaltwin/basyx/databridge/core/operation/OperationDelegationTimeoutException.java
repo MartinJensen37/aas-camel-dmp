@@ -39,4 +39,9 @@ public class OperationDelegationTimeoutException extends RuntimeException {
 		super("operation '" + action + "' timed out after " + timeoutSeconds
 				+ "s (Uuid=" + uuid + "): no correlated reply on the response topic");
 	}
+
+	/** Timeout without a correlation id (e.g. the MQTT 5 correlation path). */
+	public OperationDelegationTimeoutException(String message) {
+		super(message);
+	}
 }
