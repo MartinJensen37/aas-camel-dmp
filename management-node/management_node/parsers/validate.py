@@ -21,7 +21,7 @@ from typing import Any
 
 from aas_model import _serde
 from aas_model.submodel_templates import Aimc
-from aas_model.submodel_templates.mqtt_aid import MqttAssetInterfacesDescription
+from aas_model.submodel_templates.aid import DmpAssetInterfacesDescription
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +48,11 @@ def validate_aimc(submodel: dict[str, Any]):
 
 
 def validate_aid(submodel: dict[str, Any]):
-    """Reverse-parse an AID submodel dict into the shared ``MqttAssetInterfacesDescription``."""
+    """Reverse-parse an AID submodel dict into the shared ``DmpAssetInterfacesDescription``."""
     if not _is_basyx_submodel(submodel):
         return None
     try:
-        return _serde.parse_submodel_dict(submodel, MqttAssetInterfacesDescription)
+        return _serde.parse_submodel_dict(submodel, DmpAssetInterfacesDescription)
     except Exception as e:  # noqa: BLE001
         _handle_failure("AID", submodel, e)
     return None

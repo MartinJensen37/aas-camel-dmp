@@ -1,4 +1,4 @@
-"""AID parser — returns the shared ``aas_model.MqttAssetInterfacesDescription``.
+"""AID parser — returns the shared ``aas_model.DmpAssetInterfacesDescription``.
 
 The parser dataclasses (``AidModel``/``AidInterface``/``AidDataPoint``/``AidForm``
 /``MqttForm``) that previously lived here have been **removed** (ADR-016): one
@@ -14,15 +14,15 @@ import json
 import logging
 from typing import Any
 
-from aas_model.submodel_templates.mqtt_aid import MqttAssetInterfacesDescription
+from aas_model.submodel_templates.aid import DmpAssetInterfacesDescription
 
 from .validate import validate_aid
 
 logger = logging.getLogger(__name__)
 
 
-def parse_aid(submodel: dict[str, Any] | str) -> MqttAssetInterfacesDescription:
-    """Parse an AID submodel into the shared ``MqttAssetInterfacesDescription``.
+def parse_aid(submodel: dict[str, Any] | str) -> DmpAssetInterfacesDescription:
+    """Parse an AID submodel into the shared ``DmpAssetInterfacesDescription``.
 
     Accepts either the raw submodel dict (as returned by the AAS REST API or in
     a resource config) or its JSON string representation. Validates through the

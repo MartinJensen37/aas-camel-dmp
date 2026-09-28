@@ -54,3 +54,17 @@ class AasClient:
                 return self.get_submodel(str(keys[0]["value"]))
         raise LookupError(f"no submodel {id_short!r} on AAS {aas_id} (refs: "
                           f"{[ (k.get('value')) for r in resp.json().get('result', []) for k in (r.get('keys') or [])][:6]})")
+
+    def list_submodel_refs(self, aas_id: str) -> list[dict[str, Any]]:
+        """The submodel references of one AAS (``GET /shells/{id}/submodel-refs``)."""
+        refs_url = f"{self.base_url}/shells/{_b64url(aas_id)}/submodel-refs"
+        resp = self._session.get(refs_url, timeout=self.timeout)
+        resp.raise_for_status()
+        return list(resp.json().get("result", []))
+
+    def list_shells(self) -> list[dict[str, Any]]:
+        """All shell descriptors (``GET /shells``); used to derive the owning
+        shell of a managed AIMC instance from the registry itself."""
+        resp = self._session.get(f"{self.base_url}/shells", timeout=self.timeout)
+        resp.raise_for_status()
+        return list(resp.json().get("result", []))

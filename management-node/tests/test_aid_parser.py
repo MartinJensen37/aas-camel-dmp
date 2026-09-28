@@ -1,5 +1,5 @@
 """Tests for the AID parser (management_node.parsers.aid), which now returns the
-shared ``aas_model.MqttAssetInterfacesDescription`` pydantic model (ADR-016).
+shared ``aas_model.DmpAssetInterfacesDescription`` pydantic model (ADR-016).
 
 Uses the real AID submodel extracted from
 ``AASDescriptions/Resource/configs/syntegonStoppering.json``.
@@ -23,13 +23,15 @@ def submodel() -> dict:
 
 
 def _mqtt(model):
-    return model.interface_mqtt
+    return model.InterfaceTemplateForMQTT["interface_mqtt"]
 
 
 def test_parses_interfaces(submodel):
     model = aid.parse_aid(submodel)
-    assert model.interface_mqtt is not None
-    assert model.interface_rest is not None
+    assert model.InterfaceTemplateForMQTT["interface_mqtt"] is not None
+    # DMP v3 (ADR-022): the caller-facing REST interface is retired entirely —
+    # the AID models only the device's own communication
+    assert not hasattr(model, "interface_rest")
 
 
 def test_parses_endpoint_metadata(submodel):
@@ -61,7 +63,7 @@ def test_parses_actions_with_sync_flag_and_response(submodel):
     assert "Stoppering" in acts
     action = acts["Stoppering"]
     assert action.synchronous.value == "false"
-    assert action.key.value == "Stoppering"
+    # the affordance's name is its idShort (the dict key) — no legacy key child
 
     form = action.forms
     assert form.href.value == "/CMD/Stoppering"
@@ -73,17 +75,20 @@ def test_parses_actions_with_sync_flag_and_response(submodel):
     assert form.response.mqv_control_packet.value == "publish"
 
 
-def test_parses_rest_interface_with_method(submodel):
-    rest = aid.parse_aid(submodel).interface_rest
-    assert "Stoppering" in rest.InteractionMetadata.actions.property_name
-    form = rest.InteractionMetadata.actions.property_name["Stoppering"].forms
-    assert form.htv_methodName.value == "POST"
-    assert form.op.value == "invokeAction"
+def test_parses_halt_declared_response(submodel):
+    """Every delegated skill's command affordance declares its reply topic —
+    the correlated leg of the derived interaction."""
+    mqtt = _mqtt(aid.parse_aid(submodel))
+    acts = mqtt.InteractionMetadata.actions.property_name
+    for name in ("Halt", "Occupy", "Release", "Stoppering"):
+        form = acts[name].forms
+        assert form.response is not None, f"{name} must declare its response form"
+        assert form.response.href.value == f"/DATA/{name}"
 
 
 def test_accepts_json_string(submodel):
     model = aid.parse_aid(json.dumps(submodel))
-    assert model.interface_mqtt is not None
+    assert model.InterfaceTemplateForMQTT["interface_mqtt"] is not None
 
 
 def test_empty_input_produces_none():

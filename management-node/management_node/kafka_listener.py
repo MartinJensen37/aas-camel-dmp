@@ -5,8 +5,16 @@ Follows the ``kg-bridge`` Kafka conventions (SPEC §11.1):
 ``(aas-events|submodel-events)``), ``KAFKA_CONSUMER_GROUP``,
 ``KAFKA_AUTO_OFFSET_RESET`` (default ``earliest``).
 
-Subscribes to the topic regex, parses AAS/Submodel events and forwards only
-AIMC submodel create/update/delete events to the handler.
+Subscribes to the topic regex and forwards AIMC and AID submodel events.
+The latter invalidate cross-AAS endpoint dependencies.
+
+Delete semantics (T1.4): real BaSyx ``SM_DELETED`` events do not carry the
+deleted submodel's body, so the usual semantic-id discriminator cannot fire.
+Deletion is therefore recognized by event type plus a submodel id that matches
+a managed asset's AIMC/AID id (checked by the orchestrator's asset lookup).
+Commit-on-handler-failure: offsets are committed even when the handler raises;
+the orchestrator is idempotent and failures are logged, so at-most-redeploy is
+preferred over an endless poison-message loop.
 """
 
 from __future__ import annotations
@@ -19,11 +27,12 @@ from typing import Any, Callable
 from confluent_kafka import Consumer, KafkaError
 
 from .parsers.aimc import AIMC_SEMANTIC_ID
+from .submodel_locator import AID_SEMANTIC_ID
 
 logger = logging.getLogger(__name__)
 
-#: Event types that signal an AIMC content change.
-_CREATE_UPDATE = {"SM_CREATED", "SM_UPDATED", "SME_UPDATED", "SME_CREATED"}
+#: Event types that signal removal of a previously managed submodel.
+DELETE_EVENTS = frozenset({"SM_DELETED", "SME_DELETED"})
 
 
 @dataclass
@@ -31,10 +40,13 @@ class AimcEvent:
     event_type: str
     submodel_id: str
     payload: dict[str, Any] | None = None
+    #: The submodel semantic id carried by the event body, when present
+    #: (AIMC vs AID discriminator for dependency invalidation, T3.2).
+    semantic_id: str | None = None
 
     @property
     def deleted(self) -> bool:
-        return self.event_type == "SM_DELETED"
+        return self.event_type in DELETE_EVENTS
 
 
 def _extract_event(payload: dict) -> dict:
@@ -58,13 +70,29 @@ def _submodel_semantic_id(submodel: Any) -> str | None:
     return None
 
 
+def _is_submodel_events_topic(topic: str) -> bool:
+    """True for the ``submodel-events`` stream, tolerating namespace
+    separators (``x/submodel-events``, ``x.submodel-events``, bare) so
+    deployment-specific topic naming does not silently drop events."""
+    name = topic.lower().rstrip("/").rsplit("/", 1)[-1]
+    return name == "submodel-events" or name.endswith(".submodel-events")
+
+
 def is_aimc_event(payload: dict, topic: str) -> bool:
-    """Discriminator: submodel semantic id == AIMC 2.0 (SPEC §11.1)."""
-    if not topic.lower().endswith(("submodel-events", "/submodel-events", ".submodel-events")):
+    """Admit managed AIMC events and AID dependency changes (SPEC §11.1).
+
+    Delete events carry no body; they pass only if the event type signals a
+    deletion (the id is validated against managed assets downstream)."""
+    if not _is_submodel_events_topic(topic):
         return False
     event = _extract_event(payload)
     submodel = event.get("submodel")
-    return _submodel_semantic_id(submodel) == AIMC_SEMANTIC_ID
+    semantic = _submodel_semantic_id(submodel)
+    if semantic in (AIMC_SEMANTIC_ID, AID_SEMANTIC_ID):
+        return True
+    # SM_DELETED payloads have no submodel object — let the type decide; the
+    # orchestrator drops ids it cannot attribute to a managed asset.
+    return not isinstance(submodel, dict) and str(event.get("type", "")) in DELETE_EVENTS
 
 
 def to_aimc_event(payload: dict, topic: str) -> AimcEvent | None:
@@ -72,14 +100,26 @@ def to_aimc_event(payload: dict, topic: str) -> AimcEvent | None:
     event_type = str(event.get("type", ""))
     submodel_id = str(event.get("id", ""))
     submodel = event.get("submodel") if isinstance(event.get("submodel"), dict) else None
-    return AimcEvent(event_type=event_type, submodel_id=submodel_id, payload=submodel)
+    return AimcEvent(event_type=event_type, submodel_id=submodel_id, payload=submodel,
+                     semantic_id=_submodel_semantic_id(submodel))
+
+
+def anchor_topic_pattern(pattern: str) -> str:
+    """Anchors a Kafka topic regex for subscription, tolerating pre-anchored
+    input (T1.4): strips existing ``^``/``$`` anchors, then wraps exactly once."""
+    base = pattern.strip()
+    if base.startswith("^"):
+        base = base[1:]
+    if base.endswith("$"):
+        base = base[:-1]
+    return f"^{base}$"
 
 
 class AimcEventListener:
-    """Kafka consumer that calls ``handler(AimcEvent)`` for AIMC events.
+    """Kafka consumer that calls ``handler(AimcEvent)`` for AIMC/AID events.
 
-    Offsets are committed per message (at-least-once); the orchestrator is
-    idempotent so replayed events are harmless (SPEC §11.2/8).
+    Offsets are committed per message; handler failures are logged and the
+    offset still committed rather than retrying a poison message indefinitely.
     """
 
     def __init__(
@@ -104,9 +144,7 @@ class AimcEventListener:
         )
 
     def run_forever(self) -> None:
-        subscription = self._topic_pattern
-        if not subscription.startswith("^"):
-            subscription = f"^{subscription}$"
+        subscription = anchor_topic_pattern(self._topic_pattern)
         self._consumer.subscribe([subscription])
         logger.info("subscribed to Kafka topic regex: %s", subscription)
 
@@ -153,4 +191,5 @@ class AimcEventListener:
         try:
             self._handler(event)
         except Exception:
+            # commit happens upstream regardless: never wedge the consumer
             logger.exception("handler failed for AIMC event %s", event.submodel_id)

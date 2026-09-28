@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from management_node.descriptor import (
     JSONATA_TRANSFORMERS_FILE,
     LUA_TRANSFORMERS_FILE,
@@ -30,22 +32,23 @@ JSONATA_SID = "https://example.org/jsonata/expression/1/0"
 
 
 def _aid():
-    return build_aid(mqtt=mqtt_interface(BASE, properties={"StationState": "/DATA/State"}))
+    return build_aid(mqtt=mqtt_interface(BASE, properties={"StationState": "/DATA/State",
+                                                           "StationMode": "/DATA/Mode"}))
 
 
-def _ref():
+def _ref(data_point: str = "StationState"):
     return aimc_ref("a/submodels/AID", "interface_mqtt", "InteractionMetadata",
-                    "properties", "StationState")
+                    "properties", data_point)
 
 
 def _vars_ref():
     return aimc_ref("{aas_id}/submodels/Variables", "Out")
 
 
-def _mapping(id_short: str, sid: str, blob: str):
+def _mapping(id_short: str, sid: str, blob: str, data_point: str = "StationState"):
     return aimc_mapping(
         id_short=id_short,
-        sources=[aimc_source("StationState", _ref())],
+        sources=[aimc_source(data_point, _ref(data_point))],
         sinks=[aimc_sink("Out", _vars_ref())],
         transformation=blob,
         transformation_semantic_id=sid,
@@ -90,11 +93,28 @@ def test_aimc_default_semantic_id_uses_lua():
     assert xformers[0]["queryPath"].endswith(".lua")
 
 
+def test_jsonata_outside_private_namespace_uses_lua():
+    sid = "https://other.example.org/transforms/jsonata/expression/1/0"
+    descriptor = _compile(_mapping(
+        "StateMap", sid,
+        "function aimc_main(sources) return { x = sources.StationState } end",
+    ))
+
+    assert LUA_TRANSFORMERS_FILE in descriptor.files
+    assert JSONATA_TRANSFORMERS_FILE not in descriptor.files
+    xformers = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
+    assert xformers[0]["queryLanguage"] == "LUA"
+    assert xformers[0]["queryPath"].endswith(".lua")
+
+
 def test_mixed_engines_in_one_asset():
+    """Two mappings of one asset may each pick their engine; they consume
+    DISTINCT feeds (identical push feeds across mappings fail compilation —
+    the source-overlap guard, W2.7)."""
     descriptor = _compile(
         _mapping("LuaMap", AIMC_LUA_SID,
                  "function aimc_main(sources) return { x = sources.StationState } end"),
-        _mapping("FastMap", JSONATA_SID, '{"x": station_state}'),
+        _mapping("FastMap", JSONATA_SID, '{"x": station_mode}', "StationMode"),
     )
 
     lua = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
@@ -106,3 +126,15 @@ def test_mixed_engines_in_one_asset():
     assert len(routes) == 2
     by_id = {r["transformers"][0]: r for r in routes}
     assert set(by_id) == {lua[0]["uniqueId"], jx[0]["uniqueId"]}
+
+
+def test_identical_push_feeds_across_mappings_fail_compilation():
+    """Two mappings subscribing to the same broker+topic compile to
+    byte-identical consumer URIs (Camel refuses the second consumer) — the
+    overlap guard fails loudly and names both mappings + the fan-in remedy."""
+    with pytest.raises(ValueError, match="source-overlap"):
+        _compile(
+            _mapping("LuaMap", AIMC_LUA_SID,
+                     "function aimc_main(sources) return { x = sources.StationState } end"),
+            _mapping("FastMap", JSONATA_SID, '{"x": station_state}'),
+        )

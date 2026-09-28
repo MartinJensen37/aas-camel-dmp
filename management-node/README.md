@@ -22,19 +22,27 @@ Env vars (kg-bridge conventions, ADR-010): `KAFKA_BOOTSTRAP`,
 `KAFKA_TOPIC_PATTERN`, `KAFKA_CONSUMER_GROUP`, `KAFKA_AUTO_OFFSET_RESET`,
 plus `AAS_BASE_URL`, `DMP_CONFIG_ROOT`, `DMP_IMAGE`, `MANAGED_ASSETS_FILE`.
 
+Operation-delegation (DMP v3): the REST surface is derived by convention —
+`POST /operations/{aas_id_short}/{action}` (the action = the owning skill's
+idShort), carried in the bridge route's `triggerData`. Nothing configurable.
+Reply topics come from the DECLARED `forms.response.href` of the command
+affordance — no `/CMD/`→`/DATA/` rewriting anywhere.
+
 ## Structure (kept largely separated)
 
 ```
 management_node/
 ├── kafka_listener.py      # AAS eventing (Kafka only, ADR-010); AIMC discriminator
 ├── aas_client.py          # fetch submodels from the AAS REST API
+├── submodel_locator.py    # reference-anchored AID directory for cross-asset refs (ADR-019)
+├── endpoints.py           # shared <scheme>://host[:port][/path] endpoint parsing
 ├── parsers/
 │   ├── aid.py             # DEDICATED AID parser (no AIMC knowledge)
 │   └── aimc.py            # DEDICATED AIMC parser (no AID knowledge)
-├── resolver.py            # links AIMC Source/Sink refs -> AID endpoints (separate)
-├── descriptor.py          # compiles DMP config files + Lua blobs
-├── deploy.py              # docker container lifecycle per asset
-└── orchestrator.py        # idempotent, single-flight reconcile (entry: main.py)
+├── resolver.py            # links AIMC Source/Sink refs -> endpoints; anchor-first cross-asset (ADR-019)
+├── descriptor.py          # compiles DMP config files + Lua blobs (scoped ids, ADR-017)
+├── deploy.py              # docker container lifecycle per asset (hashed health ports)
+└── orchestrator.py        # idempotent reconcile off the Kafka thread (entry: main.py)
 ```
 
 The AID and AIMC parsers are self-contained and do not import each other;

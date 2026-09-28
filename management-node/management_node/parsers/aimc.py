@@ -15,6 +15,7 @@ from typing import Any
 
 from aas_model.submodel_templates import Aimc
 
+from ..resolver import JSONATA_SEMANTIC_NAMESPACE
 from .validate import validate_aimc
 
 logger = logging.getLogger(__name__)
@@ -32,11 +33,13 @@ ENGINE_JSONATA = "JSONATA"
 def transformation_engine(semantic_ids: list[str] | None) -> str:
     """Selects the transformation engine from the blob's semantic ids.
 
-    A semantic id containing ``jsonata`` selects the fast/simple JSONata engine;
-    anything else (including the AIMC 2.0 default Transformation semantic id)
-    selects the AIMC-compliant Lua engine."""
+    A semantic id starting with the private ``https://example.org/jsonata/``
+    namespace selects the fast/simple JSONata engine; anything else (including
+    the AIMC 2.0 default Transformation semantic id) selects the AIMC-compliant
+    Lua engine."""
     for sid in semantic_ids or []:
-        if "jsonata" in sid.lower():
+        # strict prefix on the documented private namespace (T3.3)
+        if sid.lower().startswith(JSONATA_SEMANTIC_NAMESPACE):
             return ENGINE_JSONATA
     return ENGINE_LUA
 

@@ -1,4 +1,4 @@
-"""Management node entry point (SPEC §11, ADR-013).
+"""Management node entry point (SPEC §11, ADR-013, ADR-021).
 
 Env vars (kg-bridge conventions, ADR-010):
   KAFKA_BOOTSTRAP          (default kafka:9092)
@@ -8,7 +8,8 @@ Env vars (kg-bridge conventions, ADR-010):
   AAS_BASE_URL             AAS submodel repository base URL (required)
   DMP_CONFIG_ROOT          where DMP config dirs are written (default ./dmp-config)
   DMP_IMAGE                DMP container image (default eclipsebasyx/databridge:1.0.0-SNAPSHOT)
-  MANAGED_ASSETS_FILE      JSON file mapping aas_id -> {aas_id_short, aid_id_short?, aimc_id_short?}
+  MANAGED_ASSETS_FILE      JSON managed set keyed by AIMC submodel instance id:
+                           { "<aimc_sm_id>": {"label"?: str, "local_aid_id"?: str} }
 """
 
 from __future__ import annotations
@@ -19,22 +20,27 @@ import os
 from pathlib import Path
 
 from .kafka_listener import AimcEventListener
-from .orchestrator import AssetRef, Orchestrator
+from .orchestrator import ManagedAimc, Orchestrator
 
 logger = logging.getLogger("management-node")
 
 
-def load_assets(path: str) -> dict[str, AssetRef]:
+def load_managed_aimcs(path: str) -> dict[str, ManagedAimc]:
+    """Loads the managed set keyed by AIMC SM instance id (ADR-021).
+
+    Container names, config dirs and health ports derive from the instance id
+    (via :func:`management_node.orchestrator.unit_name`); ownership of the AAS
+    and the local AID are derived at reconcile time."""
     raw = json.loads(Path(path).read_text())
-    assets: dict[str, AssetRef] = {}
-    for aas_id, ref in raw.items():
-        assets[aas_id] = AssetRef(
-            aas_id=aas_id,
-            aas_id_short=str(ref.get("aas_id_short", aas_id)),
-            aid_id_short=str(ref.get("aid_id_short", "AssetInterfacesDescription")),
-            aimc_id_short=str(ref.get("aimc_id_short", "AssetInterfacesMappingConfiguration")),
+    units: dict[str, ManagedAimc] = {}
+    for aimc_sm_id, cfg in raw.items():
+        cfg = cfg or {}
+        units[aimc_sm_id] = ManagedAimc(
+            aimc_sm_id=str(aimc_sm_id),
+            label=str(cfg["label"]) if cfg.get("label") else None,
+            local_aid_id=str(cfg["local_aid_id"]) if cfg.get("local_aid_id") else None,
         )
-    return assets
+    return units
 
 
 def main() -> None:
@@ -47,10 +53,12 @@ def main() -> None:
     if not aas_base_url:
         raise SystemExit("AAS_BASE_URL is required (AAS submodel repository base URL)")
 
-    assets_file = os.getenv("MANAGED_ASSETS_FILE")
-    if not assets_file:
-        raise SystemExit("MANAGED_ASSETS_FILE is required (JSON: aas_id -> asset ref)")
-    assets = load_assets(assets_file)
+    managed_file = os.getenv("MANAGED_ASSETS_FILE")
+    if not managed_file:
+        raise SystemExit(
+            "MANAGED_ASSETS_FILE is required "
+            "(JSON: AIMC SM instance id -> {label?, local_aid_id?})")
+    managed = load_managed_aimcs(managed_file)
 
     mqtt_broker = None
     if raw := os.getenv("DMP_MQTT_BROKER"):
@@ -60,10 +68,12 @@ def main() -> None:
     orchestrator = Orchestrator(
         aas_base_url=aas_base_url,
         config_root=os.getenv("DMP_CONFIG_ROOT", "./dmp-config"),
-        assets=assets,
+        managed_aimcs=managed,
         image=os.getenv("DMP_IMAGE", "eclipsebasyx/databridge:1.0.0-SNAPSHOT"),
         mqtt_broker=mqtt_broker,
     )
+
+    orchestrator.index_managed_references()
 
     listener = AimcEventListener(
         orchestrator.handle_event,
@@ -73,8 +83,12 @@ def main() -> None:
         auto_offset_reset=os.getenv("KAFKA_AUTO_OFFSET_RESET", "earliest"),
     )
 
-    logger.info("management node started: aas=%s assets=%d", aas_base_url, len(assets))
-    listener.run_forever()
+    logger.info("management node started: aas=%s managed AIMC units=%d",
+                aas_base_url, len(managed))
+    try:
+        listener.run_forever()
+    finally:
+        orchestrator.shutdown()
 
 
 if __name__ == "__main__":
