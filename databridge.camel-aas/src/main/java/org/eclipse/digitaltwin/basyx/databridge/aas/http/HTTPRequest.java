@@ -31,6 +31,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -45,14 +46,10 @@ import org.apache.http.util.EntityUtils;
 public class HTTPRequest {
 	
 	public static void patchRequest(String url, String content) throws IOException {
-		CloseableHttpClient client = HttpClientBuilder.create().build();
-		HttpPatch patchRequest = createPatchRequest(url, content);
-		
-        HttpResponse response = client.execute(patchRequest);
-
-        HttpEntity responseEntity = response.getEntity();
-
-        EntityUtils.consume(responseEntity);
+		try (CloseableHttpClient client = HttpClientBuilder.create().build();
+			 CloseableHttpResponse response = client.execute(createPatchRequest(url, content))) {
+			ensureSuccessful(response);
+		}
 	}
 
 	private static HttpPatch createPatchRequest(String url, String content) throws UnsupportedEncodingException {
@@ -65,14 +62,10 @@ public class HTTPRequest {
 	}
 	
 	public static void putRequest(String url, String content) throws IOException {
-		CloseableHttpClient client = HttpClientBuilder.create().build();
-		HttpPut httpPutRequest = createPutRequest(url, content);
-		
-        HttpResponse response = client.execute(httpPutRequest);
-
-        HttpEntity responseEntity = response.getEntity();
-
-        EntityUtils.consume(responseEntity);
+		try (CloseableHttpClient client = HttpClientBuilder.create().build();
+			 CloseableHttpResponse response = client.execute(createPutRequest(url, content))) {
+			ensureSuccessful(response);
+		}
 	}
 
 	private static HttpPut createPutRequest(String url, String content) throws UnsupportedEncodingException {
@@ -82,6 +75,16 @@ public class HTTPRequest {
 		putRequest.setEntity(new StringEntity(content));
 
 		return putRequest;
+	}
+
+	private static void ensureSuccessful(HttpResponse response) throws IOException {
+		int status = response.getStatusLine().getStatusCode();
+		HttpEntity entity = response.getEntity();
+		String detail = entity == null ? "" : EntityUtils.toString(entity);
+		if (status < 200 || status >= 300) {
+			throw new IOException("AAS write failed with HTTP " + status
+					+ (detail.isBlank() ? "" : ": " + detail));
+		}
 	}
 
 }

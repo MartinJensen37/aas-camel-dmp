@@ -38,6 +38,7 @@ public class AASPollingConsumerConfiguration extends DataSourceConfiguration {
 	private String idShortPath;
 	private String submodelEndpoint;
 	private String api;
+	private String elementType;
 	
 	public AASPollingConsumerConfiguration(String uniqueId, String serverUrl, int serverPort, String idShortPath, String submodelEndpoint, String api) {
 		super(uniqueId, serverUrl, serverPort);
@@ -69,6 +70,14 @@ public class AASPollingConsumerConfiguration extends DataSourceConfiguration {
 	public void setApi(String api) {
 		this.api = api;
 	}
+
+	public String getElementType() {
+		return elementType;
+	}
+
+	public void setElementType(String elementType) {
+		this.elementType = elementType;
+	}
 	
 	@Override
 	public String getConnectionURI() {
@@ -80,6 +89,9 @@ public class AASPollingConsumerConfiguration extends DataSourceConfiguration {
 		endpointDefinition.append(this.idShortPath);
 		endpointDefinition.append("&api=");
 		endpointDefinition.append(getApiIfConfigured());
+		if (elementType != null && !elementType.isBlank()) {
+			endpointDefinition.append("&elementType=").append(elementType);
+		}
 		
 		return endpointDefinition.toString();
 	}

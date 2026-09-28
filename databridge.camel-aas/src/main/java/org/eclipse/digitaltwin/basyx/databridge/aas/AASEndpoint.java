@@ -71,7 +71,7 @@ public class AASEndpoint extends DefaultEndpoint {
 	private String propertyPath;
 
 	@UriParam(defaultValue = "BaSyx")
-	private ApiType api;
+	private ApiType api = ApiType.BASYX;
 
 	/**
 	 * Optional JSON field to extract from the message body before writing
@@ -79,6 +79,10 @@ public class AASEndpoint extends DefaultEndpoint {
 	 */
 	@UriParam(defaultValue = "")
 	private String valuePath;
+
+	/** Resolved AAS key type, used to select generic element reads. */
+	@UriParam(defaultValue = "Property")
+	private String elementType = "Property";
 
 	private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER =
 			new com.fasterxml.jackson.databind.ObjectMapper();
@@ -124,6 +128,14 @@ public class AASEndpoint extends DefaultEndpoint {
 		this.propertyPath = propertyPath;
 	}
 
+	public String getElementType() {
+		return elementType;
+	}
+
+	public void setElementType(String elementType) {
+		this.elementType = elementType;
+	}
+
 	/**
 	 * The Api type for this endpoint
 	 * 
@@ -144,13 +156,22 @@ public class AASEndpoint extends DefaultEndpoint {
 
 	public void setPropertyValue(Object content) throws IOException {
 		Object value = extractValuePath(content);
+		logger.debug("AAS write {} <- {} ({})", propertyPath, value,
+				value == null ? "null" : value.getClass().getSimpleName());
 		if (api.equals(ApiType.BASYX)) {
 			setPropertyValueUsingBaSyxAPI(value);
 		} else {
-			setPropertyValueUsingDotAasV3Api(AASComponentUtil.wrapContent(value.toString()));
+			// the DotAasV3 $value surface takes the JSON-encoded literal the
+			// transformer chains emit (quoted scalars, object/array literals
+			// wrapped as JSON strings) — the legacy wrapContent contract.
+			// JAVA COLLECTIONS need the Jackson encoding: their toString() is
+			// the Java format, whose naive wrap is INVALID JSON that the
+			// server truncates (e.g. the occupation queue leaf). String
+			// values keep the legacy wrap byte-for-byte (the example specs).
+			setPropertyValueUsingDotAasV3Api(MAPPER.writeValueAsString(value));
 		}
 
-		logger.info("Transferred message={}", value.toString());
+		logger.info("Transferred message={}", value);
 	}
 
 	/**
@@ -170,10 +191,14 @@ public class AASEndpoint extends DefaultEndpoint {
 			return content;
 		}
 		Object value = field.get();
-		if (value instanceof java.util.Map || value instanceof java.util.List) {
-			return MAPPER.writeValueAsString(value);
+		if (value == org.eclipse.digitaltwin.basyx.databridge.core.util.JsonPointer.JSON_NULL) {
+			// present-but-null leaf: write an explicit JSON null (T1.12)
+			return null;
 		}
-		return String.valueOf(value);
+		// collections are returned as the JAVA OBJECT so the DotAasV3 writer
+		// can JSON-string-encode them properly (their toString()/naive wrap
+		// is invalid JSON the server truncates — e.g. the occupation queue)
+		return value;
 	}
 
 	public String getValuePath() {
@@ -200,7 +225,8 @@ public class AASEndpoint extends DefaultEndpoint {
 
 	private void setPropertyValueUsingBaSyxAPI(Object messageBody) throws IOException {
 		if (!connectedDataElement.getModelType().equals(KeyElements.PROPERTY.getStandardizedLiteral())) {
-			HTTPRequest.putRequest(getFullProxyUrl() + BASYX_API_SUFFIX, messageBody.toString());
+			HTTPRequest.putRequest(getFullProxyUrl() + BASYX_API_SUFFIX,
+					messageBody == null ? "null" : MAPPER.writeValueAsString(messageBody));
 
 			return;
 		}
@@ -231,6 +257,9 @@ public class AASEndpoint extends DefaultEndpoint {
 	}
 
 	private Object getContent(Object messageBody, ValueType propertyValueType) {
+		if (messageBody == null) {
+			return null;
+		}
 		if (propertyValueType.equals(ValueType.String))
 			return removeQuotesFromString(messageBody.toString());
 
