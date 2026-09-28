@@ -1,8 +1,14 @@
 [
-	{
-		"datasource": "property1",
-		"transformers": ["dataValueToJson", "jsonataExtractValue"],
-		"datasinks": ["ConnectedSubmodel/ConnectedPropertyA"],
-		"trigger": "event"
-	}
+ {
+  "datasources": [
+   "property1"
+  ],
+  "transformers": [
+   "jsonataExtractValue"
+  ],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedPropertyA"
+  ],
+  "trigger": "execution-policy"
+ }
 ]

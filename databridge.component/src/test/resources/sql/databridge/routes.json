@@ -1,16 +1,14 @@
 [
-	{
-		"datasource": "sqlsource",
-		"transformers": [
-			"dataValueToJson",
-			"jsonataA"
-		],
-		"datasinks": [
-			"value"
-		],
-		"trigger": "timer",
-		"triggerData": {
-			"timerName": "timer1"
-		}
-	}
+ {
+  "datasources": [
+   "sqlsource"
+  ],
+  "transformers": [
+   "jsonataA"
+  ],
+  "datasinks": [
+   "value"
+  ],
+  "trigger": "execution-policy"
+ }
 ]

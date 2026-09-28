@@ -91,8 +91,8 @@ public class RoutesConfigurationTestEnvironmentVariables {
 				+ "	}\r\n"
 				+ "]");
 
-		variables.put("jsonataA.json", "$sum(Account.Order.Product.(Price * Quantity))");
-		variables.put("jsonataB.json", "Account.Order[0].Product[0].ProductID");
+		variables.put("jsonataA.json", "$sum(property1.Account.Order.Product.(Price * Quantity))");
+		variables.put("jsonataB.json", "property2.Account.Order[0].Product[0].ProductID");
 	}
 
 	private static void putAasServer(Map<String, String> variables) {
@@ -113,16 +113,16 @@ public class RoutesConfigurationTestEnvironmentVariables {
 	private static void putRoutes(Map<String, String> variables) {
 		variables.put("routes.json", "[\r\n"
 				+ "	{\r\n"
-				+ "		\"datasource\": \"property1\",\r\n"
+				+ "		\"datasources\": [\"property1\"],\r\n"
 				+ "		\"transformers\": [\"jsonataA\"],\r\n"
 				+ "		\"datasinks\": [\"ConnectedSubmodel/ConnectedPropertyA\"],\r\n"
-				+ "		\"trigger\": \"event\"\r\n"
+				+ "		\"trigger\": \"execution-policy\"\r\n"
 				+ "	},\r\n"
 				+ "	{\r\n"
-				+ "		\"datasource\": \"property2\",\r\n"
+				+ "		\"datasources\": [\"property2\"],\r\n"
 				+ "		\"transformers\": [\"jsonataB\"],\r\n"
 				+ "		\"datasinks\": [\"ConnectedSubmodel/ConnectedPropertyB\"],\r\n"
-				+ "		\"trigger\": \"event\"\r\n"
+				+ "		\"trigger\": \"execution-policy\"\r\n"
 				+ "	}\r\n"
 				+ "]");
 	}

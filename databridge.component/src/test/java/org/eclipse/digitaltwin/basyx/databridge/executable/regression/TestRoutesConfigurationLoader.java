@@ -27,7 +27,6 @@ package org.eclipse.digitaltwin.basyx.databridge.executable.regression;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Collections;
 import java.util.Map;
 
 import org.eclipse.digitaltwin.basyx.databridge.activemq.configuration.ActiveMQConsumerConfiguration;
@@ -62,8 +61,8 @@ public class TestRoutesConfigurationLoader {
 	}
 
 	@AfterClass
-	public static void resetEnvironmentVariables() throws ClassNotFoundException, IllegalArgumentException, IllegalAccessException, NoSuchFieldException, SecurityException {
-		EnvironmentVariableHelper.setEnvironmentVariablesForTesting(Collections.emptyMap());
+	public static void resetEnvironmentVariables() {
+		EnvironmentVariableHelper.resetEnvironmentVariables();
 	}
 
 	private void assertRoutesConfigurationIsCorrect(RoutesConfiguration configuration) {

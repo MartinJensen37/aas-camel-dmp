@@ -44,7 +44,7 @@ import org.junit.BeforeClass;
 public class TestDataBridgeHttpProducer extends DataBridgeSuiteHttpProducer{
 	
 	private static final String AAS_AGGREGATOR_URL = "http://localhost:4001";
-	private static final String END_POINT_URL = "http://localhost:8091";
+	private static final String END_POINT_URL = "http://localhost:8091/data/machine/pressure";
 	private static final String HOST = "localhost";
 	private static AASServerComponent aasServer;
 	private static BaSyxContextConfiguration aasContextConfig;

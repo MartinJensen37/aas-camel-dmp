@@ -1,11 +1,14 @@
 [
-	{
-		"datasource": "exampleAAS1",
-		"transformers": ["jsonataA"],
-		"datasinks":["Server1"],
-		"trigger": "timer",
-		"triggerData": {
-			"timerName": "timer1"
-		}
-	}
+ {
+  "datasources": [
+   "exampleAAS1"
+  ],
+  "transformers": [
+   "jsonataA"
+  ],
+  "datasinks": [
+   "Server1"
+  ],
+  "trigger": "execution-policy"
+ }
 ]

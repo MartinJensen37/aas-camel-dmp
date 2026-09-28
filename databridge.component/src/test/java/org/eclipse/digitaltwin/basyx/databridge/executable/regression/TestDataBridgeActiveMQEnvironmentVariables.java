@@ -25,7 +25,6 @@
 package org.eclipse.digitaltwin.basyx.databridge.executable.regression;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Map;
 
 import jakarta.jms.Connection;
@@ -76,7 +75,7 @@ public class TestDataBridgeActiveMQEnvironmentVariables extends DataBridgeSuiteA
 		}
 		
 		stopDataBridgeComponent();
-		EnvironmentVariableHelper.setEnvironmentVariablesForTesting(Collections.emptyMap());
+		EnvironmentVariableHelper.resetEnvironmentVariables();
 	}
 	
 	@Override

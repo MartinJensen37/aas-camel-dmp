@@ -19,7 +19,25 @@
 
 		<basyx.databridge.executable>org.eclipse.digitaltwin.basyx.databridge.component.DataBridgeExecutable</basyx.databridge.executable>
 		<docker.image.name>databridge</docker.image.name>
+		<!-- caller may override with -DargLine=... (e.g. test health-port offsets) -->
+		<argLine></argLine>
 	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<!-- Keep BaSyx's spring-security off the 5.5.x line (→ spring-core
+			     5.3.11, which shadows camel-jms's spring 7.0.8 and breaks
+			     FixedBackOff etc.). 6.5.x is spring-6-based; camel 7.0.8
+			     supersedes its managed spring-core cleanly. -->
+			<dependency>
+				<groupId>org.springframework.security</groupId>
+				<artifactId>spring-security-bom</artifactId>
+				<version>6.5.5</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<!-- Define additional plugins that are not included by default -->
 	<!-- Plugin configuration is done in parent project(s) -->
@@ -68,7 +86,10 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.2.5</version>
 				<configuration>
-					<argLine>--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED</argLine>
+					<!-- @{argLine} forwards a caller-provided -DargLine (e.g. test
+					     health-port offsets); the add-opens flags keep the Java 17
+					     module system from blocking the broker/AAS server libs -->
+					<argLine>${argLine} --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED</argLine>
 				</configuration>
 			</plugin>
 		</plugins>
@@ -205,7 +226,11 @@
 			<version>2.14.1</version>
 		</dependency>
 
-		<!-- BaSyx SDK -->
+		<!-- BaSyx SDK. Keep its spring-security (the embedded AAS server wires
+		     spring-security-web's HttpFirewall at startup) but stop version
+		     drift: BaSyx 1.2.0 pins spring-security 5.5.3 → spring-core
+		     5.3.11, which shadows camel-jms's spring 7.0.8 and breaks
+		     FixedBackOff etc. — aligned via the spring-security-bom above. -->
 		<dependency>
 			<groupId>org.eclipse.basyx</groupId>
 			<artifactId>basyx.sdk</artifactId>
@@ -230,6 +255,10 @@
 					<groupId>org.eclipse.milo</groupId>
 					<artifactId>*</artifactId>
 				</exclusion>
+				<exclusion>
+					<groupId>org.springframework.security</groupId>
+					<artifactId>*</artifactId>
+				</exclusion>
 			</exclusions>
 		</dependency>
 
@@ -244,6 +273,15 @@
 			<groupId>org.eclipse.basyx</groupId>
 			<artifactId>basyx.components.AASServer</artifactId>
 			<version>1.2.0</version>
+			<exclusions>
+				<!-- Tests use the InMemory backend only; the MongoDB persistence
+				     driver drags spring-data-mongodb (spring-core 5.3.11), which
+				     shadows camel's spring 7.0.8 (FixedBackOff NoSuchMethodError). -->
+				<exclusion>
+					<groupId>org.springframework.data</groupId>
+					<artifactId>spring-data-mongodb</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 		<!-- JUnit 4 for running JUnit tests -->
@@ -254,11 +292,30 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- ActiveMQ broker (matches activemq-client-jakarta pulled by camel-activemq 4.x) -->
+		<!-- ActiveMQ classic broker is javax-compiled internally (its region
+		     broker wires javax.jms types); routes/tests use the jakarta client
+		     (activemq-client-jakarta via camel-activemq). The broker documents
+		     this dual-JMS-API setup: keep javax.jms-api test-scoped so the
+		     BrokerService starts. -->
 		<dependency>
 			<groupId>org.apache.activemq</groupId>
 			<artifactId>activemq-broker</artifactId>
 			<version>5.19.9</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.jms</groupId>
+			<artifactId>javax.jms-api</artifactId>
+			<version>2.0.1</version>
+			<scope>test</scope>
+		</dependency>
+		<!-- camel-jms's pooled connection-factory implementation (the routes
+		     configure pooled factories; without it PooledConnectionFactory
+		     fails to instantiate and every jms route errors at start). -->
+		<dependency>
+			<groupId>org.messaginghub</groupId>
+			<artifactId>pooled-jms</artifactId>
+			<version>3.1.7</version>
 			<scope>test</scope>
 		</dependency>
 

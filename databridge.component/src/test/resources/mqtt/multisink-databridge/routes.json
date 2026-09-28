@@ -1,13 +1,24 @@
 [
-	{
-		"datasource": "property1",
-		"transformers": ["jsonataA", "jsonataB"],
-		"datasinks": ["ConnectedSubmodel/ConnectedPropertyA", "ConnectedSubmodel/ConnectedPropertyB"],
-		"datasinkMappingConfiguration":
-		{
-			"ConnectedSubmodel/ConnectedPropertyA": ["jsonataA"],
-			"ConnectedSubmodel/ConnectedPropertyB": ["jsonataB"]
-		},
-		"trigger": "event"
-	}
+ {
+  "datasources": [
+   "property1"
+  ],
+  "transformers": [
+   "jsonataA",
+   "jsonataB"
+  ],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedPropertyA",
+   "ConnectedSubmodel/ConnectedPropertyB"
+  ],
+  "datasinkMappingConfiguration": {
+   "ConnectedSubmodel/ConnectedPropertyA": [
+    "jsonataA"
+   ],
+   "ConnectedSubmodel/ConnectedPropertyB": [
+    "jsonataB"
+   ]
+  },
+  "trigger": "execution-policy"
+ }
 ]

@@ -37,15 +37,49 @@ import java.util.Map;
  *
  */
 public class EnvironmentVariableHelper {
+	private static Map<String, String> originalEnvironment;
+
+	/**
+	 * Overwrites the given environment variables IN the process environment
+	 * (merge semantics — never clears the whole map, so sibling tests in the
+	 * same JVM keep a functional environment, e.g. PATH).
+	 */
 	public static void setEnvironmentVariablesForTesting(Map<String, String> newenv) {
 		try {
 			Class<?> processEnvironmentClass = getProcessEnvironmentClass();
 			Field theEnvironment = getAccessibleField(processEnvironmentClass, "theEnvironment");
-			setNewEnvironmentVariables(theEnvironment, newenv);
+			setNewEnvironmentVariables(theEnvironment, newenv, false);
 			Field theCaseInsensitiveEnvironmentField = getAccessibleField(processEnvironmentClass, "theCaseInsensitiveEnvironment");
-			setNewEnvironmentVariables(theCaseInsensitiveEnvironmentField, newenv);
+			setNewEnvironmentVariables(theCaseInsensitiveEnvironmentField, newenv, false);
 		} catch (NoSuchFieldException e) {
 			setVariableToUnmodifiableMap(newenv);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	/**
+	 * Restores the process environment captured before the first mutation, so
+	 * test classes that manipulate environment variables do not leak state
+	 * into later suites of the same JVM run.
+	 */
+	public static void resetEnvironmentVariables() {
+		if (originalEnvironment == null) {
+			return;
+		}
+		try {
+			Class<?> processEnvironmentClass = getProcessEnvironmentClass();
+			try {
+				setNewEnvironmentVariables(getAccessibleField(processEnvironmentClass, "theEnvironment"), originalEnvironment, true);
+			} catch (NoSuchFieldException e) {
+				// theEnvironment absent (or a non-HotSpot layout): fall through
+				// to the UnmodifiableMap fallback below
+			}
+			try {
+				setNewEnvironmentVariables(getAccessibleField(processEnvironmentClass, "theCaseInsensitiveEnvironment"), originalEnvironment, true);
+			} catch (NoSuchFieldException e) {
+				// Windows-only field — absent on Linux
+			}
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
@@ -62,11 +96,18 @@ public class EnvironmentVariableHelper {
 		return theEnvironmentField;
 	}
 
-	private static void setNewEnvironmentVariables(Field field, Map<String, String> newenv) throws IllegalArgumentException, IllegalAccessException {
+	private static void setNewEnvironmentVariables(Field field, Map<String, String> newenv, boolean replace) throws IllegalArgumentException, IllegalAccessException {
 		@SuppressWarnings("unchecked")
 		Map<String, String> env = (Map<String, String>) field.get(null);
-		env.clear();
-		env.putAll(newenv);
+		if (originalEnvironment == null) {
+			originalEnvironment = new java.util.LinkedHashMap<>(env);
+		}
+		if (replace) {
+			env.clear();
+			env.putAll(newenv);
+		} else {
+			env.putAll(newenv);
+		}
 	}
 
 	private static void setVariableToUnmodifiableMap(Map<String, String> newenv) {
@@ -80,7 +121,9 @@ public class EnvironmentVariableHelper {
 					Object obj = field.get(currentEnvironmentVariables);
 					@SuppressWarnings("unchecked")
 					Map<String, String> map = (Map<String, String>) obj;
-					map.clear();
+					if (originalEnvironment == null) {
+						originalEnvironment = new java.util.LinkedHashMap<>(map);
+					}
 					map.putAll(newenv);
 				}
 			}

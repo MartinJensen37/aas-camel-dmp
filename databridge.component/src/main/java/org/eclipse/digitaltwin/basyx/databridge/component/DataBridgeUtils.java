@@ -96,7 +96,9 @@ public class DataBridgeUtils {
 			logger.info("Instantiated {}", configFactory.getClass().toString());
 		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
 				| InvocationTargetException e) {
-			throw new RuntimeException();
+			// keep the cause visible: a bare RuntimeException here cost a
+			// debugging session (config-load errors were invisible)
+			throw new RuntimeException("Failed to load configurations from " + path, e);
 		}
 
 		return listConfig;

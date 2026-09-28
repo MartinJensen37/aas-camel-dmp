@@ -36,25 +36,35 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
 import org.eclipse.digitaltwin.basyx.databridge.core.component.DataBridgeComponent;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.health.utility.HealthCheckUtils;
 import org.eclipse.digitaltwin.basyx.databridge.lua.configuration.factory.LuaDefaultConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.timer.configuration.factory.TimerDefaultConfigurationFactory;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
  * DMP smoke test (M2): boots the real {@link DataBridgeComponent} (the same
- * runtime as {@code DataBridgeExecutable}) with a {@code timer -> lua -> sink}
- * route, configured through the standard JSON config files, and verifies the
- * AIMC Lua blob executes and its output reaches the datasink.
+ * runtime as {@code DataBridgeExecutable}) with a {@code sync-poll -> lua ->
+ * sink} route (fixed execution semantic, decision 2026-09-15: the sync
+ * source is polled at its declared interval and every poll tick evaluates
+ * the mapping), configured through the standard JSON config files, and
+ * verifies the AIMC Lua blob executes and its output reaches the datasink.
  */
-public class SmokeTestLuaDmpRoute {
+public class SmokeTestLuaDmpRouteTest {
 
 	/** Free port so the health endpoint does not clash with other services. */
-	private static final String HEALTH_PORT = "18085";
+	private static final String HEALTH_PORT = freePort();
+
+	private static String freePort() {
+		try (java.net.ServerSocket socket = new java.net.ServerSocket(0)) {
+			return String.valueOf(socket.getLocalPort());
+		} catch (java.io.IOException e) {
+			return "18085";
+		}
+	}
 
 	@Rule
 	public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -75,10 +85,6 @@ public class SmokeTestLuaDmpRoute {
 					path(configDir, "routes.json"), loader);
 			configuration.addRoutes(routesFactory.create());
 
-			TimerDefaultConfigurationFactory timerFactory = new TimerDefaultConfigurationFactory(
-					path(configDir, "timerconsumer.json"), loader);
-			configuration.addDatasources(timerFactory.create());
-
 			LuaDefaultConfigurationFactory luaFactory = new LuaDefaultConfigurationFactory(
 					path(configDir, "luatransformers.json"), loader);
 			configuration.addTransformers(luaFactory.create());
@@ -86,6 +92,19 @@ public class SmokeTestLuaDmpRoute {
 			CaptureDataSinkDefaultConfigurationFactory sinkFactory = new CaptureDataSinkDefaultConfigurationFactory(
 					path(configDir, "capture.datasink.json"), loader);
 			configuration.addDatasinks(sinkFactory.create());
+
+			// the sync source: polled every 1000 ms (the evaluation driver);
+			// a producer route feeds its seda queue below
+			DataSourceConfiguration tickSource = new DataSourceConfiguration("tickSource", null, 0) {
+				@Override
+				public String getConnectionURI() {
+					return "seda:smokeTick";
+				}
+			};
+			tickSource.setSourceId("body");
+			tickSource.setDelivery("sync");
+			tickSource.setPollingIntervalMs(1000);
+			configuration.addDatasources(List.of(tickSource));
 
 			ExposedDataBridgeComponent updater = new ExposedDataBridgeComponent(configuration);
 
@@ -98,11 +117,15 @@ public class SmokeTestLuaDmpRoute {
 				public void configure() throws Exception {
 					from("direct:luaCapture").process(exchange -> captured
 							.add(exchange.getMessage().getBody(String.class)));
+					// feeds the sync source's seda queue
+					from("timer:smokeFeed?period=200")
+							.setBody(constant("{\"value\":1}"))
+							.to("seda:smokeTick");
 				}
 			});
 
 			try {
-				// timer period is 1000 ms; wait for a few firing cycles
+				// the sync poll interval is 1000 ms; wait for a few cycles
 				Thread.sleep(5000);
 			} finally {
 				updater.stopComponent();
@@ -118,23 +141,13 @@ public class SmokeTestLuaDmpRoute {
 	}
 
 	private void writeConfigFiles(Path configDir) throws Exception {
-		write(configDir, "timerconsumer.json", """
-				[
-				  {
-				    "uniqueId": "timer1",
-				    "fixedRate": true,
-				    "delay": 1000,
-				    "period": 1000
-				  }
-				]
-				""");
 		write(configDir, "routes.json", """
 				[
 				  {
-				    "datasource": "timer1",
+				    "datasources": ["tickSource"],
 				    "transformers": ["luaTransformer1"],
 				    "datasinks": ["captureSink"],
-				    "trigger": "event"
+				    "trigger": "execution-policy"
 				  }
 				]
 				""");
