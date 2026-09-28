@@ -40,6 +40,7 @@ public class HttpProducerConfiguration extends DataSinkConfiguration{
 	private String scheme;
 	private String serverUrl;
 	private String path;
+	private String query;
 	private int port;
 	
 	public HttpProducerConfiguration() {}
@@ -76,6 +77,14 @@ public class HttpProducerConfiguration extends DataSinkConfiguration{
 		this.path = path;
 	}
 
+	public String getQuery() {
+		return query;
+	}
+
+	public void setQuery(String query) {
+		this.query = query;
+	}
+
 	public int getPort() {
 		return port;
 	}
@@ -92,6 +101,9 @@ public class HttpProducerConfiguration extends DataSinkConfiguration{
 		uriBuilder.setHost(getServerUrl());
 		uriBuilder.setPort(getPort());
 		uriBuilder.setPath(getPath());
+		if (query != null && !query.isBlank()) {
+			uriBuilder.setCustomQuery(query);
+		}
 		
 		return buildConnectionUri(uriBuilder);
 	}
