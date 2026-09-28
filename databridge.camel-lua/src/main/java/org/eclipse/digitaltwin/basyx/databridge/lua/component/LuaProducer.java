@@ -25,6 +25,7 @@
 package org.eclipse.digitaltwin.basyx.databridge.lua.component;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.support.DefaultProducer;
@@ -120,6 +121,11 @@ public class LuaProducer extends DefaultProducer {
 		Object javaResult = LuaJsonCodec.fromLua(result);
 		setBody(exchange, javaResult);
 
+		LOGGER.debug("lua {}: input-keys={} sourceKeys={} result={}",
+				endpoint.getScriptPath(),
+				body == null ? "null" : (body instanceof Map<?, ?> m ? m.keySet() : body.getClass().getSimpleName()),
+				endpoint.getSourceKeys(), javaResult);
+
 		LOGGER.debug("Lua transformation '{}' applied to exchange {}", endpoint.getScriptPath(), exchange.getExchangeId());
 	}
 
@@ -160,9 +166,18 @@ public class LuaProducer extends DefaultProducer {
 		if (parts.length == 1) {
 			// single SourceId: the whole payload IS that source's data message
 			// (AIMC contract: sources[SourceId] = the data from that source).
-			// A valuePath (fine resolution, SPEC §6.5) disassembles the payload
-			// into exactly the leaf the mapping needs.
-			sources.set(parts[0].trim(), LuaJsonCodec.toLua(disassemble(body)));
+			// The execution-policy merge envelope keys the payload by the
+			// SourceId — unwrap exactly that level (a legacy single-source
+			// body that is not the envelope passes through unchanged).
+			String key = parts[0].trim();
+			Object payload = body;
+			if (body instanceof Map<?, ?> map && map.size() == 1
+					&& map.containsKey(key)) {
+				payload = map.get(key);
+			}
+			// A valuePath (fine resolution, SPEC §6.5) disassembles the
+			// payload into exactly the leaf the mapping needs.
+			sources.set(key, LuaJsonCodec.toLua(disassemble(payload)));
 			return sources;
 		}
 		// comma-separated list: extract each key from the payload object
@@ -193,7 +208,10 @@ public class LuaProducer extends DefaultProducer {
 			throw new IllegalArgumentException("Lua source valuePath '" + pointer
 					+ "' does not resolve in the incoming payload for script '" + endpoint.getScriptPath() + "'");
 		}
-		return leaf.get();
+		// a legit JSON-null leaf delivers a Java null under the SourceId;
+		// only a MISSING path is a route error (SPEC §8.4 #8, T1.12)
+		Object value = leaf.get();
+		return value == org.eclipse.digitaltwin.basyx.databridge.core.util.JsonPointer.JSON_NULL ? null : value;
 	}
 
 	private void setBody(Exchange exchange, Object value) throws IOException {

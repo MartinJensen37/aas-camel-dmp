@@ -71,7 +71,8 @@ class LuaProducerCamelTest extends CamelTestSupport {
 		template.sendBody("direct:start", "{\"a\": 5, \"b\": 2}");
 		String result = getMockEndpoint("mock:result").getExchanges().get(0).getMessage().getBody(String.class);
 
-		assertEquals("{\"sum\":7.0,\"product\":10.0}", result);
+		// integral results are serialized as integers, not 7.0/10.0
+		assertEquals("{\"sum\":7,\"product\":10}", result);
 	}
 
 	@Test

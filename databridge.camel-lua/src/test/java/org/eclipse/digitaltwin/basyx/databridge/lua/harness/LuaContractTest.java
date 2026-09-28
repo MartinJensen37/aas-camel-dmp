@@ -25,6 +25,7 @@
 package org.eclipse.digitaltwin.basyx.databridge.lua.harness;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -83,8 +85,9 @@ class LuaContractTest {
 		assertTrue(result instanceof java.util.Map, "result must be a map");
 		@SuppressWarnings("unchecked")
 		java.util.Map<String, Object> map = (java.util.Map<String, Object>) result;
-		assertEquals(7.0, map.get("sum"));
-		assertEquals(12.0, map.get("product"));
+		// integral results come back as Long (see codecKeepsIntegralNumbersIntegral)
+		assertEquals(7L, map.get("sum"));
+		assertEquals(12L, map.get("product"));
 	}
 
 	@Test
@@ -94,8 +97,8 @@ class LuaContractTest {
 
 		@SuppressWarnings("unchecked")
 		java.util.Map<String, Object> map = (java.util.Map<String, Object>) result;
-		assertEquals(5.0, map.get("hypot"));
-		assertEquals(3.0, map.get("abs"));
+		assertEquals(5L, map.get("hypot"));
+		assertEquals(3L, map.get("abs"));
 		assertEquals("(3.0, 4.0)", map.get("label"));
 	}
 
@@ -106,9 +109,63 @@ class LuaContractTest {
 
 		@SuppressWarnings("unchecked")
 		java.util.Map<String, Object> map = (java.util.Map<String, Object>) result;
-		assertEquals("{\"a\":4.0,\"b\":6.0}", map.get("encoded"));
+		// json.encode renders integral numbers without a decimal tail
+		assertEquals("{\"a\":4,\"b\":6}", map.get("encoded"));
 		assertEquals("a,b", map.get("keys"));
 		assertEquals("AIMC", map.get("upper"));
+	}
+
+	@Test
+	void jsonCodecPreservesNullAndEmptyContainerShapes() throws IOException {
+		Object result = LuaHarness.run(
+				"function aimc_main(sources)\n"
+						+ " local v = json.decode('{\"n\":null,\"a\":[],\"o\":{}}')\n"
+						+ " return { n = v.n, a = v.a, o = v.o }\n"
+						+ "end\n",
+				"@shape.lua", java.util.Map.of(), TEST_TIMEOUT_SECONDS);
+
+		@SuppressWarnings("unchecked")
+		java.util.Map<String, Object> map = (java.util.Map<String, Object>) result;
+		assertTrue(map.containsKey("n"));
+		assertEquals(null, map.get("n"));
+		assertEquals(java.util.List.of(), map.get("a"));
+		assertEquals(java.util.Map.of(), map.get("o"));
+	}
+
+	@Test
+	void codecRejectsMixedKeyTables() {
+		assertThrows(LuaError.class, () -> LuaHarness.run(
+				"function aimc_main(sources)\n"
+						+ " return { out = { [1] = 'x', name = 'y' } }\n"
+						+ "end\n",
+				"@mixed.lua", java.util.Map.of(), TEST_TIMEOUT_SECONDS));
+	}
+
+	@Test
+	void codecPreservesLargeIntegersOutsideLuaNumberRange() {
+		BigInteger value = new BigInteger("9007199254740993");
+		assertEquals(value, LuaJsonCodec.fromLua(LuaJsonCodec.toLua(value)));
+	}
+
+	/**
+	 * An integral value must stay an integer across the Lua boundary. LuaJ
+	 * stores every number as a double, so a caller passing {@code 1} (e.g. a
+	 * PackML occupation Uuid) used to leave the DMP as {@code 1.0} — which the
+	 * device then stored verbatim and echoed back in its process queue.
+	 */
+	@Test
+	void codecKeepsIntegralNumbersIntegral() {
+		Object uuid = LuaJsonCodec.fromLua(LuaJsonCodec.toLua(1L));
+		assertInstanceOf(Long.class, uuid, "1 must not become a float");
+		assertEquals(1L, uuid);
+
+		Object queue = LuaJsonCodec.fromLua(LuaJsonCodec.toLua(java.util.List.of(1L, 2L)));
+		assertEquals(java.util.List.of(1L, 2L), queue);
+	}
+
+	@Test
+	void codecStillEncodesGenuineFractionsAsFloatingPoint() {
+		assertEquals(0.5, LuaJsonCodec.fromLua(LuaJsonCodec.toLua(0.5)));
 	}
 
 	@Test
@@ -164,7 +221,7 @@ class LuaContractTest {
 		Object first = runThroughLoader(loader, scriptFile, java.util.Map.of("a", 3.0, "b", 4.0));
 		@SuppressWarnings("unchecked")
 		java.util.Map<String, Object> firstMap = (java.util.Map<String, Object>) first;
-		assertEquals(7.0, firstMap.get("sum"));
+		assertEquals(7L, firstMap.get("sum"));
 
 		// drop in a replacement blob (updated AIMC transformation)
 		Files.writeString(scriptFile,
@@ -175,7 +232,7 @@ class LuaContractTest {
 		Object second = runThroughLoader(loader, scriptFile, java.util.Map.of("a", 3.0, "b", 4.0));
 		@SuppressWarnings("unchecked")
 		java.util.Map<String, Object> secondMap = (java.util.Map<String, Object>) second;
-		assertEquals(-1.0, secondMap.get("sum"), "reloaded blob must use the new code");
+		assertEquals(-1L, secondMap.get("sum"), "reloaded blob must use the new code");
 	}
 
 	private Object runThroughLoader(LuaScriptLoader loader, Path scriptFile, Object sources) throws IOException {
@@ -201,8 +258,8 @@ class LuaContractTest {
 		// Both invocations still run in fresh, isolated environments.
 		java.util.Map<String, Object> r1 = runCompiled(loader, scriptFile, java.util.Map.of("a", 3.0, "b", 4.0));
 		java.util.Map<String, Object> r2 = runCompiled(loader, scriptFile, java.util.Map.of("a", 10.0, "b", 5.0));
-		assertEquals(7.0, r1.get("sum"));
-		assertEquals(15.0, r2.get("sum"));
+		assertEquals(7L, r1.get("sum"));
+		assertEquals(15L, r2.get("sum"));
 	}
 
 	@Test
@@ -224,7 +281,7 @@ class LuaContractTest {
 		assertNotSame(first.prototype(), second.prototype(), "blob change must recompile");
 
 		java.util.Map<String, Object> result = runCompiled(loader, scriptFile, java.util.Map.of("a", 3.0, "b", 4.0));
-		assertEquals(-1.0, result.get("sum"), "recompiled blob must use the new code");
+		assertEquals(-1L, result.get("sum"), "recompiled blob must use the new code");
 	}
 
 	private java.util.Map<String, Object> runCompiled(

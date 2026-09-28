@@ -25,12 +25,15 @@
 package org.eclipse.digitaltwin.basyx.databridge.lua.sandbox;
 
 import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaTable;
+import org.luaj.vm2.LuaUserdata;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.TwoArgFunction;
@@ -52,6 +55,10 @@ public final class LuaJsonCodec extends TwoArgFunction {
 
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 
+	/** Largest integer a Lua (double) number represents exactly: 2^53 - 1. */
+	private static final double MAX_EXACT_LUA_INTEGER = 9007199254740991.0;
+	private static final Object NULL_MARKER = new Object();
+
 	private LuaJsonCodec() {
 	}
 
@@ -62,6 +69,9 @@ public final class LuaJsonCodec extends TwoArgFunction {
 		LuaValue json = LuaValue.tableOf();
 		json.set("decode", new DecodeFunction());
 		json.set("encode", new EncodeFunction());
+		json.set("null", new LuaUserdata(NULL_MARKER));
+		json.set("array", new ArrayFunction());
+		json.set("object", new ObjectFunction());
 		globals.set("json", json);
 	}
 
@@ -73,23 +83,25 @@ public final class LuaJsonCodec extends TwoArgFunction {
 
 	/**
 	 * Converts a host-side (Jackson-parsed) JSON value to a real Lua value
-	 * (LuaTable for maps/lists, LuaNumber, LuaString, LuaBoolean). Does NOT use
+	 * (LuaTable for maps/lists, LuaNumber, LuaString, LuaBoolean). JSON null is
+	 * exposed as {@code json.null}; use {@code json.array()} and
+	 * {@code json.object()} when an empty table's shape matters. Does NOT use
 	 * {@code CoerceJavaToLua} so blobs operate on genuine Lua values (and no
 	 * JVM reflection / module access is involved).
 	 */
 	public static LuaValue toLua(Object jsonValue) {
 		if (jsonValue == null) {
-			return LuaValue.NIL;
+			return new LuaUserdata(NULL_MARKER);
 		}
 		if (jsonValue instanceof Map) {
-			LuaValue table = LuaValue.tableOf();
+			LuaTable table = new JsonObjectTable();
 			for (Map.Entry<?, ?> entry : ((Map<?, ?>) jsonValue).entrySet()) {
 				table.set(String.valueOf(entry.getKey()), toLua(entry.getValue()));
 			}
 			return table;
 		}
 		if (jsonValue instanceof List) {
-			LuaValue table = LuaValue.tableOf();
+			LuaTable table = new JsonArrayTable();
 			int i = 1;
 			for (Object item : (List<?>) jsonValue) {
 				table.set(i++, toLua(item));
@@ -100,10 +112,13 @@ public final class LuaJsonCodec extends TwoArgFunction {
 			return LuaValue.valueOf((Boolean) jsonValue);
 		}
 		if (jsonValue instanceof Number) {
+			if (!isLuaExact((Number) jsonValue)) {
+				return new LuaUserdata(new JsonNumber((Number) jsonValue));
+			}
 			return LuaValue.valueOf(((Number) jsonValue).doubleValue());
 		}
 		if (jsonValue instanceof byte[]) {
-			return LuaValue.valueOf((byte[]) jsonValue);
+			return new LuaUserdata(new JsonBinary((byte[]) jsonValue));
 		}
 		return LuaValue.valueOf(jsonValue.toString());
 	}
@@ -113,11 +128,34 @@ public final class LuaJsonCodec extends TwoArgFunction {
 		if (value.isnil()) {
 			return null;
 		}
+		if (value instanceof LuaUserdata) {
+			Object userdata = value.touserdata();
+			if (userdata == NULL_MARKER) {
+				return null;
+			}
+			if (userdata instanceof JsonNumber number) {
+				return number.value;
+			}
+			if (userdata instanceof JsonBinary binary) {
+				return binary.value.clone();
+			}
+		}
 		if (value.isboolean()) {
 			return value.toboolean();
 		}
 		if (value.isnumber()) {
-			return value.todouble();
+			double number = value.todouble();
+			// LuaJ stores EVERY number as a double, so without this an integer
+			// that passed through a blob (e.g. a PackML occupation Uuid, or a
+			// process queue of them) would leave the DMP as 1.0 and the device
+			// would store/echo the float. Emit an integral double as a Long;
+			// genuine fractions stay floating point.
+			if (Double.isFinite(number)
+					&& number == Math.rint(number)
+					&& Math.abs(number) <= MAX_EXACT_LUA_INTEGER) {
+				return (long) number;
+			}
+			return number;
 		}
 		if (value.isstring()) {
 			return value.tojstring();
@@ -129,20 +167,40 @@ public final class LuaJsonCodec extends TwoArgFunction {
 	}
 
 	private static Object toJavaMapOrList(LuaTable table) {
-		List<Object> list = new ArrayList<>();
-		for (int i = 1;; i++) {
-			LuaValue item = table.get(i);
-			if (item.isnil()) {
+		boolean hasNumeric = false;
+		boolean hasOther = false;
+		int maxIndex = 0;
+		int numericCount = 0;
+		LuaValue key = LuaValue.NIL;
+		while (true) {
+			Varargs n = table.next(key);
+			if (n.arg1().isnil()) {
 				break;
 			}
-			list.add(fromLua(item));
+			key = n.arg1();
+			if (key.isnumber() && key.toint() > 0 && key.todouble() == key.toint()) {
+				hasNumeric = true;
+				maxIndex = Math.max(maxIndex, key.toint());
+				numericCount++;
+			} else {
+				hasOther = true;
+			}
 		}
-		if (!list.isEmpty()) {
-			return list;
+		if ((hasNumeric && hasOther)
+				|| (table instanceof JsonArrayTable && hasOther)) {
+			throw new LuaError("cannot encode a mixed-key Lua table as JSON; use json.array() or json.object()");
 		}
-
+		if (hasNumeric) {
+			if (maxIndex != numericCount) {
+				throw new LuaError("cannot encode a sparse Lua array as JSON");
+			}
+			return readArray(table);
+		}
+		if (table instanceof JsonArrayTable) {
+			return List.of();
+		}
 		Map<String, Object> map = new LinkedHashMap<>();
-		LuaValue key = LuaValue.NIL;
+		key = LuaValue.NIL;
 		while (true) {
 			Varargs n = table.next(key);
 			if (n.arg1().isnil()) {
@@ -152,6 +210,55 @@ public final class LuaJsonCodec extends TwoArgFunction {
 			map.put(key.tojstring(), fromLua(n.arg(2)));
 		}
 		return map;
+	}
+
+	private static List<Object> readArray(LuaTable table) {
+		List<Object> list = new ArrayList<>();
+		for (int i = 1;; i++) {
+			LuaValue item = table.get(i);
+			if (item.isnil()) {
+				break;
+			}
+			list.add(fromLua(item));
+		}
+		for (int i = 1; i <= list.size(); i++) {
+			if (table.get(i).isnil()) {
+				throw new LuaError("cannot encode a sparse Lua array as JSON");
+			}
+		}
+		return list;
+	}
+
+	private static boolean isLuaExact(Number number) {
+		if (number instanceof BigInteger integer) {
+			return integer.bitLength() <= 53;
+		}
+		if (number instanceof BigDecimal decimal) {
+			return BigDecimal.valueOf(decimal.doubleValue()).compareTo(decimal) == 0;
+		}
+		if (number instanceof Long || number instanceof Integer || number instanceof Short || number instanceof Byte) {
+			return Math.abs(number.longValue()) <= 9007199254740991L;
+		}
+		return true;
+	}
+
+	private static final class JsonArrayTable extends LuaTable { }
+	private static final class JsonObjectTable extends LuaTable { }
+	private record JsonNumber(Number value) { }
+	private record JsonBinary(byte[] value) { }
+
+	private static final class ArrayFunction extends org.luaj.vm2.lib.ZeroArgFunction {
+		@Override
+		public LuaValue call() {
+			return new JsonArrayTable();
+		}
+	}
+
+	private static final class ObjectFunction extends org.luaj.vm2.lib.ZeroArgFunction {
+		@Override
+		public LuaValue call() {
+			return new JsonObjectTable();
+		}
 	}
 
 	private static final class DecodeFunction extends org.luaj.vm2.lib.OneArgFunction {
