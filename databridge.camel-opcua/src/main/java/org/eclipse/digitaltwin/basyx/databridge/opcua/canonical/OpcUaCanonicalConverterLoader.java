@@ -73,6 +73,16 @@ public final class OpcUaCanonicalConverterLoader implements TypeConverterLoader,
 				(type, exchange, value) -> OpcUaCanonicalConverter.toCanonicalJson((DataValue) value, exchange));
 		addTypeConverter(registry, java.util.Map.class, DataValue.class, false,
 				(type, exchange, value) -> OpcUaCanonicalConverter.toCanonicalMap((DataValue) value, exchange));
+		addTypeConverter(registry, java.util.Map.class,
+				org.eclipse.milo.opcua.stack.core.types.structured.CallMethodResult.class, false,
+				(type, exchange, value) -> OpcUaCanonicalConverter
+						.toCanonicalMap((org.eclipse.milo.opcua.stack.core.types.structured.CallMethodResult) value,
+								exchange));
+		addTypeConverter(registry, java.util.Map.class,
+				org.eclipse.milo.opcua.stack.core.types.structured.WriteResponse.class, false,
+				(type, exchange, value) -> OpcUaCanonicalConverter
+						.toCanonicalMap((org.eclipse.milo.opcua.stack.core.types.structured.WriteResponse) value,
+								exchange));
 	}
 
 	private static void addTypeConverter(TypeConverterRegistry registry, Class<?> toType, Class<?> fromType,

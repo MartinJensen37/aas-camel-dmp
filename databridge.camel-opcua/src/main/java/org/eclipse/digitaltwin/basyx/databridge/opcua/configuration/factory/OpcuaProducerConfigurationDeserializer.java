@@ -55,7 +55,15 @@ public class OpcuaProducerConfigurationDeserializer implements JsonDeserializer<
                     .forEach(o -> ctx.put(o.getKey(), o.getValue().getAsString()));
         }
 
-        return new OpcuaProducerConfiguration(
+        // the descriptor emits method-call sinks under `configuration` —
+        // merge it (existing parameters win)
+        if (object.has("configuration") && object.get("configuration").isJsonObject()) {
+            object.get("configuration").getAsJsonObject()
+                    .entrySet()
+                    .forEach(o -> ctx.putIfAbsent(o.getKey(), o.getValue().getAsString()));
+        }
+
+        OpcuaProducerConfiguration sink = new OpcuaProducerConfiguration(
                 object.get("uniqueId").getAsString(),
                 object.get("serverUrl").getAsString(),
                 object.get("serverPort").getAsInt(),
@@ -67,5 +75,12 @@ public class OpcuaProducerConfigurationDeserializer implements JsonDeserializer<
                         object.get("password").getAsString(),
                 ctx
         );
+        if (object.has("sinkId") && !object.get("sinkId").isJsonNull()) {
+            sink.setSinkId(object.get("sinkId").getAsString());
+        }
+        if (object.has("valuePath") && !object.get("valuePath").isJsonNull()) {
+            sink.setValuePath(object.get("valuePath").getAsString());
+        }
+        return sink;
     }
 }

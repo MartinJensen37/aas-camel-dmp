@@ -18,14 +18,17 @@ public class OpcuaConsumerConfigurationDeserializer implements JsonDeserializer<
             ctx.put("requestedPublishingInterval", object.get("requestedPublishingInterval").getAsString());
 
         if (object.has("parameters")) {
-            object.get("parameters").getAsJsonObject()
-                    .entrySet()
-                    .parallelStream()
-                    .filter(o -> !o.getValue().isJsonNull() && !ctx.containsKey(o.getValue().getAsString()))
-                    .forEach(o -> ctx.put(o.getKey(), o.getValue().getAsString()));
+            for (Map.Entry<String, JsonElement> parameter : object.getAsJsonObject("parameters").entrySet()) {
+                if (!parameter.getValue().isJsonNull()) {
+                    ctx.putIfAbsent(parameter.getKey(), parameter.getValue().getAsString());
+                }
+            }
         }
 
-        return new OpcuaConsumerConfiguration(
+        // the execution-policy fields ride the BASE configuration (sourceId,
+        // delivery, declared polling cadence) — without them the route cache
+        // keys by the raw endpoint id and the Lua sources lookups miss
+        OpcuaConsumerConfiguration config = new OpcuaConsumerConfiguration(
                 object.get("uniqueId").getAsString(),
                 object.get("serverUrl").getAsString(),
                 object.get("serverPort").getAsInt(),
@@ -37,5 +40,27 @@ public class OpcuaConsumerConfigurationDeserializer implements JsonDeserializer<
                         object.get("password").getAsString(),
                 ctx
         );
+        if (object.has("sourceId") && !object.get("sourceId").isJsonNull()) {
+            config.setSourceId(object.get("sourceId").getAsString());
+        }
+        if (object.has("delivery") && !object.get("delivery").isJsonNull()) {
+            config.setDelivery(object.get("delivery").getAsString());
+        }
+        if (object.has("pollingIntervalMs") && !object.get("pollingIntervalMs").isJsonNull()) {
+            config.setPollingIntervalMs(object.get("pollingIntervalMs").getAsLong());
+        }
+        if (object.has("valuePath") && !object.get("valuePath").isJsonNull()) {
+            config.setValuePath(object.get("valuePath").getAsString());
+        }
+        if (object.has("sourceKind") && !object.get("sourceKind").isJsonNull()) {
+            config.setSourceKind(object.get("sourceKind").getAsString());
+        }
+        if (object.has("mode") && !object.get("mode").isJsonNull()) {
+            config.setMode(object.get("mode").getAsString());
+        }
+        if (object.has("eventFilter") && !object.get("eventFilter").isJsonNull()) {
+            config.setEventFilter(jsonDeserializationContext.deserialize(object.get("eventFilter"), Map.class));
+        }
+        return config;
     }
 }

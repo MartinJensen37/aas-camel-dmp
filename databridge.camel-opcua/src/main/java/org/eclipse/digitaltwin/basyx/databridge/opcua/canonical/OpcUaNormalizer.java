@@ -74,13 +74,16 @@ public class OpcUaNormalizer implements Processor {
 		}
 
 		Object value = body;
+		boolean explicitCanonical = Boolean.TRUE.equals(exchange.getMessage().getHeader(
+				OpcUaCanonical.CANONICAL_HEADER, Boolean.class));
 		if (body instanceof String text) {
-			CanonicalParts parts = extractCanonical(text);
+			CanonicalParts parts = extractCanonical(text, explicitCanonical);
 			value = parts.value;
 			if (parts.nodeId != null) {
 				exchange.getMessage().setHeader(OpcUaCanonical.NODE_ID_HEADER, parts.nodeId);
 			}
-		} else if (body instanceof Map<?, ?> map && map.containsKey("value")) {
+		} else if (body instanceof Map<?, ?> map
+				&& (explicitCanonical || isCanonicalMap(map))) {
 			value = map.get("value");
 			Object nodeId = map.get("nodeId");
 			if (nodeId != null) {
@@ -91,9 +94,15 @@ public class OpcUaNormalizer implements Processor {
 		exchange.getMessage().setBody(OpcUaCanonical.toVariant(value));
 	}
 
-	private CanonicalParts extractCanonical(String text) {
+	private CanonicalParts extractCanonical(String text, boolean explicit) {
 		try {
 			Map<?, ?> map = mapper.readValue(text, Map.class);
+			// String bodies have historically represented the canonical write
+			// envelope; retain the unambiguous single-field form while requiring
+			// metadata for arbitrary map bodies.
+			if (!explicit && !isCanonicalMap(map) && map.size() != 1) {
+				return new CanonicalParts(null, text);
+			}
 			Object nodeId = map.get("nodeId");
 			return new CanonicalParts(nodeId != null ? String.valueOf(nodeId) : null, map.get("value"));
 		} catch (Exception e) {
@@ -101,6 +110,19 @@ public class OpcUaNormalizer implements Processor {
 			// object that itself is the OPC UA value).
 			return new CanonicalParts(null, text);
 		}
+	}
+
+	private boolean isCanonicalMap(Map<?, ?> map) {
+		if (!map.containsKey("value")) {
+			return false;
+		}
+		boolean hasMetadata = map.containsKey("nodeId") || map.containsKey("status")
+				|| map.containsKey("timestamp");
+		return hasMetadata && map.keySet().stream().allMatch(key ->
+				"value".equals(String.valueOf(key))
+						|| "nodeId".equals(String.valueOf(key))
+						|| "status".equals(String.valueOf(key))
+						|| "timestamp".equals(String.valueOf(key)));
 	}
 
 	private record CanonicalParts(String nodeId, Object value) {

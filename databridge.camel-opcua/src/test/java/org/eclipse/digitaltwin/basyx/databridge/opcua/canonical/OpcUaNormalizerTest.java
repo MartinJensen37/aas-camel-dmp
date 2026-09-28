@@ -113,6 +113,20 @@ class OpcUaNormalizerTest {
 	}
 
 	@Test
+	void objectValueWithValueKeyIsNotImplicitlyUnwrapped() throws Exception {
+		Map<String, Object> objectValue = new LinkedHashMap<>();
+		objectValue.put("value", 11);
+		objectValue.put("kind", "business");
+		Exchange exchange = exchangeWithBody(objectValue);
+
+		normalizer.process(exchange);
+
+		Object value = ((Variant) exchange.getMessage().getBody()).getValue();
+		assertTrue(value instanceof Map<?, ?>);
+		assertEquals(objectValue, value);
+	}
+
+	@Test
 	void nullBodyBecomesNullVariant() throws Exception {
 		Exchange exchange = exchangeWithBody(null);
 

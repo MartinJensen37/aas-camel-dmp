@@ -25,6 +25,8 @@
 package org.eclipse.digitaltwin.basyx.databridge.opcua.canonical;
 
 import java.util.Base64;
+import java.lang.reflect.Array;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -57,6 +59,8 @@ public final class OpcUaCanonical {
 
 	/** Exchange header carrying the node id (used by the canonical converters). */
 	public static final String NODE_ID_HEADER = "CamelMiloNodeId";
+	/** Explicit opt-in for decoding the canonical envelope at a route boundary. */
+	public static final String CANONICAL_HEADER = "CamelOpcUaCanonical";
 
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -119,6 +123,28 @@ public final class OpcUaCanonical {
 		}
 		if (raw instanceof byte[]) {
 			return Base64.getEncoder().encodeToString((byte[]) raw);
+		}
+		if (raw instanceof Map<?, ?> map) {
+			Map<String, Object> copy = new LinkedHashMap<>();
+			for (Map.Entry<?, ?> entry : map.entrySet()) {
+				copy.put(String.valueOf(entry.getKey()), sanitize(entry.getValue()));
+			}
+			return copy;
+		}
+		if (raw instanceof Collection<?> collection) {
+			java.util.List<Object> copy = new java.util.ArrayList<>(collection.size());
+			for (Object value : collection) {
+				copy.add(sanitize(value));
+			}
+			return copy;
+		}
+		if (raw.getClass().isArray()) {
+			int length = Array.getLength(raw);
+			java.util.List<Object> copy = new java.util.ArrayList<>(length);
+			for (int i = 0; i < length; i++) {
+				copy.add(sanitize(Array.get(raw, i)));
+			}
+			return copy;
 		}
 		return raw.toString();
 	}

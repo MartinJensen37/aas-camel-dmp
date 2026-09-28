@@ -83,6 +83,34 @@ class OpcUaCanonicalConverterTest {
 	}
 
 	@Test
+	void camelTypeConverterRegistryDecodesAwaitedCallMethodResult() throws Exception {
+		try (DefaultCamelContext context = new DefaultCamelContext()) {
+			context.start();
+			Exchange exchange = new DefaultExchange(context);
+			// the exact shape camel-milo leaves on the body when the method
+			// call is awaited (CamelMiloAwait=true): the raw CallMethodResult
+			exchange.getMessage().setBody(new org.eclipse.milo.opcua.stack.core.types.structured.CallMethodResult(
+					StatusCode.GOOD,
+					new org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode[] { StatusCode.GOOD },
+					new org.eclipse.milo.opcua.stack.core.types.builtin.DiagnosticInfo[] { null },
+					new Variant[] { new Variant("SUCCESS"), new Variant(0) }));
+
+			// the very call SyncOperationProcessor performs:
+			// typeConverter.convertTo(Map.class, reply)
+			Map<String, Object> canonical = context.getTypeConverter()
+					.convertTo(Map.class, exchange.getMessage().getBody());
+
+			assertNotNull(canonical, "the awaited CallMethodResult must decode canonically");
+			@SuppressWarnings("unchecked")
+			java.util.List<Object> outputs = (java.util.List<Object>) canonical.get("outputArguments");
+			assertEquals(java.util.List.of("SUCCESS", 0), outputs);
+			@SuppressWarnings("unchecked")
+			Map<String, Object> status = (Map<String, Object>) canonical.get("statusCode");
+			assertEquals(Boolean.TRUE, status.get("good"));
+		}
+	}
+
+	@Test
 	void nodeIdHeaderIsIncludedInCanonicalJson() throws Exception {
 		try (DefaultCamelContext context = new DefaultCamelContext()) {
 			context.start();
