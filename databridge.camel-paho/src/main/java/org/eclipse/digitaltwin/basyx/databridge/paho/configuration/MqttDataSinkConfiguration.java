@@ -40,6 +40,9 @@ public class MqttDataSinkConfiguration extends DataSinkConfiguration {
 	private String userName;
 	private String password;
 	private String clientId;
+	/** DECLARED MQTT qualifiers (mqv_qos/mqv_retain) — absent stays unset. */
+	private Integer qos;
+	private Boolean retained;
 
 	public MqttDataSinkConfiguration() {
 	}
@@ -113,6 +116,14 @@ public class MqttDataSinkConfiguration extends DataSinkConfiguration {
 		options.append("&clientId=");
 		options.append(getClientId());
 		
+		if (getQos() != null) {
+			options.append("&qos=");
+			options.append(getQos().intValue());
+		}
+		if (getRetained() != null) {
+			options.append("&retained=");
+			options.append(getRetained().booleanValue());
+		}
 		if (!getUserName().isBlank()) {
 			options.append("&userName=");
 			options.append(getUserName());
@@ -120,6 +131,22 @@ public class MqttDataSinkConfiguration extends DataSinkConfiguration {
 			options.append(getPassword());
 		}
 		return options.toString();
+	}
+
+	public Integer getQos() {
+		return qos;
+	}
+
+	public void setQos(Integer qos) {
+		this.qos = qos;
+	}
+
+	public Boolean getRetained() {
+		return retained;
+	}
+
+	public void setRetained(Boolean retained) {
+		this.retained = retained;
 	}
 
 	@Override

@@ -37,6 +37,7 @@ public class KafkaConsumerConfiguration extends DataSourceConfiguration {
 	private String groupId;
 	private int consumersCount;
 	private String seekTo;
+	private boolean breakOnFirstError;
 	
 	public KafkaConsumerConfiguration() {}
 	
@@ -90,12 +91,21 @@ public class KafkaConsumerConfiguration extends DataSourceConfiguration {
 		this.seekTo = seekTo;
 	}
 
+	public boolean isBreakOnFirstError() {
+		return breakOnFirstError;
+	}
+
+	public void setBreakOnFirstError(boolean breakOnFirstError) {
+		this.breakOnFirstError = breakOnFirstError;
+	}
+
 	public String getConnectionURI() {
 		return 
 		"kafka:" + getTopic() + "?brokers=" + getServerUrl() + ":" + getServerPort()
 		+ "&maxPollRecords=" + getMaxPollRecords()
         + "&consumersCount=" + getConsumersCount()
         + "&seekTo=" + getSeekTo()
-        + "&groupId="  + getGroupId();
+        + "&groupId="  + getGroupId()
+        + "&breakOnFirstError=" + isBreakOnFirstError();
 	}
 }

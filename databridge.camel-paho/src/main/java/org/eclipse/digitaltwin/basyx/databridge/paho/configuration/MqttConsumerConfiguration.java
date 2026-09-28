@@ -43,9 +43,19 @@ public class MqttConsumerConfiguration extends DataSourceConfiguration {
 	private String topic;
 	private String clientId;
 	private BasicCredential credentials;
-	
+	/** DECLARED subscription quality of service (mqv_qos) — absent stays unset. */
+	private Integer qos;
+
 	public MqttConsumerConfiguration() {}
 	
+	public Integer getQos() {
+		return qos;
+	}
+
+	public void setQos(Integer qos) {
+		this.qos = qos;
+	}
+
 	public MqttConsumerConfiguration(String uniqueId, String serverUrl, int serverPort, String clientId, String topic, BasicCredential credentials) {
 		super(uniqueId, serverUrl, serverPort);
 		this.topic = topic;
@@ -74,6 +84,9 @@ public class MqttConsumerConfiguration extends DataSourceConfiguration {
 		connectionUriBuilder.append(getMqttBrokerUrl(getServerUrl(), getServerPort()));
 		
 		addCredentialsIfConfigured(connectionUriBuilder);
+		if (qos != null) {
+			connectionUriBuilder.append("&qos=").append(qos.intValue());
+		}
 		
 		return connectionUriBuilder.toString();
 	}
