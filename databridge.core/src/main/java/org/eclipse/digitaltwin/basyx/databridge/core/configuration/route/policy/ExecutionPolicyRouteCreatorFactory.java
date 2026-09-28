@@ -22,22 +22,17 @@
  *
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.operation;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy;
 
 import org.apache.camel.builder.RouteBuilder;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreator;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 
-/**
- * Factory for the REST operation-delegation route creator (M7).
- *
- * @author aas-camel-dmp
- */
-public class OperationRouteCreatorFactory implements IRouteCreatorFactory {
+public class ExecutionPolicyRouteCreatorFactory implements IRouteCreatorFactory {
 
 	@Override
 	public IRouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration) {
-		return new OperationRouteCreator(routeBuilder, routesConfiguration);
+		return new ExecutionPolicyRouteCreator(routeBuilder, routesConfiguration);
 	}
 }

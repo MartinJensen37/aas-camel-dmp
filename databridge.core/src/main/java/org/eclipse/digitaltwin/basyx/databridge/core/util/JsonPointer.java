@@ -55,6 +55,20 @@ public final class JsonPointer {
 	private static final String INDEX_PREFIX = "[";
 	private static final String INDEX_SUFFIX = "]";
 
+	/**
+	 * Marker returned by {@link #extract(Object)} when the pointer resolves to
+	 * a <b>legit JSON {@code null}</b> leaf — present, but null. Distinct from
+	 * an empty Optional (a missing path), so callers can tell a payload that
+	 * really says {@code {"State": null}} apart from one without the key
+	 * (T1.12). Callers should map this marker to a Java {@code null} value.
+	 */
+	public static final Object JSON_NULL = new Object() {
+		@Override
+		public String toString() {
+			return "JSON_NULL";
+		}
+	};
+
 	private final List<String> tokens;
 
 	private JsonPointer(List<String> tokens) {
@@ -119,7 +133,7 @@ public final class JsonPointer {
 				} else if (inner.matches("-?\\d+")) {
 					tokens.add(INDEX_PREFIX + inner + INDEX_SUFFIX);
 				} else if (!inner.isEmpty()) {
-					tokens.add(inner);
+					tokens.add(unescape(inner));
 				}
 				i = end + 1;
 			} else {
@@ -137,7 +151,7 @@ public final class JsonPointer {
 				}
 				String token = s.substring(i, end);
 				if (!token.isEmpty()) {
-					tokens.add(token);
+					tokens.add(unescape(token));
 				}
 				i = end;
 			}
@@ -149,12 +163,15 @@ public final class JsonPointer {
 	 * Extracts the value at this pointer. Returns {@link Optional#empty()} when
 	 * any token does not resolve (missing key / out-of-range index / navigating
 	 * into a scalar), so callers can decide between a coarse fallback and a
-	 * clear route error (SPEC §8.4 #8).
+	 * clear route error (SPEC §8.4 #8). A pointer that resolves to a JSON
+	 * {@code null} leaf returns {@link Optional#of(JSON_NULL)} — present, but
+	 * null (T1.12); callers map the marker to a Java {@code null}.
 	 */
 	public Optional<Object> extract(Object root) {
 		Object current = root;
 		for (String token : tokens) {
-			if (current == null) {
+			if (current == null || current == JSON_NULL) {
+				// cannot navigate below a null node → treat as missing
 				return Optional.empty();
 			}
 			if (isIndex(token)) {
@@ -170,7 +187,7 @@ public final class JsonPointer {
 				current = map.get(token);
 			}
 		}
-		return Optional.ofNullable(current);
+		return current == null ? Optional.of(JSON_NULL) : Optional.of(current);
 	}
 
 	/**
@@ -208,10 +225,33 @@ public final class JsonPointer {
 		return token.length() >= 2 && token.startsWith(INDEX_PREFIX) && token.endsWith(INDEX_SUFFIX);
 	}
 
+	/**
+	 * RFC 6901 unescaping ({@code ~1} → {@code /}, {@code ~0} → {@code ~}) for
+	 * plain pathish tokens; the RFC-style branch and quoted bracket keys
+	 * already carry their literals verbatim (T1.12: previously only the
+	 * {@code /a~1b} syntax decoded escapes, so {@code $.a~1b} silently missed).
+	 */
+	private static String unescape(String token) {
+		if (token.indexOf('~') < 0) {
+			return token;
+		}
+		return token.replace("~1", "/").replace("~0", "~");
+	}
+
+	private static String escape(String token) {
+		return token.replace("~", "~0").replace("/", "~1");
+	}
+
 	@Override
 	public String toString() {
-		return "$." + String.join(".", tokens.stream()
-				.map(t -> isIndex(t) ? t : t)
-				.toList());
+		StringBuilder sb = new StringBuilder("$");
+		for (String token : tokens) {
+			if (isIndex(token)) {
+				sb.append(token);
+			} else {
+				sb.append('.').append(escape(token));
+			}
+		}
+		return sb.toString();
 	}
 }

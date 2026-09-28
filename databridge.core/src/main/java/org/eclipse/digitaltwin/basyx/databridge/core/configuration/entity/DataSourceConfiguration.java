@@ -24,6 +24,8 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity;
 
+import java.util.Map;
+
 /**
  * A generic class of Data source configurations
  * @author haque
@@ -34,6 +36,27 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 	private int serverPort;
 	private String sourceId;
 	private String valuePath;
+	/**
+	 * How this source delivers data, classified by the management node from
+	 * the AID (SPEC §6.1, ADR-018): {@code "async"} = push/subscription,
+	 * {@code "sync"} = request/response polled per cycle. Absent → async
+	 * (the historical event-route default).
+	 */
+	private String delivery;
+	/**
+	 * Poll cadence of a SYNC source in milliseconds (decision 2026-09-15):
+	 * the sync source is read at this interval by the mapping route and its
+	 * value feeds the same latest-value cache as the async sources. A typed
+	 * AAS Property source must never rely on an implicit cadence: the
+	 * management node emits a positive effective interval for polling mode.
+	 */
+	private long pollingIntervalMs;
+	/** Typed connector kind for sources whose transport body needs adaptation. */
+	private String sourceKind;
+	/** Resolved source mode, such as {@code poll} or {@code event}. */
+	private String mode;
+	/** Connector-specific filter options; never interpreted as a Camel URI. */
+	private Map<String, Object> eventFilter;
 
 	public DataSourceConfiguration() {
 		super();
@@ -88,5 +111,48 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 
 	public void setValuePath(String valuePath) {
 		this.valuePath = valuePath;
+	}
+
+	/**
+	 * The source's delivery role ("async"/"sync", ADR-018); absent → async.
+	 */
+	public String getDelivery() {
+		return delivery == null || delivery.isBlank() ? "async" : delivery;
+	}
+
+	public void setDelivery(String delivery) {
+		this.delivery = delivery;
+	}
+
+	public long getPollingIntervalMs() {
+		return pollingIntervalMs;
+	}
+
+	public void setPollingIntervalMs(long pollingIntervalMs) {
+		this.pollingIntervalMs = pollingIntervalMs;
+	}
+
+	public String getSourceKind() {
+		return sourceKind;
+	}
+
+	public void setSourceKind(String sourceKind) {
+		this.sourceKind = sourceKind;
+	}
+
+	public String getMode() {
+		return mode;
+	}
+
+	public void setMode(String mode) {
+		this.mode = mode;
+	}
+
+	public Map<String, Object> getEventFilter() {
+		return eventFilter;
+	}
+
+	public void setEventFilter(Map<String, Object> eventFilter) {
+		this.eventFilter = eventFilter;
 	}
 }

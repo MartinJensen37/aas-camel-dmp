@@ -32,16 +32,14 @@ import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.impl.health.DefaultHealthCheckRegistry;
 import org.apache.camel.impl.health.RoutesHealthCheckRepository;
 import org.eclipse.basyx.components.IComponent;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.bridge.ProtocolBridgeRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.bridge.ProtocolBridgeRouteCreatorFactory;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.writedelegation.WriteDelegationRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.writedelegation.WriteDelegationRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.event.EventRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.event.EventRouteCreatorFactory;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.operation.OperationRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.operation.OperationRouteCreatorFactory;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.request.RequestRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.request.RequestRouteCreatorFactory;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.timer.TimerRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.timer.TimerRouteCreatorFactory;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy.ExecutionPolicyRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy.ExecutionPolicyRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.health.routebuilder.HealthCheckRouteBuilder;
 import org.eclipse.digitaltwin.basyx.databridge.core.routebuilder.DataBridgeRouteBuilder;
 import org.slf4j.Logger;
@@ -67,10 +65,14 @@ public class DataBridgeComponent implements IComponent {
 
 	private static Map<String, IRouteCreatorFactory> getRouteCreatorFactoryMapDefault() {
 		Map<String, IRouteCreatorFactory> defaultRouteCreatorFactoryMap = new HashMap<>();
-		defaultRouteCreatorFactoryMap.put(EventRouteConfiguration.ROUTE_TRIGGER, new EventRouteCreatorFactory());
-		defaultRouteCreatorFactoryMap.put(TimerRouteConfiguration.ROUTE_TRIGGER, new TimerRouteCreatorFactory());
-		defaultRouteCreatorFactoryMap.put(RequestRouteConfiguration.ROUTE_TRIGGER, new RequestRouteCreatorFactory());
-		defaultRouteCreatorFactoryMap.put(OperationRouteConfiguration.ROUTE_TRIGGER, new OperationRouteCreatorFactory());
+		// ONE creator family per output shape (ADR-020): policy-driven
+		// aggregation + the protocol bridge
+		defaultRouteCreatorFactoryMap.put(ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER,
+				new ExecutionPolicyRouteCreatorFactory());
+		defaultRouteCreatorFactoryMap.put(ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER,
+				new ProtocolBridgeRouteCreatorFactory());
+		defaultRouteCreatorFactoryMap.put(WriteDelegationRouteConfiguration.ROUTE_TRIGGER,
+				new WriteDelegationRouteCreatorFactory());
 
 		return defaultRouteCreatorFactoryMap;
 	}

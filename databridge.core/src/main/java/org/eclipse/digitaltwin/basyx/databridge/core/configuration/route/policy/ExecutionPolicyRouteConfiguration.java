@@ -1,6 +1,6 @@
 /*******************************************************************************
- * Copyright (C) 2021 the Eclipse BaSyx Authors
- * 
+ * Copyright (C) 2026 the aas-camel-dmp Authors
+ *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -8,10 +8,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -19,34 +19,23 @@
  * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.event;
-
-import java.util.List;
-import java.util.Map;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy;
 
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 
 /**
- * A connection of a single route (source, transformer(s), sink(s), sinkmapper(s)
- *
- * @author haque, fischer
- *
+ * Route configuration of the uniform execution-policy creator (ADR-020):
+ * every mapping compiles to {@code sources[] + sinks[] + transformer(s) +
+ * ExecutionPolicy} — the only aggregation shape the DMP runtime knows.
  */
-public class EventRouteConfiguration extends RouteConfiguration {
-	public static final String ROUTE_TRIGGER = "event";
+public class ExecutionPolicyRouteConfiguration extends RouteConfiguration {
 
-	public EventRouteConfiguration(String datasource, List<String> transformers, List<String> datasinks) {
-		super(ROUTE_TRIGGER, datasource, transformers, datasinks);
-	}
-	
-	public EventRouteConfiguration(String datasource, List<String> transformers, List<String> datasinks, Map<String, String[]> datasinkMapping) {
-		super(ROUTE_TRIGGER, datasource, transformers, datasinks, datasinkMapping);
-	}
+	public static final String ROUTE_TRIGGER = "execution-policy";
 
-	public EventRouteConfiguration(RouteConfiguration configuration) {
+	public ExecutionPolicyRouteConfiguration(RouteConfiguration configuration) {
 		super(configuration);
 	}
 

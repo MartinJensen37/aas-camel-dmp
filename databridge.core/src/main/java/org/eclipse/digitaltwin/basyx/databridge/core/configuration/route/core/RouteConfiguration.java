@@ -42,6 +42,8 @@ public class RouteConfiguration {
 
 	private Map<String, Object> triggerData = new HashMap<>();
 
+	/** The parsed execution contract (ADR-020); {@code null} = unauthored. */
+
 	public RouteConfiguration() {
 	}
 
@@ -51,8 +53,6 @@ public class RouteConfiguration {
 	 *
 	 * @param trigger
 	 *            the trigger for the route configuration
-	 * @param routeId
-	 *            the ID of the route
 	 * @param datasources
 	 *            the datasources associated with the route (fan-in)
 	 * @param transformers
@@ -75,17 +75,6 @@ public class RouteConfiguration {
 	 * Constructs a new RouteConfiguration object without a mapping configuration to
 	 * map distinct transformators to multiple datasinks. I.e., all transformators
 	 * would be equally applied to all data sinks.
-	 *
-	 * @param trigger
-	 *            the trigger for the route configuration
-	 * @param routeId
-	 *            the ID of the route (optional, can be null)
-	 * @param datasources
-	 *            the datasources associated with the route (fan-in)
-	 * @param transformers
-	 *            the list of transformers to be applied in the route
-	 * @param datasinks
-	 *            the list of datasinks to which data should be routed
 	 */
 	public RouteConfiguration(String trigger, List<String> datasources, List<String> transformers, List<String> datasinks) {
 		this.trigger = trigger;
@@ -94,27 +83,17 @@ public class RouteConfiguration {
 		this.datasinks = datasinks;
 	}
 
-	/**
-	 * Convenience constructor for a single-source route.
-	 */
-	public RouteConfiguration(String trigger, String datasource, List<String> transformers, List<String> datasinks) {
-		this(trigger, java.util.Collections.singletonList(datasource), transformers, datasinks);
-	}
-
-	/**
-	 * Convenience constructor for a single-source route with a sink mapping.
-	 */
-	public RouteConfiguration(String trigger, String datasource, List<String> transformers, List<String> datasinks, Map<String, String[]> datasinkMappingConfiguration) {
-		this(trigger, java.util.Collections.singletonList(datasource), transformers, datasinks, datasinkMappingConfiguration);
-	}
-
 	public RouteConfiguration(RouteConfiguration configuration) {
 		this(configuration.getRouteTrigger(), configuration.getDatasources(), configuration.getTransformers(), configuration.getDatasinks(), configuration.getDatasinkMappingConfiguration());
 		setRouteId(configuration.getRouteId());
 		this.triggerData = configuration.triggerData;
 	}
 
-	protected Map<String, Object> getTriggerData() {
+	/**
+	 * The parsed execution contract (ADR-020). Strictly parsed by the
+	 * deserializer; {@code null} means the mapping authored no policy block.
+	 */
+	public Map<String, Object> getTriggerData() {
 		return triggerData;
 	}
 

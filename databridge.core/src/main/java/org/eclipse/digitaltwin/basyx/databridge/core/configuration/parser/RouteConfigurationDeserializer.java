@@ -38,11 +38,14 @@ import com.google.gson.JsonParseException;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 
 /**
- * Gson deserializer for {@link RouteConfiguration} that accepts both the
- * singular {@code "datasource"} (string) and the plural {@code "datasources"}
- * (array) JSON keys, mapping either onto the single {@code datasources} list
- * (SPEC §6.4). This preserves backward compatibility with existing
- * {@code routes.json} files that use the singular key.
+ * Gson deserializer for {@link RouteConfiguration}.
+ *
+ * <p>
+ * The plural {@code "datasources"} key is the ONLY datasource form (ADR-020):
+ * the legacy singular {@code "datasource"} tolerance is gone. Execution is a
+ * fixed runtime semantic (decision 2026-09-15) — there is no authorable
+ * policy block; an {@code executionPolicy} key in a config is a named
+ * load-time error.
  */
 public class RouteConfigurationDeserializer implements JsonDeserializer<RouteConfiguration> {
 
@@ -65,15 +68,23 @@ public class RouteConfigurationDeserializer implements JsonDeserializer<RouteCon
 		}
 		if (obj.has("datasources")) {
 			config.setDatasources(readStringList(obj.get("datasources")));
-		} else if (obj.has("datasource")) {
-			// legacy singular key
-			config.setDatasources(java.util.Collections.singletonList(obj.get("datasource").getAsString()));
 		}
 		if (obj.has("datasinkMappingConfiguration")) {
-			config.setDatasinkMappingConfiguration(context.deserialize(obj.get("datasinkMappingConfiguration"), java.util.Map.class));
+			// concrete parameterized type: a raw Map.class deserialize yields
+			// ArrayList values that later fail the String[] contract
+			java.lang.reflect.Type mappingType = new com.google.gson.reflect.TypeToken<java.util.Map<String, String[]>>() {
+			}.getType();
+			config.setDatasinkMappingConfiguration(context.deserialize(obj.get("datasinkMappingConfiguration"), mappingType));
 		}
 		if (obj.has("triggerData")) {
 			config.setTriggerData(context.deserialize(obj.get("triggerData"), java.util.Map.class));
+		}
+		if (obj.has("executionPolicy")) {
+			throw new JsonParseException("route '" + (config.getRouteId() != null
+					? config.getRouteId() : "<unnamed-route>")
+					+ "': authorable execution policies are removed (decision "
+					+ "2026-09-15) — execution is a fixed runtime semantic; "
+					+ "delete the executionPolicy block");
 		}
 		return config;
 	}

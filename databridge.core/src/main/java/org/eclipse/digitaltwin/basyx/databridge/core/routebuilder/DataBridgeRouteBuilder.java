@@ -54,12 +54,21 @@ public class DataBridgeRouteBuilder extends RouteBuilder {
 	@Override
 	public void configure() throws Exception {
 		for (RouteConfiguration routeConfig : routesConfiguration.getRoutes()) {
-			IRouteCreator routeCreator = routeCreatorFactoryMap.get(routeConfig.getRouteTrigger()).create(this, routesConfiguration);
+			IRouteCreator routeCreator = resolveRouteCreator(routeConfig);
 
 			setCamelContextInRouteEntities();
 
 			routeCreator.addRouteToRouteBuilder(routeConfig);
 		}
+	}
+
+	private IRouteCreator resolveRouteCreator(RouteConfiguration routeConfig) {
+		String trigger = routeConfig.getRouteTrigger();
+		if (trigger == null || !routeCreatorFactoryMap.containsKey(trigger)) {
+			throw new IllegalArgumentException("route " + routeConfig.getRouteId()
+					+ ": no route creator factory registered for trigger '" + trigger + "'");
+		}
+		return routeCreatorFactoryMap.get(trigger).create(this, routesConfiguration);
 	}
 
 	private RoutesConfiguration configureRouteIds(RoutesConfiguration routesConfiguration) {
