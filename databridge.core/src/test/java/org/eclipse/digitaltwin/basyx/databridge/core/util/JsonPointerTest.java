@@ -26,8 +26,10 @@ package org.eclipse.digitaltwin.basyx.databridge.core.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -127,6 +129,55 @@ class JsonPointerTest {
 		Map<String, Object> data = Map.of("a/b", 1, "m~n", 2);
 		assertEquals(Optional.of(1), JsonPointer.extract(data, "/a~1b"));
 		assertEquals(Optional.of(2), JsonPointer.extract(data, "/m~0n"));
+	}
+
+	@Test
+	void pathishEscapesDecodeToo() {
+		// T1.12: ~0/~1 previously decoded only in RFC-style syntax
+		Map<String, Object> data = Map.of("a/b", 1, "m~n", 2);
+		assertEquals(Optional.of(1), JsonPointer.extract(data, "$.a~1b"));
+		assertEquals(Optional.of(2), JsonPointer.extract(data, "$.m~0n"));
+	}
+
+	@Test
+	void quotedKeysKeepLiteralsVerbatim() {
+		Map<String, Object> data = Map.of("a~1b", 9);
+		assertEquals(Optional.of(9), JsonPointer.extract(data, "$['a~1b']"));
+	}
+
+	@Test
+	void nullLeafIsPresentButNull() {
+		// T1.12: a JSON null leaf must not be indistinguishable from a missing path
+		Map<String, Object> inner = new HashMap<>();
+		inner.put("value", null);
+		Map<String, Object> data = new HashMap<>();
+		data.put("State", null);
+		data.put("Nested", inner);
+		Optional<Object> leaf = JsonPointer.extract(data, "$.State");
+		assertTrue(leaf.isPresent(), "null leaf is present");
+		assertSame(JsonPointer.JSON_NULL, leaf.get());
+		assertSame(JsonPointer.JSON_NULL, JsonPointer.extract(data, "$.Nested.value").get());
+		// navigating below a null node is missing, and so is an absent key
+		assertTrue(JsonPointer.extract(data, "$.State.child").isEmpty());
+		assertTrue(JsonPointer.extract(data, "$.Missing").isEmpty());
+	}
+
+	@Test
+	void nullRootExtractsAsPresentNull() {
+		// navigating below a null root is missing
+		assertTrue(JsonPointer.extract(null, "$.x").isEmpty());
+		// an empty pointer addresses the root itself: present, but null
+		assertSame(JsonPointer.JSON_NULL, JsonPointer.extract(null, "").get());
+	}
+
+	@Test
+	void toStringEscapesAndRoundTrips() {
+		assertEquals("$.SetPoint", JsonPointer.parse("$.SetPoint").toString());
+		assertEquals("$.a~1b.c~0d", JsonPointer.parse("/a~1b/c~0d").toString());
+		// round trip through the pathish parser yields the same tokens
+		assertEquals(
+				JsonPointer.parse("/a~1b/c~0d").tokens(),
+				JsonPointer.parse(JsonPointer.parse("/a~1b/c~0d").toString()).tokens());
 	}
 
 	private boolean assertThrows(Runnable runnable) {
