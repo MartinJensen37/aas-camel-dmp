@@ -22,7 +22,7 @@
  * 
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.core.regression.health;
+package org.eclipse.digitaltwin.basyx.databridge.core.health;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

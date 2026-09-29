@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.execution.policy;
 
 
 import java.util.Map;

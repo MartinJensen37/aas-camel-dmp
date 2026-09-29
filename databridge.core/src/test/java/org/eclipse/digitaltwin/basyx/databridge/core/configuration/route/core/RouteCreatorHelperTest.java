@@ -1,4 +1,4 @@
-package org.eclipse.digitaltwin.basyx.databridge.core.regression.factory;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;

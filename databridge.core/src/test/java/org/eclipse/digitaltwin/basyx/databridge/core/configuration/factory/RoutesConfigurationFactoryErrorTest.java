@@ -22,7 +22,7 @@
  *
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.core.regression.factory;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -35,7 +35,7 @@ import java.util.List;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.bridge.ProtocolBridgeRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy.ExecutionPolicyRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.execution.policy.ExecutionPolicyRouteConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
