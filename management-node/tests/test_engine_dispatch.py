@@ -2,7 +2,7 @@
 
 The AIMC ``Transformation`` blob's semantic id selects Lua (AIMC-compliant,
 default) or JSONata (fast/simple). Both share the same SourceId/SinkId contract
-and the same dis/assembly pipeline; the descriptor emits ``luatransformers.json``
+and the same dis/assembly pipeline; the descriptor emits ``luatransformer.json``
 or ``jsonatatransformer.json`` accordingly.
 """
 

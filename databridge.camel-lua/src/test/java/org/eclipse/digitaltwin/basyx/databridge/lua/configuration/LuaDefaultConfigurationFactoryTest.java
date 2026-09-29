@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Verifies the DMP config integration: {@code luatransformers.json} is parsed
+ * Verifies the DMP config integration: {@code luatransformer.json} is parsed
  * by {@link LuaDefaultConfigurationFactory} into
  * {@link LuaTransformerConfiguration} entries whose
  * {@link LuaTransformerConfiguration#getConnectionURI()} yields a valid
@@ -78,12 +78,12 @@ class LuaDefaultConfigurationFactoryTest {
 
 	@Test
 	void resolvesQueryPathAndEmitsFileUriForExistingBlob() throws Exception {
-		// simulate the DMP config dir: luatransformers.json + a real Lua blob
+		// simulate the DMP config dir: luatransformer.json + a real Lua blob
 		Path queries = Files.createDirectories(tempDir.resolve("queries"));
 		Files.writeString(queries.resolve("syntegonStopperingSystemAAS_PackMLState_State.lua"),
 				"function aimc_main(sources) return {} end", StandardCharsets.UTF_8);
 
-		Path configFile = tempDir.resolve("luatransformers.json");
+		Path configFile = tempDir.resolve("luatransformer.json");
 		Files.writeString(configFile, """
 				[
 				  {

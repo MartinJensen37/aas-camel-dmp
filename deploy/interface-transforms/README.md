@@ -67,7 +67,7 @@ are JSON-driven; the `OpcUaNormalizer` step maps to the Lua transformer's
 config/opcuaconsumer.json.example   OPC UA datasource (monitored item)
 config/mqttdatasink.json.example    MQTT state sink
 config/mqttdatasource.json.example  MQTT command source
-config/luatransformers.json.example the two Lua transformers
+config/luatransformer.json.example the two Lua transformers
 config/routes.json.example          the two routes
 config/opc2mqtt.lua                 AIMC blob: OPC UA -> MQTT
 config/mqtt2opc.lua                 AIMC blob: MQTT -> OPC UA

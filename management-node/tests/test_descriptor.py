@@ -8,7 +8,7 @@ import pathlib
 import pytest
 
 from management_node.descriptor import (
-    AAS_SERVER_FILE,
+    AAS_DATASINK_FILE,
     LUA_TRANSFORMERS_FILE,
     MQTT_CONSUMER_FILE,
     ROUTES_FILE,
@@ -92,7 +92,7 @@ def test_emits_lua_transformers_and_blob_files(descriptor):
 def test_emits_aas_sink_config(descriptor):
     import base64
 
-    sinks = json.loads(descriptor.files[AAS_SERVER_FILE])
+    sinks = json.loads(descriptor.files[AAS_DATASINK_FILE])
     assert sinks
     for s in sinks:
         assert s["type"] == "PROPERTY"
@@ -592,7 +592,7 @@ def test_one_unsupported_sink_rejects_entire_mapping():
     )
     assert ROUTES_FILE not in descriptor.files
     assert MQTT_CONSUMER_FILE not in descriptor.files
-    assert AAS_SERVER_FILE not in descriptor.files
+    assert AAS_DATASINK_FILE not in descriptor.files
 
 
 def test_skipped_write_does_not_leave_device_sink():
@@ -643,9 +643,9 @@ def _http_operation_models():
 
 def test_emits_http_operation_route():
     """A rest-protocol interaction compiles to a bridge route whose command
-    sink is a camel-http producer (httpproducer.json) — the HTTP response is
+    sink is a camel-http producer (httpdatasink.json) — the HTTP response is
     the reply, so no response datasource exists."""
-    from management_node.descriptor import HTTP_SINK_FILE, ROUTES_FILE
+    from management_node.descriptor import HTTP_DATASINK_FILE, ROUTES_FILE
 
     resolution = _http_operation_models()
     descriptor = compile_descriptor(
@@ -662,7 +662,7 @@ def test_emits_http_operation_route():
     assert op["triggerData"]["restMethod"] == "POST"
     assert "responseDatasource" not in op["triggerData"]
 
-    sinks = json.loads(descriptor.files[HTTP_SINK_FILE])
+    sinks = json.loads(descriptor.files[HTTP_DATASINK_FILE])
     assert len(sinks) == 1
     assert sinks[0]["scheme"] == "http"
     assert sinks[0]["serverUrl"] == "192.168.0.60"
@@ -784,7 +784,7 @@ def test_compiles_write_delegation_routes():
     assert "configuration" not in ua
 
     # writeback into the AAS Variables.Parameter property
-    aas_sinks = json.loads(descriptor.files[AAS_SERVER_FILE])
+    aas_sinks = json.loads(descriptor.files[AAS_DATASINK_FILE])
     wb = next(s for s in aas_sinks if s["valuePath"] == "Parameter")
     assert wb["idShortPath"] == "Parameter"
     assert wb["type"] == "PROPERTY"
@@ -799,7 +799,7 @@ def test_compiles_write_delegation_routes():
     assert "queries/syntegonStopperingSystem_Parameter_opcua_response.lua" \
         not in descriptor.files
 
-    # the transformer entries ride luatransformers.json like every other
+    # the transformer entries ride luatransformer.json like every other
     # mapping blob (the runtime resolves route transformer ids from there)
     from management_node.descriptor import LUA_TRANSFORMERS_FILE
     transformers = {t["uniqueId"] for t in json.loads(

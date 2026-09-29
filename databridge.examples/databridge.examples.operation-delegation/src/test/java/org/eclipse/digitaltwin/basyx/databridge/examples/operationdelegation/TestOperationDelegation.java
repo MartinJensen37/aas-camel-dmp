@@ -101,7 +101,7 @@ public class TestOperationDelegation {
 		configuration.addDatasinks(new MqttDataSinkDefaultConfigurationFactory(
 				configDir.resolve("mqttdatasink.json").toString(), loader).create());
 		configuration.addTransformers(new LuaDefaultConfigurationFactory(
-				configDir.resolve("luatransformers.json").toString(), loader).create());
+				configDir.resolve("luatransformer.json").toString(), loader).create());
 
 		component = new DataBridgeComponent(configuration);
 		component.startComponent();
@@ -204,7 +204,7 @@ public class TestOperationDelegation {
 				+ "    \"password\": \"\"\n"
 				+ "  }\n"
 				+ "]\n");
-		write(configDir, "luatransformers.json", "[\n"
+		write(configDir, "luatransformer.json", "[\n"
 				+ "  {\n"
 				+ "    \"uniqueId\": \"syntegonStopperingSystem_Halt_request_transformer\",\n"
 				+ "    \"queryLanguage\": \"LUA\",\n"

@@ -79,16 +79,16 @@ public class GeneratedDescriptorContractTest {
 				routes.addDatasources(new AASPollingConsumerDefaultConfigurationFactory(config.resolve("aaspollingconsumer.json").toString(), loader).create());
 			if (Files.exists(config.resolve("kafkaconsumer.json")))
 				routes.addDatasources(new KafkaDefaultConfigurationFactory(config.resolve("kafkaconsumer.json").toString(), loader).create());
-			if (Files.exists(config.resolve("luatransformers.json")))
-				routes.addTransformers(new LuaDefaultConfigurationFactory(config.resolve("luatransformers.json").toString(), loader).create());
-			if (Files.exists(config.resolve("aasserver.json")))
-				routes.addDatasinks(new AASDataSinkDefaultConfigurationFactory(config.resolve("aasserver.json").toString(), loader).create());
+			if (Files.exists(config.resolve("luatransformer.json")))
+				routes.addTransformers(new LuaDefaultConfigurationFactory(config.resolve("luatransformer.json").toString(), loader).create());
+			if (Files.exists(config.resolve("aasdatasink.json")))
+				routes.addDatasinks(new AASDataSinkDefaultConfigurationFactory(config.resolve("aasdatasink.json").toString(), loader).create());
 			if (Files.exists(config.resolve("mqttdatasink.json")))
 				routes.addDatasinks(new MqttDataSinkDefaultConfigurationFactory(config.resolve("mqttdatasink.json").toString(), loader).create());
 			if (Files.exists(config.resolve("opcuadatasink.json")))
 				routes.addDatasinks(new OpcuaDataSinkDefaultConfigurationFactory(config.resolve("opcuadatasink.json").toString(), loader).create());
-			if (Files.exists(config.resolve("httpproducer.json")))
-				routes.addDatasinks(new HttpDataSinkDefaultConfigurationFactory(config.resolve("httpproducer.json").toString(), loader).create());
+			if (Files.exists(config.resolve("httpdatasink.json")))
+				routes.addDatasinks(new HttpDataSinkDefaultConfigurationFactory(config.resolve("httpdatasink.json").toString(), loader).create());
 			if (Files.exists(config.resolve("plc4xdatasink.json")))
 				routes.addDatasinks(new Plc4xDataSinkDefaultConfigurationFactory(config.resolve("plc4xdatasink.json").toString(), loader).create());
 
@@ -105,8 +105,8 @@ public class GeneratedDescriptorContractTest {
 					assertTrue(name + ": missing reply transformer " + reply,
 							routes.getTransformers().containsKey(reply.toString()));
 			}
-			if (Files.exists(config.resolve("luatransformers.json"))) {
-				for (var item : JsonParser.parseString(Files.readString(config.resolve("luatransformers.json"))).getAsJsonArray()) {
+			if (Files.exists(config.resolve("luatransformer.json"))) {
+				for (var item : JsonParser.parseString(Files.readString(config.resolve("luatransformer.json"))).getAsJsonArray()) {
 					JsonObject emitted = item.getAsJsonObject();
 					LuaTransformerConfiguration transformer = (LuaTransformerConfiguration) routes.getTransformers()
 							.get(emitted.get("uniqueId").getAsString());
@@ -169,7 +169,7 @@ public class GeneratedDescriptorContractTest {
 					}
 				}
 			}
-			for (String filename : List.of("aasserver.json", "mqttdatasink.json", "opcuadatasink.json", "httpproducer.json", "plc4xdatasink.json")) {
+			for (String filename : List.of("aasdatasink.json", "mqttdatasink.json", "opcuadatasink.json", "httpdatasink.json", "plc4xdatasink.json")) {
 				if (!Files.exists(config.resolve(filename))) continue;
 				for (var item : JsonParser.parseString(Files.readString(config.resolve(filename))).getAsJsonArray()) {
 					JsonObject emitted = item.getAsJsonObject();
@@ -218,8 +218,8 @@ public class GeneratedDescriptorContractTest {
 		RoutesConfiguration routes = new RoutesConfiguration();
 		routes.addRoutes(new RoutesConfigurationFactory(config.resolve("routes.json").toString(), loader).create());
 		routes.addDatasources(new MqttDefaultConfigurationFactory(config.resolve("mqttconsumer.json").toString(), loader).create());
-		routes.addTransformers(new LuaDefaultConfigurationFactory(config.resolve("luatransformers.json").toString(), loader).create());
-		routes.addDatasinks(new AASDataSinkDefaultConfigurationFactory(config.resolve("aasserver.json").toString(), loader).create());
+		routes.addTransformers(new LuaDefaultConfigurationFactory(config.resolve("luatransformer.json").toString(), loader).create());
+		routes.addDatasinks(new AASDataSinkDefaultConfigurationFactory(config.resolve("aasdatasink.json").toString(), loader).create());
 
 		assertFalse("no mapping routes compiled", routes.getRoutes().isEmpty());
 		for (RouteConfiguration route : routes.getRoutes()) {
@@ -240,7 +240,7 @@ public class GeneratedDescriptorContractTest {
 			assertEquals(emitted.get("serverPort").getAsInt(), loaded.getServerPort());
 			assertTrue(loaded.getConnectionURI().contains("brokerUrl=tcp://"));
 		}
-		JsonArray transforms = JsonParser.parseString(Files.readString(config.resolve("luatransformers.json"))).getAsJsonArray();
+		JsonArray transforms = JsonParser.parseString(Files.readString(config.resolve("luatransformer.json"))).getAsJsonArray();
 		for (var item : transforms) {
 			JsonObject emitted = item.getAsJsonObject();
 			LuaTransformerConfiguration loaded = (LuaTransformerConfiguration) routes.getTransformers()
@@ -250,7 +250,7 @@ public class GeneratedDescriptorContractTest {
 			assertEquals(config.resolve(emitted.get("queryPath").getAsString()).toString(), loaded.getQueryPath());
 			assertTrue(Files.isRegularFile(Path.of(loaded.getQueryPath())));
 		}
-		JsonArray sinks = JsonParser.parseString(Files.readString(config.resolve("aasserver.json"))).getAsJsonArray();
+		JsonArray sinks = JsonParser.parseString(Files.readString(config.resolve("aasdatasink.json"))).getAsJsonArray();
 		for (var item : sinks) {
 			JsonObject emitted = item.getAsJsonObject();
 			AASDatasinkConfiguration loaded = (AASDatasinkConfiguration) routes.getDatasinks()
@@ -307,9 +307,9 @@ public class GeneratedDescriptorContractTest {
 		RoutesConfiguration routes = new RoutesConfiguration();
 		routes.addRoutes(new RoutesConfigurationFactory(config.resolve("routes.json").toString(), loader).create());
 		routes.addDatasinks(new HttpDataSinkDefaultConfigurationFactory(
-				config.resolve("httpproducer.json").toString(), loader).create());
+				config.resolve("httpdatasink.json").toString(), loader).create());
 		assertEquals("bridge", routes.getRoutes().get(0).getRouteTrigger());
-		JsonObject emitted = JsonParser.parseString(Files.readString(config.resolve("httpproducer.json")))
+		JsonObject emitted = JsonParser.parseString(Files.readString(config.resolve("httpdatasink.json")))
 				.getAsJsonArray().get(0).getAsJsonObject();
 		HttpDataSinkConfiguration loaded = (HttpDataSinkConfiguration) routes.getDatasinks()
 				.get(emitted.get("uniqueId").getAsString());

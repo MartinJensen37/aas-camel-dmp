@@ -33,7 +33,7 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.DataS
  *
  */
 public class AASDataSinkDefaultConfigurationFactory extends DataSinkConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "aasserver.json";
+	public static final String DEFAULT_FILE_PATH = "aasdatasink.json";
 	
 	public AASDataSinkDefaultConfigurationFactory(ClassLoader loader) {
 		super(DEFAULT_FILE_PATH, loader, AASDatasinkConfiguration.class);

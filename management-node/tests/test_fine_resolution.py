@@ -205,7 +205,7 @@ def test_http_source_and_sink_keep_the_schema_pointer():
     source = json.loads(descriptor.files["httpconsumer.json"])[0]
     assert source["valuePath"] == "$.Reading"
     assert source["serverUrl"] == "http://192.168.0.30:8080/api/pressure"
-    sink = json.loads(descriptor.files["httpproducer.json"])[0]
+    sink = json.loads(descriptor.files["httpdatasink.json"])[0]
     assert sink["sinkId"] == "PressureOut"
     assert sink["valuePath"] == "$.Reading"
     assert sink["path"] == "/api/pressure"

@@ -97,9 +97,9 @@ def test_reconcile_writes_config_and_deploys(orchestrator, tmp_path):
     assert deployed_name.startswith("dmp-syntegonStopperingSystem-")
     config_path = tmp_path / deployed_name
     assert (config_path / "routes.json").exists()
-    assert (config_path / "luatransformers.json").exists()
+    assert (config_path / "luatransformer.json").exists()
     assert (config_path / "mqttconsumer.json").exists()
-    assert (config_path / "aasserver.json").exists()
+    assert (config_path / "aasdatasink.json").exists()
     assert list((config_path / "queries").glob("*.lua"))
 
 

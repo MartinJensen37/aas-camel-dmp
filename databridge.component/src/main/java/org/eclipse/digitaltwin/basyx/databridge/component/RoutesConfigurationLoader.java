@@ -56,7 +56,7 @@ public class RoutesConfigurationLoader {
 
 	private final static String TEMPORARY_CONFIG_DIRECTORY = System.getProperty("java.io.tmpdir") + "/dataBridge";
 	public static final String JSONATA_ENV_VAR_NAME = "jsonatatransformers";
-	public static final String LUA_ENV_VAR_NAME = "luatransformers";
+	public static final String LUA_ENV_VAR_NAME = "luatransformer";
 	public RoutesConfigurationLoader() {
 		resetFileDirectory();
 		createFilesFromEnvironmentVariables();
@@ -108,7 +108,7 @@ public class RoutesConfigurationLoader {
 	}
 
 	/**
-	 * Creates Lua blob files from the {@code luatransformers} environment
+	 * Creates Lua blob files from the {@code luatransformer} environment
 	 * variable (M2, LUA equivalent of {@link #JSONATA_ENV_VAR_NAME}).
 	 */
 	private static void createLuaFiles() {

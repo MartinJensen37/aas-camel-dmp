@@ -96,7 +96,7 @@ public class RoutesConfigurationTestEnvironmentVariables {
 	}
 
 	private static void putAasServer(Map<String, String> variables) {
-		variables.put("aasserver.json", "[\r\n"
+		variables.put("aasdatasink.json", "[\r\n"
 				+ "	{\r\n"
 				+ "		\"uniqueId\": \"ConnectedSubmodel/ConnectedPropertyA\",\r\n"
 				+ "		\"submodelEndpoint\": \"http://localhost:4001/shells/TestUpdatedDeviceAAS/aas/submodels/ConnectedSubmodel/submodel\",\r\n"

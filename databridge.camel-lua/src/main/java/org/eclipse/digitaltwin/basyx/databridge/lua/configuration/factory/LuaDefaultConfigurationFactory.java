@@ -35,13 +35,13 @@ import org.eclipse.digitaltwin.basyx.databridge.lua.configuration.LuaTransformer
  * Lua default configuration factory from the default path.
  *
  * <p>
- * The default file is {@code luatransformers.json}; each entry references a Lua
+ * The default file is {@code luatransformer.json}; each entry references a Lua
  * blob via {@code queryPath} (AIMC transformation, only source of truth).
  *
  * @author aas-camel-dmp
  */
 public class LuaDefaultConfigurationFactory extends DataTransformerConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "luatransformers.json";
+	public static final String DEFAULT_FILE_PATH = "luatransformer.json";
 
 	private String filePath;
 

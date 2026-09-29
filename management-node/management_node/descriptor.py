@@ -6,9 +6,9 @@ AID) into the config files the per-unit DMP container reads at startup:
 - ``routes.json``             — one aggregation route per MappingConfiguration
                                 plus one bridge route per interaction pairing
 - ``mqttconsumer.json``       — MQTT datasource configs (from declared endpoints)
-- ``luatransformers.json``    — LUA transformer configs (SPEC §8.5)
+- ``luatransformer.json``    — LUA transformer configs (SPEC §8.5)
 - ``queries/<unit>_<mapping>.lua`` — the AIMC transformation blobs
-- ``aasserver.json``          — AAS datasink configs (from AIMC Sink refs)
+- ``aasdatasink.json``          — AAS datasink configs (from AIMC Sink refs)
 - (plus opcua/plc4x/http/aas-polling consumer files when such sources exist)
 - ``kafkaconsumer.json`` — AAS repository event datasource configs
 
@@ -59,16 +59,16 @@ logger = logging.getLogger(__name__)
 ROUTES_FILE = "routes.json"
 MQTT_CONSUMER_FILE = "mqttconsumer.json"
 MQTT_SINK_FILE = "mqttdatasink.json"
-LUA_TRANSFORMERS_FILE = "luatransformers.json"
+LUA_TRANSFORMERS_FILE = "luatransformer.json"
 JSONATA_TRANSFORMERS_FILE = "jsonatatransformer.json"
-AAS_SERVER_FILE = "aasserver.json"
+AAS_DATASINK_FILE = "aasdatasink.json"
 AAS_POLLING_CONSUMER_FILE = "aaspollingconsumer.json"
 OPCUA_CONSUMER_FILE = "opcuaconsumer.json"
 OPCUA_SINK_FILE = "opcuadatasink.json"
 PLC4X_CONSUMER_FILE = "plc4xconsumer.json"
 PLC4X_SINK_FILE = "plc4xdatasink.json"
 HTTP_CONSUMER_FILE = "httpconsumer.json"
-HTTP_SINK_FILE = "httpproducer.json"
+HTTP_DATASINK_FILE = "httpdatasink.json"
 KAFKA_CONSUMER_FILE = "kafkaconsumer.json"
 
 def _substitute(value: str, aas_id: str, unit_short: str) -> str:
@@ -371,7 +371,7 @@ class DescriptorCompiler:
             (MQTT_SINK_FILE, ctx.mqtt_sinks),
             (LUA_TRANSFORMERS_FILE, ctx.lua_transformers),
             (JSONATA_TRANSFORMERS_FILE, ctx.jsonata_transformers),
-            (AAS_SERVER_FILE, ctx.aas_sinks),
+            (AAS_DATASINK_FILE, ctx.aas_sinks),
             (AAS_POLLING_CONSUMER_FILE, ctx.aas_polling_sources),
             (KAFKA_CONSUMER_FILE, ctx.kafka_sources),
             (OPCUA_CONSUMER_FILE, ctx.opcua_sources),
@@ -379,7 +379,7 @@ class DescriptorCompiler:
             (HTTP_CONSUMER_FILE, ctx.http_sources),
             (OPCUA_SINK_FILE, ctx.opcua_sinks),
             (PLC4X_SINK_FILE, ctx.plc4x_sinks),
-            (HTTP_SINK_FILE, ctx.http_sinks),
+            (HTTP_DATASINK_FILE, ctx.http_sinks),
         ]
         descriptor.files.update(ctx.files)  # materialized blob/query files
         for name, entries in descriptors:
@@ -738,7 +738,7 @@ class DescriptorCompiler:
                 f"{scope}_response_transformer",
                 f"response transformer of property write {write.id_short}")
 
-        # the Lua blobs ride the SAME luatransformers.json surface as the
+        # the Lua blobs ride the SAME luatransformer.json surface as the
         # other mapping transformers (sourceKeys = the writeback sink id —
         # the blob envelope key)
         source_keys = write.writeback_sink_id or write.id_short
@@ -1292,7 +1292,7 @@ class DescriptorCompiler:
 
     def _add_http_datasink(self, ctx: DescriptorContext, scope: str,
                            sink: ResolvedSink, origin: str) -> str | None:
-        """Registers a camel-http producer sink (``httpproducer.json``): the
+        """Registers a camel-http producer sink (``httpdatasink.json``): the
         scheme/host/port come from the affordance base, the path from base
         path + href. Serves HTTP actions AND IO-Link over Profinet REST."""
         if not sink.base:

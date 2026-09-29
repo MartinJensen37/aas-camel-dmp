@@ -11,7 +11,7 @@ can also just fill `./config` yourself.
 config/
 ├── routes.json               # route topology (datasource -> transformers -> datasinks)
 ├── timerconsumer.json        # datasource config (timer), if a timer route is used
-├── luatransformers.json      # LUA transformer configs (SPEC §8.5)
+├── luatransformer.json      # LUA transformer configs (SPEC §8.5)
 ├── mqttdatasink.json         # datasink config (MQTT publish)
 └── queries/
     └── <asset>_<mapping>.lua # AIMC transformation blobs (runtime-loaded, reload on change)
@@ -34,6 +34,6 @@ curl http://localhost:8085/health
 ```
 
 The `lua:` transformer in `routes.json` is referenced by uniqueId from
-`luatransformers.json`; each entry points at a `.lua` blob in `queries/`.
+`luatransformer.json`; each entry points at a `.lua` blob in `queries/`.
 Dropping in a new blob is picked up without a restart (mtime/sha reload,
 SPEC §7.4).

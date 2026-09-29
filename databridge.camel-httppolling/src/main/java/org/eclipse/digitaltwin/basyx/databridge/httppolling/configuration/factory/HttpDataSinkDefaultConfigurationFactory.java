@@ -35,7 +35,7 @@ import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.HttpDa
  */
 public class HttpDataSinkDefaultConfigurationFactory extends DataSinkConfigurationFactory{
 	
-	public static final String DEFAULT_FILE_PATH = "httpproducer.json";
+	public static final String DEFAULT_FILE_PATH = "httpdatasink.json";
 	
 	public HttpDataSinkDefaultConfigurationFactory(ClassLoader loader) {
 		super(DEFAULT_FILE_PATH, loader, HttpDataSinkConfiguration.class);

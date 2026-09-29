@@ -86,7 +86,7 @@ public class SmokeTestLuaDmpRouteTest {
 			configuration.addRoutes(routesFactory.create());
 
 			LuaDefaultConfigurationFactory luaFactory = new LuaDefaultConfigurationFactory(
-					path(configDir, "luatransformers.json"), loader);
+					path(configDir, "luatransformer.json"), loader);
 			configuration.addTransformers(luaFactory.create());
 
 			CaptureDataSinkDefaultConfigurationFactory sinkFactory = new CaptureDataSinkDefaultConfigurationFactory(
@@ -151,7 +151,7 @@ public class SmokeTestLuaDmpRouteTest {
 				  }
 				]
 				""");
-		write(configDir, "luatransformers.json", """
+		write(configDir, "luatransformer.json", """
 				[
 				  {
 				    "uniqueId": "luaTransformer1",

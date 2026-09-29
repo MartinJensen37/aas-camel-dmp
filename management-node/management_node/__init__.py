@@ -1,7 +1,7 @@
 """Management node for aas-camel-dmp (SPEC §11, ADR-013).
 
 The management node reacts to AAS events, parses the asset's AID and AIMC
-submodels, compiles a DMP descriptor (routes.json / luatransformers.json /
+submodels, compiles a DMP descriptor (routes.json / luatransformer.json /
 Lua blobs) and instantiates/updates/stops per-asset DMP containers.
 
 The AID and AIMC parsers are kept largely separated (see ``parsers/``): each

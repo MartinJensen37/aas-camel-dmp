@@ -26,7 +26,7 @@ See [SPEC.md](SPEC.md) for the full design specification, milestones, and decisi
   - CPU timeout via instruction-count hook (default 2 s per invocation).
   - Runtime-loaded blobs with mtime/sha-based reload; max blob size enforced at load.
   - `LuaHarness` CLI + contract tests to verify blobs before deployment.
-- **Runtime config:** `databridge/luatransformers.json` (LUA equivalent of `jsonatatransformer.json`) and `databridge/queries/*.lua` blobs; `LUA_ENV_VAR_NAME` (`luatransformers`) mirroring the JSONata env-var mechanism.
+- **Runtime config:** `databridge/luatransformer.json` (LUA equivalent of `jsonatatransformer.json`) and `databridge/queries/*.lua` blobs; `LUA_ENV_VAR_NAME` (`luatransformers`) mirroring the JSONata env-var mechanism.
 
 ### Provenance
 

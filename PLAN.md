@@ -61,7 +61,7 @@ post-transform (sink). Contract tests §8.4 #7–10 become green.
   Missing path → `IllegalArgumentException` (clear route error, §8.4 #8). Absent → whole payload
   (coarse, current behavior).
 - `LuaTransformerConfiguration`: add `valuePath`, emit `&valuePath=` in `getConnectionURI()`.
-- `luatransformer.schema.json` + `luatransformers.json` example gain the optional field.
+- `luatransformer.schema.json` + `luatransformer.json` example gain the optional field.
 
 #### T1.3 Fan-in + fine (per-source disassembly) — design point, see §3.1
 - Extend `MqttConsumerConfiguration` with optional `valuePath`.
@@ -128,7 +128,7 @@ only `mapping.sources[0]` and emits the legacy singular `datasource` key.
   so `aimc_main` receives the aggregated `sources` map (§6.4 example: combine two sources in one
   math transform). Single-source mappings keep `datasource`/single `sourceKeys` (unchanged output).
 - New pytest: two-source mapping → `routes.json` has `datasources:[...]`, `mqttconsumer.json`
-  has both entries, `luatransformers.json` `sourceKeys` = `a,b`.
+  has both entries, `luatransformer.json` `sourceKeys` = `a,b`.
 
 ### T4 — Spec/doc hygiene (small, optional)
 - `SPEC.md` header: "Status: Draft" + "Companion artifacts … (planned)" are stale now that the

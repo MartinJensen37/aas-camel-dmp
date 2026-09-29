@@ -13,7 +13,7 @@ import json
 
 from management_node.descriptor import (
     AAS_POLLING_CONSUMER_FILE,
-    AAS_SERVER_FILE,
+    AAS_DATASINK_FILE,
     HTTP_CONSUMER_FILE,
     LUA_TRANSFORMERS_FILE,
     OPCUA_CONSUMER_FILE,
@@ -97,7 +97,7 @@ def test_aas_element_source_emits_polling_consumer_and_policy_route():
     assert "triggerData" not in route
     assert "executionPolicy" not in route
 
-    sinks = json.loads(descriptor.files[AAS_SERVER_FILE])
+    sinks = json.loads(descriptor.files[AAS_DATASINK_FILE])
     assert len(sinks) == 1
     assert sinks[0]["idShortPath"] == "Running"
 
@@ -108,7 +108,7 @@ def test_aas_sink_addresses_the_referenced_element_without_a_suffix():
                                   default_polling_interval=2.5),
                          build_aid())
     descriptor = _compile(resolution)
-    sinks = json.loads(descriptor.files[AAS_SERVER_FILE])
+    sinks = json.loads(descriptor.files[AAS_DATASINK_FILE])
     assert sinks[0]["idShortPath"] == "Running"
 
 

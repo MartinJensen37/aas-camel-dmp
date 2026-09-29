@@ -5,7 +5,7 @@
 > **DMP v3 amendment (2026-09-16, in progress): operation delegation = one-MC authoring on the Operation element.** A mapping whose SOURCE reference targets an **Operation SubmodelElement** (own or cross-AAS) IS an operation delegation: sink = the native command affordance, Transformation = the request blob (replies pass through — response blob optional). The caller-facing REST surface is **derived by convention** (`POST /operations/{aas_id_short}/{action}`, the action = the owning skill's idShort, `{aas_id_short}` resolved at descriptor compile time) and carried in the bridge route's `triggerData` (`restPath`/`restMethod`) — the **two-MC request/response pairing, `interface_rest` REST-caller affordances, the `restsources.json` emission and the `RestCallerProtocols` machinery are retired**; the AID models only the device's own communication
 > **Date:** 2026-08-19 · **Last updated:** 2026-09-16
 > **Applies to:** this repository, checked out as **`aas-camel-dmp`** (renamed from `aas-camel-k-dmp`, M0)
-> **Companion artifacts (implemented):** `databridge.camel-lua/` (Lua component + harness), `databridge.camel-jsonata/` (secondary engine, ADR-015), `databridge.core/…/EventRouteCreator.java` (fan-in + coarse/fine, ADR-014), `management-node/` (Python orchestrator), per-protocol config catalog (`mqttconsumer.json`, `mqttdatasink.json`, `aasserver.json`, …)
+> **Companion artifacts (implemented):** `databridge.camel-lua/` (Lua component + harness), `databridge.camel-jsonata/` (secondary engine, ADR-015), `databridge.core/…/EventRouteCreator.java` (fan-in + coarse/fine, ADR-014), `management-node/` (Python orchestrator), per-protocol config catalog (`mqttconsumer.json`, `mqttdatasink.json`, `aasdatasink.json`, …)
 
 ---
 
@@ -47,7 +47,7 @@ Out of scope: the AAS server itself, the AAS registration service, ontology gene
   ADR-002). Renamed `aas-camel-k-dmp` → **`aas-camel-dmp`** (M0); baseline
   upgraded to **Camel 4.22.x / Java 17** (M0.5, ADR-009).
 - Routes are built at startup from JSON configs (`routes.json` + per-category
-  config files, e.g. `luatransformers.json`, `mqttconsumer.json`).
+  config files, e.g. `luatransformer.json`, `mqttconsumer.json`).
 - The default/compliance transformation is **Lua** with an `aimc_main(sources)`
   entry point (`databridge.camel-lua` → `lua:file:<path>`, §7) — sandboxed
   (§7.2/§7.3), harness-verified (§8.4). **JSONata**
@@ -78,7 +78,7 @@ Out of scope: the AAS server itself, the AAS registration service, ontology gene
   the **management node** (`management-node/`, Python, M3) consumes (ADR-010):
   it parses AID + AIMC, pins `valuePath` per fine source/sink, selects the
   engine from the blob semantic id, and compiles the DMP descriptor (routes,
-  `mqttconsumer.json`, `mqttdatasink.json`, `aasserver.json`,
+  `mqttconsumer.json`, `mqttdatasink.json`, `aasdatasink.json`,
   Lua/JSONata transformer blobs).
 
 ---
@@ -242,8 +242,8 @@ declare**, each from the fixed catalog:
 |---|---|
 | MQTT source | `mqttconsumer.json` |
 | OPC UA source | `opcuaconsumer.json` |
-| PLC / SQL / HTTP / Kafka | `plc4x.json` / `sqlconsumer.json` / `httpproducer.json` / `kafkaconsumer.json` |
-| AAS sink | `aasserver.json` |
+| PLC / SQL / HTTP / Kafka | `plc4x.json` / `sqlconsumer.json` / `httpdatasink.json` / `kafkaconsumer.json` |
+| AAS sink | `aasdatasink.json` |
 | MQTT datasink | `mqttdatasink.json` |
 
 Operation delegations carry their REST surface in the route's
@@ -658,7 +658,7 @@ New Maven module mirroring `databridge.camel-jsonata`.
 | Class | Responsibility |
 |---|---|
 | `LuaTransformerConfiguration` | mirrors `JsonataTransformerConfiguration`; `getConnectionURI()` → `lua:file:<path>?inputType=JsonString&outputType=JsonString` (+ options) |
-| `LuaDefaultConfigurationFactory` | mirrors `JsonataDefaultConfigurationFactory`; default file `luatransformers.json` |
+| `LuaDefaultConfigurationFactory` | mirrors `JsonataDefaultConfigurationFactory`; default file `luatransformer.json` |
 | `LuaComponent` / `LuaEndpoint` | Camel `lua:` scheme; parses URI options |
 | `LuaProducer` (or `Processor`) | loads script (with reload), builds sandboxed globals, runs `aimc_main(sources)`, encodes return; its optional URI `valuePath` applies only for standalone single-source use. Compiled mapping sources are disassembled at the datasource/route boundary (§6.5); sink-side assembly is applied by the datasink/adapter (e.g. AAS `valuePath`). |
 | `LuaSandbox` | whitelisted globals factory (§7.2) |
@@ -694,7 +694,7 @@ New Maven module mirroring `databridge.camel-jsonata`.
 ### 8.5 Config file
 
 ```json
-// databridge/luatransformers.json
+// databridge/luatransformer.json
 [
   {
     "uniqueId": "<asset>_<mapping>_transformer",
@@ -744,7 +744,7 @@ the response/derived value — so `json.encode` renders `{"a":4}` rather than
 - Each asset = one DMP container, isolated (process-level fault isolation).
 - **Granularity (Q4 / ADR-012): 1 DMP container per asset hosting N `MappingConfigurations`** (multiple mappings per asset, one process).
 - Config is provided at runtime via the existing mechanism: a config directory (`/usr/share/config` default) and/or environment variables (mirroring the current `JSONATA_ENV_VAR_NAME` pattern with a `LUA` equivalent).
-- The config directory holds **exactly the per-protocol datasource/sink files the asset's interfaces declare** (§6.3: `mqttconsumer.json`, `opcuaconsumer.json`, `plc4x.json`, `mqttdatasink.json`, `aasserver.json`, …) plus `routes.json` and the transformer/lua configs.
+- The config directory holds **exactly the per-protocol datasource/sink files the asset's interfaces declare** (§6.3: `mqttconsumer.json`, `opcuaconsumer.json`, `plc4x.json`, `mqttdatasink.json`, `aasdatasink.json`, …) plus `routes.json` and the transformer/lua configs.
 - Lua blob files (and, where the AAS declares a JSONata transformation, the JSONata files) are placed/mounted into the DMP at runtime (from the management node or a mounted volume/config map).
 
 ### 9.3 JVM sizing
@@ -936,7 +936,7 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 | ADR-010 | Management-node eventing = **Kafka only**, following `kg-bridge` conventions (`KAFKA_BOOTSTRAP`, `KAFKA_TOPIC_PATTERN`, `KAFKA_CONSUMER_GROUP`, `KAFKA_AUTO_OFFSET_RESET`) | Q1; reuse existing BaSyx Kafka backbone; `kg-bridge` may be replaced by a DMP route later — keep conventions shared. |
 | ADR-011 | Transformation blob is pulled **only** from the AIMC `MappingConfiguration.Transformation` Blob | Q2; single source of truth per the IDTA template; no external blob references. |
 | ADR-012 | **1 DMP container per asset, N `MappingConfigurations` inside** | Q4; asset-level isolation with multiple mappings per asset in one process. |
-| ADR-013 | Management node implemented in **Python** (not Java/Camel) | The management node is orchestrator glue, not a data plane — no Camel routing needed. Python is the easiest choice: the AID/AIMC pydantic models already exist in Python (`aas_pydantic` + `Registration_Service` templates); `kg-bridge` (the Kafka-convention reference, ADR-010) is Python; `docker` SDK covers container lifecycle. Boundary stays clean: Python orchestrator compiles `routes.json`/`luatransformers.json`/`.lua` blobs → starts the Java DMP container. Java is reserved for the DMP data plane. |
+| ADR-013 | Management node implemented in **Python** (not Java/Camel) | The management node is orchestrator glue, not a data plane — no Camel routing needed. Python is the easiest choice: the AID/AIMC pydantic models already exist in Python (`aas_pydantic` + `Registration_Service` templates); `kg-bridge` (the Kafka-convention reference, ADR-010) is Python; `docker` SDK covers container lifecycle. Boundary stays clean: Python orchestrator compiles `routes.json`/`luatransformer.json`/`.lua` blobs → starts the Java DMP container. Java is reserved for the DMP data plane. |
 | ADR-014 | Reference granularity = **coarse or fine**, symmetric on **source and sink**, chosen at the **management node**; fine resolution pins a `valuePath` (JSON Pointer) on the datasource **and** the datasink; the **DMP applies it** (or delivers the whole payload / writes as-is) at the boundary — **disassembly pre-transform, assembly post-transform** (§6.5.4) | Lets the author resolve nested AID properties **automatically** (fine) or navigate them in the transform (coarse), without hard-coding topics/payload shapes in the DMP; keeps the per-asset DMP config declarative and minimal; no transform contract change (both modes are `SourceId`/`SinkId`-keyed JSON, §6.5). Fine detection + pointer derivation is AID/AIMC/datatype knowledge → management node (ADR-013 separation); the DMP stays a dumb router that only applies what it was given. Sink `valuePath` reuses the existing AAS sink mechanism. See §6.5. |
 | ADR-015 | Transformation engine selected by the **blob's semantic id**: **Lua** (`aimc_main`) = AIMC-compliant path for complex/math transforms; **JSONata** = fast/safe path for simple transforms. Same dis/assembly pipeline, same `SourceId`/`SinkId` contract | From the AAS side both are just "the transformation blob", differing only in a semantic id → single AIMC concept, two engines. Keeps Lua as the compliance engine (§8) while acknowledging JSONata's fit for elementary maps; the DMP dispatches on the declared semantic id. See §7.6. |
 | ADR-016 | **Shared AAS data-model package (`aas-model`).** The management node parses AID+AIMC **through the same pydantic model classes** the registration service authors them with. `aas_model` is the **entire data model package** (own git submodule): it bundles vendored `aas_pydantic` (base framework + generated IDTA templates), the project submodel templates, the resource/instantiation templates and build/schema helpers (`builder`, `id_injector`, `json_schema_aid`, `schema_parser`), `MQTTSchemas`, and the AAS-JSON↔model `_serde` bridge. Shared by `Registration_Service` (instantiation) and `aas-camel-dmp/management-node` (parsing) | Forces the generator and parser into lockstep: a model change shows up on both sides and is enforced by shared round-trip/schema tests, eliminating drift between the registration-service templates and the management node's handwritten `parsers/`. The resolver/descriptor remain the **derived-state** layer (delivery, valuePath, ref_path) reading from the shared models; the DMP stays a dumb router. See §18. |
@@ -974,7 +974,7 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 | **M0** | Rename repo `aas-camel-k-dmp` → `aas-camel-dmp` | README/module refs updated; spec carried over |
 | **M0.5** | Camel **4.x** baseline upgrade | Parent `camel.version` → latest 4.x (4.22.x); Java 17 everywhere (incl. modules still pinned to 1.8); fix `databridge.core` repackaged imports (`DefaultCamelContext`, health classes); verify every `databridge.camel-*` module + IT suite on 4.x; update Docker JRE base image. Exit: full build + regression tests green on 4.x/Java 17 |
 | **M1** | `databridge.camel-lua` + harness + contract tests | Test matrix §8.4 green; blob runs in the Camel 4.x app (AIMC-compliant immediately) |
-| **M2** | DMP container integration | `luatransformers.json`, env-var config (LUA equivalent of `JSONATA_ENV_VAR`), runtime mount of blobs, `-Xmx`, reload verified |
+| **M2** | DMP container integration | `luatransformer.json`, env-var config (LUA equivalent of `JSONATA_ENV_VAR`), runtime mount of blobs, `-Xmx`, reload verified |
 | **M3** | Management node | Subscribes to AAS events; parses AID+AIMC; compiles descriptor; instantiates/updates/stops per-asset DMPs; idempotent reconcile |
 | **M4** | Interface transforms | OPC UA-only resource decorated with MQTT interface (both directions); pattern reusable for other protocol pairs |
 | **M5** | Decision gate: plain containers vs Camel K | **Resolved (2026-08): plain Apache Camel in Docker containers only** — no cluster fleet in scope; Camel K rejected; Lua component reused unchanged |

@@ -3,7 +3,7 @@
 The management node orchestrates per-asset DMP containers (SPEC §11):
 it reacts to AAS events (Kafka), parses the asset's **AID** + **AIMC**
 submodels, resolves references, compiles the DMP descriptor
-(`routes.json`, `luatransformers.json`, `queries/*.lua`), writes it into the
+(`routes.json`, `luatransformer.json`, `queries/*.lua`), writes it into the
 asset's config dir and (re)deploys the DMP container. Reconciliation is
 idempotent and single-flight per asset.
 
