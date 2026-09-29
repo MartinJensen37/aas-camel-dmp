@@ -22,7 +22,7 @@
  *
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.pipeline;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +30,8 @@ import java.util.Map;
 
 import org.apache.camel.model.ProcessorDefinition;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSinkConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.util.JsonPointer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

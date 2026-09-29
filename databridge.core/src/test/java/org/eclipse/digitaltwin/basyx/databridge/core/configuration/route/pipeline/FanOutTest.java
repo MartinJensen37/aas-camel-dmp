@@ -1,4 +1,4 @@
-package org.eclipse.digitaltwin.basyx.databridge.core.regression.policy;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.pipeline;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -14,7 +14,6 @@ import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.test.junit5.CamelTestSupport;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataTransformerConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.FanOut;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreatorHelper;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;

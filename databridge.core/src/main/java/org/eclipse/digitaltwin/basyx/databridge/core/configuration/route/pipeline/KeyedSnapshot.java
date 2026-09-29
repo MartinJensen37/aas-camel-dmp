@@ -1,4 +1,4 @@
-package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.pipeline;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
