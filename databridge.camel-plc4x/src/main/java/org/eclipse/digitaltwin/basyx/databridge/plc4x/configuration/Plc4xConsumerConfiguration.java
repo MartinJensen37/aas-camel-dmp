@@ -1,6 +1,6 @@
 /*******************************************************************************
- * Copyright (C) 2026 the aas-camel-dmp Authors
- *
+ * Copyright (C) 2023 the Eclipse BaSyx Authors
+ * 
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -8,10 +8,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- *
+ * 
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- *
+ * 
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -19,57 +19,45 @@
  * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
+ * 
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration;
 
+import java.net.URISyntaxException;
 import java.util.List;
-
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSinkConfiguration;
+import org.apache.http.client.utils.URIBuilder;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.deserializer.OptionDeserializer;
 
 /**
- * PLC4X write sink (DMP v3): the camel-plc4x producer writes the transformed
- * tag values (e.g. Modbus coils/registers via the modbus-tcp driver). Mirrors
- * {@link Plc4XConsumerConfiguration} — same connection URI shape, but a
- * datasink.
+ * An implementation of PLC4X consumer configuration
+ * 
+ * @author danish
  *
- * @author aas-camel-dmp
  */
-public class Plc4xProducerConfiguration extends DataSinkConfiguration {
-
+public class Plc4xConsumerConfiguration extends DataSourceConfiguration {
+	
 	private static final String PLC4X_PROTOCOL_NAME = "plc4x:";
-
-	private String serverUrl;
-	private int serverPort;
+	private static final String TAG_PREFIX = "tag.";
+	
 	private String driver;
 	private String servicePath = "";
 	private Object options;
 	private List<Tag> tags;
 
-	public Plc4xProducerConfiguration() {
+	public Plc4xConsumerConfiguration() {
 	}
 
-	public Plc4xProducerConfiguration(String uniqueId, String serverUrl, int serverPort, String driver,
+	public Plc4xConsumerConfiguration(String uniqueId, String serverUrl, int serverPort, String driver,
 			String servicePath, Object options, List<Tag> tags) {
-		super(uniqueId);
-		this.serverUrl = serverUrl;
-		this.serverPort = serverPort;
+		super(uniqueId, serverUrl, serverPort);
 		this.driver = driver;
 		this.servicePath = servicePath;
 		this.options = options;
 		this.tags = tags;
 	}
-
-	public String getServerUrl() {
-		return serverUrl;
-	}
-
-	public int getServerPort() {
-		return serverPort;
-	}
-
+	
 	public String getServicePath() {
 		return servicePath;
 	}
@@ -86,21 +74,42 @@ public class Plc4xProducerConfiguration extends DataSinkConfiguration {
 		return tags;
 	}
 
-	@Override
 	public String getConnectionURI() {
-		org.apache.http.client.utils.URIBuilder uriBuilder = new org.apache.http.client.utils.URIBuilder();
+		URIBuilder uriBuilder = new URIBuilder();
 		uriBuilder.setScheme(PLC4X_PROTOCOL_NAME + driver);
 		uriBuilder.setHost(getServerUrl());
 		uriBuilder.setPort(getServerPort());
 		uriBuilder.setPath(servicePath);
+		
+		addOptionsIfConfigured(uriBuilder);
+		
+		addTagsIfConfigured(uriBuilder);
+		
+		return buildConnectionUri(uriBuilder);
+	}
 
-		for (Option option : getOptions()) {
-			uriBuilder.addParameter(option.getName(), option.getValue());
-		}
-		for (Tag tag : tags) {
-			uriBuilder.addParameter("tag." + tag.getName(), tag.getValue());
-		}
+	private void addTagsIfConfigured(URIBuilder uriBuilder) {
+		if (tags == null || tags.isEmpty())
+			return;
+		
+		tags.stream().forEach(tag -> uriBuilder.addParameter(TAG_PREFIX + tag.getName(), tag.getValue()));
+	}
 
-		return uriBuilder.toString();
+	private void addOptionsIfConfigured(URIBuilder uriBuilder) {
+		List<Option> optionList = getOptions();
+		
+		if (optionList.isEmpty())
+			return;
+		
+		optionList.stream().forEach(option -> uriBuilder.addParameter(option.getName(), option.getValue()));
+	}
+	
+	private String buildConnectionUri(URIBuilder uriBuilder) {
+		try {
+			return uriBuilder.build().toString();
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Exception occurred while creating Plc4XEndpoint");
+		}
 	}
 }

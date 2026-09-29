@@ -35,7 +35,7 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSi
  * @author rana
  *
  */
-public class HttpProducerConfiguration extends DataSinkConfiguration{
+public class HttpDataSinkConfiguration extends DataSinkConfiguration{
 	
 	private String scheme;
 	private String serverUrl;
@@ -43,9 +43,9 @@ public class HttpProducerConfiguration extends DataSinkConfiguration{
 	private String query;
 	private int port;
 	
-	public HttpProducerConfiguration() {}
+	public HttpDataSinkConfiguration() {}
 	
-	public HttpProducerConfiguration(String uniqueId, String scheme,  String serverUrl, String path, int port) {
+	public HttpDataSinkConfiguration(String uniqueId, String scheme,  String serverUrl, String path, int port) {
 		super(uniqueId);
 		this.scheme = scheme;
 		this.serverUrl = serverUrl;

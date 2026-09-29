@@ -24,7 +24,7 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.databridge.examples.httppollingauthjsonataaas.test;
 import org.apache.http.HttpStatus;
-import org.eclipse.digitaltwin.basyx.databridge.aas.configuration.factory.AASProducerDefaultConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.databridge.aas.configuration.factory.AASDataSinkDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.component.DataBridgeComponent;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
@@ -91,7 +91,7 @@ public class TestAASUpdater {
 
 		// Extend configuration for AAS
 		// DefaulRoutesConfigFactory takes default aasserver.json as to config
-		AASProducerDefaultConfigurationFactory aasConfigFactory = new AASProducerDefaultConfigurationFactory(loader);
+		AASDataSinkDefaultConfigurationFactory aasConfigFactory = new AASDataSinkDefaultConfigurationFactory(loader);
 		configuration.addDatasinks(aasConfigFactory.create());
 
 		// Extend configuration for Jsonata

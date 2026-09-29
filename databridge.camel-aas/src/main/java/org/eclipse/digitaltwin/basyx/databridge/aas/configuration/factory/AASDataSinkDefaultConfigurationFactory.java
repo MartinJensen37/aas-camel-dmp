@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2023 the Eclipse BaSyx Authors
+ * Copyright (C) 2021 the Eclipse BaSyx Authors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,25 +22,24 @@
  * 
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.factory;
+package org.eclipse.digitaltwin.basyx.databridge.aas.configuration.factory;
 
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.DataSourceConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.Plc4XConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.aas.configuration.AASDatasinkConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.DataSinkConfigurationFactory;
 
 /**
- * A default configuration factory for PLC4X from a default file path
- * 
- * @author danish
+ * A default configuration factory for AAS producer
+ * @author haque
  *
  */
-public class Plc4XDefaultConfigurationFactory extends DataSourceConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "plc4xconsumer.json";
+public class AASDataSinkDefaultConfigurationFactory extends DataSinkConfigurationFactory {
+	public static final String DEFAULT_FILE_PATH = "aasserver.json";
 	
-	public Plc4XDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, Plc4XConsumerConfiguration.class);
+	public AASDataSinkDefaultConfigurationFactory(ClassLoader loader) {
+		super(DEFAULT_FILE_PATH, loader, AASDatasinkConfiguration.class);
 	}
 	
-	public Plc4XDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, Plc4XConsumerConfiguration.class);
+	public AASDataSinkDefaultConfigurationFactory(String filePath, ClassLoader loader) {
+		super(filePath, loader, AASDatasinkConfiguration.class);
 	}
 }

@@ -22,7 +22,7 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSi
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy.ExecutionPolicyRouteCreator;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.execution.policy.ExecutionPolicyRouteCreator;
 import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.HttpPollingConsumerConfiguration;
 import org.junit.Test;
 

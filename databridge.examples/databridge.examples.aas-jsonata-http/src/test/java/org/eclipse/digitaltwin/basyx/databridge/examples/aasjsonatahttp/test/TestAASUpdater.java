@@ -50,7 +50,7 @@ import org.eclipse.digitaltwin.basyx.databridge.core.component.DataBridgeCompone
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.examples.httpserver.HttpDataSource;
-import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.factory.HttpProducerDefaultConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.factory.HttpDataSinkDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.examples.aasjsonatahttp.*;
 import org.junit.AfterClass;
@@ -158,7 +158,7 @@ public class TestAASUpdater {
 				loader);
 		configuration.addDatasources(aasSourceConfigFactory.create());
 
-		HttpProducerDefaultConfigurationFactory httpConfigFactory = new HttpProducerDefaultConfigurationFactory(loader);
+		HttpDataSinkDefaultConfigurationFactory httpConfigFactory = new HttpDataSinkDefaultConfigurationFactory(loader);
 		configuration.addDatasinks(httpConfigFactory.create());
 		
 		JsonataDefaultConfigurationFactory jsonataConfigFactory = new JsonataDefaultConfigurationFactory(loader);

@@ -40,7 +40,7 @@ import org.eclipse.digitaltwin.basyx.databridge.core.component.DataBridgeCompone
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.factory.OpcuaDefaultSinkConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.factory.OpcuaDataSinkDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.examples.milotestserver.MiloTestServer;
 import org.eclipse.milo.opcua.sdk.client.DiscoveryClient;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
@@ -100,7 +100,7 @@ public class TestOPCUAUpdater {
 		AASPollingConsumerDefaultConfigurationFactory aasSourceConfigFactory = new AASPollingConsumerDefaultConfigurationFactory(loader);
 		configuration.addDatasources(aasSourceConfigFactory.create());
 
-		OpcuaDefaultSinkConfigurationFactory opcuaConfigFactory = new OpcuaDefaultSinkConfigurationFactory(loader);
+		OpcuaDataSinkDefaultConfigurationFactory opcuaConfigFactory = new OpcuaDataSinkDefaultConfigurationFactory(loader);
 		configuration.addDatasinks(opcuaConfigFactory.create());
 
 		JsonataDefaultConfigurationFactory jsonataConfigFactory = new JsonataDefaultConfigurationFactory(loader);

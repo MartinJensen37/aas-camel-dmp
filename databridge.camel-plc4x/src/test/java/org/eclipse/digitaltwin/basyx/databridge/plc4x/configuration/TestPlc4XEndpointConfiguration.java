@@ -30,7 +30,7 @@ import java.util.List;
 import org.apache.camel.component.plc4x.Plc4XComponent;
 import org.apache.camel.component.plc4x.Plc4XEndpoint;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSourceConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.factory.Plc4XDefaultConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.factory.Plc4xDefaultConfigurationFactory;
 import org.junit.After;
 import org.junit.Test;
 
@@ -67,7 +67,7 @@ public class TestPlc4XEndpointConfiguration {
 	}
 	
 	private void setup(String filePath) {
-		Plc4XDefaultConfigurationFactory plc4xDefaultConfigurationFactory = new Plc4XDefaultConfigurationFactory(filePath, TestPlc4XEndpointConfiguration.class.getClassLoader());
+		Plc4xDefaultConfigurationFactory plc4xDefaultConfigurationFactory = new Plc4xDefaultConfigurationFactory(filePath, TestPlc4XEndpointConfiguration.class.getClassLoader());
 		
 		List<DataSourceConfiguration> dataSourceConfigurations = plc4xDefaultConfigurationFactory.create();
 		

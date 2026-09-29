@@ -25,7 +25,7 @@
 package org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.factory;
 
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.DataSinkConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.HttpProducerConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.HttpDataSinkConfiguration;
 
 /**
  * A default configuration factory for HTTP Producer
@@ -33,15 +33,15 @@ import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.HttpPr
  * @author rana
  *
  */
-public class HttpProducerDefaultConfigurationFactory extends DataSinkConfigurationFactory{
+public class HttpDataSinkDefaultConfigurationFactory extends DataSinkConfigurationFactory{
 	
 	public static final String DEFAULT_FILE_PATH = "httpproducer.json";
 	
-	public HttpProducerDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, HttpProducerConfiguration.class);
+	public HttpDataSinkDefaultConfigurationFactory(ClassLoader loader) {
+		super(DEFAULT_FILE_PATH, loader, HttpDataSinkConfiguration.class);
 	}
 
-	public HttpProducerDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, HttpProducerConfiguration.class);
+	public HttpDataSinkDefaultConfigurationFactory(String filePath, ClassLoader loader) {
+		super(filePath, loader, HttpDataSinkConfiguration.class);
 	}
 }

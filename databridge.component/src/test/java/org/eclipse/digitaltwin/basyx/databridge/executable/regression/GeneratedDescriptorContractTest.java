@@ -15,34 +15,34 @@ import org.apache.camel.impl.DefaultCamelContext;
 import org.eclipse.digitaltwin.basyx.databridge.aas.configuration.AASDatasinkConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.aas.configuration.AASPollingConsumerConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.aas.configuration.factory.AASPollingConsumerDefaultConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.aas.configuration.factory.AASProducerDefaultConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.databridge.aas.configuration.factory.AASDataSinkDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.bridge.ProtocolBridgeRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy.ExecutionPolicyRouteCreatorFactory;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.execution.policy.ExecutionPolicyRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.routebuilder.DataBridgeRouteBuilder;
-import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.HttpProducerConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.HttpDataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.HttpPollingConsumerConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.factory.HttpProducerDefaultConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.factory.HttpDataSinkDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.httppolling.configuration.factory.HttpPollingDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.kafka.configuration.KafkaConsumerConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.kafka.configuration.factory.KafkaDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.lua.configuration.LuaTransformerConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.lua.configuration.factory.LuaDefaultConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.OpcuaProducerConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.OpcuaDataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.OpcuaConsumerConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.factory.OpcuaDefaultSinkConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.factory.OpcuaDataSinkDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.factory.OpcuaDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.paho.configuration.MqttConsumerConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.paho.configuration.factory.MqttDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.paho.configuration.factory.MqttDataSinkDefaultConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.Plc4XConsumerConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.Plc4xProducerConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.factory.Plc4XDefaultConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.factory.Plc4xDefaultSinkConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.Plc4xConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.Plc4xDataSinkConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.factory.Plc4xDefaultConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.databridge.plc4x.configuration.factory.Plc4xDataSinkDefaultConfigurationFactory;
 import org.junit.Test;
 
 import com.google.gson.JsonArray;
@@ -74,7 +74,7 @@ public class GeneratedDescriptorContractTest {
 			if (Files.exists(config.resolve("httpconsumer.json")))
 				routes.addDatasources(new HttpPollingDefaultConfigurationFactory(config.resolve("httpconsumer.json").toString(), loader).create());
 			if (Files.exists(config.resolve("plc4xconsumer.json")))
-				routes.addDatasources(new Plc4XDefaultConfigurationFactory(config.resolve("plc4xconsumer.json").toString(), loader).create());
+				routes.addDatasources(new Plc4xDefaultConfigurationFactory(config.resolve("plc4xconsumer.json").toString(), loader).create());
 			if (Files.exists(config.resolve("aaspollingconsumer.json")))
 				routes.addDatasources(new AASPollingConsumerDefaultConfigurationFactory(config.resolve("aaspollingconsumer.json").toString(), loader).create());
 			if (Files.exists(config.resolve("kafkaconsumer.json")))
@@ -82,15 +82,15 @@ public class GeneratedDescriptorContractTest {
 			if (Files.exists(config.resolve("luatransformers.json")))
 				routes.addTransformers(new LuaDefaultConfigurationFactory(config.resolve("luatransformers.json").toString(), loader).create());
 			if (Files.exists(config.resolve("aasserver.json")))
-				routes.addDatasinks(new AASProducerDefaultConfigurationFactory(config.resolve("aasserver.json").toString(), loader).create());
+				routes.addDatasinks(new AASDataSinkDefaultConfigurationFactory(config.resolve("aasserver.json").toString(), loader).create());
 			if (Files.exists(config.resolve("mqttdatasink.json")))
 				routes.addDatasinks(new MqttDataSinkDefaultConfigurationFactory(config.resolve("mqttdatasink.json").toString(), loader).create());
 			if (Files.exists(config.resolve("opcuadatasink.json")))
-				routes.addDatasinks(new OpcuaDefaultSinkConfigurationFactory(config.resolve("opcuadatasink.json").toString(), loader).create());
+				routes.addDatasinks(new OpcuaDataSinkDefaultConfigurationFactory(config.resolve("opcuadatasink.json").toString(), loader).create());
 			if (Files.exists(config.resolve("httpproducer.json")))
-				routes.addDatasinks(new HttpProducerDefaultConfigurationFactory(config.resolve("httpproducer.json").toString(), loader).create());
+				routes.addDatasinks(new HttpDataSinkDefaultConfigurationFactory(config.resolve("httpproducer.json").toString(), loader).create());
 			if (Files.exists(config.resolve("plc4xdatasink.json")))
-				routes.addDatasinks(new Plc4xDefaultSinkConfigurationFactory(config.resolve("plc4xdatasink.json").toString(), loader).create());
+				routes.addDatasinks(new Plc4xDataSinkDefaultConfigurationFactory(config.resolve("plc4xdatasink.json").toString(), loader).create());
 
 			assertFalse(name + " has no routes", routes.getRoutes().isEmpty());
 			for (RouteConfiguration route : routes.getRoutes()) {
@@ -160,7 +160,7 @@ public class GeneratedDescriptorContractTest {
 						assertEquals(name, emitted.get("topic").getAsString(), mqtt.getTopic());
 						assertTrue(name, mqtt.getConnectionURI().contains("brokerUrl=tcp://" + mqtt.getServerUrl()));
 					}
-					if (source instanceof Plc4XConsumerConfiguration plc) {
+					if (source instanceof Plc4xConsumerConfiguration plc) {
 						assertEquals(name, emitted.get("driver").getAsString(), plc.getDriver());
 						assertTrue(name, plc.getConnectionURI().contains("unit=2"));
 						assertTrue(name, plc.getConnectionURI().contains("/service"));
@@ -179,14 +179,14 @@ public class GeneratedDescriptorContractTest {
 						assertEquals(name, emitted.get("sinkId").getAsString(), sink.getSinkId());
 					if (emitted.has("valuePath"))
 						assertEquals(name, emitted.get("valuePath").getAsString(), sink.getValuePath());
-					if (sink instanceof Plc4xProducerConfiguration plc) {
+					if (sink instanceof Plc4xDataSinkConfiguration plc) {
 						assertEquals(name, emitted.get("driver").getAsString(), plc.getDriver());
 						assertEquals(name, emitted.get("servicePath").getAsString(), plc.getServicePath());
 						assertTrue(name, plc.getConnectionURI().contains("unit=2"));
 						assertEquals(name, emitted.getAsJsonArray("tags").get(0).getAsJsonObject().get("value").getAsString(),
 								plc.getTags().get(0).getValue());
 					}
-					if (sink instanceof OpcuaProducerConfiguration opcua) {
+					if (sink instanceof OpcuaDataSinkConfiguration opcua) {
 						assertEquals(name, emitted.get("nodeInformation").getAsString(), opcua.getNodeInformation());
 						assertEquals(name, emitted.get("pathToService").getAsString(), opcua.getPathToService());
 					}
@@ -219,7 +219,7 @@ public class GeneratedDescriptorContractTest {
 		routes.addRoutes(new RoutesConfigurationFactory(config.resolve("routes.json").toString(), loader).create());
 		routes.addDatasources(new MqttDefaultConfigurationFactory(config.resolve("mqttconsumer.json").toString(), loader).create());
 		routes.addTransformers(new LuaDefaultConfigurationFactory(config.resolve("luatransformers.json").toString(), loader).create());
-		routes.addDatasinks(new AASProducerDefaultConfigurationFactory(config.resolve("aasserver.json").toString(), loader).create());
+		routes.addDatasinks(new AASDataSinkDefaultConfigurationFactory(config.resolve("aasserver.json").toString(), loader).create());
 
 		assertFalse("no mapping routes compiled", routes.getRoutes().isEmpty());
 		for (RouteConfiguration route : routes.getRoutes()) {
@@ -280,13 +280,13 @@ public class GeneratedDescriptorContractTest {
 		ClassLoader loader = getClass().getClassLoader();
 		RoutesConfiguration routes = new RoutesConfiguration();
 		routes.addRoutes(new RoutesConfigurationFactory(config.resolve("routes.json").toString(), loader).create());
-		routes.addDatasinks(new OpcuaDefaultSinkConfigurationFactory(
+		routes.addDatasinks(new OpcuaDataSinkDefaultConfigurationFactory(
 				config.resolve("opcuadatasink.json").toString(), loader).create());
 		assertEquals(1, routes.getRoutes().size());
 		assertEquals("bridge", routes.getRoutes().get(0).getRouteTrigger());
 		JsonObject emitted = JsonParser.parseString(Files.readString(config.resolve("opcuadatasink.json")))
 				.getAsJsonArray().get(0).getAsJsonObject();
-		OpcuaProducerConfiguration loaded = (OpcuaProducerConfiguration) routes.getDatasinks()
+		OpcuaDataSinkConfiguration loaded = (OpcuaDataSinkConfiguration) routes.getDatasinks()
 				.get(emitted.get("uniqueId").getAsString());
 		assertNotNull(loaded);
 		assertEquals(emitted.get("sinkId").getAsString(), loaded.getSinkId());
@@ -306,12 +306,12 @@ public class GeneratedDescriptorContractTest {
 		ClassLoader loader = getClass().getClassLoader();
 		RoutesConfiguration routes = new RoutesConfiguration();
 		routes.addRoutes(new RoutesConfigurationFactory(config.resolve("routes.json").toString(), loader).create());
-		routes.addDatasinks(new HttpProducerDefaultConfigurationFactory(
+		routes.addDatasinks(new HttpDataSinkDefaultConfigurationFactory(
 				config.resolve("httpproducer.json").toString(), loader).create());
 		assertEquals("bridge", routes.getRoutes().get(0).getRouteTrigger());
 		JsonObject emitted = JsonParser.parseString(Files.readString(config.resolve("httpproducer.json")))
 				.getAsJsonArray().get(0).getAsJsonObject();
-		HttpProducerConfiguration loaded = (HttpProducerConfiguration) routes.getDatasinks()
+		HttpDataSinkConfiguration loaded = (HttpDataSinkConfiguration) routes.getDatasinks()
 				.get(emitted.get("uniqueId").getAsString());
 		assertNotNull(loaded);
 		assertEquals(emitted.get("sinkId").getAsString(), loaded.getSinkId());
