@@ -89,23 +89,6 @@
             </exclusions>
         </dependency>
 
-        <dependency>
-            <groupId>org.eclipse.digitaltwin.basyx</groupId>
-            <artifactId>databridge.camel-timer</artifactId>
-            <version>${revision}</version>
-            <scope>test</scope>
-
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-simple</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
         <!-- JUnit 4 for running JUnit tests -->
         <dependency>
             <groupId>junit</groupId>
