@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.eclipse.digitaltwin.basyx</groupId>
+		<artifactId>dmp.parent</artifactId>
+		<version>${revision}</version>
+	</parent>
+	<artifactId>dmp.examples</artifactId>
+	<name>DMP Examples</name>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+	</properties>
+
+	<modules>
+		<module>dmp.examples.aas-jsonata-mqtt</module>
+		<module>dmp.examples.dot-aas-v3-jsonata-mqtt</module>
+		<module>dmp.examples.aas-jsonata-http</module>
+		<module>dmp.examples.aas-jsonata-opcua</module>
+		<module>dmp.examples.aasserver</module>
+		<module>dmp.examples.kafkaproducer</module>
+		<module>dmp.examples.activemqproducer</module>
+		<module>dmp.examples.debsdatagenerator</module>
+		<module>dmp.examples.kafka-jsonata-aas</module>
+		<module>dmp.examples.hono-jsonata-aas</module>
+		<module>dmp.examples.kafka-jsonatamultiple-aas</module>
+		<module>dmp.examples.activemq-jsonata-aas</module>
+		<module>dmp.examples.mqtt-jsonata-aas</module>
+		<module>dmp.examples.httpserver</module>
+		<module>dmp.examples.opcua-jackson-jsonata-aas</module>
+		<module>dmp.examples.httppolling-jsonata-aas</module>
+		<module>dmp.examples.httppolling-auth-jsonata-aas</module>
+		<module>dmp.examples.plc4x-jsonata-aas</module>
+		<module>dmp.examples.dot-aas-v3-api</module>
+		<module>dmp.examples.mqtt-aas_range_and_mlp</module>
+		<module>dmp.examples.operation-delegation</module>
+		<module>dmp.examples.dot-aas-v3-multicast</module>
+		<module>dmp.examples.dot-aas-v3-multiroute</module>
+		<module>dmp.examples.sql-jsonata-aas</module>
+	</modules>
+	<packaging>pom</packaging>
+</project>

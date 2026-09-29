@@ -20,19 +20,19 @@
 |---|---|---|
 | M0 rename, README, provenance | repo root | done |
 | M0.5 Camel 4.22.0 / Java 17 | parent pom, all modules | done |
-| M1 `databridge.camel-lua` sandbox/timeout/reload/harness | `databridge.camel-lua` | done |
-| M2 DMP container config mount, `LUA_ENV_VAR_NAME` | `databridge.component`, `deploy/dmp` | done |
+| M1 `dmp.camel-lua` sandbox/timeout/reload/harness | `dmp.camel-lua` | done |
+| M2 DMP container config mount, `LUA_ENV_VAR_NAME` | `dmp.component`, `deploy/dmp` | done |
 | M3 management node (parser/resolver/descriptor/orchestrator) | `management-node/` | done |
-| M4 interface transforms (OPC UA canonical adapter) | `databridge.camel-opcua`, `deploy/interface-transforms` | done |
+| M4 interface transforms (OPC UA canonical adapter) | `dmp.camel-opcua`, `deploy/interface-transforms` | done |
 | M5 decision gate (plain containers) | — | done |
 | M6 live integration | `e2e.managed_assets.json`, `deploy/dmp` | done |
-| M7 REST operation delegation | `databridge.core/operation/*` | done (v2: `restsources.json`; **superseded by the DMP v3 one-MC operation authoring** — the derived REST surface rides in the bridge route's `triggerData`, no REST datasource file exists) |
+| M7 REST operation delegation | `dmp.core/operation/*` | done (v2: `restsources.json`; **superseded by the DMP v3 one-MC operation authoring** — the derived REST surface rides in the bridge route's `triggerData`, no REST datasource file exists) |
 | §6.4 fan-in/fan-out **route model** | `RouteConfiguration.datasources[]`, `EventRouteCreator` aggregator, `RouteConfigurationDeserializer`, `DataSourceConfiguration.sourceId` | done (tested) |
-| Contract tests §8.4 #1–6 + compile-reuse | `databridge.camel-lua/.../LuaContractTest` | done |
-| AAS sink coarse `valuePath` (extract own SinkId key) | `databridge.camel-aas/AASEndpoint.extractValuePath` | done |
+| Contract tests §8.4 #1–6 + compile-reuse | `dmp.camel-lua/.../LuaContractTest` | done |
+| AAS sink coarse `valuePath` (extract own SinkId key) | `dmp.camel-aas/AASEndpoint.extractValuePath` | done |
 
 Build/test commands:
-- Java: `JAVA_HOME=/tmp/jdk17 PATH=/tmp/apache-maven-3.9.11/bin:$PATH mvn -o -pl databridge.core,databridge.camel-lua -am test` (the repo compiles with `--release 17`; the JDK at `/tmp/jdk17` provides the compiler — the system java-21 install is a JRE-only runtime with no `javac`).
+- Java: `JAVA_HOME=/tmp/jdk17 PATH=/tmp/apache-maven-3.9.11/bin:$PATH mvn -o -pl dmp.core,dmp.camel-lua -am test` (the repo compiles with `--release 17`; the JDK at `/tmp/jdk17` provides the compiler — the system java-21 install is a JRE-only runtime with no `javac`).
 - Python: `python3 -m pytest` in `management-node/`.
 
 ---
@@ -46,8 +46,8 @@ or to one nested property (**fine**); the management node pins a JSON Pointer (`
 and the DMP applies it at the boundary — **disassembly** pre-transform (source), **assembly**
 post-transform (sink). Contract tests §8.4 #7–10 become green.
 
-#### T1.1 Shared JSON Pointer utility (`databridge.core`)
-- New `org.eclipse.digitaltwin.basyx.databridge.core.util.JsonPointer` (RFC 6901):
+#### T1.1 Shared JSON Pointer utility (`dmp.core`)
+- New `org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer` (RFC 6901):
   object keys (`$.State` / `/State` / `$['State']`) and 0-based array indices
   (`$.WorkOrders[0].id`). `Optional<Object> extract(Object json, String pointer)`;
   missing path → empty (caller decides: coarse fallback vs clear route error per §8.4 #8).
@@ -110,7 +110,7 @@ same dis/assembly pipeline (§8.4 #11).
 - `descriptor.py`: emit `jsonatatransformer.json` + `queries/*.jsonata` with
   `queryLanguage: JSONATA` when the blob declares the JSONata semantic id, else the existing
   Lua path. JSONata is only emitted where the AAS declares it (never as the default path).
-- `databridge.camel-jsonata`: verify `JsonataTransformerConfiguration`/`JsonataDefaultConfigurationFactory`
+- `dmp.camel-jsonata`: verify `JsonataTransformerConfiguration`/`JsonataDefaultConfigurationFactory`
   are usable as-is for a routing dispatch (they are present), and that `jsonatatransformer.json`
   config loads (level of effort: confirm, patch only if needed).
 - Contract test §8.4 #11: a JSONata blob and a Lua blob both run through the same SourceId/SinkId
@@ -165,7 +165,7 @@ memory caps beyond `-Xmx`/process isolation, cluster/fleet deployment (M5 resolv
 
 ## 4. Verification
 
-1. Java: `mvn -o -pl databridge.core,databridge.camel-lua,databridge.camel-paho,databridge.camel-aas -am test`
+1. Java: `mvn -o -pl dmp.core,dmp.camel-lua,dmp.camel-paho,dmp.camel-aas -am test`
    (all affected modules; full `mvn -o test` before finishing).
 2. Python: `python3 -m pytest` in `management-node/` (all suites + new).
 3. Manual end-to-end (optional, lab): regenerate `syntegonStopperingSystem` config via the
@@ -250,7 +250,7 @@ carries no `submodel` and no `semanticId`.
 
 **Verification (2026-09-28):** management-node pytest **183 ✓** (incl. the
 non-MQTT `valuePath` descriptor regressions, the HTTP href-joining cases and the
-re-captured event fixtures); databridge.camel-lua **31 ✓** / core **47 ✓** /
+re-captured event fixtures); dmp.camel-lua **31 ✓** / core **47 ✓** /
 camel-aas **2 ✓**; the Java `GeneratedDescriptorContractTest` loads the
 regenerated 13-case fixture matrix through the real factories (4/4 ✓,
 `fine-protocols` included); aas-model **12 ✓** (incl. the container-shape
@@ -259,7 +259,7 @@ The lab e2e checklist ran against the main stack — see §8.6 for the verified
 items and the two that still need authored lab data.
 
 **Environment note:** the only failing module in a full `mvn test` is
-`databridge.examples.aas-jsonata-mqtt` (TestAASUpdater) — it publishes to the public
+`dmp.examples.aas-jsonata-mqtt` (TestAASUpdater) — it publishes to the public
 `broker.mqttdashboard.com` sandbox and fails **identically at clean HEAD** (verified in a
 throwaway worktree), so it is a pre-existing external-service IT, not a regression.
 
@@ -314,8 +314,8 @@ the generated template.
 
 ### 8.4 Verification
 
-aas-model 4/4; management-node pytest 104/104; databridge.core 34/34;
-databridge.component 13/13 (incl. smoke test on the new semantics); examples
+aas-model 4/4; management-node pytest 104/104; dmp.core 34/34;
+dmp.component 13/13 (incl. smoke test on the new semantics); examples
 reactor sweep 90 tests green (incl. both OPC UA suites); golden config
 (`dmp-config/syntegonStopperingSystem`) byte-verified against the descriptor.
 
@@ -355,7 +355,7 @@ descriptor's `elementPath` — the nested shape could never match it.
 
 Three live findings worth keeping:
 
-1. **`databridge.component/target/lib` is only refreshed by the `docker-push`
+1. **`dmp.component/target/lib` is only refreshed by the `docker-push`
    profile.** A plain `mvn package` therefore leaves stale dependency jars on
    disk and the image silently ships the previous build — that is how the
    deployed image ended up predating the `HTTPRequest` write-failure check.

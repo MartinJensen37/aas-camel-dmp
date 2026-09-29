@@ -5,13 +5,13 @@
 > **DMP v3 amendment (2026-09-16, in progress): operation delegation = one-MC authoring on the Operation element.** A mapping whose SOURCE reference targets an **Operation SubmodelElement** (own or cross-AAS) IS an operation delegation: sink = the native command affordance, Transformation = the request blob (replies pass through — response blob optional). The caller-facing REST surface is **derived by convention** (`POST /operations/{aas_id_short}/{action}`, the action = the owning skill's idShort, `{aas_id_short}` resolved at descriptor compile time) and carried in the bridge route's `triggerData` (`restPath`/`restMethod`) — the **two-MC request/response pairing, `interface_rest` REST-caller affordances, the `restsources.json` emission and the `RestCallerProtocols` machinery are retired**; the AID models only the device's own communication
 > **Date:** 2026-08-19 · **Last updated:** 2026-09-16
 > **Applies to:** this repository, checked out as **`aas-camel-dmp`** (renamed from `aas-camel-k-dmp`, M0)
-> **Companion artifacts (implemented):** `databridge.camel-lua/` (Lua component + harness), `databridge.camel-jsonata/` (secondary engine, ADR-015), `databridge.core/…/EventRouteCreator.java` (fan-in + coarse/fine, ADR-014), `management-node/` (Python orchestrator), per-protocol config catalog (`mqttconsumer.json`, `mqttdatasink.json`, `aasdatasink.json`, …)
+> **Companion artifacts (implemented):** `dmp.camel-lua/` (Lua component + harness), `dmp.camel-jsonata/` (secondary engine, ADR-015), `dmp.core/…/EventRouteCreator.java` (fan-in + coarse/fine, ADR-014), `management-node/` (Python orchestrator), per-protocol config catalog (`mqttconsumer.json`, `mqttdatasink.json`, `aasdatasink.json`, …)
 
 ---
 
 ## 1. Purpose & Scope
 
-This document is the implementation guideline for reworking the current Eclipse BaSyx DataBridge fork into the **aas-camel-dmp**: a per-asset, deployable **DMP** (DataBridge MQTT Platform) container that
+This document is the implementation guideline for reworking the current Eclipse BaSyx DMP fork into the **aas-camel-dmp**: a per-asset, deployable **DMP** (DMP MQTT Platform) container that
 
 1. consumes data from industrial protocols (OPC UA, PLC, MQTT, Kafka, HTTP, …),
 2. transforms incoming data with **Lua** in compliance with the **AIMC** transformation contract (a JSONata expression is available as a fast/simple secondary engine, declared via the blob's semantic id, §7.6), and
@@ -34,24 +34,24 @@ Out of scope: the AAS server itself, the AAS registration service, ontology gene
 | **Fine source** | A source resolved to **one nested property** of an AID data point. The management node's `Resolver` pins a JSON Pointer (e.g. `$.State`) that auto-extracts that field into `sources[SourceId]` at the DMP boundary. §6.5. |
 | **Transformation Blob** | The Lua script stored in an AIMC `MappingConfiguration.Transformation`. Must expose `function aimc_main(sources)`. |
 | **Delivery style** | How a *source* hands data to the DMP, classified **per data point from the AID** and **protocol-agnostic** (§6.1): **async** = push/event (MQTT, Kafka, observable/monitored OPC UA, `InteractionMetadata.events`), **sync** = request/response / polled (HTTP, Modbus/PLC, OPC UA reads, AAS-element). The DMP route trigger and fan-in strategy key on this, not on the protocol string. |
-| **DMP** | DataBridge MQTT Platform — the per-asset integration container (this project). |
+| **DMP** | DMP MQTT Platform — the per-asset integration container (this project). |
 | **Management node** | Orchestrator that reacts to AAS events, parses AID/AIMC, and instantiates/updates/removes DMPs. |
 
 ---
 
 ## 3. Background & Current State
 
-- This repository is a fork of the **Eclipse BaSyx DataBridge**, running as a
-  **plain Apache Camel 4.x JVM application** (`DataBridgeExecutable` →
-  `DefaultCamelContext` → `DataBridgeRouteBuilder`), **not** on Camel K (M5,
+- This repository is a fork of the **Eclipse BaSyx DMP**, running as a
+  **plain Apache Camel 4.x JVM application** (`DMPExecutable` →
+  `DefaultCamelContext` → `DMPRouteBuilder`), **not** on Camel K (M5,
   ADR-002). Renamed `aas-camel-k-dmp` → **`aas-camel-dmp`** (M0); baseline
   upgraded to **Camel 4.22.x / Java 17** (M0.5, ADR-009).
 - Routes are built at startup from JSON configs (`routes.json` + per-category
   config files, e.g. `luatransformer.json`, `mqttconsumer.json`).
 - The default/compliance transformation is **Lua** with an `aimc_main(sources)`
-  entry point (`databridge.camel-lua` → `lua:file:<path>`, §7) — sandboxed
+  entry point (`dmp.camel-lua` → `lua:file:<path>`, §7) — sandboxed
   (§7.2/§7.3), harness-verified (§8.4). **JSONata**
-  (`databridge.camel-jsonata` → `jsonata:file:<path>`) remains as a fast/simple
+  (`dmp.camel-jsonata` → `jsonata:file:<path>`) remains as a fast/simple
   secondary engine, selected by the transformation blob's semantic id (M9,
   ADR-015, §7.6).
 - This resolves the two problems that motivated the Lua work: **Problem 1 —
@@ -122,7 +122,7 @@ flowchart LR
 
     subgraph dmp ["Per-asset DMP container (plain Apache Camel)"]
         R["routes (from config)"]
-        T["lua: transformer<br/>(databridge.camel-lua)"]
+        T["lua: transformer<br/>(dmp.camel-lua)"]
         S["sinks: AAS / MQTT / …"]
     end
 
@@ -254,7 +254,7 @@ exists; the bridge emits the camel-rest consumer from the derived path.
 > Camel RequestReply EIP, hybrid on the upstream transport.** An interaction
 > whose command affordance declares the MQTT 5 correlation terms
 > (`mqv_request_reply` + `mqv_response_topic`) rides the **`paho-mqtt5-inout:`
-> component** (in `databridge.camel-paho`). Upstream `camel-paho-mqtt5` is
+> component** (in `dmp.camel-paho`). Upstream `camel-paho-mqtt5` is
 > plain pub/sub — its producer is fire-and-forget (an InOut exchange completes
 > immediately with a null reply) and has no reply/correlation options — so the
 > component adds ONLY the InOut semantics: the producer mints a correlation,
@@ -639,14 +639,14 @@ transformation blob", differing only in that semantic id:
   the management node (it is available only where the AAS declares a JSONata
   transformation). Both share the same coarse/fine `valuePath` dis/assembly
   pipeline (§6.5.4) and the same `SourceId`/`SinkId` keyed contract.
-- This keeps the §8 `databridge.camel-lua` module the compliance engine while
+- This keeps the §8 `dmp.camel-lua` module the compliance engine while
   acknowledging that not every transform warrants a full Lua sandbox.
 
 ---
 
-## 8. `databridge.camel-lua` Module (Component Spec)
+## 8. `dmp.camel-lua` Module (Component Spec)
 
-New Maven module mirroring `databridge.camel-jsonata`.
+New Maven module mirroring `dmp.camel-jsonata`.
 
 ### 8.1 Artifacts
 
@@ -731,13 +731,13 @@ the response/derived value — so `json.encode` renders `{"a":4}` rather than
 ### 9.1 Runtime: plain Apache Camel container (ADR-002)
 
 - **Camel version:** **4.x** (Java 17) — baseline upgraded in M0.5 (ADR-009).
-- **Decision (confirmed at M5):** deploy the DMP as a **plain Apache Camel JVM container** (as today via `databridge.component` → `eclipsebasyx/databridge`-style image), **not** Camel K.
+- **Decision (confirmed at M5):** deploy the DMP as a **plain Apache Camel JVM container** (as today via `dmp.component` → `eclipsebasyx/databridge`-style image), **not** Camel K.
 - Rationale (see decision record §15):
   - Same engine, same protocol catalog, same per-message speed as Camel K.
   - Camel K's headline benefit (native image) is **blocked by LuaJ** (reflection) → JVM mode anyway.
   - Per-asset DMPs may run on edge/compose without a cluster; Camel K adds operator + cluster infra with no protocol/speed gain.
   - Camel K compiles routes at build time; our Lua blobs arrive **at runtime** — plain Camel reads all config/scripts at startup, strictly more flexible.
-- **Portability:** `databridge.camel-lua` is a standard Camel component. The M5 gate (now resolved) confirmed plain containers, so no Camel K work is planned; if a cluster fleet ever materializes, the component would be reused unchanged (write YAML routes, ship jar as `-d mvn:` dependency).
+- **Portability:** `dmp.camel-lua` is a standard Camel component. The M5 gate (now resolved) confirmed plain containers, so no Camel K work is planned; if a cluster fleet ever materializes, the component would be reused unchanged (write YAML routes, ship jar as `-d mvn:` dependency).
 
 ### 9.2 One DMP per asset
 
@@ -793,7 +793,7 @@ Any protocol with a Camel component is supported. The modules already present de
 
 ### 10.6 Canonical payload forms (per protocol)
 
-The existing `databridge.camel-plc4x` / `databridge.camel-opcua` plugins define the **endpoint configuration schema** and endpoint URIs (PLC4X: driver/tags/options; OPC UA: node ids, publishing interval, security) — but **not** the runtime message body shape. That canonical JSON form handed to Lua is pinned here (ADR-007 — normalize at the boundary; Q5):
+The existing `dmp.camel-plc4x` / `dmp.camel-opcua` plugins define the **endpoint configuration schema** and endpoint URIs (PLC4X: driver/tags/options; OPC UA: node ids, publishing interval, security) — but **not** the runtime message body shape. That canonical JSON form handed to Lua is pinned here (ADR-007 — normalize at the boundary; Q5):
 
 | Protocol | Camel component body | Canonical JSON value for `sources[SourceId]` |
 |---|---|---|
@@ -806,7 +806,7 @@ These bindings live in the protocol adapters; blobs never see protocol types.
 
 > **M4 note (camel-milo 4.22):** the milo-client consumer puts a raw Milo
 > `DataValue` on the body (the `UaMonitoredItemValue` wrapper of older
-> camel-milo versions no longer exists). `databridge.camel-opcua` therefore
+> camel-milo versions no longer exists). `dmp.camel-opcua` therefore
 > ships `OpcUaCanonicalConverter` — registered Camel type converters
 > (`DataValue → String/Map`) that produce the canonical JSON form above and are
 > auto-invoked when the Lua component reads the body — plus
@@ -932,7 +932,7 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 | ADR-006 | Scripts loaded at runtime from files, cached with reload | AIMC blobs arrive at runtime; per-asset iteration without rebuild. |
 | ADR-007 | Normalize at protocol boundary; Lua is protocol-agnostic | Enables interface transforms for any protocol pair with one transform contract. |
 | ADR-008 | One DMP per asset (process isolation) | A bad blob/connection can only take down its own asset; aligns with event-driven instantiation. |
-| ADR-009 | Camel baseline upgrade: **3.21 → latest 4.x** (4.22.x), Java 11 → **17** | 3.x is EOL; every Camel component used by this repo exists in 4.x (verified: paho, jms, activemq, http, jsonata, jackson, kafka, milo, plc4x, sql, support); Hono module uses Eclipse Hono client libs directly (unaffected); aligns with Camel 4.x (the M5 gate later confirmed plain containers, not Camel K); build `databridge.camel-lua` against the final version, not 3.x. |
+| ADR-009 | Camel baseline upgrade: **3.21 → latest 4.x** (4.22.x), Java 11 → **17** | 3.x is EOL; every Camel component used by this repo exists in 4.x (verified: paho, jms, activemq, http, jsonata, jackson, kafka, milo, plc4x, sql, support); Hono module uses Eclipse Hono client libs directly (unaffected); aligns with Camel 4.x (the M5 gate later confirmed plain containers, not Camel K); build `dmp.camel-lua` against the final version, not 3.x. |
 | ADR-010 | Management-node eventing = **Kafka only**, following `kg-bridge` conventions (`KAFKA_BOOTSTRAP`, `KAFKA_TOPIC_PATTERN`, `KAFKA_CONSUMER_GROUP`, `KAFKA_AUTO_OFFSET_RESET`) | Q1; reuse existing BaSyx Kafka backbone; `kg-bridge` may be replaced by a DMP route later — keep conventions shared. |
 | ADR-011 | Transformation blob is pulled **only** from the AIMC `MappingConfiguration.Transformation` Blob | Q2; single source of truth per the IDTA template; no external blob references. |
 | ADR-012 | **1 DMP container per asset, N `MappingConfigurations` inside** | Q4; asset-level isolation with multiple mappings per asset in one process. |
@@ -956,11 +956,11 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 2. **Transformation blob — only source, pulled from the AIMC submodel** per the IDTA template (`MappingConfiguration.Transformation` Blob). No external references.
 3. **AIMC version — always latest** (currently **2.0**); refactor on new releases.
 4. **Granularity — 1 DMP, N mappings (ADR-012).** One DMP container per asset hosts N `MappingConfigurations`.
-5. **Canonical payload forms — partially predefined.** The existing `databridge.camel-plc4x` / `camel-opcua` plugins define endpoint **configuration** schemas and URIs only; runtime canonical JSON forms are pinned in §10.6.
+5. **Canonical payload forms — partially predefined.** The existing `dmp.camel-plc4x` / `camel-opcua` plugins define endpoint **configuration** schemas and URIs only; runtime canonical JSON forms are pinned in §10.6.
 6. **DMP state registry — in-memory** at the management node (lab scale; externalize later if needed).
 7. **MQTT publish/retain semantics — strictly follow the AID interface spec** (`mqv_retain`, `mqv_qos`, `mqv_control_packet`, `synchronous` as declared in the AID `InteractionMetadata`).
 8. **Management-node language — Python (ADR-013).** Orchestrator glue only; Java/Camel stays with the DMP data plane. Reuses the existing Python AID/AIMC pydantic models and `kg-bridge` Kafka conventions.
-9. **Deployment — plain Apache Camel in Docker containers (ADR-002; M5 gate resolved 2026-08).** No Camel K / Kubernetes: per-asset DMPs run as plain JVM containers via Docker/compose (the management node drives `docker run`, §11.5 mechanism 1/2); `databridge.camel-lua` stays a standard Camel component, reusable unchanged if a cluster fleet ever appears.
+9. **Deployment — plain Apache Camel in Docker containers (ADR-002; M5 gate resolved 2026-08).** No Camel K / Kubernetes: per-asset DMPs run as plain JVM containers via Docker/compose (the management node drives `docker run`, §11.5 mechanism 1/2); `dmp.camel-lua` stays a standard Camel component, reusable unchanged if a cluster fleet ever appears.
 10. **Reference granularity — coarse or fine, symmetric on source and sink, chosen at the management node (ADR-014).** A `Source`/`Sink` points at an AID data point and, optionally, at a **nested property** within it (fine). The management node detects fine targets and pins `valuePath` (JSON Pointer) on the datasource **and** datasink; the DMP applies it (or delivers the whole payload / writes as-is) at the boundary — **disassembly pre-transform, assembly post-transform** (§6.5.4). Coarse (default) leaves nesting to the transform; fine auto-extracts/sets the nested property, so the author can either navigate in the transform or have the resolution done **automatically**. The DMP stays a declarative router; no transform contract change. Sink-side `valuePath` is the existing AAS sink mechanism generalized to all sinks. See §6.5.
 11. **Transformation engine selected by the blob semantic id — Lua or JSONata (ADR-015).** Lua (`aimc_main`) is the AIMC-compliant path for complex/mathematical transforms; JSONata is retained as a fast/safe option for very simple transforms. Both are "the transformation blob" with a different semantic id; the DMP dispatches accordingly, sharing the same dis/assembly pipeline and `SourceId`/`SinkId` contract (§7.6).
 12. **AID/AIMC models are a shared package (ADR-016).** Extracted into `aas_model` (own git submodule) consumed by both the registration service (authoring) and the management node (parsing). The management node's `resolver`/`descriptor` stay the derived-state layer; its parsers become thin reverse-parses of the shared models. See §18.
@@ -972,8 +972,8 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 | Milestone | Deliverable | Exit criteria |
 |---|---|---|
 | **M0** | Rename repo `aas-camel-k-dmp` → `aas-camel-dmp` | README/module refs updated; spec carried over |
-| **M0.5** | Camel **4.x** baseline upgrade | Parent `camel.version` → latest 4.x (4.22.x); Java 17 everywhere (incl. modules still pinned to 1.8); fix `databridge.core` repackaged imports (`DefaultCamelContext`, health classes); verify every `databridge.camel-*` module + IT suite on 4.x; update Docker JRE base image. Exit: full build + regression tests green on 4.x/Java 17 |
-| **M1** | `databridge.camel-lua` + harness + contract tests | Test matrix §8.4 green; blob runs in the Camel 4.x app (AIMC-compliant immediately) |
+| **M0.5** | Camel **4.x** baseline upgrade | Parent `camel.version` → latest 4.x (4.22.x); Java 17 everywhere (incl. modules still pinned to 1.8); fix `dmp.core` repackaged imports (`DefaultCamelContext`, health classes); verify every `dmp.camel-*` module + IT suite on 4.x; update Docker JRE base image. Exit: full build + regression tests green on 4.x/Java 17 |
+| **M1** | `dmp.camel-lua` + harness + contract tests | Test matrix §8.4 green; blob runs in the Camel 4.x app (AIMC-compliant immediately) |
 | **M2** | DMP container integration | `luatransformer.json`, env-var config (LUA equivalent of `JSONATA_ENV_VAR`), runtime mount of blobs, `-Xmx`, reload verified |
 | **M3** | Management node | Subscribes to AAS events; parses AID+AIMC; compiles descriptor; instantiates/updates/stops per-asset DMPs; idempotent reconcile |
 | **M4** | Interface transforms | OPC UA-only resource decorated with MQTT interface (both directions); pattern reusable for other protocol pairs |
@@ -983,17 +983,17 @@ The primitive reference implementation (Python/lupa) is effectively a spec + har
 | **M8** | Reference granularity: coarse vs fine, source **and** sink (ADR-014) | Management node detects coarse/fine and pins `valuePath` (JSON Pointer) per fine source **and** per fine sink; DMP applies it at the boundary (disassembly pre-transform, assembly post-transform, §6.5.4). Exit: a fine source at `$.State` yields `sources.StationState == payload.State`; a fine sink at `$.SetPoint` places the `SinkId` value into the outgoing JSON (`AASEndpoint.node.get(valuePath)` for AAS); coarse sources/sinks behave as today; DMP config stays declarative; contract/harness tests cover both shapes + sink assembly. **Implemented (2026-08-24):** `JsonPointer` util (RFC 6901); Lua `valuePath` URI option (§8.3); datasource-level, per-source disassembly in `EventRouteCreator` (single + fan-in); generic per-sink assembly + AAS `extractValuePath` generalized to JSON Pointer; management node detection/pinning (`resolver.py`/`descriptor.py`); tests §8.4 #7–#10 + `test_fine_resolution.py` |
 | **M9** | Transformation engine selection via semantic id (ADR-015) | Management node reads the `Transformation` blob's semantic id and emits the matching transformer config; DMP dispatches Lua vs JSONata. Exit: a Lua-blob mapping and a JSONata-expression mapping (both declared via semantic id) run in the same dis/assembly pipeline with correct `SourceId`/`SinkId` semantics; contract tests cover both engines. **Implemented (2026-08-24):** `aimc.py` captures the blob semantic ids and `transformation_engine()` selects LUA/JSONATA; `descriptor.py` emits `jsonatatransformer.json` + `.jsonata` blobs or the Lua path; `JsonataEngineContractTest` covers §8.4 #11 |
 | **M10** | Shared `aas_model` data-model package (ADR-016) | `aas_model` is the **entire data model package** (git submodule in the `AP2030-UNS` monorepo): vendored `aas_pydantic` + IDTA templates + project submodel templates + resource/instantiation templates + build/schema helpers + `MQTTSchemas` + the `_serde` AAS-JSON parse bridge. `Registration_Service` authors via it (its own `src/templates`, `schema_parser`, `third_party/aas_pydantic`, `MQTTSchemas` removed); the management node parses via it (`_serde` + shared-model validation gate), keeping the resolver/descriptor as derived-state. Exit: management-node `pytest` green via shared models; registration-service AAS JSON unchanged; generator change breaks parser CI. **Implemented (2026-08-25)** — see `plans/aas-model-PLAN.md` |
-| **M11** | DMP v2 simplification: one ExecutionPolicy per mapping + instance-id attribution (ADR-020/021) | aas-model gains additive optional AIMC policy properties (`TriggerKind`, `RequiredSources`, `MaxAgeSeconds`, `CompletionTimeoutSeconds`, `OnTimeout`, `SnapshotPolicy`, `PeriodSeconds`) with schema-lockstep tests; `ExecutionPolicy` strict parse (named errors) + ONE `ExecutionPolicyRouteCreator` (OnAny/OnAll/Periodic, required-gate, MaxAge expiry, Discard/Partial) + `ProtocolBridgeRouteCreator` replace the event/timer/unified/request/operation family (legacy hatch retired); resolver de-guessed (semanticId protocol map, declared delivery, `forms.response.href` reply topics, schema-walk pointers); descriptor emits per-source `clientId`s and prunes skipped mappings atomically; management node attributes events by exact AIMC instance id and bootstraps the local AID via the ≥50%-referenced-anchor rule. Exit: databridge.core policy/bridge/factory suites green; management-node pytest 99/99; parity examples (aas-jsonata-mqtt, aas-jsonata-http, dot-aas-v3-jsonata-mqtt, dot-aas-v3-multicast) green; distinct-consumer regression test guards the paho URI-collision class. **Implemented (2026-08-28); amended 2026-09-15 — authorable policy replaced by the fixed execution semantic (AIMC template back to plain IDTA, schema snapshot regenerated, creator unified)** |
+| **M11** | DMP v2 simplification: one ExecutionPolicy per mapping + instance-id attribution (ADR-020/021) | aas-model gains additive optional AIMC policy properties (`TriggerKind`, `RequiredSources`, `MaxAgeSeconds`, `CompletionTimeoutSeconds`, `OnTimeout`, `SnapshotPolicy`, `PeriodSeconds`) with schema-lockstep tests; `ExecutionPolicy` strict parse (named errors) + ONE `ExecutionPolicyRouteCreator` (OnAny/OnAll/Periodic, required-gate, MaxAge expiry, Discard/Partial) + `ProtocolBridgeRouteCreator` replace the event/timer/unified/request/operation family (legacy hatch retired); resolver de-guessed (semanticId protocol map, declared delivery, `forms.response.href` reply topics, schema-walk pointers); descriptor emits per-source `clientId`s and prunes skipped mappings atomically; management node attributes events by exact AIMC instance id and bootstraps the local AID via the ≥50%-referenced-anchor rule. Exit: dmp.core policy/bridge/factory suites green; management-node pytest 99/99; parity examples (aas-jsonata-mqtt, aas-jsonata-http, dot-aas-v3-jsonata-mqtt, dot-aas-v3-multicast) green; distinct-consumer regression test guards the paho URI-collision class. **Implemented (2026-08-28); amended 2026-09-15 — authorable policy replaced by the fixed execution semantic (AIMC template back to plain IDTA, schema snapshot regenerated, creator unified)** |
 
 ---
 
 ## 18. References
 
-- `README.md` (this repo) — BaSyx DataBridge origins
+- `README.md` (this repo) — BaSyx DMP origins
 - `databridge/routes.json`, `databridge/jsonatatransformer.json`, `databridge/queries/*.jsonata` — current config format
-- `databridge.camel-jsonata/` — module to mirror for `databridge.camel-lua`
-- `databridge.component/…/DataBridgeExecutable.java`, `RoutesConfigurationLoader.java` — runtime entry points
-- `databridge.core/…/policy/ExecutionPolicyRouteCreator.java` (the ONE policy-driven creator, ADR-020), `bridge/ProtocolBridgeRouteCreator.java`, `DataBridgeComponent.java` — route construction
+- `dmp.camel-jsonata/` — module to mirror for `dmp.camel-lua`
+- `dmp.component/…/DMPExecutable.java`, `RoutesConfigurationLoader.java` — runtime entry points
+- `dmp.core/…/policy/ExecutionPolicyRouteCreator.java` (the ONE policy-driven creator, ADR-020), `bridge/ProtocolBridgeRouteCreator.java`, `DMPComponent.java` — route construction
 - `Registration_Service/third_party/aas_pydantic/aas_pydantic/submodel_templates/asset_interfaces_mapping_configuration.py` — AIMC 2.0 template (verbatim contract)
 - `Registration_Service/third_party/aas_pydantic/aas_pydantic/submodel_templates/asset_interfaces_description.py` — AID template
 - `AASDescriptions/Resource/configs/*.json` — AID/AIMC instantiations (e.g. `syntegonStoppering.json`)
@@ -1011,7 +1011,7 @@ Verified licenses of upstream material used in this project:
 
 | Upstream | License | Obligation |
 |---|---|---|
-| Eclipse BaSyx DataBridge (fork origin, `eclipse-basyx/basyx-databridge`) | **MIT** (per-file headers `SPDX-License-Identifier: MIT` + "Copyright (C) … the Eclipse BaSyx Authors"; parent pom declares MIT) | retain copyright notices + MIT permission text in derived files; keep `LICENSE` |
+| Eclipse BaSyx DMP (fork origin, `eclipse-basyx/basyx-databridge`) | **MIT** (per-file headers `SPDX-License-Identifier: MIT` + "Copyright (C) … the Eclipse BaSyx Authors"; parent pom declares MIT) | retain copyright notices + MIT permission text in derived files; keep `LICENSE` |
 | `aas_pydantic` (`SebBehrendt/aas_pydantic`, submodel template models) | **MIT** (© 2024 Sebastian Behrendt) | retain notice |
 | IDTA submodel templates (`admin-shell-io/submodel-templates`, basis of AIMC/AID semantics) | **CC BY 4.0** (`LICENSE.txt`) | attribute creator, **indicate modifications**, link to CC BY 4.0; no-endorsement clause |
 
@@ -1022,12 +1022,12 @@ Required actions:
 - Publishing artifacts (jars/images): license text must travel (`LICENSE`/`NOTICE` in the image).
 
 For the scientific paper:
-- Cite upstreams, not just the fork: Eclipse BaSyx / BaSyx DataBridge; IDTA AIMC 2.0 + AID templates (cite semantic IDs and versions); aas_pydantic; key dependencies (Apache Camel, LuaJ, Milo, PLC4X, JSONata4Java).
+- Cite upstreams, not just the fork: Eclipse BaSyx / BaSyx DMP; IDTA AIMC 2.0 + AID templates (cite semantic IDs and versions); aas_pydantic; key dependencies (Apache Camel, LuaJ, Milo, PLC4X, JSONata4Java).
 - State the delta explicitly: "built on a fork of X, with modifications A/B/C"; be honest about contribution vs. upstream capability.
 - Companion artifacts carry headers + NOTICE and state the license of new code.
 - Follow institution/funder publication & code-release policies.
 
 Ethics beyond legal:
 - Trademark care: label as a derivative, not an official Eclipse/BaSyx component (no implied endorsement).
-- Consider contributing generic parts upstream (e.g. `databridge.camel-lua`) — good community citizenship and strengthens the paper.
+- Consider contributing generic parts upstream (e.g. `dmp.camel-lua`) — good community citizenship and strengthens the paper.
 - This is general guidance, not legal advice; confirm with institutional/legal review before publication.

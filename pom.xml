@@ -3,28 +3,28 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.eclipse.digitaltwin.basyx</groupId>
-	<artifactId>databridge.parent</artifactId>
+	<artifactId>dmp.parent</artifactId>
 	<version>${revision}</version>
 	<packaging>pom</packaging>
-	<name>DataBridge Parent</name>
-	<description>Parent POM for Eclipse BaSyx DataBridge</description>
+	<name>DMP Parent</name>
+	<description>Parent POM for Eclipse BaSyx DMP</description>
 
 	<modules>
-		<module>databridge.core</module>
-		<module>databridge.camel-aas</module>
-		<module>databridge.camel-activemq</module>
-		<module>databridge.camel-hono</module>
-		<module>databridge.camel-httppolling</module>
-		<module>databridge.camel-jsonata</module>
-		<module>databridge.camel-lua</module>
-		<module>databridge.camel-jsonjackson</module>
-		<module>databridge.camel-kafka</module>
-		<module>databridge.camel-opcua</module>
-		<module>databridge.camel-paho</module>
-		<module>databridge.camel-plc4x</module>
-		<module>databridge.camel-sql</module>
-		<module>databridge.examples</module>
-		<module>databridge.component</module>
+		<module>dmp.core</module>
+		<module>dmp.camel-aas</module>
+		<module>dmp.camel-activemq</module>
+		<module>dmp.camel-hono</module>
+		<module>dmp.camel-httppolling</module>
+		<module>dmp.camel-jsonata</module>
+		<module>dmp.camel-lua</module>
+		<module>dmp.camel-jsonjackson</module>
+		<module>dmp.camel-kafka</module>
+		<module>dmp.camel-opcua</module>
+		<module>dmp.camel-paho</module>
+		<module>dmp.camel-plc4x</module>
+		<module>dmp.camel-sql</module>
+		<module>dmp.examples</module>
+		<module>dmp.component</module>
 	</modules>
 
 	<licenses>

@@ -14,7 +14,7 @@ MQTT   --(cmd)----> [mqtt2opc.lua] --> OPC UA (writes a node)
 
 ## Canonical OPC UA payload (SPEC §10.6)
 
-The `databridge.camel-opcua` module ships the protocol adapters:
+The `dmp.camel-opcua` module ships the protocol adapters:
 
 | Direction | Adapter | Behaviour |
 |---|---|---|
@@ -77,6 +77,6 @@ RouteExample.java                   equivalent raw route DSL
 Verify any blob quickly with the Lua harness (M1):
 
 ```
-java -cp <camel-lua classpath> org.eclipse.digitaltwin.basyx.databridge.lua.harness.LuaHarness \
+java -cp <camel-lua classpath> org.eclipse.digitaltwin.basyx.dmp.lua.harness.LuaHarness \
     config/opc2mqtt.lua sources.json
 ```

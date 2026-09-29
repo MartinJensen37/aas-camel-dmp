@@ -1,0 +1,96 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.eclipse.digitaltwin.basyx</groupId>
+		<artifactId>dmp.parent</artifactId>
+		<version>${revision}</version>
+	</parent>
+	<artifactId>dmp.camel-opcua</artifactId>
+	<name>OpcUa Camel</name>
+	<description>OpcUa Camel Integration as data source and sink</description>
+
+	<packaging>jar</packaging>
+
+	<properties>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<!-- Camel OpcUa requires java 11 -->
+		<java.version>11</java.version>
+	</properties>
+
+	<!-- Define additional plugins that are not included by default -->
+	<!-- Plugin configuration is done in parent project(s) -->
+	<build>
+		<plugins>
+			<!-- Attach sources to jar file -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>3.2.1</version>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-simple -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
+			<version>2.0.11</version>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<artifactId>dmp.core</artifactId>
+			<version>${revision}</version>
+			<exclusions>
+				<!-- basyx.sdk brings Milo 0.6.8 (org.eclipse.milo:stack-core);
+				     camel-milo 4.22.0 is built against Milo 1.1.6
+				     (org.eclipse.milo:milo-stack-core), pinned below. -->
+				<exclusion>
+					<groupId>org.eclipse.milo</groupId>
+					<artifactId>*</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-milo</artifactId>
+		</dependency>
+
+		<!-- Pin the Milo stack to the version camel-milo 4.22.0 is built against.
+		     dmp.core pulls in basyx.sdk -> milo 0.6.8 transitively; an
+		     explicit direct dependency wins over that (same pattern as the
+		     dmp.examples modules). -->
+		<dependency>
+			<groupId>org.eclipse.milo</groupId>
+			<artifactId>milo-stack-core</artifactId>
+			<version>1.1.6</version>
+		</dependency>
+
+		<!-- JSON handling for the canonical OPC UA payload form (SPEC §10.6) -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.14.2</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-test-junit5</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- M4 interface transforms: route-level test of the canonical OPC UA
+		     payload flowing through the Lua component (SPEC §10.1/§10.2). -->
+		<dependency>
+			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<artifactId>dmp.camel-lua</artifactId>
+			<version>${revision}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>

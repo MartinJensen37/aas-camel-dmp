@@ -13,10 +13,10 @@
  *   databridge.camel-opcua ... canonical.OpcUaNormalizer
  *       Lua -> OPC UA: canonical blob output { "value": ... } -> Milo Variant.
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.interfaceexample;
+package org.eclipse.digitaltwin.basyx.dmp.interfaceexample;
 
 import org.apache.camel.builder.RouteBuilder;
-import org.eclipse.digitaltwin.basyx.databridge.opcua.canonical.OpcUaNormalizer;
+import org.eclipse.digitaltwin.basyx.dmp.opcua.canonical.OpcUaNormalizer;
 
 public class InterfaceTransformExampleRoutes extends RouteBuilder {
 
