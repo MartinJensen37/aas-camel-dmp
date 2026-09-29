@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.camel.Exchange;
+import org.apache.camel.Processor;
+import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.test.junit5.CamelTestSupport;
@@ -61,11 +64,15 @@ class FanOutTest extends CamelTestSupport {
 						List.of(new Sink("left", "Left", "mock:left"),
 								new Sink("right", "Right", "mock:right"),
 								new Sink("customLeft", "Left", "mock:customLeft"),
-								new Sink("customRight", "Right", "mock:customRight")), List.of());
+								new Sink("customRight", "Right", "mock:customRight"),
+								new Sink("mixedMapped", null, "mock:mixedMapped"),
+								new Sink("mixedRaw", null, "mock:mixedRaw"),
+								new Sink("throwing", null, "mock:throwing"),
+								new Sink("faultTolerant", null, "mock:faultTolerant")), List.of());
 
 				RouteConfiguration shared = new RouteConfiguration("execution-policy", List.of(),
 						List.of("shared"), List.of("left", "right"));
-				FanOut.apply(this, from("direct:sharedInput").routeId("sharedRoute"), configs, shared,
+				FanOut.apply(from("direct:sharedInput").routeId("sharedRoute"), configs, shared,
 						RouteCreatorHelper.getDataTransformerEndpoints(configs, shared.getTransformers(), "sharedRoute"),
 						RouteCreatorHelper.getDataSinkEndpoints(configs, shared.getDatasinks(), "sharedRoute"),
 						null, "sharedRoute");
@@ -74,11 +81,29 @@ class FanOutTest extends CamelTestSupport {
 						List.of("leftMap", "rightMap"), List.of("customLeft", "customRight"),
 						Map.of("customLeft", new String[] {"leftMap"},
 								"customRight", new String[] {"rightMap"}));
-				FanOut.apply(this, from("direct:customInput").routeId("customRoute"), configs, custom,
+				FanOut.apply(from("direct:customInput").routeId("customRoute"), configs, custom,
 						RouteCreatorHelper.getDataTransformerEndpoints(configs, custom.getTransformers(), "customRoute"),
 						RouteCreatorHelper.getDataSinkEndpoints(configs, custom.getDatasinks(), "customRoute"),
 						RouteCreatorHelper.getDataSinkMapping(configs,
 								custom.getDatasinkMappingConfiguration(), "customRoute"), "customRoute");
+
+				// one sink is mapped to a transformer, its sibling is not
+				RouteConfiguration mixed = new RouteConfiguration("execution-policy", List.of(),
+						List.of("leftMap"), List.of("mixedMapped", "mixedRaw"),
+						Map.of("mixedMapped", new String[] {"leftMap"}));
+				FanOut.apply(from("direct:mixedInput").routeId("mixedRoute"), configs, mixed,
+						RouteCreatorHelper.getDataTransformerEndpoints(configs, mixed.getTransformers(), "mixedRoute"),
+						RouteCreatorHelper.getDataSinkEndpoints(configs, mixed.getDatasinks(), "mixedRoute"),
+						RouteCreatorHelper.getDataSinkMapping(configs,
+								mixed.getDatasinkMappingConfiguration(), "mixedRoute"), "mixedRoute");
+
+				// a failing sink must not stop its sibling
+				RouteConfiguration fault = new RouteConfiguration("execution-policy", List.of(),
+						List.of(), List.of("throwing", "faultTolerant"));
+				FanOut.apply(from("direct:faultInput").routeId("faultRoute"), configs, fault,
+						new String[0],
+						RouteCreatorHelper.getDataSinkEndpoints(configs, fault.getDatasinks(), "faultRoute"),
+						null, "faultRoute");
 
 				from("direct:shared").process(exchange -> sharedTransforms.incrementAndGet());
 				from("direct:leftMap").setBody().constant("{\"Left\":\"mapped left\"}");
@@ -110,5 +135,64 @@ class FanOutTest extends CamelTestSupport {
 		MockEndpoint.assertIsSatisfied(context);
 		assertEquals("mapped left", left.getExchanges().get(0).getMessage().getBody(String.class));
 		assertEquals("mapped right", right.getExchanges().get(0).getMessage().getBody(String.class));
+	}
+
+	/**
+	 * A sink that maps to NO transformer must still receive the original
+	 * transform result, not a body a sibling branch produced. The
+	 * dot-aas-v3-multicast example relies on this: its raw sink sits beside four
+	 * transformed sinks in one mapping, and none of the sinks declare a
+	 * sinkId/valuePath (they are AAS sinks, which self-handle).
+	 *
+	 * <p>Two messages are sent on purpose: the example's failure only showed up
+	 * on the SECOND fan-out, where each sink received its neighbour's body.
+	 * That is a shared message across the multicast branches, not a
+	 * configuration problem.
+	 */
+	@Test
+	void unmappedSinkStillReceivesTheOriginalResult() throws Exception {
+		MockEndpoint mapped = getMockEndpoint("mock:mixedMapped");
+		MockEndpoint raw = getMockEndpoint("mock:mixedRaw");
+		mapped.expectedMessageCount(2);
+		raw.expectedMessageCount(2);
+		template.sendBody("direct:mixedInput", "{\"Left\":\"raw\",\"Right\":\"raw\"}");
+		template.sendBody("direct:mixedInput", "{\"Left\":\"raw2\",\"Right\":\"raw2\"}");
+		MockEndpoint.assertIsSatisfied(context);
+		assertEquals("{\"Left\":\"mapped left\"}",
+				mapped.getExchanges().get(0).getMessage().getBody(String.class));
+		assertEquals("{\"Left\":\"raw\",\"Right\":\"raw\"}",
+				raw.getExchanges().get(0).getMessage().getBody(String.class));
+		assertEquals("{\"Left\":\"raw2\",\"Right\":\"raw2\"}",
+				raw.getExchanges().get(1).getMessage().getBody(String.class));
+	}
+
+	/**
+	 * Every sink is attempted even when an earlier one fails, and the partial
+	 * failure is then reported rather than passing as a successful write.
+	 */
+	@Test
+	void aFailingSinkDoesNotStopTheOthersButIsStillReported() throws Exception {
+		MockEndpoint ok = getMockEndpoint("mock:faultTolerant");
+		MockEndpoint broken = getMockEndpoint("mock:throwing");
+		ok.expectedMessageCount(1);
+		broken.expectedMessageCount(1);
+		broken.whenExchangeReceived(1, (Processor) (Exchange ex) -> {
+			throw new IllegalStateException("sink is down");
+		});
+
+		ProducerTemplate producer = context.createProducerTemplate();
+		try {
+			// the failure IS reported — a partial fan-out must not pass as success
+			org.junit.jupiter.api.Assertions.assertThrows(
+					org.apache.camel.CamelExecutionException.class,
+					() -> producer.sendBody("direct:faultInput", "{\"Value\":\"v\"}"),
+					"a sink failure must surface after all sinks were attempted");
+		} finally {
+			producer.stop();
+		}
+
+		// ...but the healthy sibling was still delivered
+		MockEndpoint.assertIsSatisfied(context);
+		assertEquals("{\"Value\":\"v\"}", ok.getExchanges().get(0).getMessage().getBody(String.class));
 	}
 }

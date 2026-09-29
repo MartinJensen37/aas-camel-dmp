@@ -29,7 +29,7 @@ import java.util.Collections;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.rest.RestDefinition;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataTransformerConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreator;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreator;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreatorHelper;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
@@ -37,8 +37,8 @@ import org.eclipse.digitaltwin.basyx.databridge.core.operation.OperationCommandP
 import org.eclipse.digitaltwin.basyx.databridge.core.operation.OperationContext;
 import org.eclipse.digitaltwin.basyx.databridge.core.operation.OperationDelegationTimeoutException;
 import org.eclipse.digitaltwin.basyx.databridge.core.operation.OperationFailureProcessor;
-import org.eclipse.digitaltwin.basyx.databridge.core.operation.WritebackProcessor;
-import org.eclipse.digitaltwin.basyx.databridge.core.operation.WriteDelegationProcessor;
+import org.eclipse.digitaltwin.basyx.databridge.core.operation.AsyncWritebackProcessor;
+import org.eclipse.digitaltwin.basyx.databridge.core.operation.SyncWriteAckProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
  * InOut / opcua node write / http request) and the
  * ack-then-writeback tail into the AAS property.
  */
-public class WriteDelegationRouteCreator implements IRouteCreator {
+public class WriteDelegationRouteCreator implements RouteCreator {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(WriteDelegationRouteCreator.class);
 	private static final String CONTENT_TYPE_JSON = "application/json";
@@ -128,7 +128,7 @@ public class WriteDelegationRouteCreator implements IRouteCreator {
 			if (responseLuaUri != null) {
 				tryBody = tryBody.to(responseLuaUri);
 			}
-			tryBody.process(new WritebackProcessor(
+			tryBody.process(new AsyncWritebackProcessor(
 						routeBuilder.getContext().createProducerTemplate(), writebackSinkUri, envelopeKey))
 					.doCatch(OperationDelegationTimeoutException.class)
 							.process(new OperationFailureProcessor(operationContext,
@@ -141,7 +141,7 @@ public class WriteDelegationRouteCreator implements IRouteCreator {
 			// synchronous write (opcua/http): write status / response IS the ack
 			routeBuilder.from("direct:" + routeId)
 					.routeId(routeId)
-					.process(new WriteDelegationProcessor(
+					.process(new SyncWriteAckProcessor(
 							routeBuilder.getContext().createProducerTemplate(),
 							operationContext, writebackSinkUri, envelopeKey));
 		}

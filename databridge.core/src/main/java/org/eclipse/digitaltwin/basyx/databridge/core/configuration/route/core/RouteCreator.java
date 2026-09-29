@@ -24,6 +24,6 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core;
 
-public interface IRouteCreator {
+public interface RouteCreator {
 	public void addRouteToRouteBuilder(RouteConfiguration routeConfig);
 }

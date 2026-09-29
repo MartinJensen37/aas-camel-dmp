@@ -36,7 +36,7 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.bridge.
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.bridge.ProtocolBridgeRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.writedelegation.WriteDelegationRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.writedelegation.WriteDelegationRouteCreatorFactory;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreatorFactory;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy.ExecutionPolicyRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy.ExecutionPolicyRouteCreatorFactory;
@@ -63,8 +63,8 @@ public class DataBridgeComponent implements IComponent {
 		orchestrator = new DataBridgeRouteBuilder(configuration, getRouteCreatorFactoryMapDefault());
 	}
 
-	private static Map<String, IRouteCreatorFactory> getRouteCreatorFactoryMapDefault() {
-		Map<String, IRouteCreatorFactory> defaultRouteCreatorFactoryMap = new HashMap<>();
+	private static Map<String, RouteCreatorFactory> getRouteCreatorFactoryMapDefault() {
+		Map<String, RouteCreatorFactory> defaultRouteCreatorFactoryMap = new HashMap<>();
 		// ONE creator family per output shape (ADR-020): policy-driven
 		// aggregation + the protocol bridge
 		defaultRouteCreatorFactoryMap.put(ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER,

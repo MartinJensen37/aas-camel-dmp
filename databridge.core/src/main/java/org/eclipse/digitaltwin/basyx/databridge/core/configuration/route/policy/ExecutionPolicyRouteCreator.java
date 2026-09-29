@@ -36,7 +36,8 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.ProcessorDefinition;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.FanOut;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreator;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreator;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.KeyedSnapshot;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreatorHelper;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
@@ -69,7 +70,7 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Fan-out reuses the shared transform-once multicast {@link FanOut}.
  */
-public class ExecutionPolicyRouteCreator implements IRouteCreator {
+public class ExecutionPolicyRouteCreator implements RouteCreator {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ExecutionPolicyRouteCreator.class);
 
@@ -148,7 +149,7 @@ public class ExecutionPolicyRouteCreator implements IRouteCreator {
 				.filter(gateProcessor(routeConfig, cache))
 				.process(mergeProcessor(cache));
 
-		FanOut.apply(routeBuilder, cycle, routesConfiguration, routeConfig,
+		FanOut.apply(cycle, routesConfiguration, routeConfig,
 				dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
 	}
 
@@ -209,21 +210,22 @@ public class ExecutionPolicyRouteCreator implements IRouteCreator {
 		};
 	}
 
+	/**
+	 * Materialises the one {@link KeyedSnapshot} of this cycle: the gate has
+	 * already proven every source delivered, so this is the shared value the
+	 * transform runs on. The transformer chain contract is a JSON STRING of the
+	 * sources map (the Lua/JSONata processors parse it; keys are the AIMC
+	 * SourceIds) — blobs return tables keyed by SinkId.
+	 */
 	private Processor mergeProcessor(SourceCache cache) {
-		return exchange -> {
-			Map<String, Object> sources = new LinkedHashMap<>();
-			cache.allValues().forEach((key, value) -> sources.put(key,
-					value == JsonPointer.JSON_NULL ? null : value));
-			// the transformer chain contract is a JSON STRING of the sources
-			// map (the Lua/JSONata processors parse it; keys are the AIMC
-			// SourceIds) — blobs return tables keyed by SinkId
-			exchange.getMessage().setBody(new com.google.gson.GsonBuilder()
-					.serializeNulls().create().toJson(sources));
-		};
+		return exchange -> exchange.getMessage().setBody(
+				KeyedSnapshot.of(cache.snapshot().asMap()).toJson());
 	}
 
 	/**
-	 * Thread-safe latest-value cache of SourceId → payload.
+	 * Thread-safe latest-value cache of SourceId → payload. The fan-in
+	 * counterpart of the fan-out sink snapshot: both accumulate keyed
+	 * contributions and hand out exactly one immutable {@link KeyedSnapshot}.
 	 */
 	static final class SourceCache {
 		private final ConcurrentHashMap<String, Object> latest = new ConcurrentHashMap<>();
@@ -240,8 +242,12 @@ public class ExecutionPolicyRouteCreator implements IRouteCreator {
 			return latest.keySet();
 		}
 
-		Map<String, Object> allValues() {
-			return new LinkedHashMap<>(latest);
+		/** One immutable view of the current values, nulls preserved. */
+		KeyedSnapshot snapshot() {
+			Map<String, Object> values = new LinkedHashMap<>();
+			latest.forEach((key, value) -> values.put(key,
+					value == JsonPointer.JSON_NULL ? null : value));
+			return KeyedSnapshot.of(values);
 		}
 	}
 

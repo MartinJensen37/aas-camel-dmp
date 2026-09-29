@@ -28,8 +28,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.camel.Exchange;
-import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.ProcessorDefinition;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.entity.DataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.util.JsonPointer;
@@ -37,17 +35,45 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Shared transform-once / multicast fan-out (T2.1, SPEC §6.4).
+ * Fan-out: the mirror image of the fan-in half (SPEC §6.4).
  *
- * <p>
- * The route-level transformers run exactly once on the aggregated body; every
- * sink then receives a COPY of that result (multicast), so each sink's
- * assembly reads the shared return object instead of the previous sink's
- * mutated output — the sequential multi-sink corruption is structurally gone.
+ * <p>Both halves follow the same shape and share one vocabulary:
+ *
+ * <pre>
+ *   fan-in    N source contributions ─▶ ONE {@link KeyedSnapshot} keyed by SourceId
+ *             (disassembled at the source, gated on completeness)
+ *   transform ONE evaluation of the shared snapshot
+ *   fan-out   the shared result      ─▶ ONE {@link KeyedSnapshot} keyed by SinkId
+ *             (parsed once)            ─▶ N independent payloads, one per sink
+ * </pre>
+ *
+ * <p>The invariants are explicit here, not inherited from a framework detail:
+ *
+ * <ol>
+ * <li>the transform result is parsed <b>once</b> into a single immutable
+ * {@link KeyedSnapshot};</li>
+ * <li>every sink payload is computed from that snapshot <b>up front</b>, before
+ * a single byte is sent;</li>
+ * <li>the route then only walks the precomputed list, so a sink can never
+ * observe a sibling's output and no per-branch message copying is relied
+ * upon.</li>
+ * </ol>
+ *
+ * <p>Sinks are emitted in configured order from a single route — no
+ * {@code multicast} (whose contract is "the <i>same</i> message to N endpoints",
+ * not "N differently shaped messages") and no per-sink {@code direct:} branch
+ * routes, so route count stays a function of mappings rather than of sinks.
  */
 public final class FanOut {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FanOut.class);
+
+	/** Exchange property carrying the one shared, immutable result snapshot. */
+	private static final String RESULT_PROPERTY = "dmp.sharedResult";
+	/** Exchange property carrying the shared result serialised for a sink. */
+	private static final String SINK_PAYLOADS_PROPERTY = "dmp.sharedPayload";
+	/** Exchange property carrying the sinks that failed, if any. */
+	private static final String SINK_FAILURES_PROPERTY = "dmp.sinkFailures";
 
 	private FanOut() {
 	}
@@ -62,17 +88,16 @@ public final class FanOut {
 	 *            sequences keyed by sink ENDPOINT URI; when every sink maps to
 	 *            the same sequence it is hoisted to run once instead.
 	 */
-	public static void apply(RouteBuilder routeBuilder, ProcessorDefinition<?> route,
-			RoutesConfiguration routesConfiguration,
+	public static void apply(ProcessorDefinition<?> route, RoutesConfiguration routesConfiguration,
 			RouteConfiguration routeConfig, String[] transformerEndpoints, String[] sinkEndpoints,
 			Map<String, String[]> perSinkTransformers, String routeId) {
 		if (perSinkTransformers != null && !perSinkTransformers.isEmpty()) {
 			String[] hoisted = hoistCommonSequence(perSinkTransformers, sinkEndpoints);
 			if (hoisted != null) {
-				perSinkTransformers = null; // fully covered; plain fan-out below
+				perSinkTransformers = null; // fully covered; one shared sequence below
 				transformerEndpoints = hoisted;
 			} else {
-				// heterogeneous per-sink sequences stay per-branch (override
+				// heterogeneous per-sink sequences stay per-sink (override
 				// semantics); no route-level pass.
 				transformerEndpoints = new String[0];
 			}
@@ -81,7 +106,7 @@ public final class FanOut {
 		if (transformerEndpoints != null && transformerEndpoints.length > 0) {
 			route.process(exchange -> LOGGER.debug("route {}: body before transformer: {}",
 					routeId, exchange.getMessage().getBody(String.class)));
-			route.to(transformerEndpoints).to("log:" + routeId);
+			route.to(transformerEndpoints);
 		}
 
 		List<String> sinkIds = routeConfig.getDatasinks();
@@ -89,34 +114,128 @@ public final class FanOut {
 			LOGGER.warn("route {}: no sink endpoints", routeId);
 			return;
 		}
-		if (sinkEndpoints.length == 1 && perSinkTransformers == null) {
-			String configId = sinkIds.get(0);
-			if (needsAssembly(routesConfiguration.getDatasinks().get(configId))) {
-				route.process(exchange -> applySinkAssemblyProcessor(exchange, configId, routesConfiguration));
-			}
-			route.to(sinkEndpoints[0]).to("log:" + routeId);
-			return;
+
+		String[] configIds = new String[sinkEndpoints.length];
+		for (int i = 0; i < sinkEndpoints.length; i++) {
+			configIds[i] = i < sinkIds.size() ? sinkIds.get(i)
+					: sinkIdForEndpoint(routesConfiguration, routeConfig, sinkEndpoints[i]);
 		}
 
-		String[] branches = new String[sinkEndpoints.length];
+		// invariant 1: the shared result is parsed ONCE into one immutable
+		// snapshot; every sink below starts from that same value
+		route.process(exchange -> {
+			KeyedSnapshot result = KeyedSnapshot.parse(exchange.getMessage().getBody());
+			exchange.setProperty(RESULT_PROPERTY, result);
+			exchange.setProperty(SINK_PAYLOADS_PROPERTY, sharedJson(result));
+			exchange.setProperty(SINK_FAILURES_PROPERTY, new java.util.ArrayList<String>());
+		});
+
+		// invariant 2 + 3: each sink's body is derived from the shared value
+		// (never from a sibling's output) and no per-branch message copying is
+		// relied upon. Sinks are emitted in configured order from one route, so
+		// route count is a function of mappings, not of sinks.
+		final Map<String, String[]> sinkTransformers = perSinkTransformers;
 		for (int i = 0; i < sinkEndpoints.length; i++) {
-			String endpoint = sinkEndpoints[i];
-			String configId = i < sinkIds.size() ? sinkIds.get(i)
-					: sinkIdForEndpoint(routesConfiguration, routeConfig, endpoint);
-			String[] extra = perSinkTransformers == null ? null : perSinkTransformers.get(endpoint);
-			branches[i] = "direct:fanout-" + routeId + "-" + i;
-			ProcessorDefinition<?> branch = routeBuilder.from(branches[i])
-					.routeId(routeId + "-sink-" + i);
-			LOGGER.debug("fan-out {}: branch {} sink={} transformers={}",
-					routeId, i, endpoint,
-					extra == null ? "[]" : java.util.Arrays.toString(extra));
+			final String configId = configIds[i];
+			final String[] extra = sinkTransformers == null
+					? null
+					: sinkTransformers.get(sinkEndpoints[i]);
+			// start every sink from the shared result; an unmapped sink is
+			// already final, a mapped one still needs its own transformer chain
+			route.process(exchange -> exchange.getMessage().setBody(
+					extra == null || extra.length == 0
+							? sinkPayload(exchange, configId, routesConfiguration)
+							: sharedJson(snapshotOf(exchange))));
 			if (extra != null && extra.length > 0) {
-				branch = branch.to(extra);
+				// per-sink override semantics: this chain runs on its sink's
+				// copy only, and its output is what gets assembled below
+				route.to(extra);
+				route.process(exchange -> exchange.getMessage().setBody(
+						assemble(KeyedSnapshot.parse(exchange.getMessage().getBody()),
+								configId, routesConfiguration)));
 			}
-			branch.process(exchange -> applySinkAssemblyProcessor(exchange, configId, routesConfiguration))
-					.to(endpoint);
+			// every sink is attempted; failures are collected and reported once
+			// at the end rather than aborting the remaining sinks
+			final String endpoint = sinkEndpoints[i];
+			route.doTry()
+					.to(endpoint)
+					.doCatch(Exception.class)
+					.process(e -> {
+						sinkFailures(e).add(endpoint);
+						LOGGER.warn("route {}: sink {} ({}) failed",
+								routeId, configId, endpoint, e);
+					})
+					.end();
 		}
-		route.multicast().to(branches).end().to("log:" + routeId);
+
+		route.process(FanOut::reportFailures);
+	}
+
+	private static String sharedJson(KeyedSnapshot result) {
+		return result.toJson();
+	}
+
+	private static KeyedSnapshot snapshotOf(org.apache.camel.Exchange exchange) {
+		return exchange.getProperty(RESULT_PROPERTY, KeyedSnapshot.class);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static List<String> sinkFailures(org.apache.camel.Exchange exchange) {
+		return (List<String>) exchange.getProperty(SINK_FAILURES_PROPERTY);
+	}
+
+	/**
+	 * Makes a partial fan-out visible: every sink was attempted, and a sink that
+	 * failed must not pass as a successful write. Throwing here (after the fact)
+	 * keeps both properties — all sinks attempted, and the failure reported.
+	 * Change this to a debug log to make fan-out best-effort.
+	 */
+	private static void reportFailures(org.apache.camel.Exchange exchange) {
+		List<String> failures = sinkFailures(exchange);
+		if (failures.isEmpty()) {
+			return;
+		}
+		throw new IllegalStateException("fan-out could not deliver to sinks: " + failures);
+	}
+
+	/**
+	 * The payload one sink receives, derived from the shared result: its own
+	 * {@code SinkId} entry (when declared), optionally re-shaped at the sink's
+	 * {@code valuePath}. A sink that self-handles its value path (e.g. AAS)
+	 * receives the whole result.
+	 */
+	private static String sinkPayload(org.apache.camel.Exchange exchange, String dataSinkId,
+			RoutesConfiguration routesConfiguration) {
+		return assemble(snapshotOf(exchange), dataSinkId, routesConfiguration);
+	}
+
+	/** The same shaping step, over an arbitrary (possibly transformed) value. */
+	private static String assemble(KeyedSnapshot result, String dataSinkId,
+			RoutesConfiguration routesConfiguration) {
+		DataSinkConfiguration config = dataSinkId == null
+				? null
+				: routesConfiguration.getDatasinks().get(dataSinkId);
+		if (config == null || config.handlesValuePathInternally()) {
+			return result.toJson();
+		}
+		String sinkId = config.getSinkId();
+		String valuePath = config.getValuePath();
+
+		Object value = result.root();
+		if (sinkId != null && !sinkId.isBlank()) {
+			if (!result.has(sinkId)) {
+				throw new IllegalArgumentException("Sink '" + dataSinkId
+						+ "': SinkId '" + sinkId + "' not present in the transform result");
+			}
+			value = result.value(sinkId);
+		}
+
+		if (valuePath == null || valuePath.isBlank()) {
+			// coarse: write the whole SinkId value
+			return value instanceof String ? (String) value : KeyedSnapshot.of(value).toJson();
+		}
+		// fine: construct the outgoing payload with the value at the pointer
+		return KeyedSnapshot.of(assembleAt(JsonPointer.parse(valuePath).tokens(), value)).toJson();
 	}
 
 	/**
@@ -134,55 +253,6 @@ public final class FanOut {
 		boolean identical = Arrays.stream(dataSinkEndpoints)
 				.allMatch(endpoint -> Arrays.equals(first, dataSinkMapping.get(endpoint)));
 		return identical ? (first == null ? new String[0] : first) : null;
-	}
-
-	private static boolean needsAssembly(DataSinkConfiguration config) {
-		if (config == null || config.handlesValuePathInternally()) {
-			return false;
-		}
-		String valuePath = config.getValuePath();
-		String sinkId = config.getSinkId();
-		return !(valuePath == null || valuePath.isBlank()) || !(sinkId == null || sinkId.isBlank());
-	}
-
-	private static void applySinkAssemblyProcessor(Exchange exchange, String dataSinkId,
-			RoutesConfiguration routesConfiguration) {
-		if (dataSinkId == null) {
-			return;
-		}
-		DataSinkConfiguration config = routesConfiguration.getDatasinks().get(dataSinkId);
-		if (config == null || config.handlesValuePathInternally()) {
-			return;
-		}
-		String valuePath = config.getValuePath();
-		String sinkId = config.getSinkId();
-
-		Object body = exchange.getMessage().getBody();
-		Object json = body;
-		if (body instanceof String s) {
-			json = parseSinkPayload(s, dataSinkId);
-		} else if (body instanceof byte[] bytes) {
-			json = parseSinkPayload(new String(bytes, java.nio.charset.StandardCharsets.UTF_8), dataSinkId);
-		}
-
-		Object value = json;
-		if (sinkId != null && !sinkId.isBlank()) {
-			if (!(json instanceof Map<?, ?> map) || !map.containsKey(sinkId)) {
-				throw new IllegalArgumentException("Sink '" + dataSinkId
-						+ "': SinkId '" + sinkId + "' not present in the transform result");
-			}
-			value = map.get(sinkId);
-		}
-
-		com.google.gson.Gson gson = new com.google.gson.Gson();
-		if (valuePath == null || valuePath.isBlank()) {
-			// coarse: write the whole SinkId value
-			exchange.getMessage().setBody(value instanceof String ? (String) value : gson.toJson(value));
-		} else {
-			// fine: construct the outgoing payload with the value at the pointer
-			Object assembled = assembleAt(JsonPointer.parse(valuePath).tokens(), value);
-			exchange.getMessage().setBody(gson.toJson(assembled));
-		}
 	}
 
 	private static Object assembleAt(List<String> tokens, Object value) {
@@ -209,15 +279,6 @@ public final class FanOut {
 		java.util.Map<String, Object> object = new java.util.LinkedHashMap<>();
 		object.put(token, assembleAt(tokens, offset + 1, value));
 		return object;
-	}
-
-	private static Object parseSinkPayload(String text, String dataSinkId) {
-		try {
-			return new com.google.gson.Gson().fromJson(text, Object.class);
-		} catch (Exception e) {
-			throw new IllegalArgumentException("Sink '" + dataSinkId
-					+ "': payload is not valid JSON: " + text, e);
-		}
 	}
 
 	/**

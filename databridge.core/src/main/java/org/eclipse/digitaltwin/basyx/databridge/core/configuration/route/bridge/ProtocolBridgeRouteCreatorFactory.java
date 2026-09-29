@@ -25,14 +25,14 @@
 package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.bridge;
 
 import org.apache.camel.builder.RouteBuilder;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreator;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreatorFactory;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreator;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 
-public class ProtocolBridgeRouteCreatorFactory implements IRouteCreatorFactory {
+public class ProtocolBridgeRouteCreatorFactory implements RouteCreatorFactory {
 
 	@Override
-	public IRouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration) {
+	public RouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration) {
 		return new ProtocolBridgeRouteCreator(routeBuilder, routesConfiguration);
 	}
 }

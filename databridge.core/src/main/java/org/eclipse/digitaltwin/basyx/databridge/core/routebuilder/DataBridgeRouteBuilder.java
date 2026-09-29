@@ -29,8 +29,8 @@ import java.util.Map;
 import org.apache.camel.CamelContextAware;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.tooling.model.Strings;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreator;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreatorFactory;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreator;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 
@@ -44,9 +44,9 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.Ro
 public class DataBridgeRouteBuilder extends RouteBuilder {
 	private static final String ROUTE_ID_PREFIX = "route";
 	private RoutesConfiguration routesConfiguration;
-	private Map<String, IRouteCreatorFactory> routeCreatorFactoryMap;
+	private Map<String, RouteCreatorFactory> routeCreatorFactoryMap;
 
-	public DataBridgeRouteBuilder(RoutesConfiguration configuration, Map<String, IRouteCreatorFactory> routeCreatorFactoryMap) {
+	public DataBridgeRouteBuilder(RoutesConfiguration configuration, Map<String, RouteCreatorFactory> routeCreatorFactoryMap) {
 		this.routesConfiguration = configureRouteIds(configuration);
 		this.routeCreatorFactoryMap = routeCreatorFactoryMap;
 	}
@@ -54,7 +54,7 @@ public class DataBridgeRouteBuilder extends RouteBuilder {
 	@Override
 	public void configure() throws Exception {
 		for (RouteConfiguration routeConfig : routesConfiguration.getRoutes()) {
-			IRouteCreator routeCreator = resolveRouteCreator(routeConfig);
+			RouteCreator routeCreator = resolveRouteCreator(routeConfig);
 
 			setCamelContextInRouteEntities();
 
@@ -62,7 +62,7 @@ public class DataBridgeRouteBuilder extends RouteBuilder {
 		}
 	}
 
-	private IRouteCreator resolveRouteCreator(RouteConfiguration routeConfig) {
+	private RouteCreator resolveRouteCreator(RouteConfiguration routeConfig) {
 		String trigger = routeConfig.getRouteTrigger();
 		if (trigger == null || !routeCreatorFactoryMap.containsKey(trigger)) {
 			throw new IllegalArgumentException("route " + routeConfig.getRouteId()

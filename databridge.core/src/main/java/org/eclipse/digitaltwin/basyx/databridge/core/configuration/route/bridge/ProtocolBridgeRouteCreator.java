@@ -27,7 +27,7 @@ package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.bridge
 import java.util.Collections;
 
 import org.apache.camel.builder.RouteBuilder;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreator;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreator;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreatorHelper;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
@@ -78,7 +78,7 @@ import org.slf4j.LoggerFactory;
  * The interactive consumer joins the DMP's consolidated REST surface
  * (camel-rest with jetty, same port as {@code /health}).
  */
-public class ProtocolBridgeRouteCreator implements IRouteCreator {
+public class ProtocolBridgeRouteCreator implements RouteCreator {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ProtocolBridgeRouteCreator.class);
 	private static final String CONTENT_TYPE_JSON = "application/json";

@@ -44,7 +44,7 @@ import com.google.gson.Gson;
  *
  * @author aas-camel-dmp
  */
-public class WriteDelegationProcessor implements Processor {
+public class SyncWriteAckProcessor implements Processor {
 
 	private static final Gson GSON = new Gson();
 
@@ -53,7 +53,7 @@ public class WriteDelegationProcessor implements Processor {
 	private final String writebackSinkUri;
 	private final String sinkId;
 
-	public WriteDelegationProcessor(ProducerTemplate producerTemplate, OperationContext context,
+	public SyncWriteAckProcessor(ProducerTemplate producerTemplate, OperationContext context,
 			String writebackSinkUri, String sinkId) {
 		this.producerTemplate = producerTemplate;
 		this.context = context;

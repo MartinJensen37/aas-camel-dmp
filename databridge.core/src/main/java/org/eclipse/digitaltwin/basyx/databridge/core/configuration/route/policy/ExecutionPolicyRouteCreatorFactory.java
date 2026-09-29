@@ -25,14 +25,14 @@
 package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy;
 
 import org.apache.camel.builder.RouteBuilder;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreator;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.IRouteCreatorFactory;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreator;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 
-public class ExecutionPolicyRouteCreatorFactory implements IRouteCreatorFactory {
+public class ExecutionPolicyRouteCreatorFactory implements RouteCreatorFactory {
 
 	@Override
-	public IRouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration) {
+	public RouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration) {
 		return new ExecutionPolicyRouteCreator(routeBuilder, routesConfiguration);
 	}
 }

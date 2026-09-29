@@ -26,8 +26,8 @@ package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core;
 
 import org.apache.camel.builder.RouteBuilder;
 
-public interface IRouteCreatorFactory {
+public interface RouteCreatorFactory {
 
-	public IRouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration);
+	public RouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration);
 
 }

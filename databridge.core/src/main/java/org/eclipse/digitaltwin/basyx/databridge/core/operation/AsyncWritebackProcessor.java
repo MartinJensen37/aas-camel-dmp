@@ -43,7 +43,7 @@ import com.google.gson.reflect.TypeToken;
  *
  * @author aas-camel-dmp
  */
-public class WritebackProcessor implements Processor {
+public class AsyncWritebackProcessor implements Processor {
 
 	private static final Gson GSON = new Gson();
 	private static final java.lang.reflect.Type MAP_TYPE =
@@ -53,7 +53,7 @@ public class WritebackProcessor implements Processor {
 	private final String writebackSinkUri;
 	private final String sinkId;
 
-	public WritebackProcessor(ProducerTemplate producerTemplate, String writebackSinkUri, String sinkId) {
+	public AsyncWritebackProcessor(ProducerTemplate producerTemplate, String writebackSinkUri, String sinkId) {
 		this.producerTemplate = producerTemplate;
 		this.writebackSinkUri = writebackSinkUri;
 		this.sinkId = sinkId;
