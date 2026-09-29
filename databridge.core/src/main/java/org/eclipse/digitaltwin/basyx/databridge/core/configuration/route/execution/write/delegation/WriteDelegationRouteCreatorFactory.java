@@ -22,17 +22,17 @@
  *
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.execution.write.delegation;
 
 import org.apache.camel.builder.RouteBuilder;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreator;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 
-public class ExecutionPolicyRouteCreatorFactory implements RouteCreatorFactory {
+public class WriteDelegationRouteCreatorFactory implements RouteCreatorFactory {
 
 	@Override
 	public RouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration) {
-		return new ExecutionPolicyRouteCreator(routeBuilder, routesConfiguration);
+		return new WriteDelegationRouteCreator(routeBuilder, routesConfiguration);
 	}
 }

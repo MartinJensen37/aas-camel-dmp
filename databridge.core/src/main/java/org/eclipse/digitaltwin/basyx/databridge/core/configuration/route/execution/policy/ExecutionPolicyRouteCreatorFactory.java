@@ -22,25 +22,17 @@
  *
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.execution.policy;
 
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
+import org.apache.camel.builder.RouteBuilder;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreator;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteCreatorFactory;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RoutesConfiguration;
 
-/**
- * Route configuration of the uniform execution-policy creator (ADR-020):
- * every mapping compiles to {@code sources[] + sinks[] + transformer(s) +
- * ExecutionPolicy} — the only aggregation shape the DMP runtime knows.
- */
-public class ExecutionPolicyRouteConfiguration extends RouteConfiguration {
-
-	public static final String ROUTE_TRIGGER = "execution-policy";
-
-	public ExecutionPolicyRouteConfiguration(RouteConfiguration configuration) {
-		super(configuration);
-	}
+public class ExecutionPolicyRouteCreatorFactory implements RouteCreatorFactory {
 
 	@Override
-	public String getRouteTrigger() {
-		return ROUTE_TRIGGER;
+	public RouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration) {
+		return new ExecutionPolicyRouteCreator(routeBuilder, routesConfiguration);
 	}
 }

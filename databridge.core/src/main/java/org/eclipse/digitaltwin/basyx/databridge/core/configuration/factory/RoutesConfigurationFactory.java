@@ -28,9 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.bridge.ProtocolBridgeRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.writedelegation.WriteDelegationRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.execution.write.delegation.WriteDelegationRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.RouteConfiguration;
-import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.policy.ExecutionPolicyRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.execution.policy.ExecutionPolicyRouteConfiguration;
 
 /**
  * A generic implementation of routes configuration factory

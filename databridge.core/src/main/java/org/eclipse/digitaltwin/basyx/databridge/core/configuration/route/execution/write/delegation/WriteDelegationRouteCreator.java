@@ -22,7 +22,7 @@
  *
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.writedelegation;
+package org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.execution.write.delegation;
 
 import java.util.Collections;
 
