@@ -22,7 +22,7 @@
  * 
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.dmp.activemq.configuration;
+package org.eclipse.digitaltwin.basyx.dmp.hono.configuration;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 
@@ -31,25 +31,60 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceCon
  * @author haque
  *
  */
-public class ActiveMQConsumerConfiguration extends DataSourceConfiguration {
-	private String queue;
+public class HonoDataSourceConfiguration extends DataSourceConfiguration {
+	private String userName;
+	private String password;
+	private String tenantId;
+	private String deviceId;
 
-	public ActiveMQConsumerConfiguration() {}
+	public HonoDataSourceConfiguration() {}
 
-	public ActiveMQConsumerConfiguration(String uniqueId, String serverUrl, int serverPort, String queue) {
+	public HonoDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String userName, String password, String tenantId, String deviceId) {
 		super(uniqueId, serverUrl, serverPort);
-		this.queue = queue;
+		this.userName = userName;
+		this.password = password;
+		this.tenantId = tenantId;
+		this.deviceId = deviceId;
 	}
 
-	public String getQueue() {
-		return queue;
+	public String getUserName() {
+		return userName;
 	}
 
-	public void setTopic(String queue) {
-		this.queue = queue;
+	public void setUserName(String userName) {
+		this.userName = userName;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public String getTenantId() {
+		return tenantId;
+	}
+
+	public void setTenantId(String tenantId) {
+		this.tenantId = tenantId;
+	}
+
+	public String getDeviceId() {
+		return deviceId;
+	}
+
+	public void setDeviceId(String deviceId) {
+		this.deviceId = deviceId;
 	}
 
 	public String getConnectionURI() {
-		return "activemq:" + getQueue();
+		return "hono:" + getServerUrl() + 
+				"?port=" + getServerPort() +
+				"&userName=" + getUserName() +
+				"&password=" + getPassword() +
+				"&deviceId=" + getDeviceId() +
+				"&tenantId=" + getTenantId();
 	}
 }

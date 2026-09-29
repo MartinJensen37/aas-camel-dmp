@@ -24,7 +24,7 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.activemq.configuration.factory;
 
-import org.eclipse.digitaltwin.basyx.dmp.activemq.configuration.ActiveMQConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.activemq.configuration.ActiveMQDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceConfigurationFactory;
 
 /**
@@ -33,13 +33,13 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceCo
  *
  */
 public class ActiveMQDefaultConfigurationFactory extends DataSourceConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "activemqconsumer.json";
+	public static final String DEFAULT_FILE_PATH = "activemqdatasource.json";
 	
 	public ActiveMQDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, ActiveMQConsumerConfiguration.class);
+		super(DEFAULT_FILE_PATH, loader, ActiveMQDataSourceConfiguration.class);
 	}
 	
 	public ActiveMQDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, ActiveMQConsumerConfiguration.class);
+		super(filePath, loader, ActiveMQDataSourceConfiguration.class);
 	}
 }

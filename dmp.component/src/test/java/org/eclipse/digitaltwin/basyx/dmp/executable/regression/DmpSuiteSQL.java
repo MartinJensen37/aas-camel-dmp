@@ -32,7 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.eclipse.digitaltwin.basyx.dmp.examples.sqlaas.TestDb;
-import org.eclipse.digitaltwin.basyx.dmp.sql.configuration.SqlConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.sql.configuration.SqlDataSourceConfiguration;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -42,7 +42,7 @@ import org.mockserver.model.HttpRequest;
 import org.mockserver.verify.VerificationTimes;
 
 /**
- * Test suite for {@link SqlConsumerConfiguration}
+ * Test suite for {@link SqlDataSourceConfiguration}
  * 
  * @author mateusmolina
  */

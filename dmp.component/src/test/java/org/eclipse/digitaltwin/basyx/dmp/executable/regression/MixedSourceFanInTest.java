@@ -17,13 +17,13 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.eclipse.digitaltwin.basyx.dmp.aas.AASComponent;
 import org.eclipse.digitaltwin.basyx.dmp.aas.AASEndpoint;
-import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASPollingConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteCreator;
-import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpPollingConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpPollingDataSourceConfiguration;
 import org.junit.Test;
 
 import com.google.gson.Gson;
@@ -69,14 +69,14 @@ public class MixedSourceFanInTest {
 			async.setSourceId("StationState");
 			async.setDelivery("async");
 
-			HttpPollingConsumerConfiguration http = new HttpPollingConsumerConfiguration(
+			HttpPollingDataSourceConfiguration http = new HttpPollingDataSourceConfiguration(
 					"httpPoll", base + "/pressure", 0, null, null);
 			http.setSourceId("Pressure");
 			http.setDelivery("sync");
 			http.setValuePath("$.value");
 			http.setPollingIntervalMs(150);
 
-			AASPollingConsumerConfiguration aas = new AASPollingConsumerConfiguration(
+			AASPollingDataSourceConfiguration aas = new AASPollingDataSourceConfiguration(
 					"aasPoll", null, 0, "Temperature", base + "/submodels/demo", "DotAAS-V3");
 			aas.setSourceId("Temperature");
 			aas.setDelivery("sync");

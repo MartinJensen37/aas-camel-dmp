@@ -22,7 +22,7 @@
  * 
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.dmp.hono.configuration;
+package org.eclipse.digitaltwin.basyx.dmp.activemq.configuration;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 
@@ -31,60 +31,25 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceCon
  * @author haque
  *
  */
-public class HonoConsumerConfiguration extends DataSourceConfiguration {
-	private String userName;
-	private String password;
-	private String tenantId;
-	private String deviceId;
+public class ActiveMQDataSourceConfiguration extends DataSourceConfiguration {
+	private String queue;
 
-	public HonoConsumerConfiguration() {}
+	public ActiveMQDataSourceConfiguration() {}
 
-	public HonoConsumerConfiguration(String uniqueId, String serverUrl, int serverPort, String userName, String password, String tenantId, String deviceId) {
+	public ActiveMQDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String queue) {
 		super(uniqueId, serverUrl, serverPort);
-		this.userName = userName;
-		this.password = password;
-		this.tenantId = tenantId;
-		this.deviceId = deviceId;
+		this.queue = queue;
 	}
 
-	public String getUserName() {
-		return userName;
+	public String getQueue() {
+		return queue;
 	}
 
-	public void setUserName(String userName) {
-		this.userName = userName;
-	}
-
-	public String getPassword() {
-		return password;
-	}
-
-	public void setPassword(String password) {
-		this.password = password;
-	}
-
-	public String getTenantId() {
-		return tenantId;
-	}
-
-	public void setTenantId(String tenantId) {
-		this.tenantId = tenantId;
-	}
-
-	public String getDeviceId() {
-		return deviceId;
-	}
-
-	public void setDeviceId(String deviceId) {
-		this.deviceId = deviceId;
+	public void setTopic(String queue) {
+		this.queue = queue;
 	}
 
 	public String getConnectionURI() {
-		return "hono:" + getServerUrl() + 
-				"?port=" + getServerPort() +
-				"&userName=" + getUserName() +
-				"&password=" + getPassword() +
-				"&deviceId=" + getDeviceId() +
-				"&tenantId=" + getTenantId();
+		return "activemq:" + getQueue();
 	}
 }

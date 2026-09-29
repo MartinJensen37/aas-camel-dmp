@@ -5,12 +5,12 @@ AID) into the config files the per-unit DMP container reads at startup:
 
 - ``routes.json``             — one aggregation route per MappingConfiguration
                                 plus one bridge route per interaction pairing
-- ``mqttconsumer.json``       — MQTT datasource configs (from declared endpoints)
+- ``mqttdatasource.json``       — MQTT datasource configs (from declared endpoints)
 - ``luatransformer.json``    — LUA transformer configs (SPEC §8.5)
 - ``queries/<unit>_<mapping>.lua`` — the AIMC transformation blobs
 - ``aasdatasink.json``          — AAS datasink configs (from AIMC Sink refs)
 - (plus opcua/plc4x/http/aas-polling consumer files when such sources exist)
-- ``kafkaconsumer.json`` — AAS repository event datasource configs
+- ``kafkadatasource.json`` — AAS repository event datasource configs
 
 Every mapping compiles to ONE uniform shape: ``sources[] + sinks[] +
 transformer(s)`` — the aggregation route (fixed DMP runtime semantic,
@@ -57,19 +57,19 @@ logger = logging.getLogger(__name__)
 
 #: Default file names consumed by the DataBridge runtime (see databridge.camel-*).
 ROUTES_FILE = "routes.json"
-MQTT_CONSUMER_FILE = "mqttconsumer.json"
-MQTT_SINK_FILE = "mqttdatasink.json"
-LUA_TRANSFORMERS_FILE = "luatransformer.json"
-JSONATA_TRANSFORMERS_FILE = "jsonatatransformer.json"
+MQTT_DATASOURCE_FILE = "mqttdatasource.json"
+MQTT_DATASINK_FILE = "mqttdatasink.json"
+LUA_TRANSFORMER_FILE = "luatransformer.json"
+JSONATA_TRANSFORMER_FILE = "jsonatatransformer.json"
 AAS_DATASINK_FILE = "aasdatasink.json"
-AAS_POLLING_CONSUMER_FILE = "aaspollingconsumer.json"
-OPCUA_CONSUMER_FILE = "opcuaconsumer.json"
-OPCUA_SINK_FILE = "opcuadatasink.json"
-PLC4X_CONSUMER_FILE = "plc4xconsumer.json"
-PLC4X_SINK_FILE = "plc4xdatasink.json"
-HTTP_CONSUMER_FILE = "httpconsumer.json"
+AAS_POLLING_DATASOURCE_FILE = "aaspollingdatasource.json"
+OPCUA_DATASOURCE_FILE = "opcuadatasource.json"
+OPCUA_DATASINK_FILE = "opcuadatasink.json"
+PLC4X_DATASOURCE_FILE = "plc4xdatasource.json"
+PLC4X_DATASINK_FILE = "plc4xdatasink.json"
+HTTP_DATASOURCE_FILE = "httpdatasource.json"
 HTTP_DATASINK_FILE = "httpdatasink.json"
-KAFKA_CONSUMER_FILE = "kafkaconsumer.json"
+KAFKA_DATASOURCE_FILE = "kafkadatasource.json"
 
 def _substitute(value: str, aas_id: str, unit_short: str) -> str:
     """Resolve the {aas_id}/{aas_id_short} macros used in references."""
@@ -367,18 +367,18 @@ class DescriptorCompiler:
     def _emit_files(self, descriptor: DmpDescriptor, ctx: DescriptorContext) -> None:
         descriptors = [
             (ROUTES_FILE, ctx.routes),
-            (MQTT_CONSUMER_FILE, ctx.mqtt_sources),
-            (MQTT_SINK_FILE, ctx.mqtt_sinks),
-            (LUA_TRANSFORMERS_FILE, ctx.lua_transformers),
-            (JSONATA_TRANSFORMERS_FILE, ctx.jsonata_transformers),
+            (MQTT_DATASOURCE_FILE, ctx.mqtt_sources),
+            (MQTT_DATASINK_FILE, ctx.mqtt_sinks),
+            (LUA_TRANSFORMER_FILE, ctx.lua_transformers),
+            (JSONATA_TRANSFORMER_FILE, ctx.jsonata_transformers),
             (AAS_DATASINK_FILE, ctx.aas_sinks),
-            (AAS_POLLING_CONSUMER_FILE, ctx.aas_polling_sources),
-            (KAFKA_CONSUMER_FILE, ctx.kafka_sources),
-            (OPCUA_CONSUMER_FILE, ctx.opcua_sources),
-            (PLC4X_CONSUMER_FILE, ctx.plc4x_sources),
-            (HTTP_CONSUMER_FILE, ctx.http_sources),
-            (OPCUA_SINK_FILE, ctx.opcua_sinks),
-            (PLC4X_SINK_FILE, ctx.plc4x_sinks),
+            (AAS_POLLING_DATASOURCE_FILE, ctx.aas_polling_sources),
+            (KAFKA_DATASOURCE_FILE, ctx.kafka_sources),
+            (OPCUA_DATASOURCE_FILE, ctx.opcua_sources),
+            (PLC4X_DATASOURCE_FILE, ctx.plc4x_sources),
+            (HTTP_DATASOURCE_FILE, ctx.http_sources),
+            (OPCUA_DATASINK_FILE, ctx.opcua_sinks),
+            (PLC4X_DATASINK_FILE, ctx.plc4x_sinks),
             (HTTP_DATASINK_FILE, ctx.http_sinks),
         ]
         descriptor.files.update(ctx.files)  # materialized blob/query files

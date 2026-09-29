@@ -232,7 +232,7 @@ def test_two_device_references_compile_into_one_line_aas_sink():
     routes = json.loads(descriptor.files[ROUTES_FILE])
     assert len(routes) == 1
     assert len(routes[0]["datasources"]) == 2
-    consumers = json.loads(descriptor.files["mqttconsumer.json"])
+    consumers = json.loads(descriptor.files["mqttdatasource.json"])
     assert {c["sourceId"] for c in consumers} == {"Device1", "Device2"}
     assert {c["topic"] for c in consumers} == {
         "NN/Device1/DATA/State", "NN/Device2/DATA/State"}

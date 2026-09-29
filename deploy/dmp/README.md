@@ -10,7 +10,7 @@ can also just fill `./config` yourself.
 ```
 config/
 ├── routes.json               # route topology (datasource -> transformers -> datasinks)
-├── timerconsumer.json        # datasource config (timer), if a timer route is used
+├── timerdatasource.json        # datasource config (timer), if a timer route is used
 ├── luatransformer.json      # LUA transformer configs (SPEC §8.5)
 ├── mqttdatasink.json         # datasink config (MQTT publish)
 └── queries/

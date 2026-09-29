@@ -31,7 +31,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceCon
  * @author haque
  *
  */
-public class KafkaConsumerConfiguration extends DataSourceConfiguration {
+public class KafkaDataSourceConfiguration extends DataSourceConfiguration {
 	private String topic;
 	private int maxPollRecords;
 	private String groupId;
@@ -39,9 +39,9 @@ public class KafkaConsumerConfiguration extends DataSourceConfiguration {
 	private String seekTo;
 	private boolean breakOnFirstError;
 	
-	public KafkaConsumerConfiguration() {}
+	public KafkaDataSourceConfiguration() {}
 	
-	public KafkaConsumerConfiguration(String uniqueId, String serverUrl, int serverPort, String topic,
+	public KafkaDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String topic,
 			int maxPollRecords, String groupId, int consumersCount, String seekTo) {
 		super(uniqueId, serverUrl, serverPort);
 		this.topic = topic;

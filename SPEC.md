@@ -5,7 +5,7 @@
 > **DMP v3 amendment (2026-09-16, in progress): operation delegation = one-MC authoring on the Operation element.** A mapping whose SOURCE reference targets an **Operation SubmodelElement** (own or cross-AAS) IS an operation delegation: sink = the native command affordance, Transformation = the request blob (replies pass through — response blob optional). The caller-facing REST surface is **derived by convention** (`POST /operations/{aas_id_short}/{action}`, the action = the owning skill's idShort, `{aas_id_short}` resolved at descriptor compile time) and carried in the bridge route's `triggerData` (`restPath`/`restMethod`) — the **two-MC request/response pairing, `interface_rest` REST-caller affordances, the `restsources.json` emission and the `RestCallerProtocols` machinery are retired**; the AID models only the device's own communication
 > **Date:** 2026-08-19 · **Last updated:** 2026-09-16
 > **Applies to:** this repository, checked out as **`aas-camel-dmp`** (renamed from `aas-camel-k-dmp`, M0)
-> **Companion artifacts (implemented):** `dmp.camel-lua/` (Lua component + harness), `dmp.camel-jsonata/` (secondary engine, ADR-015), `dmp.core/…/EventRouteCreator.java` (fan-in + coarse/fine, ADR-014), `management-node/` (Python orchestrator), per-protocol config catalog (`mqttconsumer.json`, `mqttdatasink.json`, `aasdatasink.json`, …)
+> **Companion artifacts (implemented):** `dmp.camel-lua/` (Lua component + harness), `dmp.camel-jsonata/` (secondary engine, ADR-015), `dmp.core/…/EventRouteCreator.java` (fan-in + coarse/fine, ADR-014), `management-node/` (Python orchestrator), per-protocol config catalog (`mqttdatasource.json`, `mqttdatasink.json`, `aasdatasink.json`, …)
 
 ---
 
@@ -47,7 +47,7 @@ Out of scope: the AAS server itself, the AAS registration service, ontology gene
   ADR-002). Renamed `aas-camel-k-dmp` → **`aas-camel-dmp`** (M0); baseline
   upgraded to **Camel 4.22.x / Java 17** (M0.5, ADR-009).
 - Routes are built at startup from JSON configs (`routes.json` + per-category
-  config files, e.g. `luatransformer.json`, `mqttconsumer.json`).
+  config files, e.g. `luatransformer.json`, `mqttdatasource.json`).
 - The default/compliance transformation is **Lua** with an `aimc_main(sources)`
   entry point (`dmp.camel-lua` → `lua:file:<path>`, §7) — sandboxed
   (§7.2/§7.3), harness-verified (§8.4). **JSONata**
@@ -64,21 +64,21 @@ Out of scope: the AAS server itself, the AAS registration service, ontology gene
   one `sources{}` map before the transform.
 - **Use-case 2 (AAS→AAS) is supported (R1–R4).** A non-interface source (any
   submodel element) becomes an **AAS polling consumer**
-  (`aaspollingconsumer.json`) whose sync payloads are read at their declared
+  (`aaspollingdatasource.json`) whose sync payloads are read at their declared
   `PollingInterval` (AIMC `DefaultPollingInterval` fallback); every poll tick
   that completes the sources set evaluates the mapping;
   AAS sinks may target **any**
   submodel (not just the asset's Variables); a mapping with **no
   Transformation** emits a passthrough identity Lua blob (SourceId↔SinkId
   linking per the AIMC template); OPC UA, Modbus/PLC and synchronous HTTP
-  interfaces emit `opcuaconsumer.json` / `plc4xconsumer.json` /
-  `httpconsumer.json` respectively.
+  interfaces emit `opcuadatasource.json` / `plc4xdatasource.json` /
+  `httpdatasource.json` respectively.
 - The repo ships a Kafka-based AAS eventing backbone (BaSyx
   `BASYX_FEATURE_KAFKA_ENABLED`, topics `aas-events` / `submodel-events`) that
   the **management node** (`management-node/`, Python, M3) consumes (ADR-010):
   it parses AID + AIMC, pins `valuePath` per fine source/sink, selects the
   engine from the blob semantic id, and compiles the DMP descriptor (routes,
-  `mqttconsumer.json`, `mqttdatasink.json`, `aasdatasink.json`,
+  `mqttdatasource.json`, `mqttdatasink.json`, `aasdatasink.json`,
   Lua/JSONata transformer blobs).
 
 ---
@@ -240,9 +240,9 @@ declare**, each from the fixed catalog:
 
 | Protocol/kind | Config file |
 |---|---|
-| MQTT source | `mqttconsumer.json` |
-| OPC UA source | `opcuaconsumer.json` |
-| PLC / SQL / HTTP / Kafka | `plc4x.json` / `sqlconsumer.json` / `httpdatasink.json` / `kafkaconsumer.json` |
+| MQTT source | `mqttdatasource.json` |
+| OPC UA source | `opcuadatasource.json` |
+| PLC / SQL / HTTP / Kafka | `plc4x.json` / `sqldatasource.json` / `httpdatasink.json` / `kafkadatasource.json` |
 | AAS sink | `aasdatasink.json` |
 | MQTT datasink | `mqttdatasink.json` |
 
@@ -282,8 +282,8 @@ exists; the bridge emits the camel-rest consumer from the derived path.
 > reply path is the station's self-describing `MethodReply`-node read-back —
 > the decode stays armed for binaries that hand the result over.
 
-So an asset with only an MQTT interface ships only `mqttconsumer.json`; an
-asset with an OPC UA interface ships an `opcuaconsumer.json`; an asset involved
+So an asset with only an MQTT interface ships only `mqttdatasource.json`; an
+asset with an OPC UA interface ships an `opcuadatasource.json`; an asset involved
 in a PLC4X→MQTT remap ships both `plc4x.json` and `mqttdatasink.json`. The DMP
 reads whatever datasource/sink config files are present and builds the
 corresponding Camel endpoints — the presence/absence of a per-protocol file is
@@ -744,7 +744,7 @@ the response/derived value — so `json.encode` renders `{"a":4}` rather than
 - Each asset = one DMP container, isolated (process-level fault isolation).
 - **Granularity (Q4 / ADR-012): 1 DMP container per asset hosting N `MappingConfigurations`** (multiple mappings per asset, one process).
 - Config is provided at runtime via the existing mechanism: a config directory (`/usr/share/config` default) and/or environment variables (mirroring the current `JSONATA_ENV_VAR_NAME` pattern with a `LUA` equivalent).
-- The config directory holds **exactly the per-protocol datasource/sink files the asset's interfaces declare** (§6.3: `mqttconsumer.json`, `opcuaconsumer.json`, `plc4x.json`, `mqttdatasink.json`, `aasdatasink.json`, …) plus `routes.json` and the transformer/lua configs.
+- The config directory holds **exactly the per-protocol datasource/sink files the asset's interfaces declare** (§6.3: `mqttdatasource.json`, `opcuadatasource.json`, `plc4x.json`, `mqttdatasink.json`, `aasdatasink.json`, …) plus `routes.json` and the transformer/lua configs.
 - Lua blob files (and, where the AAS declares a JSONata transformation, the JSONata files) are placed/mounted into the DMP at runtime (from the management node or a mounted volume/config map).
 
 ### 9.3 JVM sizing
@@ -891,7 +891,7 @@ Considerations (all mechanisms):
   - *Fresh `Globals` + `__index` → template + shared `debuglib`:* the hook fires, but `DebugLib.onInstruction` reads `globals.running.state` from the globals the DebugLib was loaded into (the template), so the state is stale and shared across threads → wrong exception (`ArrayIndexOutOfBoundsException`) and not thread-safe. **Rejected.**
   - *Fresh `Globals` + shared pre-built lib tables + per-message `DebugLib` (ThreadLocal deadline):* correct (clean `LuaError` timeout at 2001 ms, 8×20 000 msgs → 0 errors, isolated), but only **~2× faster** (7.3 vs 14.5 µs/msg) and it reintroduces subtle risks (shared `LibFunction` instances stay bound to the template globals; a blob mutating a shared lib table such as `math.foo = 1` leaks across messages). Not worth the complexity at 1–100 Hz rates — **deferred**.
   - **Conclusion:** LuaJ's debug-hook state is bound to the executing `Globals`, so a correct CPU timeout *requires* a per-message `Globals`. The per-message sandbox is therefore kept as-is.
-- **Future expansion — shared MQTT subscriber per DMP (Option A).** Today each MQTT-sourced route creates its own paho client (one broker connection per route); with hundreds of routes this floods the broker with connections. Planned consolidation: ONE Eclipse Paho client per broker subscribes to the exact union of route topics (`MqttClient.subscribe(String[], int[])`) and fans each message out **asynchronously** to per-route `direct:` endpoints (per-route async dispatch so a slow route — e.g. a blocking AAS write — cannot stall the others). Routes would consume `direct:<sourceId>` instead of `paho:<topic>`; `routes.json`/`mqttconsumer.json` stay unchanged (the DMP resolves MQTT datasources internally). A cheaper variant (Option B) uses one camel-paho consumer with a `<asset-prefix>/DATA/#` wildcard + topic-based routing, at the cost of subscribing to more than needed. Not implemented — deferred (2026-08-21).
+- **Future expansion — shared MQTT subscriber per DMP (Option A).** Today each MQTT-sourced route creates its own paho client (one broker connection per route); with hundreds of routes this floods the broker with connections. Planned consolidation: ONE Eclipse Paho client per broker subscribes to the exact union of route topics (`MqttClient.subscribe(String[], int[])`) and fans each message out **asynchronously** to per-route `direct:` endpoints (per-route async dispatch so a slow route — e.g. a blocking AAS write — cannot stall the others). Routes would consume `direct:<sourceId>` instead of `paho:<topic>`; `routes.json`/`mqttdatasource.json` stay unchanged (the DMP resolves MQTT datasources internally). A cheaper variant (Option B) uses one camel-paho consumer with a `<asset-prefix>/DATA/#` wildcard + topic-based routing, at the cost of subscribing to more than needed. Not implemented — deferred (2026-08-21).
 - **Benchmark requirement:** before accepting a blob or a throughput claim, measure with the harness (msg/s, p50/p95) against a mock sink; do not guess.
 
 ---

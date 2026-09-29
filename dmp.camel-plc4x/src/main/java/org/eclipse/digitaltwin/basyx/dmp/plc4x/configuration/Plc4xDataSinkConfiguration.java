@@ -32,7 +32,7 @@ import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.deserializer.Option
 /**
  * PLC4X write sink (DMP v3): the camel-plc4x producer writes the transformed
  * tag values (e.g. Modbus coils/registers via the modbus-tcp driver). Mirrors
- * {@link Plc4xConsumerConfiguration} — same connection URI shape, but a
+ * {@link Plc4xDataSourceConfiguration} — same connection URI shape, but a
  * datasink.
  *
  * @author aas-camel-dmp

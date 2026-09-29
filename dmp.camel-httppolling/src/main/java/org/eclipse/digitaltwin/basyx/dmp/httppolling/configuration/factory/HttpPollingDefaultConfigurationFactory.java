@@ -25,7 +25,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.factory;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpPollingConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpPollingDataSourceConfiguration;
 
 /**
  * A default configuration factory for Http polling from a default file location
@@ -33,13 +33,13 @@ import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpPollingCo
  *
  */
 public class HttpPollingDefaultConfigurationFactory extends DataSourceConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "httpconsumer.json";
+	public static final String DEFAULT_FILE_PATH = "httpdatasource.json";
 	
 	public HttpPollingDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, HttpPollingConsumerConfiguration.class);
+		super(DEFAULT_FILE_PATH, loader, HttpPollingDataSourceConfiguration.class);
 	}
 	
 	public HttpPollingDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, HttpPollingConsumerConfiguration.class);
+		super(filePath, loader, HttpPollingDataSourceConfiguration.class);
 	}
 }

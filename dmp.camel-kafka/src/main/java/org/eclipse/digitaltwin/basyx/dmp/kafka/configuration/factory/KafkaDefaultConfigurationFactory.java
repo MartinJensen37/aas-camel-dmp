@@ -25,7 +25,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.kafka.configuration.factory;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.dmp.kafka.configuration.KafkaConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.kafka.configuration.KafkaDataSourceConfiguration;
 
 /**
  * A default configuration factory for kafka from a default file location
@@ -33,13 +33,13 @@ import org.eclipse.digitaltwin.basyx.dmp.kafka.configuration.KafkaConsumerConfig
  *
  */
 public class KafkaDefaultConfigurationFactory extends DataSourceConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "kafkaconsumer.json";
+	public static final String DEFAULT_FILE_PATH = "kafkadatasource.json";
 	
 	public KafkaDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, KafkaConsumerConfiguration.class);
+		super(DEFAULT_FILE_PATH, loader, KafkaDataSourceConfiguration.class);
 	}
 	
 	public KafkaDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, KafkaConsumerConfiguration.class);
+		super(filePath, loader, KafkaDataSourceConfiguration.class);
 	}
 }

@@ -22,111 +22,87 @@
  * 
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-
 package org.eclipse.digitaltwin.basyx.dmp.sql.configuration;
 
-import java.sql.SQLException;
-
-import javax.sql.DataSource;
-
 import org.apache.camel.CamelContext;
-import org.mariadb.jdbc.MariaDbDataSource;
-import org.postgresql.ds.PGSimpleDataSource;
-import org.sqlite.SQLiteDataSource;
-
-import com.mysql.cj.jdbc.MysqlDataSource;
+import org.apache.camel.CamelContextAware;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 
 /**
- * Handles registration of DataSource components to the CamelContext
- * 
  * @author jungjan, mateusmolina
  */
-public class SqlDataSourceConfiguration {
+public class SqlDataSourceConfiguration extends DataSourceConfiguration implements CamelContextAware {
+	public static final String DB_CONNECTION = "dbcn";
 
-    private final String user;
-    private final String password;
-    private final String db;
-    private final String dbName;
-    private final String serverUrl;
-    private final int serverPort;
+	private String db;
+	private String dbName;
+	private String user;
+	private String password;
+	private String query;
+	private CamelContext camelContext;
 
-    SqlDataSourceConfiguration(String user, String password, String db, String dbName, String serverUrl, int serverPort) {
-        this.user = user;
-        this.password = password;
-        this.db = db;
-        this.dbName = dbName;
-        this.serverUrl = serverUrl;
-        this.serverPort = serverPort;
-    }
+	public SqlDataSourceConfiguration() {
+		super();
+	}
 
-    public static SqlDataSourceConfiguration from(SqlConsumerConfiguration conf) {
-        return new SqlDataSourceConfiguration(conf.getUser(), conf.getPassword(), conf.getDb(), conf.getDbName(), conf.getServerUrl(), conf.getServerPort());
-    }
+	public SqlDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort) {
+		super(uniqueId, serverUrl, serverPort);
+	}
 
-    public void registerSqlDataSource(CamelContext context) {
-        switch (KnownDb.fromLabel(db)) {
-        case MARIADB:
-            try {
-                configureMariaDbDataSource(context);
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-            break;
-        case POSTGRESQL:
-            configurePostgresqlDataSource(context);
-            break;
-        case SQLITE:
-            configureSqliteDataSource(context);
-            break;
-        case MYSQL:
-            configureMySqlDataSource(context);
-            break;
-        default:
-            throw new IllegalStateException("Unknown Database");
-        }
-    }
+	@Override
+	public String getConnectionURI() {
+		SqlConnectionFactory.from(this).registerSqlDataSource(getCamelContext());
+		return String.format("sql:%s" + "?dataSource=#%s&outputType=SelectList", getQuery(), DB_CONNECTION);
+	}
 
-    private void configureMariaDbDataSource(CamelContext camelContext) throws SQLException {
-        MariaDbDataSource dataSource = new MariaDbDataSource();
-        dataSource.setUrl(buildJdbcUrl());
-        dataSource.setUser(user);
-        dataSource.setPassword(password);
-        bindSqlDataSource(camelContext, dataSource);
-    }
+	public String getDb() {
+		return db;
+	}
 
-    private void configurePostgresqlDataSource(CamelContext camelContext) {
-        PGSimpleDataSource dataSource = new PGSimpleDataSource();
-        dataSource.setUrl(buildJdbcUrl());
-        dataSource.setUser(user);
-        dataSource.setPassword(password);
-        bindSqlDataSource(camelContext, dataSource);
-    }
+	public void setDb(String db) {
+		this.db = db;
+	}
 
-    private void configureMySqlDataSource(CamelContext camelContext) {
-        MysqlDataSource dataSource = new MysqlDataSource();
-        dataSource.setUrl(buildJdbcUrl());
-        dataSource.setUser(user);
-        dataSource.setPassword(password);
-        bindSqlDataSource(camelContext, dataSource);
-    }
+	public String getDbName() {
+		return dbName;
+	}
 
-    private void configureSqliteDataSource(CamelContext camelContext) {
-        SQLiteDataSource dataSource = new SQLiteDataSource();
-        dataSource.setUrl(buildJdbcUrl());
-        dataSource.setDatabaseName(dbName);
-        bindSqlDataSource(camelContext, dataSource);
-    }
+	public void setDbName(String dbName) {
+		this.dbName = dbName;
+	}
 
-    private String buildJdbcUrl() {
-        if (!db.equalsIgnoreCase(KnownDb.SQLITE.label)) {
-            return String.format("jdbc:%s://%s:%d/%s", db, serverUrl, serverPort, dbName);
-        } else {
-            return String.format("jdbc:%s:%s", db, serverUrl);
-        }
-    }
+	public String getUser() {
+		return user;
+	}
 
-    private void bindSqlDataSource(CamelContext camelContext, DataSource dataSource) {
-        camelContext.getRegistry().bind(SqlConsumerConfiguration.DB_CONNECTION, dataSource);
-    }
+	public void setUser(String dbUser) {
+		this.user = dbUser;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String dbPassword) {
+		this.password = dbPassword;
+	}
+
+	public String getQuery() {
+		return query;
+	}
+
+	public void setQuery(String query) {
+		this.query = query;
+	}
+
+	@Override
+	public CamelContext getCamelContext() {
+		return camelContext;
+	}
+
+	@Override
+	public void setCamelContext(CamelContext camelContext) {
+		this.camelContext = camelContext;
+	}
 
 }

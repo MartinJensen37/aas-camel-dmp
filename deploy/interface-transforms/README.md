@@ -64,7 +64,7 @@ are JSON-driven; the `OpcUaNormalizer` step maps to the Lua transformer's
 ## Files
 
 ```
-config/opcuaconsumer.json.example   OPC UA datasource (monitored item)
+config/opcuadatasource.json.example   OPC UA datasource (monitored item)
 config/mqttdatasink.json.example    MQTT state sink
 config/mqttdatasource.json.example  MQTT command source
 config/luatransformer.json.example the two Lua transformers

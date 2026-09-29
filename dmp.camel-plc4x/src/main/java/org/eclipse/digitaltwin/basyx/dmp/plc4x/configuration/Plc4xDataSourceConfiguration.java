@@ -36,7 +36,7 @@ import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.deserializer.Option
  * @author danish
  *
  */
-public class Plc4xConsumerConfiguration extends DataSourceConfiguration {
+public class Plc4xDataSourceConfiguration extends DataSourceConfiguration {
 	
 	private static final String PLC4X_PROTOCOL_NAME = "plc4x:";
 	private static final String TAG_PREFIX = "tag.";
@@ -46,10 +46,10 @@ public class Plc4xConsumerConfiguration extends DataSourceConfiguration {
 	private Object options;
 	private List<Tag> tags;
 
-	public Plc4xConsumerConfiguration() {
+	public Plc4xDataSourceConfiguration() {
 	}
 
-	public Plc4xConsumerConfiguration(String uniqueId, String serverUrl, int serverPort, String driver,
+	public Plc4xDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String driver,
 			String servicePath, Object options, List<Tag> tags) {
 		super(uniqueId, serverUrl, serverPort);
 		this.driver = driver;

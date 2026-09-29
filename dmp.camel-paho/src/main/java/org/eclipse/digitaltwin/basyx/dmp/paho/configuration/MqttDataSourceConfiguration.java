@@ -32,7 +32,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.security.BasicCredential;
  * @author haque
  *
  */
-public class MqttConsumerConfiguration extends DataSourceConfiguration {
+public class MqttDataSourceConfiguration extends DataSourceConfiguration {
 	
 	private static final String MQTT_PROTOCOL_NAME = "paho:";
 	private static final String BROKER_URL_PARAM_NAME = "brokerUrl";
@@ -46,7 +46,7 @@ public class MqttConsumerConfiguration extends DataSourceConfiguration {
 	/** DECLARED subscription quality of service (mqv_qos) — absent stays unset. */
 	private Integer qos;
 
-	public MqttConsumerConfiguration() {}
+	public MqttDataSourceConfiguration() {}
 	
 	public Integer getQos() {
 		return qos;
@@ -56,7 +56,7 @@ public class MqttConsumerConfiguration extends DataSourceConfiguration {
 		this.qos = qos;
 	}
 
-	public MqttConsumerConfiguration(String uniqueId, String serverUrl, int serverPort, String clientId, String topic, BasicCredential credentials) {
+	public MqttDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String clientId, String topic, BasicCredential credentials) {
 		super(uniqueId, serverUrl, serverPort);
 		this.topic = topic;
 		this.clientId = clientId;

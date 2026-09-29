@@ -38,7 +38,7 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.test.junit5.CamelTestSupport;
-import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.MqttConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.MqttDataSourceConfiguration;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
@@ -120,8 +120,8 @@ class DistinctPahoConsumerTest extends CamelTestSupport {
 	 */
 	@Test
 	void missingClientIdCompilesToUndiscriminatedUri() {
-		MqttConsumerConfiguration first = new MqttConsumerConfiguration("src1", "127.0.0.1", brokerPort, null, TOPIC, null);
-		MqttConsumerConfiguration second = new MqttConsumerConfiguration("src2", "127.0.0.1", brokerPort, "", TOPIC, null);
+		MqttDataSourceConfiguration first = new MqttDataSourceConfiguration("src1", "127.0.0.1", brokerPort, null, TOPIC, null);
+		MqttDataSourceConfiguration second = new MqttDataSourceConfiguration("src2", "127.0.0.1", brokerPort, "", TOPIC, null);
 		assertEquals(first.getConnectionURI(), second.getConnectionURI());
 	}
 
@@ -131,9 +131,9 @@ class DistinctPahoConsumerTest extends CamelTestSupport {
 	 */
 	@Test
 	void distinctClientIdsYieldDistinctConsumerUris() {
-		MqttConsumerConfiguration first = new MqttConsumerConfiguration("src1", "127.0.0.1", brokerPort,
+		MqttDataSourceConfiguration first = new MqttDataSourceConfiguration("src1", "127.0.0.1", brokerPort,
 				"dmp-first_mapping_source1", TOPIC, null);
-		MqttConsumerConfiguration second = new MqttConsumerConfiguration("src2", "127.0.0.1", brokerPort,
+		MqttDataSourceConfiguration second = new MqttDataSourceConfiguration("src2", "127.0.0.1", brokerPort,
 				"dmp-first_mapping_source2", TOPIC, null);
 		assertNotEquals(first.getConnectionURI(), second.getConnectionURI());
 	}

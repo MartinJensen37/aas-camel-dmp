@@ -25,7 +25,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.factory;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.OpcuaConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.OpcuaDataSourceConfiguration;
 
 /**
  * A default configuration factory for OpcUa from a default file location
@@ -34,13 +34,13 @@ import org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.OpcuaConsumerConfig
  *
  */
 public class OpcuaDefaultConfigurationFactory extends DataSourceConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "opcuaconsumer.json";
+	public static final String DEFAULT_FILE_PATH = "opcuadatasource.json";
 
 	public OpcuaDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, OpcuaConsumerConfiguration.class);
+		super(DEFAULT_FILE_PATH, loader, OpcuaDataSourceConfiguration.class);
 	}
 
 	public OpcuaDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, OpcuaConsumerConfiguration.class);
+		super(filePath, loader, OpcuaDataSourceConfiguration.class);
 	}
 }

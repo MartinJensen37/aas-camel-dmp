@@ -18,10 +18,10 @@ import json
 import pytest
 
 from management_node.descriptor import (
-    HTTP_CONSUMER_FILE,
-    MQTT_CONSUMER_FILE,
-    OPCUA_CONSUMER_FILE,
-    KAFKA_CONSUMER_FILE,
+    HTTP_DATASOURCE_FILE,
+    MQTT_DATASOURCE_FILE,
+    OPCUA_DATASOURCE_FILE,
+    KAFKA_DATASOURCE_FILE,
     ROUTES_FILE,
     compile_descriptor,
 )
@@ -65,7 +65,7 @@ def test_mqtt_interface_source_is_async():
     route = json.loads(descriptor.files[ROUTES_FILE])[0]
     assert route["trigger"] == "execution-policy"
     assert "executionPolicy" not in route
-    assert MQTT_CONSUMER_FILE in descriptor.files
+    assert MQTT_DATASOURCE_FILE in descriptor.files
 
 
 def test_http_interface_source_is_sync():
@@ -80,9 +80,9 @@ def test_http_interface_source_is_sync():
     # polling interval (plan Q8) — it now drives the poll cadence directly
     assert route["trigger"] == "execution-policy"
     assert "executionPolicy" not in route
-    consumer = json.loads(descriptor.files[HTTP_CONSUMER_FILE])[0]
+    consumer = json.loads(descriptor.files[HTTP_DATASOURCE_FILE])[0]
     assert consumer["pollingIntervalMs"] == 3000
-    assert HTTP_CONSUMER_FILE in descriptor.files
+    assert HTTP_DATASOURCE_FILE in descriptor.files
 
 
 def test_opcua_observable_source_is_async():
@@ -95,7 +95,7 @@ def test_opcua_observable_source_is_async():
     descriptor = _compile(resolution)
     route = json.loads(descriptor.files[ROUTES_FILE])[0]
     assert route["trigger"] == "execution-policy"
-    assert OPCUA_CONSUMER_FILE in descriptor.files
+    assert OPCUA_DATASOURCE_FILE in descriptor.files
 
 
 def test_opcua_plain_read_source_is_sync():
@@ -159,7 +159,7 @@ def test_aas_property_without_interval_emits_filtered_event_source():
         aas_id_short="a",
         aas_event_broker=("kafka", 9092),
     )
-    event_source = json.loads(descriptor.files[KAFKA_CONSUMER_FILE])[0]
+    event_source = json.loads(descriptor.files[KAFKA_DATASOURCE_FILE])[0]
     assert event_source["sourceKind"] == "aas-element-event"
     assert event_source["mode"] == "event"
     assert event_source["breakOnFirstError"] is True
@@ -177,6 +177,6 @@ def test_smc_source_emits_element_event_when_eventing_is_available():
         aas_id_short="a",
         aas_event_broker=("kafka", 9092),
     )
-    event_source = json.loads(descriptor.files[KAFKA_CONSUMER_FILE])[0]
+    event_source = json.loads(descriptor.files[KAFKA_DATASOURCE_FILE])[0]
     assert event_source["sourceKind"] == "aas-element-event"
     assert event_source["eventFilter"]["modelType"] == "SubmodelElementCollection"

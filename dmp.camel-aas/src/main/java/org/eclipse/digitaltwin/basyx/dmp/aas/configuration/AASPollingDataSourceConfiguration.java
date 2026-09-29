@@ -33,14 +33,14 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceCon
  * @author rana
  *
  */
-public class AASPollingConsumerConfiguration extends DataSourceConfiguration {
+public class AASPollingDataSourceConfiguration extends DataSourceConfiguration {
 	
 	private String idShortPath;
 	private String submodelEndpoint;
 	private String api;
 	private String elementType;
 	
-	public AASPollingConsumerConfiguration(String uniqueId, String serverUrl, int serverPort, String idShortPath, String submodelEndpoint, String api) {
+	public AASPollingDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String idShortPath, String submodelEndpoint, String api) {
 		super(uniqueId, serverUrl, serverPort);
 		this.submodelEndpoint = submodelEndpoint;
 		this.idShortPath = idShortPath;

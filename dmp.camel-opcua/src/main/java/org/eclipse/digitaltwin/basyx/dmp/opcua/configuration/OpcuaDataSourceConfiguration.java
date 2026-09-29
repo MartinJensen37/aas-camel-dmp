@@ -28,7 +28,7 @@ import com.google.gson.annotations.JsonAdapter;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.basyx.vab.protocol.opcua.types.SecurityPolicy;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.factory.OpcuaConsumerConfigurationDeserializer;
+import org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.factory.OpcuaDataSourceConfigurationDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,9 +43,9 @@ import java.util.stream.Collectors;
  * @see <a href="https://camel.apache.org/components/3.20.x/milo-client-component.html">Documentation Apache Camel - OPC UA Client Parameters</a>
  *
  */
-@JsonAdapter(OpcuaConsumerConfigurationDeserializer.class)
-public class OpcuaConsumerConfiguration extends DataSourceConfiguration {
-	protected static Logger logger = LoggerFactory.getLogger(OpcuaConsumerConfiguration.class);
+@JsonAdapter(OpcuaDataSourceConfigurationDeserializer.class)
+public class OpcuaDataSourceConfiguration extends DataSourceConfiguration {
+	protected static Logger logger = LoggerFactory.getLogger(OpcuaDataSourceConfiguration.class);
 
 	private String pathToService;
 	private String nodeInformation;
@@ -53,10 +53,10 @@ public class OpcuaConsumerConfiguration extends DataSourceConfiguration {
 	private String password;
 	private Map<String, String> configuration = new HashMap<>();
 
-	public OpcuaConsumerConfiguration() {
+	public OpcuaDataSourceConfiguration() {
 	}
 
-	public OpcuaConsumerConfiguration(
+	public OpcuaDataSourceConfiguration(
 			String uniqueId,
 			String serverUrl,
 			int serverPort,

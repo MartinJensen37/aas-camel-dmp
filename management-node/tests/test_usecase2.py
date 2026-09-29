@@ -1,6 +1,6 @@
 """Tests for use-case 2 (AAS->AAS) and the AIMC 2.0 template capabilities:
 
-- R1: AAS-element sources -> aaspollingconsumer.json + execution-policy route
+- R1: AAS-element sources -> aaspollingdatasource.json + execution-policy route
 - R2: AAS sinks to any submodel (not just the asset's Variables)
 - R3: passthrough (identity) transformation when no Transformation blob
 - R4: OPC UA / Modbus(PLC4X) / HTTP synchronous sources -> respective configs
@@ -12,12 +12,12 @@ import base64
 import json
 
 from management_node.descriptor import (
-    AAS_POLLING_CONSUMER_FILE,
+    AAS_POLLING_DATASOURCE_FILE,
     AAS_DATASINK_FILE,
-    HTTP_CONSUMER_FILE,
-    LUA_TRANSFORMERS_FILE,
-    OPCUA_CONSUMER_FILE,
-    PLC4X_CONSUMER_FILE,
+    HTTP_DATASOURCE_FILE,
+    LUA_TRANSFORMER_FILE,
+    OPCUA_DATASOURCE_FILE,
+    PLC4X_DATASOURCE_FILE,
     ROUTES_FILE,
     compile_descriptor,
 )
@@ -74,7 +74,7 @@ def test_aas_element_source_emits_polling_consumer_and_policy_route():
                          build_aid())
     descriptor = _compile(resolution)
 
-    sources = json.loads(descriptor.files[AAS_POLLING_CONSUMER_FILE])
+    sources = json.loads(descriptor.files[AAS_POLLING_DATASOURCE_FILE])
     assert len(sources) == 1
     src = sources[0]
     assert src["uniqueId"] == "syntegonStopperingSystem_mapping_0_state"
@@ -131,7 +131,7 @@ def test_passthrough_identity_transform_when_no_transformation():
                      transformation=None)
     descriptor = _compile(resolve(media, _mqtt_aid()))
 
-    xformers = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
+    xformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
     assert len(xformers) == 1
     t = xformers[0]
     assert t["queryLanguage"] == "LUA"
@@ -154,7 +154,7 @@ def test_passthrough_skips_sinks_without_matching_source():
                      transformation=None)
     descriptor = _compile(resolve(media, _mqtt_aid()))
 
-    xformers = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
+    xformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
     assert len(xformers) == 1
     blob = descriptor.files[xformers[0]["queryPath"]]
     assert "sources[" not in blob.replace('sources)', ''), (
@@ -169,7 +169,7 @@ def test_declared_transformation_still_used():
         sink_ref=_variables_sink_ref(), sink_id="PackMLState",
         transformation="function aimc_main(sources) return { PackMLState = sources.StationState.State } end")
     descriptor = _compile(resolve(media, _mqtt_aid()))
-    xformers = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
+    xformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
     assert "passthrough" not in xformers[0]["uniqueId"]
     assert "sources.StationState.State" in descriptor.files[xformers[0]["queryPath"]]
 
@@ -190,7 +190,7 @@ def test_opcua_source_emits_opcuaconsumer():
                                   default_polling_interval=2.5), _opcua_aid())
     descriptor = _compile(resolution)
 
-    opcua = json.loads(descriptor.files[OPCUA_CONSUMER_FILE])
+    opcua = json.loads(descriptor.files[OPCUA_DATASOURCE_FILE])
     assert len(opcua) == 1
     src = opcua[0]
     assert src["uniqueId"] == "syntegonStopperingSystem_mapping_0_Pressure"
@@ -212,7 +212,7 @@ def test_opcua_source_without_service_path_is_skipped():
                                   sink_ref=_kpi_sink_ref()), aid_model)
     descriptor = _compile(resolution)
     # no invented pathToService -> no consumer, no route (loud skip, T1.11)
-    assert OPCUA_CONSUMER_FILE not in descriptor.files
+    assert OPCUA_DATASOURCE_FILE not in descriptor.files
     assert ROUTES_FILE not in descriptor.files
 
 
@@ -229,7 +229,7 @@ def test_modbus_source_emits_plc4xconsumer():
                                   default_polling_interval=5), _modbus_aid())
     descriptor = _compile(resolution)
 
-    plc4x = json.loads(descriptor.files[PLC4X_CONSUMER_FILE])
+    plc4x = json.loads(descriptor.files[PLC4X_DATASOURCE_FILE])
     assert len(plc4x) == 1
     src = plc4x[0]
     assert src["driver"] == "modbus-tcp"
@@ -256,7 +256,7 @@ def test_http_source_emits_httpconsumer():
                                   default_polling_interval=4), _http_aid())
     descriptor = _compile(resolution)
 
-    http = json.loads(descriptor.files[HTTP_CONSUMER_FILE])
+    http = json.loads(descriptor.files[HTTP_DATASOURCE_FILE])
     assert len(http) == 1
     assert http[0]["uniqueId"] == "syntegonStopperingSystem_mapping_0_Pressure"
     assert http[0]["sourceId"] == "Pressure"

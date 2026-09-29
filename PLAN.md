@@ -123,11 +123,11 @@ The DMP core supports multi-source aggregation, but `descriptor._compile_route` 
 only `mapping.sources[0]` and emits the legacy singular `datasource` key.
 
 - `descriptor.py::_compile_route`: iterate **all** `mapping.sources`; add each MQTT source to
-  `mqttconsumer.json`; emit `"datasources": [ids...]` (plural, deserializer already accepts it);
+  `mqttdatasource.json`; emit `"datasources": [ids...]` (plural, deserializer already accepts it);
   for multiple sources set the Lua transformer `sourceKeys` to the comma-separated SourceId list
   so `aimc_main` receives the aggregated `sources` map (§6.4 example: combine two sources in one
   math transform). Single-source mappings keep `datasource`/single `sourceKeys` (unchanged output).
-- New pytest: two-source mapping → `routes.json` has `datasources:[...]`, `mqttconsumer.json`
+- New pytest: two-source mapping → `routes.json` has `datasources:[...]`, `mqttdatasource.json`
   has both entries, `luatransformer.json` `sourceKeys` = `a,b`.
 
 ### T4 — Spec/doc hygiene (small, optional)

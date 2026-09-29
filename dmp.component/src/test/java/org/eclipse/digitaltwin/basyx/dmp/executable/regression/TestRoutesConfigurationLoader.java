@@ -29,7 +29,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Map;
 
-import org.eclipse.digitaltwin.basyx.dmp.activemq.configuration.ActiveMQConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.activemq.configuration.ActiveMQDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.component.RoutesConfigurationLoader;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 import org.junit.AfterClass;
@@ -70,6 +70,6 @@ public class TestRoutesConfigurationLoader {
 		assertEquals(2, configuration.getTransformers().size());
 		assertEquals(2, configuration.getDatasinks().size());
 
-		assertTrue(configuration.getDatasources().get("property1") instanceof ActiveMQConsumerConfiguration);
+		assertTrue(configuration.getDatasources().get("property1") instanceof ActiveMQDataSourceConfiguration);
 	}
 }

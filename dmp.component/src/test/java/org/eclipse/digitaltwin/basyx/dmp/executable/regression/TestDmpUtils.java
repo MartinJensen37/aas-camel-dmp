@@ -46,6 +46,6 @@ public class TestDmpUtils {
 	}
 
 	private void assertActiveMQConsumerIsFound(Set<String> configFiles) {
-		assertTrue(configFiles.stream().anyMatch(file -> file.contains("activemqconsumer.json")));
+		assertTrue(configFiles.stream().anyMatch(file -> file.contains("activemqdatasource.json")));
 	}
 }

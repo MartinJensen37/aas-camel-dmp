@@ -17,8 +17,8 @@ import pathlib
 import pytest
 
 from management_node.descriptor import (
-    MQTT_CONSUMER_FILE,
-    MQTT_SINK_FILE,
+    MQTT_DATASOURCE_FILE,
+    MQTT_DATASINK_FILE,
     compile_descriptor,
 )
 from management_node.parsers.aid import parse_aid
@@ -169,7 +169,7 @@ def test_descriptor_emits_schema_derived_pointer():
     resolution = resolve(_aimc(_src_ref("State"), sink=_vars_sink()), aid)
     descriptor = _compile(resolution)
 
-    consumers = json.loads(descriptor.files[MQTT_CONSUMER_FILE])
+    consumers = json.loads(descriptor.files[MQTT_DATASOURCE_FILE])
     entry = next(c for c in consumers if c["sourceId"] == "StationState")
     assert entry["valuePath"] == "$.State"
     assert entry["topic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/State"
@@ -202,7 +202,7 @@ def test_http_source_and_sink_keep_the_schema_pointer():
                                sink=_sink("PressureOut", path)), aid)
     descriptor = _compile(resolution)
 
-    source = json.loads(descriptor.files["httpconsumer.json"])[0]
+    source = json.loads(descriptor.files["httpdatasource.json"])[0]
     assert source["valuePath"] == "$.Reading"
     assert source["serverUrl"] == "http://192.168.0.30:8080/api/pressure"
     sink = json.loads(descriptor.files["httpdatasink.json"])[0]
@@ -224,7 +224,7 @@ def test_opcua_source_and_sink_keep_the_schema_pointer():
                                sink=_sink("LevelOut", path)), aid)
     descriptor = _compile(resolution)
 
-    source = json.loads(descriptor.files["opcuaconsumer.json"])[0]
+    source = json.loads(descriptor.files["opcuadatasource.json"])[0]
     assert source["valuePath"] == "$.Reading"
     assert source["pathToService"] == "server"
     sink = json.loads(descriptor.files["opcuadatasink.json"])[0]
@@ -244,7 +244,7 @@ def test_plc4x_source_and_sink_keep_the_schema_pointer():
                                sink=_sink("PressOut", path)), aid)
     descriptor = _compile(resolution)
 
-    source = json.loads(descriptor.files["plc4xconsumer.json"])[0]
+    source = json.loads(descriptor.files["plc4xdatasource.json"])[0]
     assert source["valuePath"] == "$.Reading"
     assert source["options"] == "unit=1"
     sink = json.loads(descriptor.files["plc4xdatasink.json"])[0]
@@ -257,7 +257,7 @@ def test_descriptor_coarse_source_omits_value_path():
     resolution = resolve(_aimc(_src_ref(), sink=_vars_sink()), aid)
     descriptor = _compile(resolution)
 
-    consumers = json.loads(descriptor.files[MQTT_CONSUMER_FILE])
+    consumers = json.loads(descriptor.files[MQTT_DATASOURCE_FILE])
     entry = next(c for c in consumers if c["sourceId"] == "StationState")
     assert "valuePath" not in entry
 
@@ -272,7 +272,7 @@ def test_sink_pointer_derived_from_schema():
                          aid)
     descriptor = _compile(resolution)
 
-    sinks = json.loads(descriptor.files[MQTT_SINK_FILE])
+    sinks = json.loads(descriptor.files[MQTT_DATASINK_FILE])
     s = next(x for x in sinks if x["sinkId"] == "sinkSet")
     assert s["valuePath"] == "$.mode"
     assert s["topic"].endswith("/SetPoint")

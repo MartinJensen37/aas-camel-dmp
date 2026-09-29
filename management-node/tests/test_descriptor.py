@@ -9,8 +9,8 @@ import pytest
 
 from management_node.descriptor import (
     AAS_DATASINK_FILE,
-    LUA_TRANSFORMERS_FILE,
-    MQTT_CONSUMER_FILE,
+    LUA_TRANSFORMER_FILE,
+    MQTT_DATASOURCE_FILE,
     ROUTES_FILE,
     compile_descriptor,
 )
@@ -68,7 +68,7 @@ def test_emits_routes_json(descriptor):
 
 
 def test_emits_mqtt_consumer_config(descriptor):
-    consumers = json.loads(descriptor.files[MQTT_CONSUMER_FILE])
+    consumers = json.loads(descriptor.files[MQTT_DATASOURCE_FILE])
     entry = next(c for c in consumers
                  if c["uniqueId"] == "syntegonStopperingSystem_mapping_0_StationState")
     # the raw AIMC SourceId is pinned for fan-in aggregation (ADR-017)
@@ -80,7 +80,7 @@ def test_emits_mqtt_consumer_config(descriptor):
 
 
 def test_emits_lua_transformers_and_blob_files(descriptor):
-    transformers = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
+    transformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
     assert transformers
     for t in transformers:
         assert t["queryLanguage"] == "LUA"
@@ -122,7 +122,7 @@ def test_emits_aas_sink_config(descriptor):
 def test_write_to_directory(descriptor, tmp_path):
     descriptor.write_to(tmp_path)
     assert (tmp_path / ROUTES_FILE).exists()
-    assert (tmp_path / LUA_TRANSFORMERS_FILE).exists()
+    assert (tmp_path / LUA_TRANSFORMER_FILE).exists()
     # blob files live under queries/
     assert list((tmp_path / "queries").glob("*.lua"))
 
@@ -202,7 +202,7 @@ def test_mqtt_broker_override(tmp_path):
         aas_id_short="syntegonStopperingSystem",
         mqtt_broker=("localhost", 1883),
     )
-    consumers = json.loads(descriptor.files[MQTT_CONSUMER_FILE])
+    consumers = json.loads(descriptor.files[MQTT_DATASOURCE_FILE])
     entry = next(c for c in consumers
                  if c["uniqueId"] == "syntegonStopperingSystem_mapping_0_StationState")
     assert entry["serverUrl"] == "localhost"
@@ -242,7 +242,7 @@ def test_emits_operation_route_and_entities():
     request/response Lua transformers and reply correlation (ADR-020
     ProtocolBridge, DMP v3 one-MC authoring)."""
     from management_node.descriptor import (
-        LUA_TRANSFORMERS_FILE, MQTT_SINK_FILE,
+        LUA_TRANSFORMER_FILE, MQTT_DATASINK_FILE,
         ROUTES_FILE,
     )
 
@@ -278,7 +278,7 @@ def test_emits_operation_route_and_entities():
     assert DescriptorCompiler.__name__ == "DescriptorCompiler"
 
     # MQTT command datasink; the InOut endpoint owns the reply subscription.
-    mqtt_sinks = json.loads(descriptor.files[MQTT_SINK_FILE])
+    mqtt_sinks = json.loads(descriptor.files[MQTT_DATASINK_FILE])
     cmd = next(s for s in mqtt_sinks if s["uniqueId"] == op["datasinks"][0])
     assert cmd["serverUrl"] == "192.168.0.104"
     assert cmd["serverPort"] == 1883
@@ -292,7 +292,7 @@ def test_emits_operation_route_and_entities():
     assert cmd["retain"] is False
 
     # Both directional Lua transformers + materialized blobs.
-    lua = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
+    lua = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
     request_t = next(t for t in lua if t["uniqueId"] == op["transformers"][0])
     response_t = next(t for t in lua if t["uniqueId"] == op["triggerData"]["responseTransformer"])
     assert request_t["sourceKeys"] == "Halt"
@@ -333,7 +333,7 @@ def _mqtt_interface_with_station():
 
 def test_operations_honour_mqtt_broker_override():
     from management_node.descriptor import (
-        MQTT_SINK_FILE, ROUTES_FILE,
+        MQTT_DATASINK_FILE, ROUTES_FILE,
     )
 
     resolution = _operations_models()
@@ -346,7 +346,7 @@ def test_operations_honour_mqtt_broker_override():
     )
 
     op = next(r for r in json.loads(descriptor.files[ROUTES_FILE]) if r["trigger"] == "bridge")
-    cmd = next(s for s in json.loads(descriptor.files[MQTT_SINK_FILE]) if s["uniqueId"] == op["datasinks"][0])
+    cmd = next(s for s in json.loads(descriptor.files[MQTT_DATASINK_FILE]) if s["uniqueId"] == op["datasinks"][0])
     assert cmd["serverUrl"] == "localhost"
     assert cmd["serverPort"] == 1883
     assert op["triggerData"]["responseTopic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/Halt"
@@ -357,7 +357,7 @@ def test_bacnet_source_and_sink_ride_plc4x():
     the bacnet-ip driver (ADR-022); both directions."""
     from aas_model.testing import bacnet_interface
     from management_node.descriptor import (
-        PLC4X_CONSUMER_FILE, PLC4X_SINK_FILE, ROUTES_FILE,
+        PLC4X_DATASOURCE_FILE, PLC4X_DATASINK_FILE, ROUTES_FILE,
     )
 
     aid_model = build_aid(bacnet=bacnet_interface(
@@ -379,11 +379,11 @@ def test_bacnet_source_and_sink_ride_plc4x():
         aas_id_short="a",
     )
 
-    consumers = json.loads(descriptor.files[PLC4X_CONSUMER_FILE])
+    consumers = json.loads(descriptor.files[PLC4X_DATASOURCE_FILE])
     assert consumers[0]["driver"] == "bacnet-ip"
     assert consumers[0]["serverUrl"] == "192.168.0.70"
     assert consumers[0]["tags"][0]["value"] == "/analog-input,0"
-    sinks = json.loads(descriptor.files[PLC4X_SINK_FILE])
+    sinks = json.loads(descriptor.files[PLC4X_DATASINK_FILE])
     assert sinks[0]["driver"] == "bacnet-ip"
     route = next(r for r in json.loads(descriptor.files[ROUTES_FILE])
                  if r["trigger"] == "execution-policy")
@@ -393,7 +393,7 @@ def test_bacnet_source_and_sink_ride_plc4x():
 
 def _http_source_url(href: str, base: str = "http://192.168.0.30:8080/api") -> str:
     from aas_model.testing import http_interface
-    from management_node.descriptor import HTTP_CONSUMER_FILE
+    from management_node.descriptor import HTTP_DATASOURCE_FILE
 
     aid_model = build_aid(http=http_interface(base, properties={"Reading": href}))
     ref = aimc_ref("a/submodels/AID", "interface_http", "InteractionMetadata",
@@ -407,7 +407,7 @@ def _http_source_url(href: str, base: str = "http://192.168.0.30:8080/api") -> s
         )), aid_model),
         aas_base_url="http://aas-server:8081", aas_id="a", aas_id_short="a",
     )
-    return json.loads(descriptor.files[HTTP_CONSUMER_FILE])[0]["serverUrl"]
+    return json.loads(descriptor.files[HTTP_DATASOURCE_FILE])[0]["serverUrl"]
 
 
 def test_http_source_joins_base_path_and_href_without_losing_a_separator():
@@ -428,7 +428,7 @@ def test_http_source_rejects_href_that_would_escape_the_declared_base():
 
 def test_http_source_rejects_a_non_http_base():
     from aas_model.testing import http_interface
-    from management_node.descriptor import HTTP_CONSUMER_FILE, ROUTES_FILE
+    from management_node.descriptor import HTTP_DATASOURCE_FILE, ROUTES_FILE
 
     aid_model = build_aid(http=http_interface("not-a-url",
                                               properties={"Reading": "/pressure"}))
@@ -443,7 +443,7 @@ def test_http_source_rejects_a_non_http_base():
         )), aid_model),
         aas_base_url="http://aas-server:8081", aas_id="a", aas_id_short="a",
     )
-    assert HTTP_CONSUMER_FILE not in descriptor.files
+    assert HTTP_DATASOURCE_FILE not in descriptor.files
     assert ROUTES_FILE not in descriptor.files
 
 
@@ -514,7 +514,7 @@ def test_emits_opcua_method_call_route():
     """An OPC UA interaction compiles to a milo-client METHOD CALL sink:
     node = the owning Object (uav_componentOf), method = the Method NodeId —
     the UA Call service answers inline with its OutputArguments."""
-    from management_node.descriptor import OPCUA_SINK_FILE, ROUTES_FILE
+    from management_node.descriptor import OPCUA_DATASINK_FILE, ROUTES_FILE
 
     resolution = _opcua_operation_models()
     descriptor = compile_descriptor(
@@ -529,7 +529,7 @@ def test_emits_opcua_method_call_route():
     assert op["triggerData"]["protocol"] == "opcua"
     assert "responseDatasource" not in op["triggerData"]
 
-    sinks = json.loads(descriptor.files[OPCUA_SINK_FILE])
+    sinks = json.loads(descriptor.files[OPCUA_DATASINK_FILE])
     assert len(sinks) == 1
     sink = sinks[0]
     # node = the OWNING OBJECT; the Method NodeId rides the `method` option
@@ -559,7 +559,7 @@ def test_unresolved_owner_leaves_operation_path_macro_literal():
 
 def test_skipped_interactions_leave_no_command_sinks():
     """An unpaired MQTT command must not leave an orphaned runtime sink."""
-    from management_node.descriptor import MQTT_SINK_FILE
+    from management_node.descriptor import MQTT_DATASINK_FILE
 
     resolution = resolve(aimc.parse_aimc(json.loads(DATA_AIMC.read_text())),
                          aid.parse_aid(json.loads(DATA_AID.read_text())))
@@ -568,7 +568,7 @@ def test_skipped_interactions_leave_no_command_sinks():
         aas_id="syntegonStopperingSystemAAS",
         aas_id_short="syntegonStopperingSystem",
     )
-    assert MQTT_SINK_FILE not in descriptor.files
+    assert MQTT_DATASINK_FILE not in descriptor.files
 
 
 def test_one_unsupported_sink_rejects_entire_mapping():
@@ -591,14 +591,14 @@ def test_one_unsupported_sink_rejects_entire_mapping():
         aas_id="contractAAS", aas_id_short="contract",
     )
     assert ROUTES_FILE not in descriptor.files
-    assert MQTT_CONSUMER_FILE not in descriptor.files
+    assert MQTT_DATASOURCE_FILE not in descriptor.files
     assert AAS_DATASINK_FILE not in descriptor.files
 
 
 def test_skipped_write_does_not_leave_device_sink():
     """An invalid AAS writeback rejects the complete MQTT device leg."""
     from aas_pydantic import Key, ModelReference
-    from management_node.descriptor import MQTT_SINK_FILE
+    from management_node.descriptor import MQTT_DATASINK_FILE
 
     resolution = _write_delegation_resolution()
     mqtt_write = next(w for w in resolution.property_writes if w.protocol == "mqtt")
@@ -610,7 +610,7 @@ def test_skipped_write_does_not_leave_device_sink():
         aas_id="syntegonStopperingSystemAAS",
         aas_id_short="syntegonStopperingSystem",
     )
-    assert MQTT_SINK_FILE not in descriptor.files
+    assert MQTT_DATASINK_FILE not in descriptor.files
     routes = json.loads(descriptor.files[ROUTES_FILE])
     assert len(routes) == 1 and routes[0]["triggerData"]["protocol"] == "opcua"
 
@@ -730,7 +730,7 @@ def _write_delegation_resolution():
 
 
 def test_compiles_write_delegation_routes():
-    from management_node.descriptor import MQTT_SINK_FILE, OPCUA_SINK_FILE
+    from management_node.descriptor import MQTT_DATASINK_FILE, OPCUA_DATASINK_FILE
 
     resolution = _write_delegation_resolution()
     assert resolution.all_resolved, [w.unresolved for w in resolution.property_writes]
@@ -773,11 +773,11 @@ def test_compiles_write_delegation_routes():
     assert "responseTransformer" not in by_proto["opcua"]["triggerData"]
 
     # device legs: MQTT command sink (InOut owns ack subscription), OPC UA node write
-    mqtt_sinks = json.loads(descriptor.files[MQTT_SINK_FILE])
+    mqtt_sinks = json.loads(descriptor.files[MQTT_DATASINK_FILE])
     cmd = next(s for s in mqtt_sinks if s["uniqueId"] ==
                "syntegonStopperingSystem_Parameter_mqtt_command_sink")
     assert cmd["topic"] == "NN/Nybrovej/InnoLab/Stoppering/CMD/Parameter"
-    ua_sinks = json.loads(descriptor.files[OPCUA_SINK_FILE])
+    ua_sinks = json.loads(descriptor.files[OPCUA_DATASINK_FILE])
     ua = next(s for s in ua_sinks if s["sinkId"] == "Parameter_opcua")
     assert ua["nodeInformation"] == "ns=2;s=Parameter"
     # a node WRITE, not a method call (no `method` configuration)
@@ -801,9 +801,9 @@ def test_compiles_write_delegation_routes():
 
     # the transformer entries ride luatransformer.json like every other
     # mapping blob (the runtime resolves route transformer ids from there)
-    from management_node.descriptor import LUA_TRANSFORMERS_FILE
+    from management_node.descriptor import LUA_TRANSFORMER_FILE
     transformers = {t["uniqueId"] for t in json.loads(
-        descriptor.files[LUA_TRANSFORMERS_FILE])}
+        descriptor.files[LUA_TRANSFORMER_FILE])}
     assert "syntegonStopperingSystem_Parameter_mqtt_request_transformer" in transformers
     assert "syntegonStopperingSystem_Parameter_mqtt_response_transformer" in transformers
     assert "syntegonStopperingSystem_Parameter_opcua_request_transformer" in transformers
@@ -842,7 +842,7 @@ def test_mqtt_timer_source_compiles_sync_entry():
         aas_id="syntegonStopperingSystemAAS",
         aas_id_short="syntegonStopperingSystem",
     )
-    consumers = json.loads(descriptor.files[MQTT_CONSUMER_FILE])
+    consumers = json.loads(descriptor.files[MQTT_DATASOURCE_FILE])
     assert len(consumers) == 1
     entry = consumers[0]
     assert entry["delivery"] == "sync"

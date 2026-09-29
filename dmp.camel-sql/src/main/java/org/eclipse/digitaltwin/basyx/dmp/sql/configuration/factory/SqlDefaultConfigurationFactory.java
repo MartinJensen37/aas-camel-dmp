@@ -25,7 +25,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.sql.configuration.factory;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.dmp.sql.configuration.SqlConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.sql.configuration.SqlDataSourceConfiguration;
 
 /**
  * A default configuration factory for SQL from a default file location
@@ -34,13 +34,13 @@ import org.eclipse.digitaltwin.basyx.dmp.sql.configuration.SqlConsumerConfigurat
  *
  */
 public class SqlDefaultConfigurationFactory extends DataSourceConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "sqlconsumer.json";
+	public static final String DEFAULT_FILE_PATH = "sqldatasource.json";
 	
 	public SqlDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, SqlConsumerConfiguration.class);
+		super(DEFAULT_FILE_PATH, loader, SqlDataSourceConfiguration.class);
 	}
 	
 	public SqlDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, SqlConsumerConfiguration.class);
+		super(filePath, loader, SqlDataSourceConfiguration.class);
 	}
 }

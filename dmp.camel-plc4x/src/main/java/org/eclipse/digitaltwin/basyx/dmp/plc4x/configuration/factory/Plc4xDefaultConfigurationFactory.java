@@ -25,7 +25,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.factory;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.Plc4xConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.Plc4xDataSourceConfiguration;
 
 /**
  * A default configuration factory for PLC4X from a default file path
@@ -34,13 +34,13 @@ import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.Plc4xConsumerConfig
  *
  */
 public class Plc4xDefaultConfigurationFactory extends DataSourceConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "plc4xconsumer.json";
+	public static final String DEFAULT_FILE_PATH = "plc4xdatasource.json";
 	
 	public Plc4xDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, Plc4xConsumerConfiguration.class);
+		super(DEFAULT_FILE_PATH, loader, Plc4xDataSourceConfiguration.class);
 	}
 	
 	public Plc4xDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, Plc4xConsumerConfiguration.class);
+		super(filePath, loader, Plc4xDataSourceConfiguration.class);
 	}
 }

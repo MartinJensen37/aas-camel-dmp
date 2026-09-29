@@ -1,16 +1,16 @@
 package org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.factory;
 
 import com.google.gson.*;
-import org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.OpcuaConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.OpcuaDataSourceConfiguration;
 
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OpcuaConsumerConfigurationDeserializer implements JsonDeserializer<OpcuaConsumerConfiguration> {
+public class OpcuaDataSourceConfigurationDeserializer implements JsonDeserializer<OpcuaDataSourceConfiguration> {
   
     @Override
-    public OpcuaConsumerConfiguration deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+    public OpcuaDataSourceConfiguration deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
         JsonObject object = jsonElement.getAsJsonObject();
         Map<String, String> ctx = new HashMap<>();
 
@@ -28,7 +28,7 @@ public class OpcuaConsumerConfigurationDeserializer implements JsonDeserializer<
         // the execution-policy fields ride the BASE configuration (sourceId,
         // delivery, declared polling cadence) — without them the route cache
         // keys by the raw endpoint id and the Lua sources lookups miss
-        OpcuaConsumerConfiguration config = new OpcuaConsumerConfiguration(
+        OpcuaDataSourceConfiguration config = new OpcuaDataSourceConfiguration(
                 object.get("uniqueId").getAsString(),
                 object.get("serverUrl").getAsString(),
                 object.get("serverPort").getAsInt(),

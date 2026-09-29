@@ -25,7 +25,7 @@
 
 package org.eclipse.digitaltwin.basyx.dmp.aas.configuration.factory;
 
-import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASPollingConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceConfigurationFactory;
 
 /**
@@ -35,13 +35,13 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceCo
  */
 public class AASPollingConsumerDefaultConfigurationFactory extends DataSourceConfigurationFactory {
 	
-	public static final String DEFAULT_FILE_PATH = "aaspollingconsumer.json";
+	public static final String DEFAULT_FILE_PATH = "aaspollingdatasource.json";
 	
 	public AASPollingConsumerDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, AASPollingConsumerConfiguration.class);
+		super(DEFAULT_FILE_PATH, loader, AASPollingDataSourceConfiguration.class);
 	}
 	
 	public AASPollingConsumerDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, AASPollingConsumerConfiguration.class);
+		super(filePath, loader, AASPollingDataSourceConfiguration.class);
 	}
 }

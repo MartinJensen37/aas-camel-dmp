@@ -25,7 +25,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.hono.configuration.factory;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.dmp.hono.configuration.HonoConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.hono.configuration.HonoDataSourceConfiguration;
 
 /**
  * A default configuration factory for Hono from a default path
@@ -33,13 +33,13 @@ import org.eclipse.digitaltwin.basyx.dmp.hono.configuration.HonoConsumerConfigur
  *
  */
 public class HonoDefaultConfigurationFactory extends DataSourceConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "honoconsumer.json";
+	public static final String DEFAULT_FILE_PATH = "honodatasource.json";
 	
 	public HonoDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, HonoConsumerConfiguration.class);
+		super(DEFAULT_FILE_PATH, loader, HonoDataSourceConfiguration.class);
 	}
 	
 	public HonoDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, HonoConsumerConfiguration.class);
+		super(filePath, loader, HonoDataSourceConfiguration.class);
 	}
 }

@@ -2,7 +2,7 @@
 
 - **AAS Polling Consumer** consume data from data source and send these data to **Data Sink (MQTT Broker)** via **JSONata** transformer
 
-- There are two types use case based on `aaspollingconsumer.json` configuration
+- There are two types use case based on `aaspollingdatasource.json` configuration
   - With properties (Such as `pressure`, `rotation`)
   - Without properties
  

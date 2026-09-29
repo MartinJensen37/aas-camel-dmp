@@ -31,12 +31,12 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceCon
  * @author n14s - Niklas Mertens
  *
  */
-public class HttpPollingConsumerConfiguration extends DataSourceConfiguration {
-	public HttpPollingConsumerConfiguration() {}
+public class HttpPollingDataSourceConfiguration extends DataSourceConfiguration {
+	public HttpPollingDataSourceConfiguration() {}
 	private	String authUsername;
 	private String authPassword;
 	
-	public HttpPollingConsumerConfiguration(String uniqueId, String serverUrl, int serverPort, String authUsername, String authPassword) {
+	public HttpPollingDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String authUsername, String authPassword) {
 		super(uniqueId, serverUrl, serverPort);
 		this.authUsername = authUsername;
 		this.authPassword = authPassword;

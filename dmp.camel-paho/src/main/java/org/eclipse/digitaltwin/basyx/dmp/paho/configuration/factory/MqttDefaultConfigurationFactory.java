@@ -25,7 +25,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.paho.configuration.factory;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.DataSourceConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.MqttConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.MqttDataSourceConfiguration;
 
 /**
  * A default configuration factory for MQTT from a default file path
@@ -33,13 +33,13 @@ import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.MqttConsumerConfigur
  *
  */
 public class MqttDefaultConfigurationFactory extends DataSourceConfigurationFactory {
-	public static final String DEFAULT_FILE_PATH = "mqttconsumer.json";
+	public static final String DEFAULT_FILE_PATH = "mqttdatasource.json";
 	
 	public MqttDefaultConfigurationFactory(ClassLoader loader) {
-		super(DEFAULT_FILE_PATH, loader, MqttConsumerConfiguration.class);
+		super(DEFAULT_FILE_PATH, loader, MqttDataSourceConfiguration.class);
 	}
 	
 	public MqttDefaultConfigurationFactory(String filePath, ClassLoader loader) {
-		super(filePath, loader, MqttConsumerConfiguration.class);
+		super(filePath, loader, MqttDataSourceConfiguration.class);
 	}
 }

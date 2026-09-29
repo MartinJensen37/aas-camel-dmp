@@ -13,8 +13,8 @@ import json
 import pytest
 
 from management_node.descriptor import (
-    JSONATA_TRANSFORMERS_FILE,
-    LUA_TRANSFORMERS_FILE,
+    JSONATA_TRANSFORMER_FILE,
+    LUA_TRANSFORMER_FILE,
     ROUTES_FILE,
     compile_descriptor,
 )
@@ -67,10 +67,10 @@ def _compile(*mappings):
 def test_jsonata_semantic_id_dispatches_to_jsonata_transformer():
     descriptor = _compile(_mapping("StateMap", JSONATA_SID, '{"out": station_state}'))
 
-    assert JSONATA_TRANSFORMERS_FILE in descriptor.files
-    assert LUA_TRANSFORMERS_FILE not in descriptor.files
+    assert JSONATA_TRANSFORMER_FILE in descriptor.files
+    assert LUA_TRANSFORMER_FILE not in descriptor.files
 
-    xformers = json.loads(descriptor.files[JSONATA_TRANSFORMERS_FILE])
+    xformers = json.loads(descriptor.files[JSONATA_TRANSFORMER_FILE])
     assert len(xformers) == 1
     t = xformers[0]
     assert t["queryLanguage"] == "JSONATA"
@@ -85,10 +85,10 @@ def test_aimc_default_semantic_id_uses_lua():
     descriptor = _compile(_mapping("StateMap", AIMC_LUA_SID,
                                    "function aimc_main(sources) return { x = sources.StationState } end"))
 
-    assert LUA_TRANSFORMERS_FILE in descriptor.files
-    assert JSONATA_TRANSFORMERS_FILE not in descriptor.files
+    assert LUA_TRANSFORMER_FILE in descriptor.files
+    assert JSONATA_TRANSFORMER_FILE not in descriptor.files
 
-    xformers = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
+    xformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
     assert xformers[0]["queryLanguage"] == "LUA"
     assert xformers[0]["queryPath"].endswith(".lua")
 
@@ -100,9 +100,9 @@ def test_jsonata_outside_private_namespace_uses_lua():
         "function aimc_main(sources) return { x = sources.StationState } end",
     ))
 
-    assert LUA_TRANSFORMERS_FILE in descriptor.files
-    assert JSONATA_TRANSFORMERS_FILE not in descriptor.files
-    xformers = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
+    assert LUA_TRANSFORMER_FILE in descriptor.files
+    assert JSONATA_TRANSFORMER_FILE not in descriptor.files
+    xformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
     assert xformers[0]["queryLanguage"] == "LUA"
     assert xformers[0]["queryPath"].endswith(".lua")
 
@@ -117,8 +117,8 @@ def test_mixed_engines_in_one_asset():
         _mapping("FastMap", JSONATA_SID, '{"x": station_mode}', "StationMode"),
     )
 
-    lua = json.loads(descriptor.files[LUA_TRANSFORMERS_FILE])
-    jx = json.loads(descriptor.files[JSONATA_TRANSFORMERS_FILE])
+    lua = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
+    jx = json.loads(descriptor.files[JSONATA_TRANSFORMER_FILE])
     assert [t["queryLanguage"] for t in lua] == ["LUA"]
     assert [t["queryLanguage"] for t in jx] == ["JSONATA"]
 

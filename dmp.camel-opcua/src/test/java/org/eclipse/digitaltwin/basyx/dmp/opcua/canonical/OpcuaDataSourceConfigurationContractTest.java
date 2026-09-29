@@ -4,16 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.Map;
 
-import org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.OpcuaConsumerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.OpcuaDataSourceConfiguration;
 import org.junit.jupiter.api.Test;
 
 import com.google.gson.Gson;
 
-class OpcuaConsumerConfigurationContractTest {
+class OpcuaDataSourceConfigurationContractTest {
 
 	@Test
 	void customDeserializerKeepsSourceContractAndEndpointOptions() {
-		OpcuaConsumerConfiguration source = new Gson().fromJson("""
+		OpcuaDataSourceConfiguration source = new Gson().fromJson("""
 				{
 				  "uniqueId": "map_pressure", "sourceId": "Pressure", "delivery": "sync",
 				  "pollingIntervalMs": 2500, "valuePath": "$.value",
@@ -24,7 +24,7 @@ class OpcuaConsumerConfigurationContractTest {
 				  "requestedPublishingInterval": 1500,
 				  "parameters": {"requestedPublishingInterval": 3000, "keepAlive": "1500", "ignored": null}
 				}
-				""", OpcuaConsumerConfiguration.class);
+				""", OpcuaDataSourceConfiguration.class);
 
 		assertEquals("Pressure", source.getSourceId());
 		assertEquals("sync", source.getDelivery());
