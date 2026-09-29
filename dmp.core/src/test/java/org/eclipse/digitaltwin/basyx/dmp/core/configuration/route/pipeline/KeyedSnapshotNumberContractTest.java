@@ -78,6 +78,22 @@ class KeyedSnapshotNumberContractTest {
 	}
 
 	@Test
+	void aNumericLookingStringValueStaysAString() throws Exception {
+		// The AAS example fixture stores pressure as a JSON string with
+		// valueType anyType. Nothing on this boundary may "helpfully" turn it
+		// into a number: the transformation engines preserve the type they are
+		// given, and a string is not a number.
+		String property = "{\"modelType\":{\"name\":\"Property\"},\"idShort\":\"pressure\","
+				+ "\"valueType\":\"anyType\",\"value\":\"103.5585973\"}";
+		KeyedSnapshot snapshot = KeyedSnapshot.parse(property);
+		Object value = ((Map<?, ?>) snapshot.root()).get("value");
+		assertEquals("103.5585973", value);
+		assertTrue(value instanceof String, "a quoted JSON string must not become a number");
+		assertTrue(property.equals(snapshot.toJson()),
+				"the property must round-trip byte-for-byte: " + snapshot.toJson());
+	}
+
+	@Test
 	void nonKeyedRootsAreSupported() {
 		assertEquals("7", KeyedSnapshot.parse("7").toJson());
 		assertFalse(KeyedSnapshot.parse("7").isKeyed());

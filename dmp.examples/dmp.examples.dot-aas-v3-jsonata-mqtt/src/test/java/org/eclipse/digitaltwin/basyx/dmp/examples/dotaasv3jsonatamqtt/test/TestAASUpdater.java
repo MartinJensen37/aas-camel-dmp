@@ -138,7 +138,7 @@ public class TestAASUpdater {
 
 		fetchExpectedValue(topic);
 
-		assertEquals(receivedMessage.get(topic), expectedValue);
+		assertEquals(expectedValue, receivedMessage.get(topic));
 	}
 
 	private void assertAllProperties(String expectedValue, String topic) throws MqttSecurityException, MqttPersistenceException, MqttException, InterruptedException, JsonMappingException, JsonProcessingException {
