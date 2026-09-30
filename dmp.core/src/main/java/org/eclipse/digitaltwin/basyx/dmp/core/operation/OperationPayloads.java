@@ -24,6 +24,7 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.core.operation;
 
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -54,7 +55,13 @@ public final class OperationPayloads {
 	public static final String BASYX_DELEGATION_BODY = "basyxDelegationBody";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(OperationPayloads.class);
-	private static final Gson GSON = new Gson();
+	/**
+	 * The shared, number-preserving codec: a device that echoes a Uuid whose declared
+	 * type is xs:string must not have it widen to a double here. Parses and
+	 * serialises through JsonCodec so an integer stays integral and a quoted
+	 * numeric string stays a string.
+	 */
+	private static final Gson GSON = JsonCodec.gson();
 	private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() { }.getType();
 
 	private OperationPayloads() {

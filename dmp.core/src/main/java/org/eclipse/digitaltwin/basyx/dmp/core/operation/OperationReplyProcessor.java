@@ -32,7 +32,7 @@ import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 
 /**
  * Final step of the declarative operation-delegation route: after the
@@ -47,7 +47,6 @@ import com.google.gson.Gson;
 public class OperationReplyProcessor implements Processor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(OperationReplyProcessor.class);
-	private static final Gson GSON = new Gson();
 
 	private final OperationContext context;
 
@@ -69,12 +68,36 @@ public class OperationReplyProcessor implements Processor {
 		boolean basyxDelegation = Boolean.TRUE.equals(
 				exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY, Boolean.class));
 		if (basyxDelegation) {
-			exchange.getMessage().setBody(GSON.toJson(
-					OperationPayloads.toOperationVariables(replyMap, context.responseTypes)));
+			exchange.getMessage().setBody(JsonCodec.toJson(
+					OperationPayloads.toOperationVariables(coerce(replyMap), context.responseTypes)));
 			LOGGER.debug("operation {}: delegation reply {}", context.action, replyMap);
 		} else {
-			exchange.getMessage().setBody(GSON.toJson(unwrapped));
+			exchange.getMessage().setBody(JsonCodec.toJson(coerce(replyMap)));
 		}
 		exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, HttpStatus.SC_OK);
+	}
+
+	/**
+	 * Applies the DECLARED types to the reply before it goes back to the caller,
+	 * mirroring the request leg exactly: a declared {@code xs:string} field must
+	 * come back as a string even when it looks numeric, and the correlation
+	 * Uuid must be stringified for the same reason.
+	 *
+	 * <p>Without this the two legs disagreed: a caller passing a bare {@code 1}
+	 * was published to the device as {@code "1"} (string), but the device's
+	 * echoed {@code "1"} came back to that caller as {@code 1.0}.
+	 */
+	private Map<String, Object> coerce(Map<String, Object> replyMap) {
+		if (replyMap == null) {
+			return null;
+		}
+		OperationPayloads.coerceFields(replyMap, context.responseTypes);
+		if (replyMap.containsKey("Uuid")) {
+			String uuid = OperationPayloads.uuidString(replyMap.get("Uuid"));
+			if (uuid != null) {
+				replyMap.put("Uuid", uuid);
+			}
+		}
+		return replyMap;
 	}
 }

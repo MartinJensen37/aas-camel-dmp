@@ -17,7 +17,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-		<basyx.dmp.executable>org.eclipse.digitaltwin.basyx.dmp.component.DMPExecutable</basyx.dmp.executable>
+		<basyx.dmp.executable>org.eclipse.digitaltwin.basyx.dmp.component.DmpExecutable</basyx.dmp.executable>
 		<docker.image.name>databridge</docker.image.name>
 		<!-- caller may override with -DargLine=... (e.g. test health-port offsets) -->
 		<argLine></argLine>

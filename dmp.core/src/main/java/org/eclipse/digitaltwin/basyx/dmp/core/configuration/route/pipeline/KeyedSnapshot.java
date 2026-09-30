@@ -1,5 +1,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline;
 
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
+
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,16 +33,6 @@ import java.util.Set;
  */
 public final class KeyedSnapshot {
 
-	/**
-	 * Decoding uses LONG_OR_DOUBLE so an integral JSON number stays a Long
-	 * instead of being widened to a double (which would both render it as
-	 * 858383.0 and silently lose precision past 2^53).
-	 */
-	private static final com.google.gson.Gson GSON =
-			new com.google.gson.GsonBuilder()
-					.setObjectToNumberStrategy(com.google.gson.ToNumberPolicy.LONG_OR_DOUBLE)
-					.serializeNulls()
-					.create();
 
 	private final Object root;
 
@@ -70,49 +62,6 @@ public final class KeyedSnapshot {
 		return new KeyedSnapshot(toStructured(body));
 	}
 
-	/** Largest integer a Java double represents exactly: 2^53 - 1. */
-	private static final double MAX_EXACT_DOUBLE_INTEGER = 9007199254740991.0;
-
-	/**
-	 * Restores the integer/floating distinction that JSON parsing collapses.
-	 *
-	 * <p>Gson decodes every JSON number to a {@code Double}, so an integral
-	 * value (a PackML property, an operation Uuid, a device counter) re-encodes
-	 * as {@code 858383.0}. Both transformation engines then inherit the damage:
-	 * jsonata echoes the Double it is handed, and LuaJ stores every number as a
-	 * double too. This is the same rule the Lua boundary applies on the way out
-	 * ({@code LuaJsonCodec.fromLua}) — one rule, enforced on both sides of the
-	 * transformation, so an integer stays an integer end to end.
-	 *
-	 * <p>Only exactly-representable integral doubles are narrowed; genuine
-	 * fractions and anything past 2^53-1 are left alone.
-	 */
-	@SuppressWarnings("unchecked")
-	public static Object normalizeNumbers(Object value) {
-		if (value instanceof Double d) {
-			if (Double.isFinite(d) && d == Math.rint(d) && Math.abs(d) <= MAX_EXACT_DOUBLE_INTEGER) {
-				return (long) d.doubleValue();
-			}
-			return d;
-		}
-		if (value instanceof Float f) {
-			return normalizeNumbers(f.doubleValue());
-		}
-		if (value instanceof List<?> list) {
-			List<Object> normalized = new java.util.ArrayList<>(list.size());
-			for (Object element : list) {
-				normalized.add(normalizeNumbers(element));
-			}
-			return normalized;
-		}
-		if (value instanceof Map<?, ?> map) {
-			Map<Object, Object> normalized = new LinkedHashMap<>();
-			map.forEach((key, element) -> normalized.put(key, normalizeNumbers(element)));
-			return normalized;
-		}
-		return value;
-	}
-
 	/** JSON text/bytes become a structured object; anything else passes through. */
 	public static Object toStructured(Object body) {
 		String text = null;
@@ -130,12 +79,9 @@ public final class KeyedSnapshot {
 		if (text == null) {
 			return body;
 		}
-		try {
-			return normalizeNumbers(GSON.fromJson(text, Object.class));
-		} catch (Exception e) {
-			// a plain (non-JSON) device payload is a legitimate value
-			return text;
-		}
+		// A plain (non-JSON) device payload is a legitimate value; JsonCodec
+		// hands it back unchanged.
+		return JsonCodec.parse(text);
 	}
 
 	/** The whole parsed value, whether keyed or not. */
@@ -181,7 +127,7 @@ public final class KeyedSnapshot {
 	 * must stay a key in the map rather than being dropped.
 	 */
 	public String toJson() {
-		return GSON.toJson(root);
+		return JsonCodec.toJson(root);
 	}
 
 	/** A defensive, ordered copy of the keyed values (empty when not keyed). */
