@@ -67,6 +67,7 @@ class FanOutTest extends CamelTestSupport {
 								new Sink("mixedMapped", null, "mock:mixedMapped"),
 								new Sink("mixedRaw", null, "mock:mixedRaw"),
 								new Sink("throwing", null, "mock:throwing"),
+				new Sink("payloadSink", null, "mock:payloadSink"),
 								new Sink("faultTolerant", null, "mock:faultTolerant")), List.of());
 
 				RouteConfiguration shared = new RouteConfiguration("execution-policy", List.of(),
@@ -95,6 +96,13 @@ class FanOutTest extends CamelTestSupport {
 						RouteCreatorHelper.getDataSinkEndpoints(configs, mixed.getDatasinks(), "mixedRoute"),
 						RouteCreatorHelper.getDataSinkMapping(configs,
 								mixed.getDatasinkMappingConfiguration(), "mixedRoute"), "mixedRoute");
+
+				RouteConfiguration payload = new RouteConfiguration("execution-policy", List.of(),
+						List.of(), List.of("payloadSink"));
+				FanOut.apply(from("direct:payloadInput").routeId("payloadRoute"), configs, payload,
+						new String[0],
+						RouteCreatorHelper.getDataSinkEndpoints(configs, payload.getDatasinks(), "payloadRoute"),
+						null, "payloadRoute");
 
 				// a failing sink must not stop its sibling
 				RouteConfiguration fault = new RouteConfiguration("execution-policy", List.of(),
@@ -169,6 +177,12 @@ class FanOutTest extends CamelTestSupport {
 	 * Every sink is attempted even when an earlier one fails, and the partial
 	 * failure is then reported rather than passing as a successful write.
 	 */
+	/**
+	 * A transform's JSON string output keeps its quoting on the way to the sink,
+	 * while a plain device payload is passed through verbatim. Both arrive as a
+	 * Java String, so only the payload's own shape can tell them apart - and
+	 * re-serialising the plain one would turn IDLE into "IDLE".
+	 */
 	@Test
 	void aFailingSinkDoesNotStopTheOthersButIsStillReported() throws Exception {
 		MockEndpoint ok = getMockEndpoint("mock:faultTolerant");
@@ -193,5 +207,20 @@ class FanOutTest extends CamelTestSupport {
 		// ...but the healthy sibling was still delivered
 		MockEndpoint.assertIsSatisfied(context);
 		assertEquals("{\"Value\":\"v\"}", ok.getExchanges().get(0).getMessage().getBody(String.class));
+	}
+
+	@Test
+	void aJsonStringResultKeepsItsQuotesAndAPlainPayloadDoesNotGainThem() throws Exception {
+		MockEndpoint sink = getMockEndpoint("mock:payloadSink");
+		sink.expectedMessageCount(2);
+
+		template.sendBody("direct:payloadInput", "\"103.55\"");
+		template.sendBody("direct:payloadInput", "IDLE");
+
+		MockEndpoint.assertIsSatisfied(context);
+		assertEquals("\"103.55\"", sink.getExchanges().get(0).getMessage().getBody(String.class),
+				"a JsonString result must keep the quoting the transform added");
+		assertEquals("IDLE", sink.getExchanges().get(1).getMessage().getBody(String.class),
+				"a plain device payload must pass through verbatim, not become \"IDLE\"");
 	}
 }

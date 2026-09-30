@@ -220,7 +220,10 @@ public final class FanOut {
 				? null
 				: routesConfiguration.getDatasinks().get(dataSinkId);
 		if (config == null || config.handlesValuePathInternally()) {
-			return result.toJson();
+			// the sink extracts its own value, so it gets the whole result - but
+			// only re-serialised when it ARRIVED as JSON, for the same reason as
+			// below: a plain device payload must stay verbatim
+			return result.isStructured() ? result.toJson() : String.valueOf(result.root());
 		}
 		String sinkId = config.getSinkId();
 		String valuePath = config.getValuePath();
