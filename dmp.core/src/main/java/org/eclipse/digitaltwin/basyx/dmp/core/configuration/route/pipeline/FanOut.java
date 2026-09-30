@@ -130,6 +130,8 @@ public final class FanOut {
 			exchange.setProperty(RESULT_PROPERTY, result);
 			exchange.setProperty(SINK_PAYLOADS_PROPERTY, sharedJson(result));
 			exchange.setProperty(SINK_FAILURES_PROPERTY, new java.util.ArrayList<String>());
+			LOGGER.debug("route {}: body after transformer: {}",
+					routeId, exchange.getMessage().getBody(String.class));
 		});
 
 		// invariant 2 + 3: each sink's body is derived from the shared value
@@ -224,17 +226,28 @@ public final class FanOut {
 		String valuePath = config.getValuePath();
 
 		Object value = result.root();
+		boolean extracted = false;
 		if (sinkId != null && !sinkId.isBlank()) {
 			if (!result.has(sinkId)) {
 				throw new IllegalArgumentException("Sink '" + dataSinkId
 						+ "': SinkId '" + sinkId + "' not present in the transform result");
 			}
 			value = result.value(sinkId);
+			extracted = true;
 		}
 
 		if (valuePath == null || valuePath.isBlank()) {
-			// coarse: write the whole SinkId value
-			return value instanceof String ? (String) value : KeyedSnapshot.of(value).toJson();
+			if (extracted) {
+				// a value taken OUT of the result is a value, not a document:
+				// write a string exactly as the transform produced it
+				return value instanceof String ? (String) value : KeyedSnapshot.of(value).toJson();
+			}
+			// the WHOLE result. If it arrived as JSON it must be re-serialised
+			// even when it is a string, or a transform with outputType JsonString
+			// would silently lose the quoting it deliberately added. A plain
+			// (non-JSON) device payload is passed through verbatim - quoting IDLE
+			// would turn it into the string "IDLE".
+			return result.isStructured() ? result.toJson() : String.valueOf(value);
 		}
 		// fine: construct the outgoing payload with the value at the pointer
 		return KeyedSnapshot.of(assembleAt(JsonPointer.parse(valuePath).tokens(), value)).toJson();

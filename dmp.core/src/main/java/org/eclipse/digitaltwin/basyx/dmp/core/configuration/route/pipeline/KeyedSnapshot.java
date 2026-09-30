@@ -35,19 +35,21 @@ public final class KeyedSnapshot {
 
 
 	private final Object root;
+	private final boolean structured;
 
-	private KeyedSnapshot(Object root) {
+	private KeyedSnapshot(Object root, boolean structured) {
 		this.root = root;
+		this.structured = structured;
 	}
 
 	/** A snapshot over an already-structured object (a Map is kept as-is). */
 	public static KeyedSnapshot of(Object root) {
-		return new KeyedSnapshot(root);
+		return new KeyedSnapshot(root, true);
 	}
 
 	/** The empty keyed snapshot. */
 	public static KeyedSnapshot empty() {
-		return new KeyedSnapshot(new LinkedHashMap<String, Object>());
+		return new KeyedSnapshot(new LinkedHashMap<String, Object>(), true);
 	}
 
 	/**
@@ -59,7 +61,44 @@ public final class KeyedSnapshot {
 		if (body == null) {
 			return empty();
 		}
-		return new KeyedSnapshot(toStructured(body));
+		String text = asText(body);
+		if (text == null) {
+			return new KeyedSnapshot(body, true);
+		}
+		// remember whether this really was JSON: a JSON string ("103.55") and a
+		// plain device payload (IDLE) both parse to a Java String, but only the
+		// first must be re-serialised - otherwise the JSON quoting a transform
+		// deliberately produced is lost on the way out.
+		if (!JsonCodec.looksLikeJson(text)) {
+			return new KeyedSnapshot(text, false);
+		}
+		try {
+			return new KeyedSnapshot(JsonCodec.normalizeNumbers(JsonCodec.gson().fromJson(text, Object.class)), true);
+		} catch (Exception e) {
+			return new KeyedSnapshot(text, false);
+		}
+	}
+
+	/** True when the payload was JSON and therefore has to be re-serialised. */
+	public boolean isStructured() {
+		return structured;
+	}
+
+	private static String asText(Object body) {
+		if (body instanceof String s) {
+			return s;
+		}
+		if (body instanceof byte[] bytes) {
+			return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+		}
+		if (body instanceof java.io.InputStream stream) {
+			try {
+				return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+			} catch (java.io.IOException e) {
+				return null;
+			}
+		}
+		return null;
 	}
 
 	/** JSON text/bytes become a structured object; anything else passes through. */

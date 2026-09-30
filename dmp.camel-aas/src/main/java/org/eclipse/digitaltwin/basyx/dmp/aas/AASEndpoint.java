@@ -280,6 +280,17 @@ public class AASEndpoint extends DefaultEndpoint {
 	public String getSubmodelEndpoint() {
 		String submodelEndpoint = this.getEndpointBaseUri().substring(4);
 
+		// The endpoint URI is "aas:" + an ABSOLUTE http(s) URL. Camel normalises
+		// the scheme-relative remainder, so the captured value can come back with
+		// leading slashes ("/http://host" or "//http://host"). Left in place the
+		// HTTP client rejects it with "ProtocolException: Target host is not
+		// specified", so every read of a DotAAS-V3 source fails and the mapping
+		// never receives a value. Only a genuine scheme marks the real start, so
+		// strip the padding without touching a path-relative endpoint.
+		while (submodelEndpoint.startsWith("/") && submodelEndpoint.contains("://")) {
+			submodelEndpoint = submodelEndpoint.substring(1);
+		}
+
 		logger.info("SubmodelEndpoint " + submodelEndpoint);
 
 		return submodelEndpoint;

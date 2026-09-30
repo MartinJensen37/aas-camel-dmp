@@ -74,6 +74,34 @@ public final class JsonCodec {
 		return value;
 	}
 
+	/**
+	 * Whether the text is a JSON document rather than a plain device payload.
+	 *
+	 * <p>Decided from the text, NOT from whether Gson parses it: Gson is lenient
+	 * and happily reads the bare word {@code IDLE} as a JSON string, which would
+	 * make every plain payload look structured and get it quoted on the way out.
+	 * A JSON document starts with an object/array, a quoted string, a number, or
+	 * one of the literals.
+	 */
+	public static boolean looksLikeJson(String text) {
+		if (text == null) {
+			return false;
+		}
+		int i = 0;
+		while (i < text.length() && Character.isWhitespace(text.charAt(i))) {
+			i++;
+		}
+		if (i >= text.length()) {
+			return false;
+		}
+		char c = text.charAt(i);
+		if (c == '{' || c == '[' || c == '"' || c == '-' || (c >= '0' && c <= '9')) {
+			return true;
+		}
+		String rest = text.substring(i);
+		return "true".equals(rest) || "false".equals(rest) || "null".equals(rest);
+	}
+
 	/** Parses JSON text; returns it unchanged when it is not JSON. */
 	public static Object parse(String text) {
 		if (text == null) {
