@@ -59,7 +59,7 @@ public class RoutesConfigurationTestEnvironmentVariables {
 
 	private static void putActiveMQ(Map<String, String> variables) {
 		// Here an underscore is used instead of a "." to enable tests for support for both variants 
-		variables.put("activemqconsumer_json", "[\r\n"
+		variables.put("activemqdatasource_json", "[\r\n"
 				+ "	{\r\n"
 				+ "		\"uniqueId\": \"property1\",\r\n"
 				+ "		\"serverUrl\": \"127.0.0.1\",\r\n"

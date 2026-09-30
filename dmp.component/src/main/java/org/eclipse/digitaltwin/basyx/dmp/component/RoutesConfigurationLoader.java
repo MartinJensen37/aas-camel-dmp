@@ -55,7 +55,7 @@ public class RoutesConfigurationLoader {
 	private static Logger logger = LoggerFactory.getLogger(RoutesConfigurationLoader.class);
 
 	private final static String TEMPORARY_CONFIG_DIRECTORY = System.getProperty("java.io.tmpdir") + "/dataBridge";
-	public static final String JSONATA_ENV_VAR_NAME = "jsonatatransformers";
+	public static final String JSONATA_ENV_VAR_NAME = "jsonatatransformer";
 	public static final String LUA_ENV_VAR_NAME = "luatransformer";
 	public RoutesConfigurationLoader() {
 		resetFileDirectory();
