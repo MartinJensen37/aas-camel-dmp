@@ -15,12 +15,23 @@ a managed asset's AIMC/AID id (checked by the orchestrator's asset lookup).
 Commit-on-handler-failure: offsets are committed even when the handler raises;
 the orchestrator is idempotent and failures are logged, so at-most-redeploy is
 preferred over an endless poison-message loop.
+
+Startup resilience: the topics are auto-created by BaSyx on first publish, so a
+node that starts before the repository is up subscribes to topics that do not
+exist yet. librdkafka then reports ``UNKNOWN_TOPIC_OR_PART`` **once** and stops
+reporting anything at all — ``poll`` returns ``None`` forever, so the node looks
+idle but has never subscribed. Anything librdkafka can handle itself (broker
+bounce, partition reassignment) never surfaces as a poll error at all, so a
+surfaced non-EOF error means the subscription itself is unusable. The consumer
+is therefore rebuilt on the first such error, backing off so a genuinely absent
+broker costs a bounded amount of work.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -33,6 +44,15 @@ logger = logging.getLogger(__name__)
 
 #: Event types that signal removal of a previously managed submodel.
 DELETE_EVENTS = frozenset({"SM_DELETED", "SME_DELETED"})
+
+#: Poll errors tolerated before the consumer is rebuilt. One is enough: the
+#: failing subscription stops reporting after the first error (see the module
+#: docstring), so waiting for a second one would wait forever.
+ERRORS_BEFORE_REBUILD = 1
+
+#: Backoff bounds for rebuilding the consumer.
+REBUILD_BACKOFF_MIN_S = 1.0
+REBUILD_BACKOFF_MAX_S = 30.0
 
 
 @dataclass
@@ -130,34 +150,56 @@ class AimcEventListener:
         topic_pattern: str = "(aas-events|submodel-events)",
         consumer_group: str = "dmp-management-node",
         auto_offset_reset: str = "earliest",
+        errors_before_rebuild: int = ERRORS_BEFORE_REBUILD,
+        backoff_min_s: float = REBUILD_BACKOFF_MIN_S,
+        backoff_max_s: float = REBUILD_BACKOFF_MAX_S,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self._handler = handler
         self._topic_pattern = topic_pattern
+        self._consumer_config = {
+            "bootstrap.servers": bootstrap,
+            "group.id": consumer_group,
+            "auto.offset.reset": auto_offset_reset,
+            "enable.auto.commit": False,
+        }
+        self._errors_before_rebuild = max(1, errors_before_rebuild)
+        self._backoff_min_s = backoff_min_s
+        self._backoff_max_s = backoff_max_s
+        self._sleep = sleep
         self._running = True
-        self._consumer = Consumer(
-            {
-                "bootstrap.servers": bootstrap,
-                "group.id": consumer_group,
-                "auto.offset.reset": auto_offset_reset,
-                "enable.auto.commit": False,
-            }
-        )
+        self._consumer: Consumer = Consumer(self._consumer_config)
 
     def run_forever(self) -> None:
-        subscription = anchor_topic_pattern(self._topic_pattern)
-        self._consumer.subscribe([subscription])
-        logger.info("subscribed to Kafka topic regex: %s", subscription)
-
+        """Consume until :meth:`stop`, rebuilding the consumer when the
+        subscription stops being usable (see the module docstring)."""
         try:
+            subscription = anchor_topic_pattern(self._topic_pattern)
+            self._consumer.subscribe([subscription])
+            logger.info("subscribed to Kafka topic regex: %s", subscription)
+            consecutive_errors = 0
+            backoff = self._backoff_min_s
+
             while self._running:
                 msg = self._consumer.poll(1.0)
                 if msg is None:
                     continue
+
                 if msg.error():
                     if msg.error().code() == KafkaError._PARTITION_EOF:
                         continue
-                    logger.error("kafka error: %s", msg.error())
+                    consecutive_errors += 1
+                    logger.warning(
+                        "kafka error (%d/%d): %s",
+                        consecutive_errors, self._errors_before_rebuild, msg.error())
+                    if consecutive_errors >= self._errors_before_rebuild:
+                        if not self._rebuild(subscription, backoff):
+                            break
+                        consecutive_errors = 0
+                        backoff = min(self._backoff_max_s, backoff * 2)
                     continue
+
+                consecutive_errors = 0
                 if msg.value() is None:
                     self._consumer.commit(message=msg, asynchronous=False)
                     continue
@@ -167,10 +209,39 @@ class AimcEventListener:
         except KeyboardInterrupt:
             logger.info("keyboard interrupt; shutting down")
         finally:
+            self._close()
+
+    def _rebuild(self, subscription: str, backoff: float) -> bool:
+        """Closes and recreates the consumer. Returns False if stopping."""
+        logger.warning(
+            "rebuilding Kafka consumer after %d consecutive errors "
+            "(broker or topic not available yet); retrying in %.1fs",
+            self._errors_before_rebuild, backoff)
+        self._close()
+        while self._running and backoff > 0:
+            # Sleep in slices so stop() is honoured promptly during backoff.
+            self._sleep(min(0.5, backoff))
+            backoff -= 0.5
+        if not self._running:
+            return False
+        self._consumer = Consumer(self._consumer_config)
+        self._consumer.subscribe([subscription])
+        logger.info("resubscribed to Kafka topic regex: %s", subscription)
+        return True
+
+    def _close(self) -> None:
+        try:
             self._consumer.close()
+        except Exception:  # pragma: no cover - close must never mask shutdown
+            logger.debug("consumer close failed", exc_info=True)
 
     def stop(self) -> None:
         self._running = False
+
+    @property
+    def is_running(self) -> bool:
+        """False once :meth:`stop` was called, for cooperative shutdown."""
+        return self._running
 
     def _handle(self, topic: str, raw: bytes, msg) -> None:
         try:

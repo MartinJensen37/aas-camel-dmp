@@ -514,3 +514,54 @@ def test_foreign_aid_references_deploy_without_local_aid_guess(tmp_path):
     assert _deployed_prefixes(orch) == ["line"]
     assert LINE_AIMC_ID not in orch._local_aids
     assert all(LINE_AIMC_ID in orch._dependents[aid_id] for aid_id in remote_ids)
+
+
+def test_index_reports_incomplete_when_the_repository_is_not_reachable(tmp_path):
+    """A node that starts before aas-env must know its index is incomplete,
+    rather than silently running with no cross-AAS dependency view."""
+    orch = _two_unit_orchestrator(tmp_path)
+    orch.aas.units.pop(DEVICE_AIMC_ID)
+
+    assert orch.index_managed_references() is False
+
+
+def test_index_reports_complete_when_every_unit_is_fetchable(tmp_path):
+    orch = _two_unit_orchestrator(tmp_path)
+    assert orch.index_managed_references() is True
+
+
+def test_reindex_until_complete_converges_once_the_repository_appears(tmp_path):
+    """The background retry is what makes a cold start converge: the unit
+    missing at first appears later and the index is completed."""
+    orch = _two_unit_orchestrator(tmp_path)
+    # Both units depend on the device AID, so an AID change invalidates both —
+    # but only the device AIMC is missing from the repository at first.
+    orch.aas.units[LINE_AIMC_ID] = json.loads(json.dumps(
+        orch.aas.units[LINE_AIMC_ID]).replace(LINE_AID_ID, DEVICE_AID_ID))
+    hidden = json.loads(json.dumps(orch.aas.units[DEVICE_AIMC_ID]))
+    del orch.aas.units[DEVICE_AIMC_ID]
+
+    assert orch.index_managed_references() is False
+
+    orch.aas.units[DEVICE_AIMC_ID] = hidden
+    thread = orch.reindex_until_complete(
+        interval_s=0, attempts=3, sleep=lambda _s: None)
+    thread.join(timeout=5)
+
+    assert not thread.is_alive()
+    # the retry indexed it, so a remote AID change now invalidates the unit
+    orch.handle_event(AimcEvent("SM_UPDATED", DEVICE_AID_ID,
+                                semantic_id=AID_SEMANTIC_ID))
+    orch.flush()
+    assert sorted(_deployed_prefixes(orch)) == ["device", "line"]
+
+
+def test_reindex_stops_when_asked(tmp_path):
+    orch = _two_unit_orchestrator(tmp_path)
+    del orch.aas.units[DEVICE_AIMC_ID]
+    orch.index_managed_references()
+
+    thread = orch.reindex_until_complete(
+        interval_s=0, attempts=1000, should_stop=lambda: True, sleep=lambda _s: None)
+    thread.join(timeout=5)
+    assert not thread.is_alive()

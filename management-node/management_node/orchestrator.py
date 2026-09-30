@@ -22,10 +22,12 @@ import logging
 import os
 import re
 import threading
+import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from .aas_client import AasClient
 from .deploy import DmpDeployer
@@ -304,19 +306,70 @@ class Orchestrator:
         except Exception:
             logger.exception("reconcile failed for %s", unit.name)
 
-    def index_managed_references(self) -> None:
+    def index_managed_references(self) -> bool:
         """Rebuild AID dependencies from managed AIMCs before consuming events.
 
         This is read-only: a management-node restart must not depend on a new
         AIMC event to learn which DMPs a remote AID change affects.
+
+        Returns True when every unit was indexed. A unit whose submodel is not
+        fetchable yet (the repository is still starting, or the AIMC has not
+        been registered) is logged and skipped; :func:`reindex_until_complete`
+        retries the remainder in the background so a node that started too early
+        still converges without a restart.
         """
+        complete = True
         for unit in self.managed.values():
             try:
                 model = self._fetch_parsed_aimc(unit)
                 if model is not None:
                     self._record_dependencies(unit, model)
+                else:
+                    complete = False
             except Exception:
+                complete = False
                 logger.exception("could not index references for %s", unit.name)
+        return complete
+
+    def reindex_until_complete(
+        self,
+        *,
+        interval_s: float = 15.0,
+        attempts: int = 40,
+        should_stop: Callable[[], bool] = lambda: False,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> threading.Thread:
+        """Retries the reference index on a daemon thread until it succeeds.
+
+        The index is what lets a remote AID change invalidate cross-AAS
+        dependencies, so leaving it half-built is a silent correctness gap
+        rather than a cosmetic one. Retrying in the background keeps startup
+        fast while guaranteeing convergence.
+        """
+
+        def _retry() -> None:
+            for attempt in range(1, attempts + 1):
+                if should_stop():
+                    return
+                try:
+                    if self.index_managed_references():
+                        logger.info("reference index complete after %d attempt(s)", attempt)
+                        return
+                except Exception:
+                    logger.exception("reference reindex attempt %d failed", attempt)
+                logger.info(
+                    "reference index incomplete; retrying in %.0fs (attempt %d/%d)",
+                    interval_s, attempt, attempts)
+                # Sleep in slices so shutdown is not held up by the backoff.
+                remaining = interval_s
+                while remaining > 0 and not should_stop():
+                    sleep(min(0.5, remaining))
+                    remaining -= 0.5
+
+        thread = threading.Thread(
+            target=_retry, name="dmp-reference-reindex", daemon=True)
+        thread.start()
+        return thread
 
     def reconcile_now(self, unit: ManagedAimc) -> None:
         """Synchronous reconcile that propagates failures to the worker log."""

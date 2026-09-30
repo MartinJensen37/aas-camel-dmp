@@ -73,8 +73,6 @@ def main() -> None:
         mqtt_broker=mqtt_broker,
     )
 
-    orchestrator.index_managed_references()
-
     listener = AimcEventListener(
         orchestrator.handle_event,
         bootstrap=os.getenv("KAFKA_BOOTSTRAP", "kafka:9092"),
@@ -82,6 +80,15 @@ def main() -> None:
         consumer_group=os.getenv("KAFKA_CONSUMER_GROUP", "dmp-management-node"),
         auto_offset_reset=os.getenv("KAFKA_AUTO_OFFSET_RESET", "earliest"),
     )
+
+    # The reference index is what lets a remote AID change invalidate cross-AAS
+    # dependencies. Index synchronously so a warm start is fully indexed before
+    # events flow, then keep retrying in the background when the repository was
+    # not reachable yet (cold-start ordering).
+    if not orchestrator.index_managed_references():
+        logger.warning(
+            "reference index incomplete at startup; retrying in the background")
+        orchestrator.reindex_until_complete(should_stop=lambda: not listener.is_running)
 
     logger.info("management node started: aas=%s managed AIMC units=%d",
                 aas_base_url, len(managed))
