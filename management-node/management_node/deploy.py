@@ -54,7 +54,11 @@ class DmpDeployer:
         health_port: int | None = None,
         timeout: float = DOCKER_TIMEOUT_S,
         pull_image: bool = True,
+        affordance_validation: str = "OFF",
     ) -> None:
+        if affordance_validation not in {"OFF", "ON", "REPORT"}:
+            raise ValueError("DMP_AFFORDANCE_VALIDATION must be OFF, ON, or REPORT")
+        self.affordance_validation = affordance_validation
         self.image = image
         self.jvm_opts = jvm_opts
         self.network = network
@@ -116,6 +120,7 @@ class DmpDeployer:
             "--restart", "unless-stopped",
             "-v", f"{config_dir}:/usr/share/config:ro",
             "-e", f"JAVA_OPTS={self.jvm_opts}",
+            "-e", f"DMP_AFFORDANCE_VALIDATION={self.affordance_validation}",
             # health endpoint on a dedicated per-unit port (fixed 18085 made
             # a second host-networked container fail to bind)
             "-e", f"DATABRIDGE_HEALTH_PORT={port}",

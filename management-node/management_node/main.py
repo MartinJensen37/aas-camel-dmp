@@ -8,6 +8,7 @@ Env vars (kg-bridge conventions, ADR-010):
   AAS_BASE_URL             AAS submodel repository base URL (required)
   DMP_CONFIG_ROOT          where DMP config dirs are written (default ./dmp-config)
   DMP_IMAGE                DMP container image (default eclipsebasyx/databridge:1.0.0-SNAPSHOT)
+  DMP_AFFORDANCE_VALIDATION  OFF (default), ON, or rollout-only REPORT
   MANAGED_ASSETS_FILE      JSON managed set keyed by AIMC submodel instance id:
                            { "<aimc_sm_id>": {"label"?: str, "local_aid_id"?: str} }
 """
@@ -71,6 +72,7 @@ def main() -> None:
         managed_aimcs=managed,
         image=os.getenv("DMP_IMAGE", "eclipsebasyx/databridge:1.0.0-SNAPSHOT"),
         mqtt_broker=mqtt_broker,
+        affordance_validation=os.getenv("DMP_AFFORDANCE_VALIDATION", "OFF"),
     )
 
     listener = AimcEventListener(

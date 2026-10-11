@@ -52,8 +52,17 @@ def test_deploy_mounts_config_and_sets_heap(deployer):
     assert f"DATABRIDGE_HEALTH_PORT={health_port_for(deployer.container_name('syntegonStopperingSystem'))}" in run_cmd
     # Gson needs --add-opens to serialize Throwable (health DTO) on Java 17.
     assert "-e" in run_cmd and "JAVA_OPTS=-Xmx512m --add-opens java.base/java.lang=ALL-UNNAMED" in run_cmd
+    assert "DMP_AFFORDANCE_VALIDATION=OFF" in run_cmd
     assert "--network" in run_cmd and "host" in run_cmd
     assert run_cmd[-1] == "eclipsebasyx/databridge:1.0.0-SNAPSHOT"
+
+
+def test_affordance_validation_mode_is_forwarded_and_checked(deployer):
+    deployer.affordance_validation = "REPORT"
+    deployer.deploy("asset", "/tmp/config")
+    assert "DMP_AFFORDANCE_VALIDATION=REPORT" in deployer._calls[-1]
+    with pytest.raises(ValueError, match="DMP_AFFORDANCE_VALIDATION"):
+        DmpDeployer(affordance_validation="INVALID")
 
 
 def test_stop_removes_container(deployer):

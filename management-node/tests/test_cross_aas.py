@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -514,6 +515,39 @@ def test_foreign_aid_references_deploy_without_local_aid_guess(tmp_path):
     assert _deployed_prefixes(orch) == ["line"]
     assert LINE_AIMC_ID not in orch._local_aids
     assert all(LINE_AIMC_ID in orch._dependents[aid_id] for aid_id in remote_ids)
+
+
+def test_response_only_references_are_indexed_for_dependency_invalidation(tmp_path):
+    orch = _two_unit_orchestrator(tmp_path)
+    source_id = "remote-source/submodels/AID"
+    sink_id = "remote-sink/submodels/AID"
+
+    def ref(value):
+        return SimpleNamespace(key=[SimpleNamespace(value=value)])
+
+    mapping = SimpleNamespace(
+        Sources=SimpleNamespace(value=[]),
+        Sinks=SimpleNamespace(value=[]),
+        ResponseSources=SimpleNamespace(value=[SimpleNamespace(Source=SimpleNamespace(
+            value=ref(source_id)))]),
+        ResponseSinks=SimpleNamespace(value=[SimpleNamespace(Sink=SimpleNamespace(
+            value=ref(sink_id)))])
+    )
+    aimc = SimpleNamespace(MappingConfigurations=SimpleNamespace(value=[mapping]))
+    unit = orch.managed[LINE_AIMC_ID]
+    orch._record_dependencies(unit, aimc)
+
+    assert orch._dependents[source_id] == {LINE_AIMC_ID}
+    assert orch._dependents[sink_id] == {LINE_AIMC_ID}
+
+    invalidated = []
+    submitted = []
+    orch.aid_directory.invalidate = invalidated.append
+    orch.submit = lambda unit: submitted.append(unit.aimc_sm_id)
+    orch.handle_event(AimcEvent("SM_UPDATED", source_id, semantic_id=AID_SEMANTIC_ID))
+    orch.handle_event(AimcEvent("SM_DELETED", sink_id))
+    assert invalidated == [source_id, sink_id]
+    assert submitted == [LINE_AIMC_ID, LINE_AIMC_ID]
 
 
 def test_index_reports_incomplete_when_the_repository_is_not_reachable(tmp_path):

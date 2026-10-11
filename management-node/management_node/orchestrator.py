@@ -190,6 +190,7 @@ class Orchestrator:
         managed_aimcs: dict[str, ManagedAimc],
         image: str = "eclipsebasyx/databridge:1.0.0-SNAPSHOT",
         mqtt_broker: tuple[str, int] | None = None,
+        affordance_validation: str = "OFF",
     ) -> None:
         self.aas_base_url = aas_base_url
         self.aas = AasClient(aas_base_url)
@@ -211,7 +212,8 @@ class Orchestrator:
         self.dmp_container_name = os.getenv("DMP_CONTAINER_NAME") or None
         self.deployer = DmpDeployer(image=image, pull_image=pull_image,
                                     network=self.dmp_network,
-                                    health_port=self.dmp_health_port)
+                                    health_port=self.dmp_health_port,
+                                    affordance_validation=affordance_validation)
         self.mqtt_broker = mqtt_broker
         eventing_flag = os.getenv("AAS_EVENTING_ENABLED")
         eventing_enabled = eventing_flag is None or eventing_flag.strip().lower() \
@@ -584,6 +586,14 @@ class Orchestrator:
                 if keys:
                     referenced.add(_substitute_macros(keys[0], local))
             for snk in mc.Sinks.value:
+                keys = reference_values(snk.Sink.value)
+                if keys:
+                    referenced.add(_substitute_macros(keys[0], local))
+            for src in getattr(getattr(mc, "ResponseSources", None), "value", None) or []:
+                keys = reference_values(src.Source.value)
+                if keys:
+                    referenced.add(_substitute_macros(keys[0], local))
+            for snk in getattr(getattr(mc, "ResponseSinks", None), "value", None) or []:
                 keys = reference_values(snk.Sink.value)
                 if keys:
                     referenced.add(_substitute_macros(keys[0], local))
