@@ -6,59 +6,58 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import org.junit.jupiter.api.Test;
 
 /**
- * The shared numeric contract between the two transformation engines.
+ * The shared numeric contract for decoded Java payload values.
  *
  * <p>Gson decodes every JSON number to a {@code Double}. Left alone, an
- * integral value re-encodes as {@code 858383.0}, and both engines inherit that:
- * jsonata echoes the Double it is handed, and LuaJ stores every number as a
- * double. The snapshot therefore restores the integer/floating distinction
- * before anything else sees the value, using the same rule the Lua boundary
- * applies on the way out.
+ * integral value re-encodes as {@code 858383.0}. Connector JSON decoding uses
+ * JsonCodec; KeyedSnapshot then retains the decoded Java value without parsing
+ * or stringifying it.
  */
 class KeyedSnapshotNumberContractTest {
 
 	@Test
 	void integralNumbersStayIntegral() {
-		KeyedSnapshot snapshot = KeyedSnapshot.parse("{\"count\":858383}");
+		KeyedSnapshot snapshot = KeyedSnapshot.parse(JsonCodec.parseJson("{\"count\":858383}"));
 		assertEquals(858383L, snapshot.value("count"));
 		assertTrue(snapshot.value("count") instanceof Long,
 				"an integral value must not become a Double");
-		assertEquals("{\"count\":858383}", snapshot.toJson());
+		assertEquals("{\"count\":858383}", JsonCodec.toJson(snapshot.root()));
 	}
 
 	@Test
 	void negativeAndZeroStayIntegral() {
-		KeyedSnapshot snapshot = KeyedSnapshot.parse("{\"a\":0,\"b\":-42,\"c\":7}");
-		assertEquals("{\"a\":0,\"b\":-42,\"c\":7}", snapshot.toJson());
+		KeyedSnapshot snapshot = KeyedSnapshot.parse(JsonCodec.parseJson("{\"a\":0,\"b\":-42,\"c\":7}"));
+		assertEquals("{\"a\":0,\"b\":-42,\"c\":7}", JsonCodec.toJson(snapshot.root()));
 	}
 
 	@Test
 	void genuineFractionsKeepTheirFractionalForm() {
-		assertEquals("{\"v\":103.5585973}", KeyedSnapshot.parse("{\"v\":103.5585973}").toJson());
-		assertEquals("{\"v\":0.5}", KeyedSnapshot.parse("{\"v\":0.5}").toJson());
+		assertEquals("{\"v\":103.5585973}", JsonCodec.toJson(KeyedSnapshot.parse(JsonCodec.parseJson("{\"v\":103.5585973}")).root()));
+		assertEquals("{\"v\":0.5}", JsonCodec.toJson(KeyedSnapshot.parse(JsonCodec.parseJson("{\"v\":0.5}")).root()));
 	}
 
 	@Test
 	void numbersInsideCollectionsAreNormalizedToo() {
-		KeyedSnapshot snapshot = KeyedSnapshot.parse("{\"q\":[1,2.5,{\"deep\":3}]}");
-		assertEquals("{\"q\":[1,2.5,{\"deep\":3}]}", snapshot.toJson());
+		KeyedSnapshot snapshot = KeyedSnapshot.parse(JsonCodec.parseJson("{\"q\":[1,2.5,{\"deep\":3}]}"));
+		assertEquals("{\"q\":[1,2.5,{\"deep\":3}]}", JsonCodec.toJson(snapshot.root()));
 	}
 
 	@Test
 	void valuesBeyondTheExactIntegerRangeStayFloatingPoint() {
 		// 2^53 and beyond cannot be narrowed to a long without losing the value
 		String text = "{\"big\":9007199254740992}";
-		assertEquals(text, KeyedSnapshot.parse(text).toJson());
+		assertEquals(text, JsonCodec.toJson(KeyedSnapshot.parse(JsonCodec.parseJson(text)).root()));
 	}
 
 	@Test
 	void aDeliveredNullIsPreserved() {
-		KeyedSnapshot snapshot = KeyedSnapshot.parse("{\"a\":null}");
+		KeyedSnapshot snapshot = KeyedSnapshot.parse(JsonCodec.parseJson("{\"a\":null}"));
 		assertTrue(snapshot.has("a"), "a stored null is still a present key");
-		assertEquals("{\"a\":null}", snapshot.toJson());
+		assertEquals("{\"a\":null}", JsonCodec.toJson(snapshot.root()));
 	}
 
 	@Test
@@ -78,25 +77,32 @@ class KeyedSnapshotNumberContractTest {
 	}
 
 	@Test
-	void aNumericLookingStringValueStaysAString() throws Exception {
-		// The AAS example fixture stores pressure as a JSON string with
+	void numericLookingStringValueStaysAStringAfterBoundaryDecode() {
+		// The example fixture stores pressure as a JSON string with
 		// valueType anyType. Nothing on this boundary may "helpfully" turn it
 		// into a number: the transformation engines preserve the type they are
 		// given, and a string is not a number.
 		String property = "{\"modelType\":{\"name\":\"Property\"},\"idShort\":\"pressure\","
 				+ "\"valueType\":\"anyType\",\"value\":\"103.5585973\"}";
-		KeyedSnapshot snapshot = KeyedSnapshot.parse(property);
+		KeyedSnapshot snapshot = KeyedSnapshot.parse(JsonCodec.parseJson(property));
 		Object value = ((Map<?, ?>) snapshot.root()).get("value");
 		assertEquals("103.5585973", value);
 		assertTrue(value instanceof String, "a quoted JSON string must not become a number");
-		assertTrue(property.equals(snapshot.toJson()),
-				"the property must round-trip byte-for-byte: " + snapshot.toJson());
+		assertEquals(property, JsonCodec.toJson(snapshot.root()));
 	}
 
 	@Test
 	void nonKeyedRootsAreSupported() {
-		assertEquals("7", KeyedSnapshot.parse("7").toJson());
-		assertFalse(KeyedSnapshot.parse("7").isKeyed());
-		assertTrue(KeyedSnapshot.parse("[]").ids().isEmpty());
+		assertEquals(7, KeyedSnapshot.parse(7).root());
+		assertFalse(KeyedSnapshot.parse(7).isKeyed());
+		assertTrue(KeyedSnapshot.parse(java.util.List.of()).ids().isEmpty());
+	}
+
+	@Test
+	void jsonLookingStringRemainsOpaqueUntilConnectorDecode() {
+		String text = "{\"count\":7}";
+		KeyedSnapshot snapshot = KeyedSnapshot.parse(text);
+		assertEquals(text, snapshot.root());
+		assertFalse(snapshot.isKeyed());
 	}
 }

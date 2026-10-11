@@ -15,7 +15,6 @@
 		<module>dmp.camel-activemq</module>
 		<module>dmp.camel-hono</module>
 		<module>dmp.camel-httppolling</module>
-		<module>dmp.camel-jsonata</module>
 		<module>dmp.camel-lua</module>
 		<module>dmp.camel-jsonjackson</module>
 		<module>dmp.camel-kafka</module>
@@ -88,6 +87,11 @@
 		</plugins>
 		<pluginManagement>
 			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>3.2.5</version>
+				</plugin>
 				<plugin>
 					<groupId>io.fabric8</groupId>
 					<artifactId>docker-maven-plugin</artifactId>

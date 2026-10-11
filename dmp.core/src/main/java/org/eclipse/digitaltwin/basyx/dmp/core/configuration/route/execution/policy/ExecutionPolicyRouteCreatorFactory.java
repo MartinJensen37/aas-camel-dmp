@@ -30,6 +30,10 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteCrea
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 
 public class ExecutionPolicyRouteCreatorFactory implements RouteCreatorFactory {
+	@Override
+	public String routeTrigger() {
+		return ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER;
+	}
 
 	@Override
 	public RouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration) {

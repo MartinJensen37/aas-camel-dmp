@@ -5,7 +5,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
@@ -14,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SourceEventAdapter;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
 
 /**
@@ -34,26 +35,36 @@ import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
  * derives from that one immutable instance. A source can never observe a
  * sibling's payload, and a sink can never observe a sibling's output.
  *
- * <p>The difference is the direction of completion: fan-in has to WAIT for
- * every source before it can emit (a partial sources map is never produced),
- * whereas fan-out already has the complete result and only has to slice it.
- * That asymmetry is the all-sources gate below.
+ * <p>The difference is the direction of completion: fan-in waits for every
+ * required source before it can emit (a partial sources map is never produced),
+ * but a contribution only drives evaluation when its SourceId is selected by
+ * the route's execution semantics (or legacy any-source behavior applies).
  */
 public final class FanIn {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FanIn.class);
+	public static final String SOURCE_ID_HEADER = "AIMC_SourceId";
 
 	/** Exchange property flagging a source that actually contributed a value. */
-	public static final String CONTRIBUTION_PROPERTY = "dmp.sourceContribution";
+	public static final String CONTRIBUTION_PROPERTY = SourceEventAdapter.CONTRIBUTION_PROPERTY;
+	private static final String ACCEPTED_SNAPSHOT_PROPERTY = FanIn.class.getName() + ".acceptedSnapshot";
 
 	private final RoutesConfiguration routesConfiguration;
 	private final Map<String, String> sourceIdByEndpoint = new LinkedHashMap<>();
 	private final SourceCache cache = new SourceCache();
+	private final Map<String, AffordanceValidation> validators = new LinkedHashMap<>();
 
 	public FanIn(RouteConfiguration routeConfig, RoutesConfiguration routesConfiguration) {
+		this(routeConfig, routesConfiguration, AffordanceValidation.configuredMode());
+	}
+
+	FanIn(RouteConfiguration routeConfig, RoutesConfiguration routesConfiguration, AffordanceValidation.Mode mode) {
 		this.routesConfiguration = routesConfiguration;
 		for (String endpointId : routeConfig.getDatasources()) {
 			sourceIdByEndpoint.put(endpointId, resolveSourceId(routesConfiguration, endpointId));
+			DataSourceConfiguration config = routesConfiguration.getDatasources().get(endpointId);
+			validators.put(endpointId, new AffordanceValidation(
+					config == null ? null : config.getSchema(), "source " + endpointId, mode));
 		}
 	}
 
@@ -94,7 +105,11 @@ public final class FanIn {
 			if (value == null) {
 				return;
 			}
-			cache.put(sourceId, value);
+			if (!validators.get(dataSourceId).incoming(
+					value == JsonPointer.JSON_NULL ? null : value)) {
+				return;
+			}
+		exchange.setProperty(ACCEPTED_SNAPSHOT_PROPERTY, cache.acceptAndSnapshot(sourceId, value));
 			exchange.setProperty(CONTRIBUTION_PROPERTY, true);
 		};
 	}
@@ -102,6 +117,13 @@ public final class FanIn {
 	/** Route filter: only a contributing exchange is worth collecting. */
 	public boolean contributed(Exchange exchange) {
 		return Boolean.TRUE.equals(exchange.getProperty(CONTRIBUTION_PROPERTY));
+	}
+
+	/** True when this contribution is selected to trigger evaluation. */
+	public boolean selectedTrigger(Exchange exchange, List<String> selectedSourceIds) {
+		if (selectedSourceIds == null) return true;
+		Object sourceId = exchange.getMessage().getHeader(SOURCE_ID_HEADER);
+		return sourceId != null && selectedSourceIds.contains(String.valueOf(sourceId));
 	}
 
 	/**
@@ -114,35 +136,38 @@ public final class FanIn {
 	public org.apache.camel.Predicate gatePredicate() {
 		Set<String> required = expectedSourceIds();
 		return exchange -> {
+			KeyedSnapshot accepted = exchange.getProperty(ACCEPTED_SNAPSHOT_PROPERTY, KeyedSnapshot.class);
+			if (accepted == null) return false;
 			List<String> missing = new ArrayList<>();
 			for (String id : required) {
-				if (!cache.has(id)) {
+				if (!accepted.has(id)) {
 					missing.add(id);
 				}
 			}
 			if (missing.isEmpty()) {
 				return true;
 			}
-			LOGGER.debug("fan-in: waiting for sources {} (have {})", missing, cache.ids());
+			LOGGER.debug("fan-in: waiting for sources {} (have {})", missing, accepted.ids());
 			return false;
 		};
 	}
 
 	/**
-	 * Materialises the one shared value of this cycle. The transformer chain
-	 * contract is a JSON STRING of the sources map (the Lua/JSONata processors
-	 * parse it; keys are the AIMC SourceIds) — blobs return tables keyed by
-	 * SinkId.
+	 * Materialises a decoded, keyed value tree for the transformer chain. Keys
+	 * are AIMC SourceIds; Lua returns values keyed by SinkId.
 	 */
 	public Processor merge() {
-		return exchange -> exchange.getMessage().setBody(cache.snapshot().toJson());
+		return exchange -> {
+			KeyedSnapshot accepted = exchange.getProperty(ACCEPTED_SNAPSHOT_PROPERTY, KeyedSnapshot.class);
+			if (accepted == null) throw new IllegalStateException("fan-in exchange has no accepted source snapshot");
+			exchange.getMessage().setBody(accepted.copyValues());
+		};
 	}
 
 	/**
-	 * Normalises the payload and applies the source's {@code valuePath}.
-	 * JSON text/bytes are parsed so the merged map carries real values (never
-	 * double-encoded strings), and a pointer reduces the payload to the pinned
-	 * leaf. Absent pointer → coarse (whole payload); a pointer on a missing path
+	 * Decodes incoming text/bytes only when content type or the declared JSON
+	 * schema identifies a JSON payload, then applies the source's {@code valuePath}.
+	 * An absent pointer keeps the whole typed value; a pointer on a missing path
 	 * is a clear route error (SPEC §8.4 #8).
 	 */
 	private Object disassemble(Exchange exchange, String dataSourceId) {
@@ -152,21 +177,21 @@ public final class FanIn {
 		if (body == JsonPointer.JSON_NULL) {
 			return JsonPointer.JSON_NULL;
 		}
-		// connector POJOs (e.g. a Milo DataValue) have no JSON meaning — run
-		// them through the registered Camel type converters, which yield the
-		// connector's canonical JSON form (OpcUaCanonicalConverterLoader)
+		// Connector POJOs have no JSON meaning — run them through registered
+		// Camel type converters, which yield the connector's canonical form.
 		if (!(body instanceof String || body instanceof byte[] || body instanceof java.io.InputStream
+				|| body instanceof org.apache.camel.StreamCache
 				|| body instanceof java.util.Map || body instanceof java.util.List)) {
 			Object converted = exchange.getContext().getTypeConverter().tryConvertTo(String.class, exchange, body);
 			if (converted instanceof String s) {
 				body = s;
 			}
 		}
-		Object json = KeyedSnapshot.toStructured(body);
+		Object json = decodeIncoming(exchange, config, body);
 		if (pointer == null || pointer.isBlank()) {
-			// connector canonical forms may wrap the payload in a single-key
-			// envelope keyed by the ENDPOINT id (e.g. the milo data-change
-			// value) — strip it: the cached source payload is the message
+			// Connector canonical forms may wrap the payload in a single-key
+			// envelope keyed by the endpoint id. Strip it: the cached source
+			// payload is the message value.
 			json = unwrapCanonicalEnvelope(json, dataSourceId);
 			return json == JsonPointer.JSON_NULL ? JsonPointer.JSON_NULL : json;
 		}
@@ -189,31 +214,73 @@ public final class FanIn {
 		return json;
 	}
 
+	private Object decodeIncoming(Exchange exchange, DataSourceConfiguration config, Object body) {
+		if (Boolean.TRUE.equals(exchange.getProperty(SourceEventAdapter.NORMALIZED_VALUE_PROPERTY))) {
+			return JsonCodec.copyValue(body);
+		}
+		if (body instanceof Map<?, ?> || body instanceof List<?> || body == JsonPointer.JSON_NULL) {
+			return JsonCodec.copyValue(body);
+		}
+		String text = null;
+		if (body instanceof String value) {
+			text = value;
+		} else if (body instanceof org.apache.camel.StreamCache streamCache) {
+			try {
+				java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+				streamCache.reset();
+				streamCache.writeTo(bytes);
+				if (!jsonContent(exchange) && !jsonSchema(config.getSchema())) return bytes.toByteArray();
+				text = bytes.toString(java.nio.charset.StandardCharsets.UTF_8);
+			} catch (java.io.IOException e) {
+				throw new IllegalArgumentException("could not read incoming source stream cache", e);
+			}
+		} else if (body instanceof byte[] bytes) {
+			if (!jsonContent(exchange) && !jsonSchema(config.getSchema())) return bytes.clone();
+			text = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+		} else if (body instanceof java.io.InputStream stream) {
+			try {
+				byte[] bytes = stream.readAllBytes();
+				if (!jsonContent(exchange) && !jsonSchema(config.getSchema())) return bytes;
+				text = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+			} catch (java.io.IOException e) {
+				throw new IllegalArgumentException("could not read incoming source payload", e);
+			}
+		}
+		if (text == null) {
+			return JsonCodec.copyValue(body);
+		}
+		if (!jsonContent(exchange) && !jsonSchema(config.getSchema())) return text;
+		Object decoded = JsonCodec.parseJson(text);
+		return decoded == null ? JsonPointer.JSON_NULL : decoded;
+	}
+
+	private static boolean jsonContent(Exchange exchange) {
+		String contentType = exchange.getMessage().getHeader(Exchange.CONTENT_TYPE, String.class);
+		if (contentType == null) return false;
+		String mediaType = contentType.split(";", 2)[0].trim().toLowerCase(java.util.Locale.ROOT);
+		return "application/json".equals(mediaType) || mediaType.endsWith("+json");
+	}
+
+	private static boolean jsonSchema(Object rawSchema) {
+		if (!(rawSchema instanceof Map<?, ?> schema)) return false;
+		Object type = schema.get("type");
+		if ("object".equals(type) || "array".equals(type)) return true;
+		return schema.containsKey("properties") || schema.containsKey("items");
+	}
+
 	/**
 	 * Thread-safe latest-value cache of SourceId → payload. The fan-in
 	 * counterpart of the fan-out sink snapshot: both accumulate keyed
 	 * contributions and hand out exactly one immutable {@link KeyedSnapshot}.
 	 */
 	static final class SourceCache {
-		private final ConcurrentHashMap<String, Object> latest = new ConcurrentHashMap<>();
+		private final Map<String, Object> latest = new LinkedHashMap<>();
 
-		void put(String sourceId, Object value) {
-			latest.put(sourceId, value);
-		}
-
-		boolean has(String sourceId) {
-			return latest.containsKey(sourceId);
-		}
-
-		Set<String> ids() {
-			return latest.keySet();
-		}
-
-		/** One immutable view of the current values, nulls preserved. */
-		KeyedSnapshot snapshot() {
+		synchronized KeyedSnapshot acceptAndSnapshot(String sourceId, Object value) {
+			latest.put(sourceId, value == null ? JsonPointer.JSON_NULL : JsonCodec.copyValue(value));
 			Map<String, Object> values = new LinkedHashMap<>();
-			latest.forEach((key, value) -> values.put(key,
-					value == JsonPointer.JSON_NULL ? null : value));
+			latest.forEach((key, cachedValue) -> values.put(key,
+					cachedValue == JsonPointer.JSON_NULL ? null : cachedValue));
 			return KeyedSnapshot.of(values);
 		}
 	}

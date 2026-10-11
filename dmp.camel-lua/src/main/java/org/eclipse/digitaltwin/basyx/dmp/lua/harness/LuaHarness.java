@@ -32,10 +32,10 @@ import java.nio.file.Paths;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaJsonCodec;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaSandbox;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaTimeoutHook;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaValue;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Local harness (SPEC §8.2 / G7) to verify a Lua blob before deployment.
@@ -55,8 +55,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public final class LuaHarness {
 
-	private static final ObjectMapper MAPPER = new ObjectMapper();
-
 	private LuaHarness() {
 		throw new IllegalStateException("Utility class");
 	}
@@ -72,13 +70,13 @@ public final class LuaHarness {
 		double timeoutSeconds = args.length > 2 ? Double.parseDouble(args[2]) : 2.0;
 
 		Object sources = sourcesPath == null ? new java.util.HashMap<String, Object>()
-				: MAPPER.readValue(Files.readAllBytes(Paths.get(sourcesPath)), Object.class);
+				: JsonCodec.parseJson(new String(Files.readAllBytes(Paths.get(sourcesPath)), StandardCharsets.UTF_8));
 
 		String script = new String(Files.readAllBytes(Paths.get(scriptPath)), StandardCharsets.UTF_8);
 
 		Object result = run(script, scriptPath, sources, timeoutSeconds);
 
-		System.out.println(MAPPER.writeValueAsString(result));
+		System.out.println(JsonCodec.toJson(result));
 	}
 
 	/**

@@ -5,9 +5,7 @@
     "type": "object",
     "required": [
         "uniqueId",
-        "queryPath",
-        "inputType",
-        "outputType"
+        "queryPath"
     ],
     "properties": {
         "uniqueId": {
@@ -21,22 +19,6 @@
             "type": "string",
             "description": "Path to the Lua blob file (relative only!)",
             "pattern": "^[a-zA-Z0-9/-\\.\\+]+$"
-        },
-        "inputType": {
-            "title": "Input Type",
-            "enum": [
-                "JsonString",
-                "JsonValue"
-            ],
-            "description": "Type of the input"
-        },
-        "outputType": {
-            "title": "Output Type",
-            "enum": [
-                "JsonString",
-                "JsonValue"
-            ],
-            "description": "Type of the output"
         },
         "timeoutSeconds": {
             "title": "Timeout Seconds",
@@ -64,5 +46,6 @@
             "type": "string",
             "description": "Optional source-side fine resolution (ADR-014): a JSON Pointer (e.g. $.State) applied to the incoming canonical payload before it is placed under a SourceId. Absent -> coarse (whole payload delivered)."
         }
-    }
+    },
+    "additionalProperties": false
 }

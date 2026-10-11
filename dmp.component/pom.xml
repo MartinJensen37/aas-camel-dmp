@@ -110,6 +110,11 @@
 		</dependency>
 
 		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jetty</artifactId>
+		</dependency>
+
+		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
 			<artifactId>dmp.camel-paho</artifactId>
 			<version>${revision}</version>
@@ -121,11 +126,6 @@
 			<version>${revision}</version>
 		</dependency>
 
-		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.camel-jsonata</artifactId>
-			<version>${revision}</version>
-		</dependency>
 
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
@@ -183,29 +183,30 @@
 		
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.examples.plc4x-jsonata-aas</artifactId>
+			<artifactId>dmp.examples.plc4x-lua-aas</artifactId>
 			<version>${revision}</version>
 			<scope>test</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.examples.aas-jsonata-mqtt</artifactId>
+			<artifactId>dmp.examples.aas-lua-mqtt</artifactId>
 			<version>${revision}</version>
 			<scope>test</scope>
 		</dependency>
 		
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.examples.sql-jsonata-aas</artifactId>
+			<artifactId>dmp.examples.sql-lua-aas</artifactId>
 			<version>${revision}</version>
 			<scope>test</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.examples.aas-jsonata-http</artifactId>
+			<artifactId>dmp.examples.aas-lua-http</artifactId>
 			<version>${revision}</version>
+			<scope>test</scope>
 		</dependency>
 
 		<dependency>
@@ -283,6 +284,18 @@
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.13.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-test-junit5</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Run the existing JUnit 4 regressions alongside the Jupiter contracts. -->
+		<dependency>
+			<groupId>org.junit.vintage</groupId>
+			<artifactId>junit-vintage-engine</artifactId>
+			<version>5.14.4</version>
 			<scope>test</scope>
 		</dependency>
 

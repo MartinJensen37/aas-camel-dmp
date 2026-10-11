@@ -1,6 +1,7 @@
 [
 	{
 		"uniqueId": "mqttSource",
+		"schema": {"type":"object"},
 		"serverUrl": "localhost",
 		"serverPort": 1884,
 		"topic": "process-update"

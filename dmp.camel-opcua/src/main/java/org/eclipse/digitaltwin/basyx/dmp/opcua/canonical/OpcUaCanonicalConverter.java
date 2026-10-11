@@ -132,8 +132,8 @@ public final class OpcUaCanonicalConverter implements TypeConverters {
 	/**
 	 * {@code WriteResponse -> Map<String,Object>} — the awaited UA node write
 	 * result: the per-node status codes — {@code {"results": [<long>...]}}.
-	 * A WRITE-status reply is not a value; the write-delegation processor
-	 * falls back to the written (accepted) command for the effective value.
+ * A WRITE-status reply is not a value; synchronous invocation routes return
+ * protocol status information rather than treating it as an action payload.
 	 */
 	@Converter
 	public static Map<String, Object> toCanonicalMap(WriteResponse response, Exchange exchange) {

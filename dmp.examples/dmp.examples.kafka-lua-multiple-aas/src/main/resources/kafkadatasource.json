@@ -1,0 +1,13 @@
+[
+	{
+		"uniqueId": "property1",
+		"schema": {"type":"object"},
+		"serverUrl": "localhost",
+		"serverPort": 9092,
+		"topic": "first-topic",
+		"maxPollRecords": 5000,
+		"groupId": "basyx-updater",
+		"consumersCount": 1,
+		"seekTo": "BEGINNING"
+	}
+]

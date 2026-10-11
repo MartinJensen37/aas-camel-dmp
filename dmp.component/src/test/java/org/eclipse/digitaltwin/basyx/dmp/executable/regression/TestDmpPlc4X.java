@@ -35,7 +35,7 @@ import org.eclipse.basyx.components.aas.configuration.BaSyxAASServerConfiguratio
 import org.eclipse.basyx.components.configuration.BaSyxContextConfiguration;
 import org.eclipse.basyx.submodel.metamodel.api.identifier.IIdentifier;
 import org.eclipse.digitaltwin.basyx.dmp.component.DmpExecutable;
-import org.eclipse.digitaltwin.basyx.dmp.examples.plc4xjsonataaas.Modbus;
+import org.eclipse.digitaltwin.basyx.dmp.examples.plc4xluaaas.Modbus;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 

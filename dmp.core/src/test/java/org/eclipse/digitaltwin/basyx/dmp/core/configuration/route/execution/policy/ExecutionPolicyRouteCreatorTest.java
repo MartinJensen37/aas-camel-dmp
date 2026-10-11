@@ -137,9 +137,7 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 	}
 
 
-	private static Map<?, ?> sourcesOf(Object body) {
-		return (Map<?, ?>) new com.google.gson.Gson().fromJson(String.valueOf(body), java.util.Map.class);
-	}
+	private static Map<?, ?> sourcesOf(Object body) { return (Map<?, ?>) body; }
 
 	@Test
 	void asyncOnlyRouteFiresOnEveryArrivalOnceComplete() throws Exception {
@@ -150,7 +148,7 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 		out.assertIsSatisfied(2000);
 
 		Object body = out.getExchanges().get(1).getMessage().getBody();
-		assertInstanceOf(String.class, body);
+		assertInstanceOf(Map.class, body);
 		assertEquals("TWO", sourcesOf(body).get("StationState"));
 	}
 
@@ -158,7 +156,8 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 	void deliveredJsonNullRemainsInSourcesMap() throws Exception {
 		MockEndpoint out = getMockEndpoint("mock:nullOut");
 		out.expectedMessageCount(1);
-		template.sendBody("direct:inNull", "{\"value\":null}");
+		template.sendBodyAndHeader("direct:inNull", "{\"value\":null}",
+				org.apache.camel.Exchange.CONTENT_TYPE, "application/json");
 		out.assertIsSatisfied(2000);
 		Map<?, ?> sources = sourcesOf(out.getExchanges().get(0).getMessage().getBody());
 		assertTrue(sources.containsKey("Nullable"), "a delivered null must not disappear from the blob input");
@@ -203,10 +202,10 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 
 		boolean found = out.getReceivedExchanges().stream().anyMatch(e -> {
 			Object body = e.getMessage().getBody();
-			if (!(body instanceof String s)) {
+			if (!(body instanceof Map<?, ?>)) {
 				return false;
 			}
-			Map<?, ?> m = sourcesOf(s);
+			Map<?, ?> m = sourcesOf(body);
 			return "CACHED".equals(m.get("PAsync")) && "FRESH".equals(m.get("PSync"));
 		});
 		assertTrue(found, "the sync poll tick evaluates the cached async snapshot");

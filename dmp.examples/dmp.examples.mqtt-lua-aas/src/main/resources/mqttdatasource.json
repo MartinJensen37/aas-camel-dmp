@@ -1,0 +1,36 @@
+[
+	{
+		"uniqueId": "property1",
+		"schema": {"type":"object"},
+		"serverUrl": "localhost",
+		"serverPort": 1884,
+		"topic": "Properties",
+		"clientId": "mqttx_c18f5405",
+		"credentials": {
+			"userName": "test",
+			"password": "test123"
+		}
+	},
+	{
+		"uniqueId": "property2",
+		"schema": {"type":"object"},
+		"serverUrl": "localhost",
+		"serverPort": 1884,
+		"topic": "PropertyB",
+		"credentials": {
+			"userName": "test",
+			"password": "test123"
+		}
+	},
+	{
+		"uniqueId": "property3",
+		"schema": {"type":"object"},
+		"serverUrl": "localhost",
+		"serverPort": 1884,
+		"topic": "PropertyC",
+		"credentials": {
+			"userName": "test",
+			"password": "test123"
+		}
+	}
+]

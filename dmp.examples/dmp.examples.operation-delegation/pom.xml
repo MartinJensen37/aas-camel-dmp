@@ -59,6 +59,13 @@
 			<version>${revision}</version>
 		</dependency>
 
+		<dependency>
+			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<artifactId>dmp.component</artifactId>
+			<version>${revision}</version>
+			<scope>test</scope>
+		</dependency>
+
 		<!-- JUnit 4 for running JUnit tests -->
 		<dependency>
 			<groupId>junit</groupId>

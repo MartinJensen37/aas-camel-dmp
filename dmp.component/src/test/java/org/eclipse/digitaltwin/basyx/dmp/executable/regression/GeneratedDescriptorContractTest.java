@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,13 +12,15 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.component.mock.MockEndpoint;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASDatasinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.factory.AASPollingConsumerDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.factory.AASDataSinkDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.bridge.ProtocolBridgeRouteCreatorFactory;
+import org.eclipse.digitaltwin.basyx.dmp.aas.operation.ProtocolBridgeRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
@@ -43,9 +45,10 @@ import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.Plc4xDataSourceConf
 import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.Plc4xDataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.factory.Plc4xDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.factory.Plc4xDataSinkDefaultConfigurationFactory;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.gson.JsonArray;
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -53,15 +56,49 @@ import com.google.gson.JsonParser;
 public class GeneratedDescriptorContractTest {
 	private static final List<String> FIXTURES = List.of(
 			"stoppering", "opcua-method", "http-operation", "plc4x",
-			"aas-property-event", "aas-property-poll", "aas-collection-event",
+			"aas-property-event", "aas-property-poll",
 			"aas-collection-poll", "opcua-read", "http-poll", "fine-path",
-			"fine-protocols", "fan-in-out");
+			"fine-protocols", "fan-in-out", "grouped-action");
+
+	@Test
+	public void generatedLuaRunsOnDecodedJavaValues() throws Exception {
+		String directory = System.getProperty("dmp.contract.dir");
+		assumeTrue(directory != null, "Generate the Python AIMC/AID contract matrix first");
+		Path configFile = Path.of(directory, "grouped-action", "luatransformer.json");
+		LuaTransformerConfiguration requestLua = new LuaDefaultConfigurationFactory(
+				configFile.toString(), getClass().getClassLoader()).create().stream()
+						.map(LuaTransformerConfiguration.class::cast)
+						.filter(configuration -> configuration.getUniqueId().endsWith("request_transformer"))
+						.findFirst().orElseThrow();
+
+		var context = new DefaultCamelContext();
+		context.addRoutes(new RouteBuilder() {
+			@Override
+			public void configure() {
+				from("direct:generatedLua").to(requestLua.getConnectionURI()).to("mock:generatedLua");
+			}
+		});
+		context.start();
+		try {
+			var template = context.createProducerTemplate();
+			template.sendBody("direct:generatedLua", Map.of("Invoke", Map.of("x", 10, "y", 20)));
+			MockEndpoint output = context.getEndpoint("mock:generatedLua", MockEndpoint.class);
+			output.expectedMessageCount(1);
+			output.assertIsSatisfied();
+			Map<?, ?> value = output.getExchanges().get(0).getMessage().getBody(Map.class);
+			assertEquals(1L, ((Number) value.get("X")).longValue());
+			assertEquals(2L, ((Number) value.get("Y")).longValue());
+		} finally {
+			context.stop();
+		}
+	}
 
 	@Test
 	public void generatedProtocolMatrixLoadsAndBinds() throws Exception {
 		String directory = System.getProperty("dmp.contract.dir");
-		assumeTrue("Generate the full Python AIMC/AID contract matrix first", directory != null);
+		assumeTrue(directory != null, "Generate the full Python AIMC/AID contract matrix first");
 		ClassLoader loader = getClass().getClassLoader();
+		Gson gson = new Gson();
 		for (String name : FIXTURES) {
 			Path config = Path.of(directory, name);
 			assertTrue("missing generated fixture " + name, Files.isRegularFile(config.resolve("routes.json")));
@@ -111,8 +148,8 @@ public class GeneratedDescriptorContractTest {
 					LuaTransformerConfiguration transformer = (LuaTransformerConfiguration) routes.getTransformers()
 							.get(emitted.get("uniqueId").getAsString());
 					assertNotNull(name + ": dropped Lua transformer", transformer);
-					assertEquals(name, emitted.get("inputType").getAsString(), transformer.getInputType());
-					assertEquals(name, emitted.get("outputType").getAsString(), transformer.getOutputType());
+					assertFalse(name + ": Lua value modes are not configurable",
+							emitted.has("inputType") || emitted.has("outputType") || emitted.has("queryLanguage"));
 					assertEquals(name, config.resolve(emitted.get("queryPath").getAsString()).toString(),
 							transformer.getQueryPath());
 					assertTrue(name + ": missing Lua blob", Files.isRegularFile(Path.of(transformer.getQueryPath())));
@@ -131,6 +168,8 @@ public class GeneratedDescriptorContractTest {
 						assertEquals(name, emitted.get("pollingIntervalMs").getAsLong(), source.getPollingIntervalMs());
 					if (emitted.has("valuePath"))
 						assertEquals(name, emitted.get("valuePath").getAsString(), source.getValuePath());
+					if (emitted.has("schema"))
+						assertEquals(name, emitted.get("schema"), gson.toJsonTree(source.getSchema()));
 					if (emitted.has("mode")) assertEquals(name, emitted.get("mode").getAsString(), source.getMode());
 					if (emitted.has("elementType")) {
 						String elementType = emitted.get("elementType").getAsString();
@@ -179,6 +218,12 @@ public class GeneratedDescriptorContractTest {
 						assertEquals(name, emitted.get("sinkId").getAsString(), sink.getSinkId());
 					if (emitted.has("valuePath"))
 						assertEquals(name, emitted.get("valuePath").getAsString(), sink.getValuePath());
+					if (emitted.has("schema"))
+						assertEquals(name, emitted.get("schema"), gson.toJsonTree(sink.getSchema()));
+					if (emitted.has("payloadSchema"))
+						assertEquals(name, emitted.get("payloadSchema"), gson.toJsonTree(sink.getPayloadSchema()));
+					if (emitted.has("payloadGroup"))
+						assertEquals(name, emitted.get("payloadGroup").getAsString(), sink.getPayloadGroup());
 					if (sink instanceof Plc4xDataSinkConfiguration plc) {
 						assertEquals(name, emitted.get("driver").getAsString(), plc.getDriver());
 						assertEquals(name, emitted.get("servicePath").getAsString(), plc.getServicePath());
@@ -200,6 +245,14 @@ public class GeneratedDescriptorContractTest {
 				assertEquals("$.mode", routes.getDatasources().values().iterator().next().getValuePath());
 				assertEquals("$.mode", routes.getDatasinks().values().iterator().next().getValuePath());
 			}
+			if ("grouped-action".equals(name)) {
+				assertEquals(2, routes.getRoutes().get(0).getDatasinks().size());
+				List<String> sinkIds = routes.getRoutes().get(0).getDatasinks();
+				DataSinkConfiguration first = routes.getDatasinks().get(sinkIds.get(0));
+				DataSinkConfiguration second = routes.getDatasinks().get(sinkIds.get(1));
+				assertEquals(first.getPayloadGroup(), second.getPayloadGroup());
+				assertEquals(List.of("X", "Y"), ((Map<?, ?>) first.getPayloadSchema()).get("required"));
+			}
 			try (DefaultCamelContext context = new DefaultCamelContext()) {
 				context.addRoutes(new DmpRouteBuilder(routes, Map.of(
 						"execution-policy", new ExecutionPolicyRouteCreatorFactory(),
@@ -212,7 +265,7 @@ public class GeneratedDescriptorContractTest {
 	@Test
 	public void generatedStopperingMappingLoadsAndBinds() throws Exception {
 		String directory = System.getProperty("dmp.descriptor.dir");
-		assumeTrue("Generate the AIMC/AID fixture before running this contract", directory != null);
+		assumeTrue(directory != null, "Generate the AIMC/AID fixture before running this contract");
 		Path config = Path.of(directory);
 		ClassLoader loader = getClass().getClassLoader();
 		RoutesConfiguration routes = new RoutesConfiguration();
@@ -245,8 +298,7 @@ public class GeneratedDescriptorContractTest {
 			JsonObject emitted = item.getAsJsonObject();
 			LuaTransformerConfiguration loaded = (LuaTransformerConfiguration) routes.getTransformers()
 					.get(emitted.get("uniqueId").getAsString());
-			assertEquals(emitted.get("inputType").getAsString(), loaded.getInputType());
-			assertEquals(emitted.get("outputType").getAsString(), loaded.getOutputType());
+			assertFalse(emitted.has("inputType") || emitted.has("outputType") || emitted.has("queryLanguage"));
 			assertEquals(config.resolve(emitted.get("queryPath").getAsString()).toString(), loaded.getQueryPath());
 			assertTrue(Files.isRegularFile(Path.of(loaded.getQueryPath())));
 		}
@@ -275,7 +327,7 @@ public class GeneratedDescriptorContractTest {
 	@Test
 	public void generatedOpcuaMethodPreservesItsAddressAndSinkId() throws Exception {
 		String directory = System.getProperty("dmp.opcua.descriptor.dir");
-		assumeTrue("Generate the OPC UA AIMC/AID fixture before running this contract", directory != null);
+		assumeTrue(directory != null, "Generate the OPC UA AIMC/AID fixture before running this contract");
 		Path config = Path.of(directory);
 		ClassLoader loader = getClass().getClassLoader();
 		RoutesConfiguration routes = new RoutesConfiguration();
@@ -301,7 +353,7 @@ public class GeneratedDescriptorContractTest {
 	@Test
 	public void generatedHttpInteractionPreservesItsTarget() throws Exception {
 		String directory = System.getProperty("dmp.http.descriptor.dir");
-		assumeTrue("Generate the HTTP AIMC/AID fixture before running this contract", directory != null);
+		assumeTrue(directory != null, "Generate the HTTP AIMC/AID fixture before running this contract");
 		Path config = Path.of(directory);
 		ClassLoader loader = getClass().getClassLoader();
 		RoutesConfiguration routes = new RoutesConfiguration();

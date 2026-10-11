@@ -81,6 +81,15 @@ public class OpcuaDataSinkConfigurationDeserializer implements JsonDeserializer<
         if (object.has("valuePath") && !object.get("valuePath").isJsonNull()) {
             sink.setValuePath(object.get("valuePath").getAsString());
         }
+        if (object.has("schema") && !object.get("schema").isJsonNull()) {
+            sink.setSchema(jsonDeserializationContext.deserialize(object.get("schema"), Map.class));
+        }
+        if (object.has("payloadSchema") && !object.get("payloadSchema").isJsonNull()) {
+            sink.setPayloadSchema(jsonDeserializationContext.deserialize(object.get("payloadSchema"), Map.class));
+        }
+        if (object.has("payloadGroup") && !object.get("payloadGroup").isJsonNull()) {
+            sink.setPayloadGroup(object.get("payloadGroup").getAsString());
+        }
         return sink;
     }
 }

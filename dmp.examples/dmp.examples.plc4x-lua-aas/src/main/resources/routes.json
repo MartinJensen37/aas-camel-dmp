@@ -1,0 +1,14 @@
+[
+ {
+  "transformers": [
+    "luaExtractValue"
+  ],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedPropertyA"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "property1"
+  ]
+ }
+]

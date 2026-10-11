@@ -1,0 +1,38 @@
+[
+ {
+  "datasources": [
+   "exampleAAS1"
+  ],
+  "transformers": [
+    "luaA"
+  ],
+  "datasinks": [
+   "exampleMQTT1"
+  ],
+  "trigger": "execution-policy"
+ },
+ {
+  "datasources": [
+   "exampleAAS2"
+  ],
+  "transformers": [
+    "luaC"
+  ],
+  "datasinks": [
+   "exampleMQTT2"
+  ],
+  "trigger": "execution-policy"
+ },
+ {
+  "datasources": [
+   "exampleAAS3"
+  ],
+  "transformers": [
+    "luaB"
+  ],
+  "datasinks": [
+   "exampleMQTT3"
+  ],
+  "trigger": "execution-policy"
+ }
+]

@@ -42,10 +42,10 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConf
  *
  * <p>
  * The plural {@code "datasources"} key is the ONLY datasource form (ADR-020):
- * the legacy singular {@code "datasource"} tolerance is gone. Execution is a
- * fixed runtime semantic (decision 2026-09-15) — there is no authorable
- * policy block; an {@code executionPolicy} key in a config is a named
- * load-time error.
+ * the legacy singular {@code "datasource"} tolerance is gone. Legacy
+ * {@code executionPolicy} blocks are rejected; optional
+ * {@code triggerSourceIds} within generic triggerData select AIMC sources and
+ * do not define acquisition modes or Camel policies.
  */
 public class RouteConfigurationDeserializer implements JsonDeserializer<RouteConfiguration> {
 
@@ -82,9 +82,9 @@ public class RouteConfigurationDeserializer implements JsonDeserializer<RouteCon
 		if (obj.has("executionPolicy")) {
 			throw new JsonParseException("route '" + (config.getRouteId() != null
 					? config.getRouteId() : "<unnamed-route>")
-					+ "': authorable execution policies are removed (decision "
-					+ "2026-09-15) — execution is a fixed runtime semantic; "
-					+ "delete the executionPolicy block");
+					+ "': legacy executionPolicy blocks are removed; use AIMC "
+					+ "ExecutionSemantics.TriggerSourceIds when explicit trigger "
+					+ "selection is required");
 		}
 		return config;
 	}

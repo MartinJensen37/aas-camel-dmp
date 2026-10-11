@@ -122,6 +122,21 @@ public class RouteCreatorHelper {
 								routeLabel)));
 	}
 
+	/** Retains sink identity when several fine-grained sinks share one device URI. */
+	public static Map<String, String[]> getDataSinkMappingById(RoutesConfiguration routesConfiguration,
+			Map<String, String[]> mapping, String routeLabel) {
+		if (mapping == null || mapping.isEmpty()) {
+			return null;
+		}
+		Map<String, String[]> resolved = new java.util.LinkedHashMap<>();
+		mapping.forEach((sinkId, transformers) -> {
+			getDataSinkEndpoint(routesConfiguration, sinkId, routeLabel);
+			resolved.put(sinkId, getDataTransformerEndpoints(routesConfiguration,
+					Arrays.asList(asStringArray(transformers)), routeLabel));
+		});
+		return resolved;
+	}
+
 	/**
 	 * Tolerates list-typed mapping values (e.g. from lenient JSON
 	 * deserialization) so a misconfigured transformer sequence fails with a

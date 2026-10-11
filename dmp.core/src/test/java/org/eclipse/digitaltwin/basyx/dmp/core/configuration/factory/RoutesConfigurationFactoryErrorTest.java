@@ -31,11 +31,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.RoutesConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.bridge.ProtocolBridgeRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.core.routebuilder.DmpRouteBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -49,31 +51,44 @@ class RoutesConfigurationFactoryErrorTest {
 		return new RoutesConfigurationFactory(file.toString(), getClass().getClassLoader()).create();
 	}
 
+	private IllegalArgumentException configureWithoutConnector(String json) throws Exception {
+		RoutesConfiguration routes = new RoutesConfiguration(List.of(), List.of(), List.of(), load(json));
+		return assertThrows(IllegalArgumentException.class,
+				() -> new DmpRouteBuilder(routes, Map.of()).configure());
+	}
+
 	@Test
-	void policyAndBridgeRoutesMapToTheirConfigurations() throws Exception {
+	void routeConfigurationsAreLoadedGenericallyForConnectorFactories() throws Exception {
 		List<RouteConfiguration> routes = load(
 				"[{\"trigger\":\"execution-policy\",\"routeId\":\"r1\",\"datasources\":[\"a\"],\"datasinks\":[]},"
 						+ "{\"trigger\":\"bridge\",\"routeId\":\"r2\",\"datasources\":[\"a\"],\"datasinks\":[]}]");
 		assertEquals(2, routes.size());
 		assertEquals(ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER, routes.get(0).getRouteTrigger());
-		assertEquals(ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER, routes.get(1).getRouteTrigger());
+		assertEquals("bridge", routes.get(1).getRouteTrigger());
 	}
 
 	@Test
-	void legacyTriggersFailWithNamedError() throws Exception {
+	void legacyTriggersArePreservedButFailWithoutRegisteredCreator() throws Exception {
 		for (String legacy : new String[] {"event", "timer", "request", "operation"}) {
-			IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-					() -> load("[{\"trigger\":\"" + legacy + "\",\"routeId\":\"old\",\"datasources\":[\"a\"],\"datasinks\":[]}]"));
-			assertTrue(error.getMessage().contains("route old declares trigger '" + legacy + "'"));
+			String json = "[{\"trigger\":\"" + legacy
+					+ "\",\"routeId\":\"old\",\"datasources\":[\"a\"],\"datasinks\":[]}]";
+			assertEquals(legacy, load(json).get(0).getRouteTrigger());
+			IllegalArgumentException error = configureWithoutConnector(json);
+			assertTrue(error.getMessage().contains("route old: no route creator factory registered for trigger '"
+					+ legacy + "'"));
 		}
 	}
 
 	@Test
-	void unknownTriggerFailsRatherThanSilentlyDroppingRoute() throws Exception {
-		IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> load(
-				"[{\"trigger\":\"webhook\",\"routeId\":\"mystery\"},"
-						+ "{\"trigger\":\"execution-policy\",\"routeId\":\"kept\",\"datasources\":[\"a\"],\"datasinks\":[]}]"));
-		assertTrue(error.getMessage().contains("route mystery declares trigger 'webhook'"));
+	void unknownTriggerIsPreservedButFailsWithoutRegisteredCreator() throws Exception {
+		String json = "[{\"trigger\":\"webhook\",\"routeId\":\"mystery\"},"
+				+ "{\"trigger\":\"execution-policy\",\"routeId\":\"kept\",\"datasources\":[\"a\"],\"datasinks\":[]}]";
+		List<RouteConfiguration> routes = load(json);
+		assertEquals(2, routes.size());
+		assertEquals("webhook", routes.get(0).getRouteTrigger());
+		IllegalArgumentException error = configureWithoutConnector(json);
+		assertTrue(error.getMessage().contains(
+				"route mystery: no route creator factory registered for trigger 'webhook'"));
 	}
 
 	@Test
@@ -89,6 +104,25 @@ class RoutesConfigurationFactoryErrorTest {
 		IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
 				() -> load("[{\"trigger\":\"  \",\"routeId\":\"blank\"}]"));
 		assertTrue(error.getMessage().contains("route blank declares no trigger"));
+	}
+
+	@Test
+	void explicitTriggerSourceIdsMustBeNonemptyUniqueStrings() throws Exception {
+		RouteConfiguration route = load(
+				"[{\"trigger\":\"execution-policy\",\"routeId\":\"r\","
+						+ "\"triggerData\":{\"triggerSourceIds\":[\"Invoke\"]}}]").get(0);
+		assertEquals(List.of("Invoke"), route.getTriggerSourceIds());
+		RouteConfiguration legacy = load(
+				"[{\"trigger\":\"execution-policy\",\"routeId\":\"legacy\"}]").get(0);
+		assertEquals(null, legacy.getTriggerSourceIds());
+		RouteConfiguration empty = load(
+				"[{\"trigger\":\"execution-policy\",\"routeId\":\"empty\","
+						+ "\"triggerData\":{\"triggerSourceIds\":[]}}]").get(0);
+		assertThrows(IllegalArgumentException.class, empty::getTriggerSourceIds);
+		RouteConfiguration duplicates = load(
+				"[{\"trigger\":\"execution-policy\",\"routeId\":\"duplicates\","
+						+ "\"triggerData\":{\"triggerSourceIds\":[\"Invoke\",\"Invoke\"]}}]").get(0);
+		assertThrows(IllegalArgumentException.class, duplicates::getTriggerSourceIds);
 	}
 
 	@Test

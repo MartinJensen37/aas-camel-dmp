@@ -36,9 +36,18 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 	private int serverPort;
 	private String sourceId;
 	private String valuePath;
+	private Object schema;
+
+	public Object getSchema() {
+		return schema;
+	}
+
+	public void setSchema(Object schema) {
+		this.schema = schema;
+	}
 	/**
 	 * How this source delivers data, classified by the management node from
-	 * the AID (SPEC §6.1, ADR-018): {@code "async"} = push/subscription,
+	 * the declared endpoint capability: {@code "async"} = push/subscription,
 	 * {@code "sync"} = request/response polled per cycle. Absent → async
 	 * (the historical event-route default).
 	 */
@@ -46,9 +55,8 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 	/**
 	 * Poll cadence of a SYNC source in milliseconds (decision 2026-09-15):
 	 * the sync source is read at this interval by the mapping route and its
-	 * value feeds the same latest-value cache as the async sources. A typed
-	 * AAS Property source must never rely on an implicit cadence: the
-	 * management node emits a positive effective interval for polling mode.
+	 * value feeds the same latest-value cache as async sources. Connector
+	 * binding determines whether a source may instead be observed.
 	 */
 	private long pollingIntervalMs;
 	/** Typed connector kind for sources whose transport body needs adaptation. */

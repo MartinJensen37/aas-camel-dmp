@@ -8,10 +8,10 @@
  *
  *   databridge.camel-opcua ... canonical.OpcUaCanonicalConverter
  *       OPC UA -> Lua: auto-invoked when the Lua component reads the body
- *       (DataValue -> canonical JSON); no route step required.
+ *       (DataValue -> decoded canonical value tree); no route step required.
  *
  *   databridge.camel-opcua ... canonical.OpcUaNormalizer
- *       Lua -> OPC UA: canonical blob output { "value": ... } -> Milo Variant.
+ *       Lua -> OPC UA: canonical value table { "value": ... } -> Milo Variant.
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.interfaceexample;
 
@@ -34,16 +34,16 @@ public class InterfaceTransformExampleRoutes extends RouteBuilder {
 
     @Override
     public void configure() {
-        // OPC UA -> MQTT (state): the DataValue body is normalized to canonical
-        // JSON by the registered OpcUaCanonicalConverter when lua: reads it.
+        // OPC UA -> MQTT (state): the DataValue body is normalized to a decoded
+        // canonical value tree by the registered converter when Lua reads it.
         from(OPC_STATE)
-                .to("lua:file:/etc/dmp/opc2mqtt.lua?inputType=JsonString&outputType=JsonString&timeoutSeconds=2")
+                .to("lua:file:/etc/dmp/opc2mqtt.lua?timeoutSeconds=2")
                 .to(MQTT_STATE);
 
-        // MQTT -> OPC UA (commands): the blob emits { "nodeId": ..., "value": ... };
+        // MQTT -> OPC UA (commands): the blob returns { "nodeId": ..., "value": ... };
         // OpcUaNormalizer turns .value into the Milo Variant the producer writes.
         from(MQTT_CMD)
-                .to("lua:file:/etc/dmp/mqtt2opc.lua?inputType=JsonString&outputType=JsonString&timeoutSeconds=2")
+                .to("lua:file:/etc/dmp/mqtt2opc.lua?timeoutSeconds=2")
                 .process(new OpcUaNormalizer())
                 .to(OPC_CMD);
     }

@@ -1,7 +1,7 @@
 [
  {
   "transformers": [
-   "weight"
+    "luaWeight"
   ],
   "datasinks": [
    "ConnectedTestSubmodel/DotAASV3ConformantApiProperty"
@@ -13,7 +13,7 @@
  },
  {
   "transformers": [
-   "productName"
+    "luaProductName"
   ],
   "datasinks": [
    "ConnectedTestSubmodel/DotAASV3ConformantApiStringProperty"

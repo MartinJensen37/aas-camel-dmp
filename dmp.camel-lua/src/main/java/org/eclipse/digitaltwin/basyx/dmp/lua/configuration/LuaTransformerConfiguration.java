@@ -33,24 +33,20 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataTransform
  * {@code lua:} Camel component (databridge.camel-lua).
  *
  * <p>
- * The connection URI follows the AIMC transformation contract:
- * {@code lua:file:<path>?inputType=JsonString&outputType=JsonString&...}.
+ * The connection URI follows the AIMC transformation contract and transports
+ * decoded Java values: {@code lua:file:<path>?sourceKeys=body&...}.
  * The Lua blob must expose {@code function aimc_main(sources)}.
  *
  * @author aas-camel-dmp
  */
 public class LuaTransformerConfiguration extends DataTransformerConfiguration {
 
-	public static final String DEFAULT_INPUT_TYPE = "JsonString";
-	public static final String DEFAULT_OUTPUT_TYPE = "JsonString";
 	public static final String DEFAULT_TIMEOUT_SECONDS = "2";
 	public static final String DEFAULT_CONTENT_CACHE = "true";
 	public static final String DEFAULT_MAX_SCRIPT_BYTES = "1048576";
 	public static final String DEFAULT_SOURCE_KEYS = "body";
 
 	private String queryPath;
-	private String inputType;
-	private String outputType;
 	private String timeoutSeconds;
 	private String contentCache;
 	private String maxScriptBytes;
@@ -58,19 +54,15 @@ public class LuaTransformerConfiguration extends DataTransformerConfiguration {
 	private String valuePath;
 
 	public LuaTransformerConfiguration() {
-		this.inputType = DEFAULT_INPUT_TYPE;
-		this.outputType = DEFAULT_OUTPUT_TYPE;
 		this.timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
 		this.contentCache = DEFAULT_CONTENT_CACHE;
 		this.maxScriptBytes = DEFAULT_MAX_SCRIPT_BYTES;
 		this.sourceKeys = DEFAULT_SOURCE_KEYS;
 	}
 
-	public LuaTransformerConfiguration(String uniqueId, String queryPath, String inputType, String outputType) {
+	public LuaTransformerConfiguration(String uniqueId, String queryPath) {
 		super(uniqueId);
 		this.queryPath = queryPath;
-		this.inputType = inputType;
-		this.outputType = outputType;
 		this.timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
 		this.contentCache = DEFAULT_CONTENT_CACHE;
 		this.maxScriptBytes = DEFAULT_MAX_SCRIPT_BYTES;
@@ -92,9 +84,7 @@ public class LuaTransformerConfiguration extends DataTransformerConfiguration {
 		String resource = luaFile.exists() ? "file:" + path : path;
 
 		StringBuilder uri = new StringBuilder("lua:" + resource);
-		uri.append("?inputType=").append(getInputType());
-		uri.append("&outputType=").append(getOutputType());
-		uri.append("&timeoutSeconds=").append(getTimeoutSeconds());
+		uri.append("?timeoutSeconds=").append(getTimeoutSeconds());
 		uri.append("&contentCache=").append(getContentCache());
 		uri.append("&maxScriptBytes=").append(getMaxScriptBytes());
 		uri.append("&sourceKeys=").append(getSourceKeys());
@@ -102,22 +92,6 @@ public class LuaTransformerConfiguration extends DataTransformerConfiguration {
 			uri.append("&valuePath=").append(getValuePath());
 		}
 		return uri.toString();
-	}
-
-	public String getInputType() {
-		return inputType;
-	}
-
-	public void setInputType(String inputType) {
-		this.inputType = inputType;
-	}
-
-	public String getOutputType() {
-		return outputType;
-	}
-
-	public void setOutputType(String outputType) {
-		this.outputType = outputType;
 	}
 
 	public String getTimeoutSeconds() {

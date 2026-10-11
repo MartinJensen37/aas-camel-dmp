@@ -1,0 +1,20 @@
+[
+  {
+   "uniqueId": "Server1",
+   "sinkId": "Server1",
+   "schema": {"type":"string"},
+  "scheme": "http",
+  "serverUrl": "localhost",
+  "path": "data/machine/pressure",
+  "port": 8091
+ },
+  {
+   "uniqueId": "Server2",
+   "sinkId": "Server2",
+   "schema": {"type":"array","items":{"type":"object"}},
+  "scheme": "http",
+  "serverUrl": "localhost",
+  "path": "data/machine/pressure_rotation",
+  "port": 8091
+ }
+]

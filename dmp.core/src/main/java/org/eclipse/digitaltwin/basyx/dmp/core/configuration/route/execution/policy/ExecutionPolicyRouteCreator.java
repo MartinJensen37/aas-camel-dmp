@@ -41,30 +41,31 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteCrea
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.FanIn;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.FanOut;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SourceEventAdapter;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousSourceReadAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * The ONE mapping-route creator: every MappingConfiguration compiles to
  * {@code sources[] + sinks[] + transformer(s)} and this creator wires exactly
- * that, with the FIXED execution semantic (decision 2026-09-15, replacing the
- * authorable ADR-020 policy):
+ * that, with acquisition, trigger selection and readiness kept independent:
  *
  * <ul>
  * <li>every source contributes its LATEST value to a per-route cache —
  * async sources on message arrival, sync sources polled by their own
  * declared {@code pollingIntervalMs} (the AIMC's IDTA polling interval, MC
  * level or per-source override);</li>
- * <li>an update of ANY source (async arrival or sync poll tick) evaluates
- * the mapping <b>only once ALL sources of the mapping have delivered</b> —
- * a partial sources map is never emitted (the blob contract).</li>
+ * <li>every valid source update refreshes the cached contribution; an update
+ * evaluates the mapping only when its SourceId is selected by optional
+ * {@code ExecutionSemantics.TriggerSourceIds} (absent = legacy any-source)
+ * and once all required sources have delivered.</li>
  * </ul>
  *
  * <p>
- * There are no authorable knobs: no trigger kinds, no barriers, no
- * completion timeouts, no staleness bounds — sync cadence comes from the
- * declared IDTA polling intervals (plan Q8), and a partial map is never
- * emitted (plan Q9's conservative disposition is now the only behavior).
+ * Trigger selection never changes how an endpoint is read or observed.
+ * Selected source contributions still wait for a complete sources snapshot;
+ * unselected contributions update enrichment state without executing Lua.
  *
  * <p>
  * Fan-out reuses the shared transform-once multicast {@link FanOut}.
@@ -72,9 +73,6 @@ import org.slf4j.LoggerFactory;
 public class ExecutionPolicyRouteCreator implements RouteCreator {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ExecutionPolicyRouteCreator.class);
-
-	/** Header carrying the AIMC SourceId on async feeder routes. */
-	private static final String SOURCE_ID_HEADER = "AIMC_SourceId";
 
 	private final RouteBuilder routeBuilder;
 	private final RoutesConfiguration routesConfiguration;
@@ -94,10 +92,15 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 				routesConfiguration, routeConfig.getDatasinks(), routeId);
 		String[] dataTransformerEndpoints = RouteCreatorHelper.getDataTransformerEndpoints(
 				routesConfiguration, routeConfig.getTransformers(), routeId);
-		Map<String, String[]> datasinkMapping = RouteCreatorHelper.getDataSinkMapping(
+		Map<String, String[]> datasinkMapping = RouteCreatorHelper.getDataSinkMappingById(
 				routesConfiguration, routeConfig.getDatasinkMappingConfiguration(), routeId);
 
 		FanIn fanIn = new FanIn(routeConfig, routesConfiguration);
+		List<String> triggerSourceIds = routeConfig.getTriggerSourceIds();
+		if (triggerSourceIds != null && !fanIn.expectedSourceIds().containsAll(triggerSourceIds)) {
+			throw new IllegalArgumentException("route " + routeId
+					+ " triggerSourceIds must identify sources on this route");
+		}
 		String collectUri = "direct:policy-" + routeId;
 
 		for (int i = 0; i < routeConfig.getDatasources().size(); i++) {
@@ -105,23 +108,28 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 			DataSourceConfiguration config = routesConfiguration.getDatasources().get(endpointId);
 			String sourceId = FanIn.resolveSourceId(routesConfiguration, endpointId);
 			if (config != null && "sync".equalsIgnoreCase(config.getDelivery())) {
-				// sync source: a dedicated scheduler polls the consumer at
-				// its declared cadence and feeds the same cache
-				long periodMs = config.getPollingIntervalMs() > 0
-						? config.getPollingIntervalMs()
-						: DEFAULT_SYNC_POLL_MS;
+				// Sync sources issue a fresh Read when the connector has a read
+				// adapter; consumer-only sources retain their polling consumer path.
+				long periodMs = config.getPollingIntervalMs();
+				if (periodMs <= 0) {
+					periodMs = DEFAULT_DEVICE_POLL_MS;
+				}
 				LOGGER.info("route {}: sync source {} polled every {} ms", routeId, sourceId, periodMs);
-				routeBuilder
+				ProcessorDefinition<?> poll = routeBuilder
 						.from("timer:" + timerName(routeId, endpointId) + "?period=" + periodMs)
-						.routeId(routeId + "-poll-" + endpointId)
-						// pollEnrich retains the original exchange when a read returns
-						// null; the timer body must never enter the source cache.
-						.setBody(org.apache.camel.builder.Builder.constant(null))
-						.pollEnrich(dataSourceEndpoints[i], SYNC_POLL_TIMEOUT_MS)
-						.filter(exchange -> exchange.getMessage().getBody() != null)
-						.setHeader(SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceId))
+						.routeId(routeId + "-poll-" + endpointId);
+				SynchronousSourceReadAdapter readAdapter = synchronousReadAdapter(dataSourceEndpoints[i]);
+				if (readAdapter == null) {
+					poll.setBody(org.apache.camel.builder.Builder.constant(null))
+							.pollEnrich(dataSourceEndpoints[i], SYNC_POLL_TIMEOUT_MS);
+				} else {
+					readAdapter.configureRead(poll, dataSourceEndpoints[i]);
+				}
+				poll.filter(exchange -> exchange.getMessage().getBody() != null)
+						.setHeader(FanIn.SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceId))
 						.process(fanIn.disassemble(endpointId))
 						.filter(fanIn::contributed)
+						.filter(exchange -> fanIn.selectedTrigger(exchange, triggerSourceIds))
 						.to(collectUri);
 			} else {
 				// async source: the consumer feeds the cache and drives an
@@ -130,15 +138,22 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 						.from(routesConfiguration.getDatasources().get(endpointId).getConnectionURI())
 						.routeId(routeId + "-source-" + endpointId)
 						;
-				if (config != null && "aas-element-event".equals(config.getSourceKind())) {
-					sourceRoute = sourceRoute.process(new AasPropertyEventProcessor(config))
+				if (config != null && config.getSourceKind() != null
+						&& !config.getSourceKind().isBlank()) {
+					SourceEventAdapter adapter = sourceEventAdapter(config.getSourceKind());
+					if (adapter == null) {
+						throw new IllegalArgumentException("route " + routeId
+								+ " has no connector for event sourceKind " + config.getSourceKind());
+					}
+					sourceRoute = sourceRoute.process(adapter.normalizer(config))
 							.filter(exchange -> Boolean.TRUE.equals(
-									exchange.getProperty(AasPropertyEventProcessor.MATCH_PROPERTY)));
+								exchange.getProperty(SourceEventAdapter.CONTRIBUTION_PROPERTY)));
 				}
 				sourceRoute
-						.setHeader(SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceId))
+						.setHeader(FanIn.SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceId))
 						.process(fanIn.disassemble(endpointId))
 						.filter(fanIn::contributed)
+						.filter(exchange -> fanIn.selectedTrigger(exchange, triggerSourceIds))
 						.to(collectUri);
 			}
 		}
@@ -152,8 +167,22 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 				dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
 	}
 
-	/** Bounded poll cadence for sync sources that declare none. */
-	static final long DEFAULT_SYNC_POLL_MS = Long.getLong("dmp.policy.defaultSyncPollMs", 5000L);
+	/** Backward-compatible cadence for device Read sources lacking authored intervals. */
+	static final long DEFAULT_DEVICE_POLL_MS = Long.getLong("dmp.policy.defaultSyncPollMs", 5000L);
+
+	private static SourceEventAdapter sourceEventAdapter(String kind) {
+		return java.util.ServiceLoader.load(SourceEventAdapter.class).stream()
+				.map(java.util.ServiceLoader.Provider::get)
+				.filter(adapter -> kind.equals(adapter.sourceKind()))
+				.findFirst().orElse(null);
+	}
+
+	private static SynchronousSourceReadAdapter synchronousReadAdapter(String endpointUri) {
+		return java.util.ServiceLoader.load(SynchronousSourceReadAdapter.class).stream()
+				.map(java.util.ServiceLoader.Provider::get)
+				.filter(adapter -> adapter.supports(endpointUri))
+				.findFirst().orElse(null);
+	}
 
 	/** Per-source poll ceiling for one sync read. */
 	static final long SYNC_POLL_TIMEOUT_MS = Long.getLong("dmp.policy.syncPollTimeoutMs", 5000L);

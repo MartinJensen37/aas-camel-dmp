@@ -52,6 +52,9 @@ public class OpcuaDataSourceConfigurationDeserializer implements JsonDeserialize
         if (object.has("valuePath") && !object.get("valuePath").isJsonNull()) {
             config.setValuePath(object.get("valuePath").getAsString());
         }
+        if (object.has("schema") && !object.get("schema").isJsonNull()) {
+            config.setSchema(jsonDeserializationContext.deserialize(object.get("schema"), Map.class));
+        }
         if (object.has("sourceKind") && !object.get("sourceKind").isJsonNull()) {
             config.setSourceKind(object.get("sourceKind").getAsString());
         }

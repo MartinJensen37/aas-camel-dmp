@@ -56,6 +56,12 @@ public class OpcuaDataSourceConfiguration extends DataSourceConfiguration {
 	public OpcuaDataSourceConfiguration() {
 	}
 
+	@Override
+	public String getSourceKind() {
+		String configured = super.getSourceKind();
+		return configured == null || configured.isBlank() ? "opcua" : configured;
+	}
+
 	public OpcuaDataSourceConfiguration(
 			String uniqueId,
 			String serverUrl,

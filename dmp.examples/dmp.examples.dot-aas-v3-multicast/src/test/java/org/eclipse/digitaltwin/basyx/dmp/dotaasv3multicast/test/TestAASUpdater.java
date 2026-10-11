@@ -26,6 +26,7 @@ package org.eclipse.digitaltwin.basyx.dmp.dotaasv3multicast.test;
 
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
@@ -34,7 +35,8 @@ import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.factory.AASDataSinkDe
 import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpComponent;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
+import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.factory.LuaDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.factory.MqttDefaultConfigurationFactory;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -48,7 +50,6 @@ import org.junit.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.Header;
-import org.mockserver.verify.VerificationTimes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,13 +68,13 @@ public class TestAASUpdater {
 	private static final String PROPERTY_PROCESS_ID_VALUE_PATH = "/submodels/cHJvY2Vzcw==/submodel-elements/processId/$value";
 	private static final String PROPERTY_PROCESS_ID_VALUE = "\"00001\"";
 	private static final String PROPERTY_PROCESS_RESULT_VALUE_PATH = "/submodels/cHJvY2Vzcw==/submodel-elements/processResult/$value";
-	private static final String PROPERTY_PROCESS_RESULT_VALUE = "\"true\"";
+	private static final String PROPERTY_PROCESS_RESULT_VALUE = "true";
 	private static final String PROPERTY_PROCESS_DATA_VALUE_PATH = "/submodels/cHJvY2Vzcw==/submodel-elements/processData/$value";
-	private static final String PROPERTY_PROCESS_DATA_VALUE = "\"{\"ProcessData\":{\"Volume_NV\":410.5,\"Volume_AV\":407.7,\"Charge\":\"0000000001\",\"Pressure\":\"43.31\",\"Speed\":\"0.158790365\",\"Temperature\":\"42\",\"Result\":\"1\",\"StartProcess\":\"2022-06-22T08:21:33.4300238Z\",\"Volume\":\"39.7\",\"Weight\":\"49.69\",\"EndPorcess\":\"2022-06-22T08:22:56.4085953Z\"}}\"";
+	private static final String PROPERTY_PROCESS_DATA_VALUE = "{\"ProcessData\":{\"Volume_NV\":410.5,\"Volume_AV\":407.7,\"Charge\":\"0000000001\",\"Pressure\":\"43.31\",\"Speed\":\"0.158790365\",\"Temperature\":\"42\",\"Result\":\"1\",\"StartProcess\":\"2022-06-22T08:21:33.4300238Z\",\"Volume\":\"39.7\",\"Weight\":\"49.69\",\"EndPorcess\":\"2022-06-22T08:22:56.4085953Z\"}}";
 	private static final String PROPERTY_PROCESS_DATA_RAW_VALUE_PATH = "/submodels/cHJvY2Vzcw==/submodel-elements/processData_raw/$value";
 	// unmapped sinks receive the merged sources map (ADR-020 contract),
 	// not the raw device payload
-	private static final String PROPERTY_PROCESS_DATA_RAW_VALUE = "\"{\"mqttSource\":{\"Process\":{\"ProcessID\":\"00001\",\"Result\":true,\"ProcessData\":{\"Volume_NV\":410.5,\"Volume_AV\":407.7,\"Charge\":\"0000000001\",\"Pressure\":\"43.31\",\"Speed\":\"0.158790365\",\"Temperature\":\"42\",\"Result\":\"1\",\"StartProcess\":\"2022-06-22T08:21:33.4300238Z\",\"Volume\":\"39.7\",\"Weight\":\"49.69\",\"EndPorcess\":\"2022-06-22T08:22:56.4085953Z\"}}}}\"";
+	private static final String PROPERTY_PROCESS_DATA_RAW_VALUE = "{\"mqttSource\":{\"Process\":{\"ProcessID\":\"00001\",\"Result\":true,\"ProcessData\":{\"Volume_NV\":410.5,\"Volume_AV\":407.7,\"Charge\":\"0000000001\",\"Pressure\":\"43.31\",\"Speed\":\"0.158790365\",\"Temperature\":\"42\",\"Result\":\"1\",\"StartProcess\":\"2022-06-22T08:21:33.4300238Z\",\"Volume\":\"39.7\",\"Weight\":\"49.69\",\"EndPorcess\":\"2022-06-22T08:22:56.4085953Z\"}}}}";
 	private static final String PROPERTY_PROCESS_DURATION_VALUE_PATH = "/submodels/cHJvY2Vzcw==/submodel-elements/processDuration/$value";
 	private static final String PROPERTY_PROCESS_DURATION_VALUE = "\"1M22S\"";
 
@@ -152,10 +153,13 @@ public class TestAASUpdater {
 		configuration.addDatasources(mqttConfigFactory.create());
 
 		AASDataSinkDefaultConfigurationFactory aasConfigFactory = new AASDataSinkDefaultConfigurationFactory(loader);
-		configuration.addDatasinks(aasConfigFactory.create());
+		var sinks = aasConfigFactory.create();
+		assertEquals("process/processId", sinks.stream().filter(sink -> "process/processId".equals(sink.getUniqueId()))
+				.findFirst().orElseThrow().getSinkId());
+		configuration.addDatasinks(sinks);
 
-		JsonataDefaultConfigurationFactory jsonataConfigFactory = new JsonataDefaultConfigurationFactory(loader);
-		configuration.addTransformers(jsonataConfigFactory.create());
+		LuaDefaultConfigurationFactory luaConfigFactory = new LuaDefaultConfigurationFactory(loader);
+		configuration.addTransformers(luaConfigFactory.create());
 
 		updater = new DmpComponent(configuration);
 		updater.startComponent();
@@ -186,7 +190,6 @@ public class TestAASUpdater {
 	private static void createExpectationForRequest(String path, String value) {
 		new MockServerClient("localhost", 4001).when(request().withMethod("PATCH")
 				.withPath(path)
-				.withBody(value)
 				.withHeader("Content-Type", "application/json"))
 				.respond(response().withStatusCode(HttpStatus.SC_CREATED)
 						.withHeaders(new Header("Content-Type", "application/json; charset=utf-8")));
@@ -194,9 +197,11 @@ public class TestAASUpdater {
 
 	@SuppressWarnings("resource")
 	private void verifyCall(String path, String value) {
-		new MockServerClient("localhost", 4001).verify(request().withMethod("PATCH")
-				.withPath(path)
-				.withHeader("Content-Type", "application/json")
-				.withBody(value), VerificationTimes.exactly(1));
+		org.mockserver.model.HttpRequest[] requests = new MockServerClient("localhost", 4001)
+				.retrieveRecordedRequests(request().withMethod("PATCH").withPath(path));
+		assertEquals("expected one PATCH to " + path, 1, requests.length);
+		String actual = new String(requests[0].getBodyAsRawBytes(), java.nio.charset.StandardCharsets.UTF_8);
+		assertEquals("unexpected physical JSON value for " + path,
+				JsonCodec.parseJson(value), JsonCodec.parseJson(actual));
 	}
 }

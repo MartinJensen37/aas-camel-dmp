@@ -24,7 +24,6 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.lua.component;
 
-import java.io.IOException;
 import java.util.Map;
 
 import org.apache.camel.Exchange;
@@ -40,7 +39,6 @@ import org.luaj.vm2.LuaValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Executes the AIMC-compliant Lua blob for each exchange.
@@ -54,11 +52,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * <li>install the CPU timeout hook</li>
  * <li>bind the pre-compiled prototype to the fresh environment (defines
  * {@code aimc_main}) — no re-parsing/re-compiling</li>
- * <li>decode the exchange body (host-side JSON, ADR-004)</li>
+ * <li>convert the decoded Java value tree to isolated Lua values</li>
  * <li>call {@code aimc_main(sources)} where {@code sources} is keyed by
  * {@code SourceId}</li>
- * <li>JSON-encode the returned table (keyed by {@code SinkId}) back to the
- * body</li>
+ * <li>convert the returned Lua table (keyed by {@code SinkId}) back to a
+ * decoded Java value tree</li>
  * </ol>
  *
  * @author aas-camel-dmp
@@ -68,7 +66,6 @@ public class LuaProducer extends DefaultProducer {
 	private static final Logger LOGGER = LoggerFactory.getLogger(LuaProducer.class);
 
 	private final LuaEndpoint endpoint;
-	private final ObjectMapper mapper = new ObjectMapper();
 	private volatile LuaScriptLoader scriptLoader;
 
 	public LuaProducer(LuaEndpoint endpoint) {
@@ -84,7 +81,7 @@ public class LuaProducer extends DefaultProducer {
 		CompiledLuaScript compiled;
 		try {
 			compiled = getScriptLoader().loadCompiled(endpoint.getScriptPath());
-		} catch (IOException e) {
+		} catch (java.io.IOException e) {
 			throw new IllegalStateException(
 					"Unable to load Lua blob '" + endpoint.getScriptPath() + "': " + e.getMessage(), e);
 		}
@@ -143,16 +140,8 @@ public class LuaProducer extends DefaultProducer {
 		return current;
 	}
 
-	private Object getBody(Exchange exchange) throws IOException {
-		Object body = exchange.getMessage().getBody();
-		if (body == null) {
-			return null;
-		}
-		if ("JsonValue".equalsIgnoreCase(endpoint.getInputType())) {
-			return body;
-		}
-		String json = exchange.getMessage().getBody(String.class);
-		return mapper.readValue(json, Object.class);
+	private Object getBody(Exchange exchange) {
+		return exchange.getMessage().getBody();
 	}
 
 	private LuaValue buildSources(Object body) {
@@ -214,11 +203,7 @@ public class LuaProducer extends DefaultProducer {
 		return value == org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL ? null : value;
 	}
 
-	private void setBody(Exchange exchange, Object value) throws IOException {
-		if ("JsonValue".equalsIgnoreCase(endpoint.getOutputType())) {
-			exchange.getMessage().setBody(value);
-		} else {
-			exchange.getMessage().setBody(mapper.writeValueAsString(value));
-		}
+	private void setBody(Exchange exchange, Object value) {
+		exchange.getMessage().setBody(value);
 	}
 }

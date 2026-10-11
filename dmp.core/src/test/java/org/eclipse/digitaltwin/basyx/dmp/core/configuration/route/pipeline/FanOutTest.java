@@ -113,8 +113,8 @@ class FanOutTest extends CamelTestSupport {
 						null, "faultRoute");
 
 				from("direct:shared").process(exchange -> sharedTransforms.incrementAndGet());
-				from("direct:leftMap").setBody().constant("{\"Left\":\"mapped left\"}");
-				from("direct:rightMap").setBody().constant("{\"Right\":\"mapped right\"}");
+				from("direct:leftMap").setBody().constant(Map.of("Left", "mapped left"));
+				from("direct:rightMap").setBody().constant(Map.of("Right", "mapped right"));
 			}
 		};
 	}
@@ -125,7 +125,7 @@ class FanOutTest extends CamelTestSupport {
 		MockEndpoint right = getMockEndpoint("mock:right");
 		left.expectedMessageCount(1);
 		right.expectedMessageCount(1);
-		template.sendBody("direct:sharedInput", "{\"Left\":\"one\",\"Right\":\"two\"}");
+		template.sendBody("direct:sharedInput", Map.of("Left", "one", "Right", "two"));
 		MockEndpoint.assertIsSatisfied(context);
 		assertEquals("one", left.getExchanges().get(0).getMessage().getBody(String.class));
 		assertEquals("two", right.getExchanges().get(0).getMessage().getBody(String.class));
@@ -138,7 +138,7 @@ class FanOutTest extends CamelTestSupport {
 		MockEndpoint right = getMockEndpoint("mock:customRight");
 		left.expectedMessageCount(1);
 		right.expectedMessageCount(1);
-		template.sendBody("direct:customInput", "{\"Left\":\"raw\",\"Right\":\"raw\"}");
+		template.sendBody("direct:customInput", Map.of("Left", "raw", "Right", "raw"));
 		MockEndpoint.assertIsSatisfied(context);
 		assertEquals("mapped left", left.getExchanges().get(0).getMessage().getBody(String.class));
 		assertEquals("mapped right", right.getExchanges().get(0).getMessage().getBody(String.class));
@@ -149,7 +149,7 @@ class FanOutTest extends CamelTestSupport {
 	 * transform result, not a body a sibling branch produced. The
 	 * dot-aas-v3-multicast example relies on this: its raw sink sits beside four
 	 * transformed sinks in one mapping, and none of the sinks declare a
-	 * sinkId/valuePath (they are AAS sinks, which self-handle).
+	 * sinkId/valuePath (the destination connector applies the selected value path).
 	 *
 	 * <p>Two messages are sent on purpose: the example's failure only showed up
 	 * on the SECOND fan-out, where each sink received its neighbour's body.
@@ -162,15 +162,12 @@ class FanOutTest extends CamelTestSupport {
 		MockEndpoint raw = getMockEndpoint("mock:mixedRaw");
 		mapped.expectedMessageCount(2);
 		raw.expectedMessageCount(2);
-		template.sendBody("direct:mixedInput", "{\"Left\":\"raw\",\"Right\":\"raw\"}");
-		template.sendBody("direct:mixedInput", "{\"Left\":\"raw2\",\"Right\":\"raw2\"}");
+		template.sendBody("direct:mixedInput", Map.of("Left", "raw", "Right", "raw"));
+		template.sendBody("direct:mixedInput", Map.of("Left", "raw2", "Right", "raw2"));
 		MockEndpoint.assertIsSatisfied(context);
-		assertEquals("{\"Left\":\"mapped left\"}",
-				mapped.getExchanges().get(0).getMessage().getBody(String.class));
-		assertEquals("{\"Left\":\"raw\",\"Right\":\"raw\"}",
-				raw.getExchanges().get(0).getMessage().getBody(String.class));
-		assertEquals("{\"Left\":\"raw2\",\"Right\":\"raw2\"}",
-				raw.getExchanges().get(1).getMessage().getBody(String.class));
+		assertEquals(Map.of("Left", "mapped left"), mapped.getExchanges().get(0).getMessage().getBody());
+		assertEquals(Map.of("Left", "raw", "Right", "raw"), raw.getExchanges().get(0).getMessage().getBody());
+		assertEquals(Map.of("Left", "raw2", "Right", "raw2"), raw.getExchanges().get(1).getMessage().getBody());
 	}
 
 	/**
@@ -178,10 +175,7 @@ class FanOutTest extends CamelTestSupport {
 	 * failure is then reported rather than passing as a successful write.
 	 */
 	/**
-	 * A transform's JSON string output keeps its quoting on the way to the sink,
-	 * while a plain device payload is passed through verbatim. Both arrive as a
-	 * Java String, so only the payload's own shape can tell them apart - and
-	 * re-serialising the plain one would turn IDLE into "IDLE".
+	 * JSON-looking text remains a String; the pipeline does not reparse it.
 	 */
 	@Test
 	void aFailingSinkDoesNotStopTheOthersButIsStillReported() throws Exception {
@@ -198,7 +192,7 @@ class FanOutTest extends CamelTestSupport {
 			// the failure IS reported — a partial fan-out must not pass as success
 			org.junit.jupiter.api.Assertions.assertThrows(
 					org.apache.camel.CamelExecutionException.class,
-					() -> producer.sendBody("direct:faultInput", "{\"Value\":\"v\"}"),
+					() -> producer.sendBody("direct:faultInput", Map.of("Value", "v")),
 					"a sink failure must surface after all sinks were attempted");
 		} finally {
 			producer.stop();
@@ -206,20 +200,20 @@ class FanOutTest extends CamelTestSupport {
 
 		// ...but the healthy sibling was still delivered
 		MockEndpoint.assertIsSatisfied(context);
-		assertEquals("{\"Value\":\"v\"}", ok.getExchanges().get(0).getMessage().getBody(String.class));
+		assertEquals(Map.of("Value", "v"), ok.getExchanges().get(0).getMessage().getBody());
 	}
 
 	@Test
-	void aJsonStringResultKeepsItsQuotesAndAPlainPayloadDoesNotGainThem() throws Exception {
+	void jsonLookingStringsRemainOpaqueAndDoNotGainQuotes() throws Exception {
 		MockEndpoint sink = getMockEndpoint("mock:payloadSink");
 		sink.expectedMessageCount(2);
 
-		template.sendBody("direct:payloadInput", "\"103.55\"");
+		template.sendBody("direct:payloadInput", "103.55");
 		template.sendBody("direct:payloadInput", "IDLE");
 
 		MockEndpoint.assertIsSatisfied(context);
-		assertEquals("\"103.55\"", sink.getExchanges().get(0).getMessage().getBody(String.class),
-				"a JsonString result must keep the quoting the transform added");
+		assertEquals("103.55", sink.getExchanges().get(0).getMessage().getBody(String.class),
+				"a JSON-looking String must not be reparsed or requoted");
 		assertEquals("IDLE", sink.getExchanges().get(1).getMessage().getBody(String.class),
 				"a plain device payload must pass through verbatim, not become \"IDLE\"");
 	}

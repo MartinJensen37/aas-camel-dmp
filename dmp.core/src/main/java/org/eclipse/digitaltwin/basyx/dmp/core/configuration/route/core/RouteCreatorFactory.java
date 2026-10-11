@@ -28,6 +28,9 @@ import org.apache.camel.builder.RouteBuilder;
 
 public interface RouteCreatorFactory {
 
+	/** Opaque route-kind key supplied by this connector/plugin. */
+	String routeTrigger();
+
 	public RouteCreator create(RouteBuilder routeBuilder, RoutesConfiguration routesConfiguration);
 
 }

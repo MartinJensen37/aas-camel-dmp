@@ -38,8 +38,8 @@ import org.apache.camel.support.DefaultEndpoint;
  * Endpoint for the {@code lua:} scheme (producer-only transformation).
  *
  * <p>
- * URI syntax: {@code lua:file:<path>?inputType=JsonString&outputType=JsonString
- * &timeoutSeconds=2&contentCache=true&maxScriptBytes=1048576&sourceKeys=body}
+ * URI syntax: {@code lua:file:<path>?timeoutSeconds=2&contentCache=true
+ * &maxScriptBytes=1048576&sourceKeys=body}
  *
  * @author aas-camel-dmp
  */
@@ -50,14 +50,6 @@ public class LuaEndpoint extends DefaultEndpoint {
 	@UriPath(description = "Path to the Lua blob, optionally prefixed with file:")
 	@Metadata(required = true)
 	private String resourcePath;
-
-	@UriParam(defaultValue = "JsonString", enums = "JsonString,JsonValue",
-			description = "Type of the input: JsonString (decode) or JsonValue (already parsed)")
-	private String inputType = "JsonString";
-
-	@UriParam(defaultValue = "JsonString", enums = "JsonString,JsonValue",
-			description = "Type of the output: JsonString (encode) or JsonValue")
-	private String outputType = "JsonString";
 
 	@UriParam(defaultValue = "2", description = "CPU budget per invocation in seconds")
 	private double timeoutSeconds = 2;
@@ -106,22 +98,6 @@ public class LuaEndpoint extends DefaultEndpoint {
 
 	public void setResourcePath(String resourcePath) {
 		this.resourcePath = resourcePath;
-	}
-
-	public String getInputType() {
-		return inputType;
-	}
-
-	public void setInputType(String inputType) {
-		this.inputType = inputType;
-	}
-
-	public String getOutputType() {
-		return outputType;
-	}
-
-	public void setOutputType(String outputType) {
-		this.outputType = outputType;
 	}
 
 	public double getTimeoutSeconds() {

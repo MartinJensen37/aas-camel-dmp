@@ -47,6 +47,12 @@ public class MqttDataSourceConfiguration extends DataSourceConfiguration {
 	private Integer qos;
 
 	public MqttDataSourceConfiguration() {}
+
+	@Override
+	public String getSourceKind() {
+		String configured = super.getSourceKind();
+		return configured == null || configured.isBlank() ? "mqtt" : configured;
+	}
 	
 	public Integer getQos() {
 		return qos;

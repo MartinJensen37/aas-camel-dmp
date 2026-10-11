@@ -25,6 +25,8 @@
 package org.eclipse.digitaltwin.basyx.dmp.lua.configuration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -60,16 +62,15 @@ class LuaDefaultConfigurationFactoryTest {
 
 		LuaTransformerConfiguration config = (LuaTransformerConfiguration) configs.get(0);
 		assertEquals("syntegonStopperingSystemAAS_PackMLState_State_transformer", config.getUniqueId());
-		assertEquals("queries/syntegonStopperingSystemAAS_PackMLState_State.lua", config.getQueryPath());
-		assertEquals("JsonString", config.getInputType());
-		assertEquals("JsonString", config.getOutputType());
+		assertTrue(config.getQueryPath().endsWith("queries/syntegonStopperingSystemAAS_PackMLState_State.lua"));
 
 		String uri = config.getConnectionURI();
-		// classpath-relative path: no file: prefix (matches the JSONata pattern)
-		assertTrue(uri.startsWith("lua:queries/syntegonStopperingSystemAAS_PackMLState_State.lua"),
+		assertTrue(uri.startsWith("lua:file:"),
 				"unexpected URI: " + uri);
-		assertTrue(uri.contains("inputType=JsonString"), "missing inputType: " + uri);
-		assertTrue(uri.contains("outputType=JsonString"), "missing outputType: " + uri);
+		assertTrue(uri.contains("queries/syntegonStopperingSystemAAS_PackMLState_State.lua?"),
+				"unexpected resolved query path: " + uri);
+		assertFalse(uri.contains("inputType"), "transform modes are not part of the URI: " + uri);
+		assertFalse(uri.contains("outputType"), "transform modes are not part of the URI: " + uri);
 		assertTrue(uri.contains("timeoutSeconds=2"), "missing default timeout: " + uri);
 		assertTrue(uri.contains("contentCache=true"), "missing default contentCache: " + uri);
 		assertTrue(uri.contains("maxScriptBytes=1048576"), "missing default maxScriptBytes: " + uri);
@@ -88,10 +89,7 @@ class LuaDefaultConfigurationFactoryTest {
 				[
 				  {
 				    "uniqueId": "syntegonStopperingSystemAAS_PackMLState_State_transformer",
-				    "queryLanguage": "LUA",
-				    "queryPath": "queries/syntegonStopperingSystemAAS_PackMLState_State.lua",
-				    "inputType": "JsonString",
-				    "outputType": "JsonString"
+				    "queryPath": "queries/syntegonStopperingSystemAAS_PackMLState_State.lua"
 				  }
 				]
 				""", StandardCharsets.UTF_8);
@@ -108,7 +106,19 @@ class LuaDefaultConfigurationFactoryTest {
 		String uri = config.getConnectionURI();
 		assertTrue(uri.startsWith("lua:file:" + queries.resolve("syntegonStopperingSystemAAS_PackMLState_State.lua")),
 				"unexpected URI: " + uri);
-		assertTrue(uri.contains("inputType=JsonString"), "missing inputType: " + uri);
-		assertTrue(uri.contains("outputType=JsonString"), "missing outputType: " + uri);
+		assertFalse(uri.contains("inputType"));
+		assertFalse(uri.contains("outputType"));
+	}
+
+	@Test
+	void rejectsRetiredLuaTransformModes() throws Exception {
+		Path configFile = tempDir.resolve("luatransformer.json");
+		Files.writeString(configFile, """
+				[{"uniqueId":"stale","queryPath":"old.lua","inputType":"JsonString"}]
+				""", StandardCharsets.UTF_8);
+		LuaDefaultConfigurationFactory factory = new LuaDefaultConfigurationFactory(configFile.toString(),
+				getClass().getClassLoader());
+		IllegalArgumentException error = assertThrows(IllegalArgumentException.class, factory::create);
+		assertTrue(error.getMessage().contains("inputType"));
 	}
 }

@@ -25,13 +25,17 @@
 package org.eclipse.digitaltwin.basyx.dmp.paho.mqtt5.component;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.support.DefaultProducer;
-import org.eclipse.digitaltwin.basyx.dmp.core.operation.OperationDelegationTimeoutException;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +83,10 @@ public class MqttV5Producer extends DefaultProducer {
 	public void process(Exchange exchange) throws Exception {
 		Object body = exchange.getMessage().getBody();
 		byte[] payload = body == null ? new byte[0]
-				: (body instanceof byte[] b ? b : exchange.getMessage().getBody(String.class)
+				: (body instanceof byte[] b ? b : (body == JsonPointer.JSON_NULL
+						|| body instanceof Map<?, ?> || body instanceof List<?>
+						|| body instanceof Number || body instanceof Boolean
+						? JsonCodec.toJson(body) : exchange.getMessage().getBody(String.class))
 						.getBytes(StandardCharsets.UTF_8));
 
 		if (!org.apache.camel.support.ExchangeHelper.isOutCapable(exchange)) {
@@ -119,9 +126,10 @@ public class MqttV5Producer extends DefaultProducer {
 					java.util.concurrent.TimeUnit.MILLISECONDS);
 			exchange.getMessage().setBody(reply);
 		} catch (java.util.concurrent.TimeoutException e) {
-			throw new OperationDelegationTimeoutException("operation request on '"
-					+ endpoint.getTopic() + "' timed out after " + endpoint.getReplyTimeout()
-					+ "s: no correlated reply on '" + replyTopic + "'");
+			throw new ConnectorInvocationException(ConnectorInvocationException.Category.TIMEOUT,
+					"MQTT_REQUEST_TIMEOUT", "Timed out awaiting correlated MQTT reply",
+					java.util.Map.of("topic", endpoint.getTopic(), "responseTopic", replyTopic,
+							"timeoutSeconds", endpoint.getReplyTimeout()));
 		} catch (java.util.concurrent.ExecutionException e) {
 			throw new IllegalStateException("correlated reply failed: " + e.getMessage(), e);
 		} catch (InterruptedException e) {

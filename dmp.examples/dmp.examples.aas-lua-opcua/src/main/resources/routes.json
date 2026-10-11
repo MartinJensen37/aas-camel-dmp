@@ -1,0 +1,14 @@
+[
+ {
+  "transformers": [
+    "luaA"
+  ],
+  "datasinks": [
+   "exampleOPCUA1"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "exampleAAS1"
+  ]
+ }
+]

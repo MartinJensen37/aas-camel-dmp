@@ -41,7 +41,7 @@ import java.util.UUID;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpComponent;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.RoutesConfigurationFactory;
-import org.eclipse.digitaltwin.basyx.dmp.core.health.utility.HealthCheckUtils;
+import org.eclipse.digitaltwin.basyx.dmp.component.health.HealthCheckUtils;
 import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.factory.LuaDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.factory.MqttDataSinkDefaultConfigurationFactory;
 import org.eclipse.paho.mqttv5.client.MqttAsyncClient;
@@ -184,12 +184,12 @@ public class TestOperationDelegation {
 				+ "    \"transformers\": [\"syntegonStopperingSystem_Halt_request_transformer\"],\n"
 				+ "    \"datasinks\": [\"syntegonStopperingSystem_Halt_command_sink\"],\n"
 				+ "    \"triggerData\": {\n"
+				+ "      \"action\": \"Halt\",\n"
 				+ "      \"restPath\": \"/operations/syntegonStopperingSystemAAS/Halt\",\n"
 				+ "      \"restMethod\": \"POST\",\n"
-				+ "      \"requestReply\": true,\n"
-				+ "      \"responseTopic\": \"" + baseTopic + "/DATA/Halt\",\n"
 				+ "      \"responseTransformer\": \"syntegonStopperingSystem_Halt_response_transformer\",\n"
-				+ "      \"timeoutSeconds\": " + TIMEOUT_SECONDS + "\n"
+				+ "      \"targetOptions\": {\"requestReply\": true, \"responseTopic\": \""
+				+ baseTopic + "/DATA/Halt\", \"timeoutSeconds\": " + TIMEOUT_SECONDS + "}\n"
 				+ "    }\n"
 				+ "  }\n"
 				+ "]\n");
@@ -207,18 +207,12 @@ public class TestOperationDelegation {
 		write(configDir, "luatransformer.json", "[\n"
 				+ "  {\n"
 				+ "    \"uniqueId\": \"syntegonStopperingSystem_Halt_request_transformer\",\n"
-				+ "    \"queryLanguage\": \"LUA\",\n"
 				+ "    \"queryPath\": \"queries/Halt_request.lua\",\n"
-				+ "    \"inputType\": \"JsonString\",\n"
-				+ "    \"outputType\": \"JsonString\",\n"
 				+ "    \"sourceKeys\": \"Halt\"\n"
 				+ "  },\n"
 				+ "  {\n"
 				+ "    \"uniqueId\": \"syntegonStopperingSystem_Halt_response_transformer\",\n"
-				+ "    \"queryLanguage\": \"LUA\",\n"
 				+ "    \"queryPath\": \"queries/Halt_response.lua\",\n"
-				+ "    \"inputType\": \"JsonString\",\n"
-				+ "    \"outputType\": \"JsonString\",\n"
 				+ "    \"sourceKeys\": \"Halt\"\n"
 				+ "  }\n"
 				+ "]\n");

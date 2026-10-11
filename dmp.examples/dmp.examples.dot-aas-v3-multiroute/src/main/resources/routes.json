@@ -4,8 +4,7 @@
    "mqttSource"
   ],
   "transformers": [
-   "processData",
-   "processDuration"
+    "luaDuration"
   ],
   "datasinks": [
    "one/duration",

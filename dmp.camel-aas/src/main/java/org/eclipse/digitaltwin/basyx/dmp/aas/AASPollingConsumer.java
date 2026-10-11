@@ -34,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import com.google.gson.Gson;
 import org.apache.camel.Exchange;
 import org.apache.camel.support.DefaultMessage;
 import org.apache.camel.support.PollingConsumerSupport;
@@ -45,12 +46,11 @@ import org.apache.http.util.EntityUtils;
 import org.eclipse.basyx.submodel.metamodel.connected.ConnectedSubmodel;
 import org.eclipse.basyx.submodel.metamodel.connected.submodelelement.dataelement.ConnectedProperty;
 import org.eclipse.basyx.submodel.metamodel.facade.SubmodelElementMapCollectionConverter;
-import org.eclipse.basyx.vab.coder.json.serialization.DefaultTypeFactory;
-import org.eclipse.basyx.vab.coder.json.serialization.GSONTools;
 import org.eclipse.basyx.vab.modelprovider.VABElementProxy;
 import org.eclipse.basyx.vab.modelprovider.api.IModelProvider;
 import org.eclipse.basyx.vab.protocol.http.connector.HTTPConnectorFactory;
 import org.eclipse.digitaltwin.basyx.dmp.aas.api.ApiType;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +60,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class AASPollingConsumer extends PollingConsumerSupport {
+	private static final Gson GSON = new Gson();
 	
 	private static final Logger logger = LoggerFactory.getLogger(AASPollingConsumer.class);
 	
@@ -99,19 +100,19 @@ public class AASPollingConsumer extends PollingConsumerSupport {
 	protected Exchange doReceive(long timeout) {
 		
 		ExecutorService execService = Executors.newSingleThreadExecutor();
-        Callable<String> runWithTimeout = this::getSerializedMetamodel;
+	        Callable<Object> runWithTimeout = this::getMetamodelValue;
         
-        Future<String> responseFuture = execService.submit(runWithTimeout);
+	        Future<Object> responseFuture = execService.submit(runWithTimeout);
         
         try {
 			// Camel's PollingConsumer timeout is in milliseconds. A failed read
 			// must return no exchange: an empty string would enter the fan-in cache.
-			String result = timeout == WAIT_INDEFINITELY
+			Object decodedValue = timeout == WAIT_INDEFINITELY
 					? responseFuture.get() : responseFuture.get(timeout, TimeUnit.MILLISECONDS);
-			if (result == null) {
+			if (decodedValue == null) {
 				return null;
 			}
-			Exchange exchange = createExchange(result);
+			Exchange exchange = createExchange(decodedValue);
 			defaultConsumerCallback(exchange, true);
 			return exchange;
 		} catch (InterruptedException e) {
@@ -138,12 +139,12 @@ public class AASPollingConsumer extends PollingConsumerSupport {
     	this.proxy = new VABElementProxy("", provider);
 	}
 	
-	private Exchange createExchange(String exchangeProperty) {
+	private Exchange createExchange(Object decodedValue) {
 		
 		Exchange exchange = endpoint.createExchange();
 		
 		DefaultMessage exMsg = new DefaultMessage(exchange.getContext());
-		exMsg.setBody(exchangeProperty);
+		exMsg.setBody(decodedValue);
 		exchange.setIn(exMsg);
 		
 		return exchange;
@@ -153,21 +154,21 @@ public class AASPollingConsumer extends PollingConsumerSupport {
 	 * Get serialized metamodel
 	 * @return serialized meta model
 	 */
-	private String getSerializedMetamodel() throws IOException {
+	private Object getMetamodelValue() throws IOException {
 		if(this.endpoint.getApi() == ApiType.BASYX) {
 			if (!getEndpoint().getPropertyPath().isEmpty()
 					&& isPropertyElement()) {
 				ConnectedProperty prop = new ConnectedProperty(this.proxy);
-				return new GSONTools(new DefaultTypeFactory()).serialize(prop.getLocalCopy());
+				return JsonCodec.fromJsonTree(GSON.toJsonTree(prop.getLocalCopy()));
 			}
 			if (!getEndpoint().getPropertyPath().isEmpty()) {
-				return readElementJson();
+				return JsonCodec.parseJson(readElementJson());
 			}
 
 			ConnectedSubmodel sm = new ConnectedSubmodel(this.proxy);
-			return new GSONTools(new DefaultTypeFactory()).serialize(SubmodelElementMapCollectionConverter.smToMap(sm.getLocalCopy()));
+			return JsonCodec.copyValue(SubmodelElementMapCollectionConverter.smToMap(sm.getLocalCopy()));
 		}else{
-			return readJson(getMetamodelUrl(), "AAS");
+			return JsonCodec.parseJson(readJson(getMetamodelUrl(), "AAS"));
 		}
 	}
 

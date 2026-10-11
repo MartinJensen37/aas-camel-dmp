@@ -4,8 +4,8 @@
    "property1"
   ],
   "transformers": [
-   "jsonataA",
-   "jsonataB"
+    "luaA",
+    "luaB"
   ],
   "datasinks": [
    "ConnectedSubmodel/ConnectedPropertyA",
@@ -13,10 +13,10 @@
   ],
   "datasinkMappingConfiguration": {
    "ConnectedSubmodel/ConnectedPropertyA": [
-    "jsonataA"
+     "luaA"
    ],
    "ConnectedSubmodel/ConnectedPropertyB": [
-    "jsonataB"
+     "luaB"
    ]
   },
   "trigger": "execution-policy"

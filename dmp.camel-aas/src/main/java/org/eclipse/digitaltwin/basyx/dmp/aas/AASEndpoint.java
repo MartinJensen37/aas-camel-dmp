@@ -25,6 +25,8 @@
 package org.eclipse.digitaltwin.basyx.dmp.aas;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.camel.Category;
 import org.apache.camel.Consumer;
@@ -156,6 +158,7 @@ public class AASEndpoint extends DefaultEndpoint {
 
 	public void setPropertyValue(Object content) throws IOException {
 		Object value = extractValuePath(content);
+		if (value == org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL) value = null;
 		logger.debug("AAS write {} <- {} ({})", propertyPath, value,
 				value == null ? "null" : value.getClass().getSimpleName());
 		if (api.equals(ApiType.BASYX)) {
@@ -185,10 +188,13 @@ public class AASEndpoint extends DefaultEndpoint {
 		if (valuePath == null || valuePath.isBlank() || content == null) {
 			return content;
 		}
-		Object node = MAPPER.readValue(content.toString(), Object.class);
+		if (!(content instanceof Map<?, ?>) && !(content instanceof List<?>)) {
+			throw new IllegalArgumentException("AAS valuePath requires a decoded object or array payload");
+		}
+		Object node = content;
 		java.util.Optional<Object> field = org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.extract(node, valuePath);
 		if (field.isEmpty()) {
-			return content;
+			throw new IllegalArgumentException("AAS valuePath does not resolve in the decoded payload: " + valuePath);
 		}
 		Object value = field.get();
 		if (value == org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL) {
@@ -260,8 +266,13 @@ public class AASEndpoint extends DefaultEndpoint {
 		if (messageBody == null) {
 			return null;
 		}
-		if (propertyValueType.equals(ValueType.String))
+		if (messageBody == org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL) return null;
+		if (propertyValueType.equals(ValueType.String)) {
+			if (messageBody instanceof Map<?, ?> || messageBody instanceof List<?>) {
+				return org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec.toJson(messageBody);
+			}
 			return removeQuotesFromString(messageBody.toString());
+		}
 
 		return ValueTypeHelper.getJavaObject(messageBody, propertyValueType);
 	}

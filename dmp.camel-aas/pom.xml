@@ -32,6 +32,12 @@
 			<artifactId>dmp.core</artifactId>
 			<version>${revision}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<artifactId>dmp.camel-lua</artifactId>
+			<version>${revision}</version>
+			<scope>test</scope>
+		</dependency>
 
 		<!-- logging -->
 		<dependency>
@@ -45,6 +51,11 @@
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-test-junit5</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jetty</artifactId>
 			<scope>test</scope>
 		</dependency>
 

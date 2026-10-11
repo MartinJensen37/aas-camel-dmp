@@ -27,10 +27,7 @@ package org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.bridge.ProtocolBridgeRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.write.delegation.WriteDelegationRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteConfiguration;
 
 /**
  * A generic implementation of routes configuration factory
@@ -42,8 +39,7 @@ public class RoutesConfigurationFactory extends ConfigurationFactory {
 	public static final String DEFAULT_FILE_PATH = "routes.json";
 
 	/**
-	 * This constructor uses the {@link ExecutionPolicyRouteConfiguration} as the default
-	 * configuration
+	 * This constructor loads generic {@link RouteConfiguration} records.
 	 *
 	 * @param filePath
 	 * @param loader
@@ -53,8 +49,8 @@ public class RoutesConfigurationFactory extends ConfigurationFactory {
 	}
 
 	/**
-	 * This constructor uses the default path {@link #DEFAULT_FILE_PATH} and the
-	 * {@link ExecutionPolicyRouteConfiguration} as the default configuration
+	 * This constructor uses the default path {@link #DEFAULT_FILE_PATH} and
+	 * loads generic {@link RouteConfiguration} records.
 	 *
 	 * @param loader
 	 */
@@ -70,8 +66,6 @@ public class RoutesConfigurationFactory extends ConfigurationFactory {
 	}
 
 	private List<RouteConfiguration> mapToSpecificRouteConfigurations(List<RouteConfiguration> configurations) {
-		List<RouteConfiguration> mapped = new ArrayList<>();
-
 		for (int index = 0; index < configurations.size(); index++) {
 			RouteConfiguration configuration = configurations.get(index);
 			String label = configuration.getRouteId() != null
@@ -80,25 +74,12 @@ public class RoutesConfigurationFactory extends ConfigurationFactory {
 			String trigger = configuration.getRouteTrigger();
 			if (trigger == null || trigger.isBlank()) {
 				throw new IllegalArgumentException(
-						"route " + label + " declares no trigger (expected one of: "
-								+ ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER + ", "
-								+ ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER + ", "
-								+ WriteDelegationRouteConfiguration.ROUTE_TRIGGER + ")");
-			}
-			if (ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER.equals(trigger)) {
-				mapped.add(new ExecutionPolicyRouteConfiguration(configuration));
-			} else if (ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER.equals(trigger)) {
-				mapped.add(new ProtocolBridgeRouteConfiguration(configuration));
-			} else if (WriteDelegationRouteConfiguration.ROUTE_TRIGGER.equals(trigger)) {
-				mapped.add(new WriteDelegationRouteConfiguration(configuration));
-			} else {
-				throw new IllegalArgumentException("route " + label + " declares trigger '" + trigger
-						+ "' (supported: " + ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER + ", "
-						+ ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER + ", "
-						+ WriteDelegationRouteConfiguration.ROUTE_TRIGGER + ")");
+						"route " + label + " declares no trigger");
 			}
 		}
-
-		return mapped;
+		// Route-kind ownership belongs to connector-provided RouteCreatorFactory
+		// implementations. Preserve generic route data here; DmpRouteBuilder
+		// fails loudly if no installed connector claims a trigger.
+		return new ArrayList<>(configurations);
 	}
 }

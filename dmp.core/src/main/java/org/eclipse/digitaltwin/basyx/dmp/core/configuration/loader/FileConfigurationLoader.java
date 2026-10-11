@@ -89,6 +89,15 @@ public class FileConfigurationLoader {
 		JsonParser parser = new JsonParser(mapperClass);
 		return parser.getConfiguration(reader);
 	}
+
+	/** Loads the untyped JSON tree for configuration-specific strict validation. */
+	public com.google.gson.JsonElement loadJsonElement() {
+		try (Reader reader = getJsonReader()) {
+			return com.google.gson.JsonParser.parseReader(reader);
+		} catch (IOException e) {
+			throw new IllegalStateException("Could not read JSON configuration " + filePath, e);
+		}
+	}
 	
 	/**
 	 * Retrieves the input stream after loading the file from given 

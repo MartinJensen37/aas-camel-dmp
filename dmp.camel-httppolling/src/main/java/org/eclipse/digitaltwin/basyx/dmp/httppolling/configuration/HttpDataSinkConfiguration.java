@@ -107,6 +107,18 @@ public class HttpDataSinkConfiguration extends DataSinkConfiguration{
 		
 		return buildConnectionUri(uriBuilder);
 	}
+
+	@Override
+	public boolean requiresJsonWireEncoding() {
+		return hasJsonSchema(getPayloadSchema()) || hasJsonSchema(getSchema());
+	}
+
+	private static boolean hasJsonSchema(Object value) {
+		if (!(value instanceof java.util.Map<?, ?> schema) || schema.isEmpty()) return false;
+		return schema.containsKey("type") || schema.containsKey("properties") || schema.containsKey("items")
+				|| schema.containsKey("const") || schema.containsKey("enum") || schema.containsKey("oneOf")
+				|| schema.containsKey("anyOf") || schema.containsKey("allOf");
+	}
 	
 	private String buildConnectionUri(URIBuilder uriBuilder) {
 		

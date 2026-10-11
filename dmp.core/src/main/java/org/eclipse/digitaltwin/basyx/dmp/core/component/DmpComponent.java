@@ -32,15 +32,9 @@ import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.impl.health.DefaultHealthCheckRegistry;
 import org.apache.camel.impl.health.RoutesHealthCheckRepository;
 import org.eclipse.basyx.components.IComponent;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.bridge.ProtocolBridgeRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.bridge.ProtocolBridgeRouteCreatorFactory;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.write.delegation.WriteDelegationRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.write.delegation.WriteDelegationRouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteCreatorFactory;
-import org.eclipse.digitaltwin.basyx.dmp.core.health.routebuilder.HealthCheckRouteBuilder;
 import org.eclipse.digitaltwin.basyx.dmp.core.routebuilder.DmpRouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,15 +59,18 @@ public class DmpComponent implements IComponent {
 
 	private static Map<String, RouteCreatorFactory> getRouteCreatorFactoryMapDefault() {
 		Map<String, RouteCreatorFactory> defaultRouteCreatorFactoryMap = new HashMap<>();
-		// ONE creator family per output shape (ADR-020): policy-driven
-		// aggregation + the protocol bridge
-		defaultRouteCreatorFactoryMap.put(ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER,
-				new ExecutionPolicyRouteCreatorFactory());
-		defaultRouteCreatorFactoryMap.put(ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER,
-				new ProtocolBridgeRouteCreatorFactory());
-		defaultRouteCreatorFactoryMap.put(WriteDelegationRouteConfiguration.ROUTE_TRIGGER,
-				new WriteDelegationRouteCreatorFactory());
-
+		for (RouteCreatorFactory factory : java.util.ServiceLoader
+				.load(RouteCreatorFactory.class, DmpComponent.class.getClassLoader())) {
+			RouteCreatorFactory existing = defaultRouteCreatorFactoryMap.putIfAbsent(
+					factory.routeTrigger(), factory);
+			if (existing != null) {
+				throw new IllegalStateException("multiple route creator factories register trigger '"
+						+ factory.routeTrigger() + "'");
+			}
+		}
+		if (!defaultRouteCreatorFactoryMap.containsKey(ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER)) {
+			throw new IllegalStateException("no connector registers the standard execution-policy route");
+		}
 		return defaultRouteCreatorFactoryMap;
 	}
 
@@ -102,7 +99,10 @@ public class DmpComponent implements IComponent {
 		// Camel 4.x: setExtension() was removed; use the context plugin API instead
 		camelContext.getCamelContextExtension().addContextPlugin(HealthCheckRegistry.class,
 				configureHealthCheckRegistry());
-		camelContext.addRoutes(new HealthCheckRouteBuilder());
+		for (DmpRuntimeExtension extension : java.util.ServiceLoader
+				.load(DmpRuntimeExtension.class, Thread.currentThread().getContextClassLoader())) {
+			extension.configure(camelContext);
+		}
 	}
 
 	private HealthCheckRegistry configureHealthCheckRegistry() {

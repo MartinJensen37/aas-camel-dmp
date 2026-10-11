@@ -37,12 +37,13 @@ import org.luaj.vm2.LuaUserdata;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.TwoArgFunction;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * JSON bridge between the host and the Lua sandbox (ADR-004: JSON lives in the
- * host, blobs are table-in/table-out).
+ * Value bridge between decoded Java payload trees and native Lua values.
  *
  * <p>
  * The optional in-blob {@code json} library is registered by
@@ -52,8 +53,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @author aas-camel-dmp
  */
 public final class LuaJsonCodec extends TwoArgFunction {
-
-	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	/** Largest integer a Lua (double) number represents exactly: 2^53 - 1. */
 	private static final double MAX_EXACT_LUA_INTEGER = 9007199254740991.0;
@@ -82,7 +81,7 @@ public final class LuaJsonCodec extends TwoArgFunction {
 	}
 
 	/**
-	 * Converts a host-side (Jackson-parsed) JSON value to a real Lua value
+	 * Converts a decoded Java payload value to a real Lua value
 	 * (LuaTable for maps/lists, LuaNumber, LuaString, LuaBoolean). JSON null is
 	 * exposed as {@code json.null}; use {@code json.array()} and
 	 * {@code json.object()} when an empty table's shape matters. Does NOT use
@@ -90,7 +89,7 @@ public final class LuaJsonCodec extends TwoArgFunction {
 	 * JVM reflection / module access is involved).
 	 */
 	public static LuaValue toLua(Object jsonValue) {
-		if (jsonValue == null) {
+		if (jsonValue == null || jsonValue == JsonPointer.JSON_NULL) {
 			return new LuaUserdata(NULL_MARKER);
 		}
 		if (jsonValue instanceof Map) {
@@ -123,7 +122,7 @@ public final class LuaJsonCodec extends TwoArgFunction {
 		return LuaValue.valueOf(jsonValue.toString());
 	}
 
-	/** Converts a Lua value to a host-side JSON-compatible Java value. */
+	/** Converts a Lua value to a JSON-compatible decoded Java value. */
 	public static Object fromLua(LuaValue value) {
 		if (value.isnil()) {
 			return null;
@@ -143,7 +142,12 @@ public final class LuaJsonCodec extends TwoArgFunction {
 		if (value.isboolean()) {
 			return value.toboolean();
 		}
-		if (value.isnumber()) {
+		// LuaJ's isnumber() is coercive: a Lua string like "103.5" also
+		// reports as numeric. Test the actual Lua type before numeric conversion.
+		if (value.type() == LuaValue.TSTRING) {
+			return value.tojstring();
+		}
+		if (value.type() == LuaValue.TNUMBER) {
 			double number = value.todouble();
 			// LuaJ stores EVERY number as a double, so without this an integer
 			// that passed through a blob (e.g. a PackML occupation Uuid, or a
@@ -156,9 +160,6 @@ public final class LuaJsonCodec extends TwoArgFunction {
 				return (long) number;
 			}
 			return number;
-		}
-		if (value.isstring()) {
-			return value.tojstring();
 		}
 		if (value.istable()) {
 			return toJavaMapOrList(value.checktable());
@@ -265,7 +266,7 @@ public final class LuaJsonCodec extends TwoArgFunction {
 		@Override
 		public LuaValue call(LuaValue arg) {
 			try {
-				Object parsed = MAPPER.readValue(arg.checkjstring(), Object.class);
+				Object parsed = JsonCodec.parseJson(arg.checkjstring());
 				return toLua(parsed);
 			} catch (Exception e) {
 				throw new LuaError("json.decode failed: " + e.getMessage());
@@ -277,7 +278,7 @@ public final class LuaJsonCodec extends TwoArgFunction {
 		@Override
 		public LuaValue call(LuaValue arg) {
 			try {
-				return LuaValue.valueOf(MAPPER.writeValueAsString(fromLua(arg)));
+				return LuaValue.valueOf(JsonCodec.toJson(fromLua(arg)));
 			} catch (Exception e) {
 				throw new LuaError("json.encode failed: " + e.getMessage());
 			}

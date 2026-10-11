@@ -25,12 +25,14 @@
 package org.eclipse.digitaltwin.basyx.dmp.executable.regression;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.camel.CamelContext;
@@ -39,7 +41,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpComponent;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.core.health.utility.HealthCheckUtils;
+import org.eclipse.digitaltwin.basyx.dmp.component.health.HealthCheckUtils;
 import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.factory.LuaDefaultConfigurationFactory;
 import org.junit.Rule;
 import org.junit.Test;
@@ -69,7 +71,7 @@ public class SmokeTestLuaDmpRouteTest {
 	@Rule
 	public TemporaryFolder tempFolder = new TemporaryFolder();
 
-	private final List<String> captured = new CopyOnWriteArrayList<>();
+	private final List<Map<?, ?>> captured = new CopyOnWriteArrayList<>();
 
 	@Test
 	public void timerToLuaToSinkRunsInRealDmp() throws Exception {
@@ -104,6 +106,8 @@ public class SmokeTestLuaDmpRouteTest {
 			tickSource.setSourceId("body");
 			tickSource.setDelivery("sync");
 			tickSource.setPollingIntervalMs(1000);
+			tickSource.setSchema(Map.of("type", "object", "properties",
+					Map.of("value", Map.of("type", "integer"))));
 			configuration.addDatasources(List.of(tickSource));
 
 			ExposedDmpComponent updater = new ExposedDmpComponent(configuration);
@@ -116,7 +120,7 @@ public class SmokeTestLuaDmpRouteTest {
 				@Override
 				public void configure() throws Exception {
 					from("direct:luaCapture").process(exchange -> captured
-							.add(exchange.getMessage().getBody(String.class)));
+							.add(exchange.getMessage().getBody(Map.class)));
 					// feeds the sync source's seda queue
 					from("timer:smokeFeed?period=200")
 							.setBody(constant("{\"value\":1}"))
@@ -132,9 +136,10 @@ public class SmokeTestLuaDmpRouteTest {
 			}
 
 			assertFalse("no exchange reached the datasink", captured.isEmpty());
-			String first = captured.get(0);
+			Map<?, ?> first = captured.get(0);
 			assertTrue("datasink output must contain the Lua-transformed value, got: " + first,
-					first.contains("doubled"));
+					first.containsKey("doubled"));
+			assertEquals(2, ((Number) first.get("doubled")).intValue());
 		} finally {
 			System.clearProperty(HealthCheckUtils.HEALTH_PORT_SYSTEM_PROPERTY);
 		}
@@ -155,10 +160,7 @@ public class SmokeTestLuaDmpRouteTest {
 				[
 				  {
 				    "uniqueId": "luaTransformer1",
-				    "queryLanguage": "LUA",
-				    "queryPath": "queries/simple.lua",
-				    "inputType": "JsonString",
-				    "outputType": "JsonString"
+				    "queryPath": "queries/simple.lua"
 				  }
 				]
 				""");

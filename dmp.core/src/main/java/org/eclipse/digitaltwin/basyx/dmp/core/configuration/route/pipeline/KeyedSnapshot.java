@@ -17,9 +17,9 @@ import java.util.Set;
  *
  * <pre>
  *   fan-in   N source contributions ──▶ {@code KeyedSnapshot} keyed by SourceId
- *            (one parse per source, one merge, gate on completeness)      ──▶ transform
+ *            (one decode per connector, one merge, gate on completeness)   ──▶ transform
  *   fan-out  transform result         ──▶ {@code KeyedSnapshot} keyed by SinkId
- *            (one parse of the shared result, then N independent payloads)
+ *            (decoded value tree, then N independent payloads)
  * </pre>
  *
  * <p>Both halves therefore obey the same three rules: the shared value is
@@ -27,100 +27,34 @@ import java.util.Set;
  * per-entity payload is derived from that one immutable instance. A sink can
  * never observe a sibling's output, and a source can never observe another's.
  *
- * <p>The keyed view is optional: a transform may legitimately return a scalar
- * or an array (a single coarse sink), so {@link #root()} carries the whole
- * parsed value and the id lookups only apply when the root is an object.
+ * <p>Text is always text: this class never guesses that a String is JSON.
+ * Decoding belongs to a connector that knows the wire content type. A transform
+ * may return a scalar or an array, so {@link #root()} carries the whole value.
  */
 public final class KeyedSnapshot {
 
 
 	private final Object root;
-	private final boolean structured;
 
-	private KeyedSnapshot(Object root, boolean structured) {
+	private KeyedSnapshot(Object root) {
 		this.root = root;
-		this.structured = structured;
 	}
 
-	/** A snapshot over an already-structured object (a Map is kept as-is). */
+	/** A defensive snapshot over an already-decoded Java value tree. */
 	public static KeyedSnapshot of(Object root) {
-		return new KeyedSnapshot(root, true);
+		return new KeyedSnapshot(JsonCodec.copyValue(root));
 	}
 
 	/** The empty keyed snapshot. */
 	public static KeyedSnapshot empty() {
-		return new KeyedSnapshot(new LinkedHashMap<String, Object>(), true);
+		return new KeyedSnapshot(new LinkedHashMap<String, Object>());
 	}
 
 	/**
-	 * Parses a route payload into a snapshot. JSON text/bytes are parsed to a
-	 * structured value; an already-structured body (Map/List/connector POJO) is
-	 * taken as-is. A JSON scalar or array is a valid, non-keyed snapshot.
+	 * Takes an existing value tree into a snapshot without parsing strings.
 	 */
 	public static KeyedSnapshot parse(Object body) {
-		if (body == null) {
-			return empty();
-		}
-		String text = asText(body);
-		if (text == null) {
-			return new KeyedSnapshot(body, true);
-		}
-		// remember whether this really was JSON: a JSON string ("103.55") and a
-		// plain device payload (IDLE) both parse to a Java String, but only the
-		// first must be re-serialised - otherwise the JSON quoting a transform
-		// deliberately produced is lost on the way out.
-		if (!JsonCodec.looksLikeJson(text)) {
-			return new KeyedSnapshot(text, false);
-		}
-		try {
-			return new KeyedSnapshot(JsonCodec.normalizeNumbers(JsonCodec.gson().fromJson(text, Object.class)), true);
-		} catch (Exception e) {
-			return new KeyedSnapshot(text, false);
-		}
-	}
-
-	/** True when the payload was JSON and therefore has to be re-serialised. */
-	public boolean isStructured() {
-		return structured;
-	}
-
-	private static String asText(Object body) {
-		if (body instanceof String s) {
-			return s;
-		}
-		if (body instanceof byte[] bytes) {
-			return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
-		}
-		if (body instanceof java.io.InputStream stream) {
-			try {
-				return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-			} catch (java.io.IOException e) {
-				return null;
-			}
-		}
-		return null;
-	}
-
-	/** JSON text/bytes become a structured object; anything else passes through. */
-	public static Object toStructured(Object body) {
-		String text = null;
-		if (body instanceof String s) {
-			text = s;
-		} else if (body instanceof byte[] bytes) {
-			text = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
-		} else if (body instanceof java.io.InputStream stream) {
-			try {
-				text = new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-			} catch (java.io.IOException e) {
-				return body;
-			}
-		}
-		if (text == null) {
-			return body;
-		}
-		// A plain (non-JSON) device payload is a legitimate value; JsonCodec
-		// hands it back unchanged.
-		return JsonCodec.parse(text);
+		return body == null ? empty() : of(body);
 	}
 
 	/** The whole parsed value, whether keyed or not. */
@@ -158,15 +92,6 @@ public final class KeyedSnapshot {
 		return root instanceof Map<?, ?> map
 				? Collections.unmodifiableMap((Map<String, Object>) map)
 				: Collections.emptyMap();
-	}
-
-	/**
-	 * Serialises back to the JSON string the transformer chain and the protocol
-	 * components exchange. Nulls are preserved: a delivered JSON {@code null}
-	 * must stay a key in the map rather than being dropped.
-	 */
-	public String toJson() {
-		return JsonCodec.toJson(root);
 	}
 
 	/** A defensive, ordered copy of the keyed values (empty when not keyed). */

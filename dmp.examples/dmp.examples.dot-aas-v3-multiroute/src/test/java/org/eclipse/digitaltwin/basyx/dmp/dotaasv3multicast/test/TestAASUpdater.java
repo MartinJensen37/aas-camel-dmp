@@ -26,15 +26,18 @@ package org.eclipse.digitaltwin.basyx.dmp.dotaasv3multicast.test;
 
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 
 import org.apache.http.HttpStatus;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.factory.AASDataSinkDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpComponent;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
+import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.factory.LuaDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.factory.MqttDefaultConfigurationFactory;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -48,7 +51,6 @@ import org.junit.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.Header;
-import org.mockserver.verify.VerificationTimes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,9 +76,14 @@ public class TestAASUpdater {
 	protected static Server mqttBroker;
 
 	private static ClientAndServer mockServer;
+	private static String previousHealthPort;
 
 	@BeforeClass
 	public static void setUp() throws IOException {
+		previousHealthPort = System.getProperty("databridge.health.port");
+		try (ServerSocket socket = new ServerSocket(0)) {
+			System.setProperty("databridge.health.port", Integer.toString(socket.getLocalPort()));
+		}
 		configureAndStartMockserver();
 
 		configureAndStartMqttBroker();
@@ -92,8 +99,13 @@ public class TestAASUpdater {
 
 	@AfterClass
 	public static void tearDown() {
-		updater.stopComponent();
-		mockServer.close();
+		try {
+			if (updater != null) updater.stopComponent();
+			if (mockServer != null) mockServer.close();
+		} finally {
+			if (previousHealthPort == null) System.clearProperty("databridge.health.port");
+			else System.setProperty("databridge.health.port", previousHealthPort);
+		}
 	}
 
 	@Test
@@ -126,8 +138,8 @@ public class TestAASUpdater {
 		AASDataSinkDefaultConfigurationFactory aasConfigFactory = new AASDataSinkDefaultConfigurationFactory(loader);
 		configuration.addDatasinks(aasConfigFactory.create());
 
-		JsonataDefaultConfigurationFactory jsonataConfigFactory = new JsonataDefaultConfigurationFactory(loader);
-		configuration.addTransformers(jsonataConfigFactory.create());
+		LuaDefaultConfigurationFactory luaConfigFactory = new LuaDefaultConfigurationFactory(loader);
+		configuration.addTransformers(luaConfigFactory.create());
 
 		updater = new DmpComponent(configuration);
 		updater.startComponent();
@@ -158,7 +170,6 @@ public class TestAASUpdater {
 	private static void createExpectationForRequest(String path, String value) {
 		new MockServerClient("localhost", 4001).when(request().withMethod("PATCH")
 				.withPath(path)
-				.withBody(value)
 				.withHeader("Content-Type", "application/json"))
 				.respond(response().withStatusCode(HttpStatus.SC_CREATED)
 						.withHeaders(new Header("Content-Type", "application/json; charset=utf-8")));
@@ -166,9 +177,11 @@ public class TestAASUpdater {
 
 	@SuppressWarnings("resource")
 	private void verifyCall(String path, String value) {
-		new MockServerClient("localhost", 4001).verify(request().withMethod("PATCH")
-				.withPath(path)
-				.withHeader("Content-Type", "application/json")
-				.withBody(value), VerificationTimes.exactly(1));
+		org.mockserver.model.HttpRequest[] requests = new MockServerClient("localhost", 4001)
+				.retrieveRecordedRequests(request().withMethod("PATCH").withPath(path));
+		assertEquals("expected one PATCH to " + path, 1, requests.length);
+		String actual = new String(requests[0].getBodyAsRawBytes(), java.nio.charset.StandardCharsets.UTF_8);
+		assertEquals("unexpected physical JSON value for " + path,
+				JsonCodec.parseJson(value), JsonCodec.parseJson(actual));
 	}
 }

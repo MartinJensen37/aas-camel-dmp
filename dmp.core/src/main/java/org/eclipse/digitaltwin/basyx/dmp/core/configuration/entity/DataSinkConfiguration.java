@@ -32,6 +32,33 @@ package org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity;
 public abstract class DataSinkConfiguration extends RouteEntity {
 	private String sinkId;
 	private String valuePath;
+	private Object schema;
+	private Object payloadSchema;
+	private String payloadGroup;
+
+	public Object getSchema() {
+		return schema;
+	}
+
+	public void setSchema(Object schema) {
+		this.schema = schema;
+	}
+
+	public Object getPayloadSchema() {
+		return payloadSchema;
+	}
+
+	public void setPayloadSchema(Object payloadSchema) {
+		this.payloadSchema = payloadSchema;
+	}
+
+	public String getPayloadGroup() {
+		return payloadGroup;
+	}
+
+	public void setPayloadGroup(String payloadGroup) {
+		this.payloadGroup = payloadGroup;
+	}
 
 	public DataSinkConfiguration() {
 		super();
@@ -44,8 +71,7 @@ public abstract class DataSinkConfiguration extends RouteEntity {
 	/**
 	 * The AIMC SinkId this sink writes out of the transform's return object
 	 * (SPEC §6.4). Mirrors the source-side {@code sourceId}: the key whose
-	 * value this sink consumes. Concrete sinks (e.g. AAS) may expose this as
-	 * {@code valuePath}.
+	 * value this sink consumes. Connector sinks may expose this as a value path.
 	 */
 	public String getSinkId() {
 		return sinkId;
@@ -71,12 +97,16 @@ public abstract class DataSinkConfiguration extends RouteEntity {
 	}
 
 	/**
-	 * Whether this sink producer applies its {@code valuePath} internally (e.g.
-	 * the AAS sink extracts {@code node.get(valuePath)} itself) and therefore
+	 * Whether this sink producer applies its {@code valuePath} internally and therefore
 	 * must NOT additionally be wrapped by the generic route-level assembly
 	 * processor.
 	 */
 	public boolean handlesValuePathInternally() {
+		return false;
+	}
+
+	/** Whether this connector must JSON-encode decoded values on its wire. */
+	public boolean requiresJsonWireEncoding() {
 		return false;
 	}
 }

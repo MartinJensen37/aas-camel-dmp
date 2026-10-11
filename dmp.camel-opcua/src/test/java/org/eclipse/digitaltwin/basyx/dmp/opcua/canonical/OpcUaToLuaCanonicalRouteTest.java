@@ -25,7 +25,6 @@
 package org.eclipse.digitaltwin.basyx.dmp.opcua.canonical;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -41,9 +40,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * M4 route-level test (SPEC §10.1/§10.2): a Milo {@link DataValue} body is
- * normalized to the canonical JSON form by the registered type converter,
- * transformed by the AIMC Lua blob, and emitted as the MQTT-ready payload —
+		 * M4 route-level test (SPEC §10.1/§10.2): a Milo {@link DataValue} body is
+		 * normalized to the canonical Java value tree at the UA connector boundary,
+		 * transformed by the AIMC Lua blob, and emitted as the MQTT-ready payload —
  * exactly the {@code opcua -> lua -> mqtt} interface-transform pattern.
  */
 class OpcUaToLuaCanonicalRouteTest extends CamelTestSupport {
@@ -72,7 +71,12 @@ class OpcUaToLuaCanonicalRouteTest extends CamelTestSupport {
 		context.addRoutes(new RouteBuilder() {
 			@Override
 			public void configure() throws Exception {
-				from("direct:start").to(uri).to("mock:result");
+				from("direct:start")
+						.process(exchange -> exchange.getMessage().setBody(
+								OpcUaCanonical.toCanonical(exchange.getMessage().getBody(DataValue.class),
+										"ns=2;s=Machine.State")))
+						.to(uri)
+						.to("mock:result");
 			}
 		});
 		context.start();
@@ -81,11 +85,11 @@ class OpcUaToLuaCanonicalRouteTest extends CamelTestSupport {
 				new DateTime(), null);
 		template.sendBody("direct:start", dataValue);
 
-		String result = getMockEndpoint("mock:result").getExchanges().get(0)
-				.getMessage().getBody(String.class);
-
-		assertTrue(result.contains("\"state\":\"running\""), "unexpected output: " + result);
-		assertTrue(result.contains("\"quality\":0"), "unexpected output: " + result);
+		@SuppressWarnings("unchecked")
+		java.util.Map<String, Object> result = getMockEndpoint("mock:result").getExchanges().get(0)
+				.getMessage().getBody(java.util.Map.class);
+		assertEquals("running", result.get("state"), "unexpected output: " + result);
+		assertEquals(0, ((Number) result.get("quality")).intValue(), "unexpected output: " + result);
 		assertEquals(1, getMockEndpoint("mock:result").getReceivedCounter());
 	}
 }

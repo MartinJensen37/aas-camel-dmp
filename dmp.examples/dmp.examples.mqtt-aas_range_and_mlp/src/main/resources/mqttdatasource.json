@@ -1,12 +1,14 @@
 [
 	{
 		"uniqueId": "property1",
+		"schema": {"type":"array","items":{"type":"object"}},
 		"serverUrl": "localhost",
 		"serverPort": 1884,
 		"topic": "ConnectedMLP"
 	},
 	{
 		"uniqueId": "property2",
+		"schema": {"type":"object"},
 		"serverUrl": "localhost",
 		"serverPort": 1884,
 		"topic": "ConnectedRange"

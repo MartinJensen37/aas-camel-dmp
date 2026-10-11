@@ -26,15 +26,17 @@ package org.eclipse.digitaltwin.basyx.dmp.examples.dotaasv3api.test;
 
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
 import org.apache.http.HttpStatus;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.factory.AASDataSinkDefaultConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpComponent;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.factory.RoutesConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
+import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.factory.LuaDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.factory.MqttDefaultConfigurationFactory;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -48,7 +50,6 @@ import org.junit.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.Header;
-import org.mockserver.verify.VerificationTimes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +61,7 @@ import io.moquette.broker.config.ResourceLoaderConfig;
 
 public class TestAASUpdater {
 
-	private static final String PROPERTY_INTEGER_VALUE = "\"0.75\"";
+	private static final String PROPERTY_INTEGER_VALUE = "0.75";
 	private static final String PROPERTY_INTEGER_VALUE_PATH = "/submodels/c3VibW9kZWxJZA==/submodel-elements/DotAASV3ConformantApiSMC.DotAASV3ConformantApiProperty/$value";
 	private static final String PROPERTY_STRING_VALUE = "\"Bowler Hat\"";
 	private static final String PROPERTY_STRING_VALUE_PATH = "/submodels/c3VibW9kZWxJZA==/submodel-elements/DotAASV3ConformantApiSMC.DotAASV3ConformantApiStringProperty/$value";
@@ -126,8 +127,8 @@ public class TestAASUpdater {
 		AASDataSinkDefaultConfigurationFactory aasConfigFactory = new AASDataSinkDefaultConfigurationFactory(loader);
 		configuration.addDatasinks(aasConfigFactory.create());
 
-		JsonataDefaultConfigurationFactory jsonataConfigFactory = new JsonataDefaultConfigurationFactory(loader);
-		configuration.addTransformers(jsonataConfigFactory.create());
+		LuaDefaultConfigurationFactory luaConfigFactory = new LuaDefaultConfigurationFactory(loader);
+		configuration.addTransformers(luaConfigFactory.create());
 
 		updater = new DmpComponent(configuration);
 		updater.startComponent();
@@ -159,7 +160,6 @@ public class TestAASUpdater {
 	private static void createExpectationForPatchRequestForIntegerValue() {
 		new MockServerClient("localhost", 4001).when(request().withMethod("PATCH")
 				.withPath(PROPERTY_INTEGER_VALUE_PATH)
-				.withBody(PROPERTY_INTEGER_VALUE)
 				.withHeader("Content-Type", "application/json"))
 				.respond(response().withStatusCode(HttpStatus.SC_CREATED)
 						.withHeaders(new Header("Content-Type", "application/json; charset=utf-8")));
@@ -169,7 +169,6 @@ public class TestAASUpdater {
 	private static void createExpectationForPatchRequestForStringValue() {
 		new MockServerClient("localhost", 4001).when(request().withMethod("PATCH")
 				.withPath(PROPERTY_STRING_VALUE_PATH)
-				.withBody(PROPERTY_STRING_VALUE)
 				.withHeader("Content-Type", "application/json"))
 				.respond(response().withStatusCode(HttpStatus.SC_CREATED)
 						.withHeaders(new Header("Content-Type", "application/json; charset=utf-8")));
@@ -177,17 +176,20 @@ public class TestAASUpdater {
 
 	@SuppressWarnings("resource")
 	private void verifyPropertyValueUpdateRequestIntegerValue() {
-		new MockServerClient("localhost", 4001).verify(request().withMethod("PATCH")
-				.withPath(PROPERTY_INTEGER_VALUE_PATH)
-				.withHeader("Content-Type", "application/json")
-				.withBody(PROPERTY_INTEGER_VALUE), VerificationTimes.exactly(1));
+		verifyPropertyValueUpdateRequest(PROPERTY_INTEGER_VALUE_PATH, PROPERTY_INTEGER_VALUE);
 	}
 
 	@SuppressWarnings("resource")
 	private void verifyPropertyValueUpdateRequestStringValue() {
-		new MockServerClient("localhost", 4001).verify(request().withMethod("PATCH")
-				.withPath(PROPERTY_STRING_VALUE_PATH)
-				.withHeader("Content-Type", "application/json")
-				.withBody(PROPERTY_STRING_VALUE), VerificationTimes.exactly(1));
+		verifyPropertyValueUpdateRequest(PROPERTY_STRING_VALUE_PATH, PROPERTY_STRING_VALUE);
+	}
+
+	private void verifyPropertyValueUpdateRequest(String path, String expectedBody) {
+		org.mockserver.model.HttpRequest[] requests = new MockServerClient("localhost", 4001)
+				.retrieveRecordedRequests(request().withMethod("PATCH").withPath(path));
+		assertEquals("expected one PATCH to " + path, 1, requests.length);
+		String actual = new String(requests[0].getBodyAsRawBytes(), java.nio.charset.StandardCharsets.UTF_8);
+		assertEquals("wrong physical JSON value for " + path,
+				JsonCodec.parseJson(expectedBody), JsonCodec.parseJson(actual));
 	}
 }

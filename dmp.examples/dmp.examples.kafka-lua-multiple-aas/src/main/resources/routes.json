@@ -1,0 +1,15 @@
+[
+ {
+  "transformers": [
+   "luaA",
+   "luaB"
+  ],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedPropertyA"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "property1"
+  ]
+ }
+]

@@ -1,0 +1,26 @@
+[
+ {
+  "transformers": [
+    "luaA"
+  ],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedPropertyA"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "doublescalar"
+  ]
+ },
+ {
+  "transformers": [
+    "luaB"
+  ],
+  "datasinks": [
+   "ConnectedSubmodel/ConnectedPropertyB"
+  ],
+  "trigger": "execution-policy",
+  "datasources": [
+   "integerscalar"
+  ]
+ }
+]

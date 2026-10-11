@@ -26,6 +26,7 @@ package org.eclipse.digitaltwin.basyx.dmp.aas;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.support.DefaultProducer;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.ConnectorJsonPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,9 +49,9 @@ public class AASProducer extends DefaultProducer {
 
 	@Override
 	public void process(Exchange exchange) throws Exception {
-		Object messageBody = exchange.getMessage().getBody(String.class);
-		
-		endpoint.setPropertyValue(messageBody);
+		Object body = exchange.getMessage().getBody();
+		if (body instanceof ConnectorJsonPayload jsonPayload) body = jsonPayload.value();
+		endpoint.setPropertyValue(body);
 	}
 
 }
