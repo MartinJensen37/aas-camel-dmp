@@ -40,19 +40,19 @@ Monitored items are enabled with `monitorFilterType=dataChangeFilter`
 ```java
 // OPC UA -> MQTT (state)
 from("milo-client:opc.tcp://<asset>:4840/milo?node=RAW(ns=2;s=State)&monitorFilterType=dataChangeFilter&requestedPublishingInterval=1000")
-    .to("lua:file:/etc/dmp/opc2mqtt.lua?inputType=JsonString&outputType=JsonString&timeoutSeconds=2")
+    .to("lua:file:/etc/dmp/opc2mqtt.lua?timeoutSeconds=2")
     .to("paho:aas/<asset>/State?brokerUrl=tcp://<broker>:1883");
 
 // MQTT -> OPC UA (commands)
 from("paho:aas/<asset>/cmd?brokerUrl=tcp://<broker>:1883")
-    .to("lua:file:/etc/dmp/mqtt2opc.lua?inputType=JsonString&outputType=JsonString&timeoutSeconds=2")
+    .to("lua:file:/etc/dmp/mqtt2opc.lua?timeoutSeconds=2")
     .process(new OpcUaNormalizer())                       // canonical -> Milo Variant
     .to("milo-client:opc.tcp://<asset>:4840/milo?node=RAW(ns=2;s=State)");
 ```
 
 The same routes expressed as DMP config files are in `config/` (the DMP routes
-are JSON-driven; the `OpcUaNormalizer` step maps to the Lua transformer's
-`outputType=JsonString` + milo write semantics).
+are JSON-driven; the `OpcUaNormalizer` step consumes the decoded Lua value
+tree and turns the selected value into a Milo Variant).
 
 ## Blobs
 

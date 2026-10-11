@@ -13,7 +13,7 @@ To learn more on how to use and adapt the DMP component, visit the [documentatio
 This repository is a fork of the Eclipse BaSyx DMP, renamed to **`aas-camel-dmp`**. It reworks the DMP into the **DMP** (DMP MQTT Platform): a per-asset integration container that
 
 1. consumes data from industrial protocols (OPC UA, PLC, MQTT, Kafka, HTTP, …),
-2. transforms incoming data with **Lua by default** in compliance with the **AIMC** (Asset Interfaces Mapping Configuration v2.0) transformation contract, or with JSONata when the transformation semantic ID starts with the private `https://example.org/jsonata/` namespace, and
+2. transforms incoming data with **Lua only** in compliance with the **AIMC** (Asset Interfaces Mapping Configuration v2.0) transformation contract, and
 3. writes transformed data to sinks (AAS submodel elements, MQTT topics, other protocols).
 
 See [SPEC.md](SPEC.md) for the full design specification, milestones, and decision records.
@@ -21,12 +21,12 @@ See [SPEC.md](SPEC.md) for the full design specification, milestones, and decisi
 ### Key changes vs. upstream
 
 - **Baseline:** Apache Camel **4.x** on **Java 17** (upstream was Camel 3.21 / Java 11).
-- **`dmp.camel-lua`:** new Camel component (`lua:` scheme) that runs AIMC-compliant transformation blobs via **LuaJ** (`org.luaj:luaj-jse:3.0.1`). There is no `org.apache.camel:camel-lua` on Maven Central — this module *is* the Lua integration.
+- **`dmp.camel-lua`:** Camel component (`lua:` scheme) that runs AIMC transformation blobs via **LuaJ** (`org.luaj:luaj-jse:3.0.1`). There is no `org.apache.camel:camel-lua` on Maven Central — this module *is* the Lua integration. Lua receives isolated native Lua values converted from decoded Java values and returns decoded Java values; input/output modes are not configurable.
   - Whitelisted sandbox (base functions, `math`, `table`, `string`, `json`, `os.clock`; no `io`, `os` (except `clock`), `require`/`dofile`/`loadfile`/`load`, `debug`, `luajava`, `package`, `coroutine`).
   - CPU timeout via instruction-count hook (default 2 s per invocation).
   - Runtime-loaded blobs with mtime/sha-based reload; max blob size enforced at load.
   - `LuaHarness` CLI + contract tests to verify blobs before deployment.
-- **Runtime config:** `<config>/luatransformer.json` (LUA equivalent of `jsonatatransformer.json`) and `<config>/queries/*.lua` blobs; `LUA_ENV_VAR_NAME` (`luatransformer`) mirroring the JSONata env-var mechanism.
+- **Runtime config:** `<config>/luatransformer.json` and `<config>/queries/*.lua` blobs; `LUA_ENV_VAR_NAME` (`luatransformer`). JSON encoding/decoding occurs only at connector wire boundaries that require it; opaque strings and bytes are not guessed to be JSON.
 
 ### Provenance
 

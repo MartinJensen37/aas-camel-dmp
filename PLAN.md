@@ -9,6 +9,71 @@
 > aas-model 4, management-node 104, core 34, component 13, examples reactor 90.**
 >
 > Earlier status blocks (§1–§7 below) are historical.
+> W4a amendment (2026-10-09): Lua is now the only transform engine and the
+> internal transform boundary is decoded Java values. The JSONata engine
+> selection, module, config, examples and tests described below are retired;
+> see `.kilo/plans/1791539605000-dmp-correctness-camel-native-plan.md` for the
+> migration and validation gates. This note does not assert that W4a is green.
+
+## Current Correctness Review (2026-10-11)
+
+The implementation spans W0-W6 of the parent workspace's
+`.kilo/plans/1791539605000-dmp-correctness-camel-native-plan.md`. Its previously
+recorded build successes are not proof that all acceptance gates are complete.
+The review and commit preparation corrected distinct caller Reply SinkId
+selection, rejection of retired write-delegation and action JSONata authoring,
+HTTP client automatic retries, legacy UA JSON-String null encoding, and
+component JUnit 4 discovery alongside Jupiter tests. The management suite now
+passes 205 tests; the focused HTTP and UA adapter selection passes six tests.
+
+The final full-reactor rerun enabled both test engines and explicit generated
+descriptor fixtures. Component discovery (three tests), generated contracts
+(five), health, Lua smoke, HTTP, MQTT and SQL regressions passed. The component
+reports contain 24 tests with six failures and one error: ActiveMQ (including
+its environment-variable variant), multiple MQTT sinks, the mixed-source failed
+read gate, two AAS polling assertions, and PLC4X. The polling/PLC4X assertions
+still expect quoted JSON text; the other failures include missing propagation
+and failed-read acceptance. These require investigation and contract-aligned
+regressions, not disabling Vintage or weakening assertions solely to pass. The
+full reactor gate is not green; earlier successful runs omitted these JUnit 4
+tests. W0/W6 local regression closure is therefore reopened before live staging.
+
+Remaining source/acceptance follow-ups include:
+
+- W1/W4: compatible whole-plus-member action/response assembly and a single
+  shared assembler; request/reply payload members matching authored IDs must
+  not cause an additional implicit envelope unwrap. Disjoint array members must
+  not conflict through padding nulls, and a missing ordinary group must not
+  prevent unrelated destinations from being sent.
+- W4/W4a: deep-copy isolation for detached response job bodies and normalized
+  MQTT scalar preservation through fan-in; BaSyx decoded Strings must not lose
+  authored surrounding quotes.
+- W1/W4a: controlled null markers must reach schema validation as null; response
+  projection must distinguish a missing pointer from valid null and detect
+  duplicate SourceIds even if the first value is null.
+- W4a: numeric-looking object keys must stay object keys through Lua; explicit
+  Lua `json.decode` must reject malformed JSON rather than accept bare text.
+- W2/W3: producer-chain HTTP/UA timeout and invalid-response outcome coverage,
+  native UA Read/Call integration tests, and removal of residual nested template
+  device dispatch with explicit route-scoped no-redelivery policy.
+- W4/W5: MQTT correlation registration/lifecycle failures, route stop/reload,
+  outstanding response jobs, and latest-value cache lifecycle acceptance.
+- W3/W6: sanitize transport URIs and error details before logging or returning
+  them to callers; connector URIs can contain credentials.
+- W6: management image dependency closure must use a model package containing
+  `schema_from_datapoint`; the existing ignored `_aas_model` copy is stale, while
+  pytest uses the sibling checkout. External model/assets are not migrated by
+  the DMP commits.
+- W6: approved golden Occupy/Halt and granular Operation staging, required AID
+  qualifiers, deployed-authoring migration, and final image runtime checks.
+- W0/W6: the SQL example test writes timestamps into a tracked source SQLite
+  fixture. Preserve its original bytes in the rename commit and move future
+  test database writes to isolated generated output instead of source resources.
+
+Commits group the actual compiler, runtime, connector, fixture/packaging and
+documentation changes. They are a dependent series, not separately verified
+historical snapshots of each workstream. No deployment or image push is part of
+this commit preparation.
 
 ---
 
