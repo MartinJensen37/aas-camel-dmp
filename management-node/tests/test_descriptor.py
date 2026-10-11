@@ -83,7 +83,7 @@ def test_emits_lua_transformers_and_blob_files(descriptor):
     transformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
     assert transformers
     for t in transformers:
-        assert t["queryLanguage"] == "LUA"
+        assert not ({"queryLanguage", "inputType", "outputType"} & t.keys())
         assert t["queryPath"] in descriptor.files, "blob file must be materialized"
         blob = descriptor.files[t["queryPath"]]
         assert "function aimc_main" in blob
@@ -117,6 +117,28 @@ def test_emits_aas_sink_config(descriptor):
     # '.variable' compatibility suffix.
     assert all(not s["idShortPath"].endswith(".variable") for s in variable_sinks)
     assert all("." not in s["idShortPath"] for s in variable_sinks)
+
+
+def test_response_sink_entities_are_scoped_per_interaction_binding():
+    from management_node.descriptor import DescriptorCompiler, DescriptorContext
+    from management_node.resolver import ResolvedMapping, ResolvedSink
+
+    compiler = DescriptorCompiler(aas_base_url="http://aas-server:8081",
+                                  aas_id_short="unit")
+    context = DescriptorContext()
+    mapping = ResolvedMapping(id_short="Stoppering")
+    sink = ResolvedSink(sink_id="Audit", protocol="mqtt",
+                        base="mqtt://broker:1883/NN/Device", topic="/AUDIT")
+
+    primary = compiler._add_mqtt_datasink(
+        context, mapping, sink, "Audit", entity_scope="unit_Stoppering")
+    secondary = compiler._add_mqtt_datasink(
+        context, mapping, sink, "Audit", entity_scope="unit_Stoppering_http")
+
+    assert primary == "unit_Stoppering_Audit_sink"
+    assert secondary == "unit_Stoppering_http_Audit_sink"
+    assert primary != secondary
+    assert [entry["uniqueId"] for entry in context.mqtt_sinks] == [primary, secondary]
 
 
 def test_write_to_directory(descriptor, tmp_path):
@@ -263,15 +285,20 @@ def test_emits_operation_route_and_entities():
     assert op["routeId"] == "syntegonStopperingSystemAAS_Halt_interaction"
     assert op["datasources"] == []
     assert op["transformers"] == ["syntegonStopperingSystemAAS_Halt_request_transformer"]
-    assert op["datasinks"] == ["syntegonStopperingSystemAAS_Halt_command_sink"]
+    assert op["datasinks"] == ["syntegonStopperingSystemAAS_Halt_Halt_command_sink"]
+    assert op["triggerData"]["commandSinkBindings"] == [{
+        "sinkId": "Halt",
+        "dataSinkId": "syntegonStopperingSystemAAS_Halt_Halt_command_sink",
+        "valuePath": None,
+    }]
     # the derived caller-facing operation path (DMP v3 convention)
     assert op["triggerData"]["restPath"] == "/operations/syntegonStopperingSystemAAS/Halt"
     assert op["triggerData"]["restMethod"] == "POST"
-    assert op["triggerData"]["requestReply"] is True
-    assert op["triggerData"]["responseTopic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/Halt"
+    assert op["triggerData"]["targetOptions"]["requestReply"] is True
+    assert op["triggerData"]["targetOptions"]["responseTopic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/Halt"
     assert "responseDatasource" not in op["triggerData"]
     assert op["triggerData"]["responseTransformer"] == "syntegonStopperingSystemAAS_Halt_response_transformer"
-    assert op["triggerData"]["timeoutSeconds"] == 30
+    assert op["triggerData"]["targetOptions"]["timeoutSeconds"] == 30
 
     # no restsources.json is emitted at all
     from management_node.descriptor import DescriptorCompiler
@@ -349,7 +376,7 @@ def test_operations_honour_mqtt_broker_override():
     cmd = next(s for s in json.loads(descriptor.files[MQTT_DATASINK_FILE]) if s["uniqueId"] == op["datasinks"][0])
     assert cmd["serverUrl"] == "localhost"
     assert cmd["serverPort"] == 1883
-    assert op["triggerData"]["responseTopic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/Halt"
+    assert op["triggerData"]["targetOptions"]["responseTopic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/Halt"
 
 
 def test_bacnet_source_and_sink_ride_plc4x():
@@ -526,7 +553,7 @@ def test_emits_opcua_method_call_route():
 
     op = next(r for r in json.loads(descriptor.files[ROUTES_FILE])
               if r["trigger"] == "bridge")
-    assert op["triggerData"]["protocol"] == "opcua"
+    assert "protocol" not in op["triggerData"]
     assert "responseDatasource" not in op["triggerData"]
 
     sinks = json.loads(descriptor.files[OPCUA_DATASINK_FILE])
@@ -595,26 +622,6 @@ def test_one_unsupported_sink_rejects_entire_mapping():
     assert AAS_DATASINK_FILE not in descriptor.files
 
 
-def test_skipped_write_does_not_leave_device_sink():
-    """An invalid AAS writeback rejects the complete MQTT device leg."""
-    from aas_pydantic import Key, ModelReference
-    from management_node.descriptor import MQTT_DATASINK_FILE
-
-    resolution = _write_delegation_resolution()
-    mqtt_write = next(w for w in resolution.property_writes if w.protocol == "mqtt")
-    mqtt_write.writeback_ref = ModelReference(key=(
-        Key(type_="Submodel", value="broken/submodels/Variables"),
-    ))
-    descriptor = compile_descriptor(
-        resolution, aas_base_url="http://aas-server:8081",
-        aas_id="syntegonStopperingSystemAAS",
-        aas_id_short="syntegonStopperingSystem",
-    )
-    assert MQTT_DATASINK_FILE not in descriptor.files
-    routes = json.loads(descriptor.files[ROUTES_FILE])
-    assert len(routes) == 1 and routes[0]["triggerData"]["protocol"] == "opcua"
-
-
 def _http_operation_models():
     """AID + AIMC with a one-MC Restart operation mapping whose command
     affordance lives on the HTTP interface (protocol-inherent reply)."""
@@ -657,7 +664,8 @@ def test_emits_http_operation_route():
 
     routes = json.loads(descriptor.files[ROUTES_FILE])
     op = next(r for r in routes if r["trigger"] == "bridge")
-    assert op["triggerData"]["protocol"] == "http"
+    assert "protocol" not in op["triggerData"]
+    assert op["triggerData"]["targetOptions"]["httpMethod"] == "POST"
     assert op["triggerData"]["restPath"] == "/operations/aasRestartAAS/Restart"
     assert op["triggerData"]["restMethod"] == "POST"
     assert "responseDatasource" not in op["triggerData"]
@@ -672,148 +680,8 @@ def test_emits_http_operation_route():
     assert sinks[0]["uniqueId"] == op["datasinks"][0]
 
 
-# --------------------------------------------------------------------------- #
-# Property write delegations (W2, Shape A): one PUT route per binding with
-# ack-then-writeback — the MQTT leg subscribes the declared ack topic and
-# transforms the ack into the effective-value envelope; the OPC UA leg rides
-# the write-status ack (no reply subscription). The effective value is
-# written back into the AAS Variables property.
-# --------------------------------------------------------------------------- #
-
-WRITE_REQUEST_BLOB = (
-    "function aimc_main(sources)\n"
-    "    local p = sources.Parameter\n"
-    "    return { Parameter = { Value = p.value } }\n"
-    "end\n"
-)
-WRITE_RESPONSE_BLOB = (
-    "function aimc_main(sources)\n"
-    "    local ack = sources.Parameter\n"
-    "    if ack.State ~= \"SUCCESS\" then error(\"write rejected\") end\n"
-    "    return { Parameter = ack.Value }\n"
-    "end\n"
-)
-
-
-def _write_delegation_resolution():
-    from aas_model.testing import opcua_interface, write_delegation_qualifier
-
-    aid_model = build_aid(
-        mqtt=mqtt_interface(
-            "mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering",
-            properties={"Parameter": ("/CMD/Parameter", "/DATA/Parameter",
-                                      "writeproperty")}),
-        opcua=opcua_interface(
-            "opc.tcp://192.168.0.104:4840/stoppering/",
-            properties={"Parameter": "/?id=ns=2;s=Parameter"},
-            op="writeproperty"),
-    )
-
-    def write_mc(interface_name):
-        # the OPC UA write acknowledges via the write STATUS (no reply
-        # transformation); the MQTT write transforms the correlated ack
-        return aimc_mapping(
-            sources=[aimc_source("Parameter", aimc_ref(
-                "{aas_id}/submodels/AID", interface_name,
-                "InteractionMetadata", "properties", "Parameter"))],
-            sinks=[aimc_sink("Parameter", aimc_ref(
-                "{aas_id}/submodels/Variables", "Parameter"))],
-            transformation=WRITE_REQUEST_BLOB,
-            response_transformation=(WRITE_RESPONSE_BLOB
-                                     if interface_name == "interface_mqtt"
-                                     else None),
-            qualifiers=[write_delegation_qualifier()],
-        )
-
-    return resolve(build_aimc(write_mc("interface_mqtt"),
-                              write_mc("interface_opcua")), aid_model)
-
-
-def test_compiles_write_delegation_routes():
-    from management_node.descriptor import MQTT_DATASINK_FILE, OPCUA_DATASINK_FILE
-
-    resolution = _write_delegation_resolution()
-    assert resolution.all_resolved, [w.unresolved for w in resolution.property_writes]
-    descriptor = compile_descriptor(
-        resolution,
-        aas_base_url="http://aas-server:8081",
-        aas_id="syntegonStopperingSystemAAS",
-        aas_id_short="syntegonStopperingSystem",
-    )
-
-    routes = [r for r in json.loads(descriptor.files[ROUTES_FILE])
-              if r["trigger"] == "write-delegation"]
-    by_proto = {r["triggerData"]["protocol"]: r for r in routes}
-    assert set(by_proto) == {"mqtt", "opcua"}
-    for proto, route in by_proto.items():
-        td = route["triggerData"]
-        # the plain caller path belongs to the MQTT leg; further bindings get
-        # the /{protocol} suffix (same convention as the interaction surface)
-        expected_path = "/properties/syntegonStopperingSystem/Parameter" \
-            if proto == "mqtt" \
-            else "/properties/syntegonStopperingSystem/Parameter/opcua"
-        assert td["restPath"] == expected_path
-        assert td["restMethod"] == "PUT"
-        assert td["writebackSink"]
-        assert td["timeoutSeconds"] == 30
-        assert route["routeId"] == \
-            f"syntegonStopperingSystem_Parameter_{proto}_write"
-        assert route["transformers"] == [
-            f"syntegonStopperingSystem_Parameter_{proto}_request_transformer"]
-
-    # MQTT: declared InOut ack + ack → envelope transformer
-    mqtt = by_proto["mqtt"]
-    assert mqtt["triggerData"]["requestReply"] is True
-    assert mqtt["triggerData"]["responseTopic"] == \
-        "NN/Nybrovej/InnoLab/Stoppering/DATA/Parameter"
-    assert mqtt["triggerData"]["responseTransformer"] == \
-        "syntegonStopperingSystem_Parameter_mqtt_response_transformer"
-    # OPC UA: write-status ack — no reply subscription
-    assert "responseDatasource" not in by_proto["opcua"]["triggerData"]
-    assert "responseTransformer" not in by_proto["opcua"]["triggerData"]
-
-    # device legs: MQTT command sink (InOut owns ack subscription), OPC UA node write
-    mqtt_sinks = json.loads(descriptor.files[MQTT_DATASINK_FILE])
-    cmd = next(s for s in mqtt_sinks if s["uniqueId"] ==
-               "syntegonStopperingSystem_Parameter_mqtt_command_sink")
-    assert cmd["topic"] == "NN/Nybrovej/InnoLab/Stoppering/CMD/Parameter"
-    ua_sinks = json.loads(descriptor.files[OPCUA_DATASINK_FILE])
-    ua = next(s for s in ua_sinks if s["sinkId"] == "Parameter_opcua")
-    assert ua["nodeInformation"] == "ns=2;s=Parameter"
-    # a node WRITE, not a method call (no `method` configuration)
-    assert "configuration" not in ua
-
-    # writeback into the AAS Variables.Parameter property
-    aas_sinks = json.loads(descriptor.files[AAS_DATASINK_FILE])
-    wb = next(s for s in aas_sinks if s["valuePath"] == "Parameter")
-    assert wb["idShortPath"] == "Parameter"
-    assert wb["type"] == "PROPERTY"
-
-    # Lua: request for both legs, response ONLY for the mqtt leg
-    assert "queries/syntegonStopperingSystem_Parameter_mqtt_request.lua" \
-        in descriptor.files
-    assert "queries/syntegonStopperingSystem_Parameter_mqtt_response.lua" \
-        in descriptor.files
-    assert "queries/syntegonStopperingSystem_Parameter_opcua_request.lua" \
-        in descriptor.files
-    assert "queries/syntegonStopperingSystem_Parameter_opcua_response.lua" \
-        not in descriptor.files
-
-    # the transformer entries ride luatransformer.json like every other
-    # mapping blob (the runtime resolves route transformer ids from there)
-    from management_node.descriptor import LUA_TRANSFORMER_FILE
-    transformers = {t["uniqueId"] for t in json.loads(
-        descriptor.files[LUA_TRANSFORMER_FILE])}
-    assert "syntegonStopperingSystem_Parameter_mqtt_request_transformer" in transformers
-    assert "syntegonStopperingSystem_Parameter_mqtt_response_transformer" in transformers
-    assert "syntegonStopperingSystem_Parameter_opcua_request_transformer" in transformers
-    assert "syntegonStopperingSystem_Parameter_opcua_response_transformer" not in transformers
-
-
-def test_mqtt_timer_source_compiles_sync_entry():
-    """Scenario A2: an MQTT source with an EXPLICIT polling interval rides a
-    timer route — the mqttconsumer entry is sync with the declared cadence,
-    and no push-feed guard fires for it."""
+def test_mqtt_polling_interval_is_rejected_without_a_fresh_read_binding():
+    """Do not compile a subscription queue as a periodic fresh Read."""
     from aas_pydantic.submodel_templates.asset_interfaces_mapping_configuration import (
         DefaultPollingInterval,
     )
@@ -833,18 +701,5 @@ def test_mqtt_timer_source_compiles_sync_entry():
                         "    return { PackMLStateTimer = sources.StationState.State }\n"
                         "end\n",
     )
-    resolution = resolve(build_aimc(mc), aid_model)
-    assert resolution.all_resolved, resolution.mappings[0].unresolved
-
-    descriptor = compile_descriptor(
-        resolution,
-        aas_base_url="http://aas-server:8081",
-        aas_id="syntegonStopperingSystemAAS",
-        aas_id_short="syntegonStopperingSystem",
-    )
-    consumers = json.loads(descriptor.files[MQTT_DATASOURCE_FILE])
-    assert len(consumers) == 1
-    entry = consumers[0]
-    assert entry["delivery"] == "sync"
-    assert entry["pollingIntervalMs"] == 2000
-    assert entry["topic"] == "NN/Nybrovej/InnoLab/Stoppering/DATA/State"
+    with pytest.raises(ValueError, match="MQTT property sources support Observe, not Read"):
+        resolve(build_aimc(mc), aid_model)

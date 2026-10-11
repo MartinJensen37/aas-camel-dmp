@@ -60,7 +60,6 @@ ROUTES_FILE = "routes.json"
 MQTT_DATASOURCE_FILE = "mqttdatasource.json"
 MQTT_DATASINK_FILE = "mqttdatasink.json"
 LUA_TRANSFORMER_FILE = "luatransformer.json"
-JSONATA_TRANSFORMER_FILE = "jsonatatransformer.json"
 AAS_DATASINK_FILE = "aasdatasink.json"
 AAS_POLLING_DATASOURCE_FILE = "aaspollingdatasource.json"
 OPCUA_DATASOURCE_FILE = "opcuadatasource.json"
@@ -95,6 +94,16 @@ def _mqtt_source_qualifiers(entry: dict[str, Any], resolved) -> None:
         entry["qos"] = resolved.qos
 
 
+def _device_schema_fields(entry: dict[str, Any], resolved) -> None:
+    if resolved.schema is not None:
+        entry["schema"] = resolved.schema
+    if isinstance(resolved, ResolvedSink):
+        if resolved.payload_schema is not None:
+            entry["payloadSchema"] = resolved.payload_schema
+        if resolved.payload_group:
+            entry["payloadGroup"] = resolved.payload_group
+
+
 @dataclass
 class DescriptorContext:
     """Per-compilation accumulator state.
@@ -113,7 +122,6 @@ class DescriptorContext:
     mqtt_sources: list[dict[str, Any]] = field(default_factory=list)
     mqtt_sinks: list[dict[str, Any]] = field(default_factory=list)
     lua_transformers: list[dict[str, Any]] = field(default_factory=list)
-    jsonata_transformers: list[dict[str, Any]] = field(default_factory=list)
     aas_sinks: list[dict[str, Any]] = field(default_factory=list)
     aas_polling_sources: list[dict[str, Any]] = field(default_factory=list)
     kafka_sources: list[dict[str, Any]] = field(default_factory=list)
@@ -315,8 +323,7 @@ class DescriptorCompiler:
 
     def _blob_path(self, mapping: ResolvedMapping, kind: str = "") -> str:
         stem = f"{self._mapping_scope(mapping)}{kind}"
-        ext = "jsonata" if (mapping.transformation_engine or "").upper() == "JSONATA" else "lua"
-        return f"queries/{stem}.{ext}"
+        return f"queries/{stem}.lua"
 
     def compile(self, resolution: ResolutionResult) -> DmpDescriptor:
         descriptor = DmpDescriptor(
@@ -328,7 +335,6 @@ class DescriptorCompiler:
         for entries, compile_one in (
             (resolution.mappings, self._compile_mapping),
             (resolution.interactions, self._compile_interaction),
-            (resolution.property_writes, self._compile_write_delegation),
         ):
             for entry in entries:
                 snapshot = ctx.snapshot()
@@ -370,7 +376,6 @@ class DescriptorCompiler:
             (MQTT_DATASOURCE_FILE, ctx.mqtt_sources),
             (MQTT_DATASINK_FILE, ctx.mqtt_sinks),
             (LUA_TRANSFORMER_FILE, ctx.lua_transformers),
-            (JSONATA_TRANSFORMER_FILE, ctx.jsonata_transformers),
             (AAS_DATASINK_FILE, ctx.aas_sinks),
             (AAS_POLLING_DATASOURCE_FILE, ctx.aas_polling_sources),
             (KAFKA_DATASOURCE_FILE, ctx.kafka_sources),
@@ -420,25 +425,35 @@ class DescriptorCompiler:
                     f"mapping {mapping.id_short} source {src.source_id}: "
                     "PollingInterval must be positive"
                 )
-            if src.aas_property or src.aas_element_type in {
-                "SubmodelElementCollection", "SubmodelElementList"
-            }:
+            if src.protocol == "aas":
                 effective_interval = (
                     src.polling_interval
                     if src.polling_interval is not None
                     else mapping.default_polling_interval
                 )
-                if effective_interval is None and (
-                    src.aas_property or self.aas_event_broker is not None
-                ):
-                    src.delivery = "async"
+                if src.aas_property and effective_interval is None:
+                    if self.aas_event_broker is None:
+                        raise ValueError(
+                            f"mapping {mapping.id_short} source {src.source_id}: "
+                            "AAS Property has no effective polling interval and no usable event stream"
+                        )
+                    src.delivery = "async"  # observe exact Property changes
+                elif effective_interval is not None and effective_interval > 0:
+                    src.delivery = "sync"  # read at the effective polling cadence
                 else:
-                    src.delivery = "sync"
+                    raise ValueError(
+                        f"mapping {mapping.id_short} source {src.source_id}: "
+                        "AAS collection/list/submodel reads require a positive effective polling interval; "
+                        "observation capability is not assumed"
+                    )
             if src.delivery == "sync":
-                # the SYNC POLL CADENCE is the driver of the unified
-                # evaluation (decision 2026-09-15): per-source declared
-                # interval, else the MC-level default — never invented
-                src.polling_interval = src.polling_interval or mapping.default_polling_interval
+                # Preserve the existing device connector cadence contract:
+                # source interval overrides the mapping default; when both are
+                # absent the runtime's legacy device polling default applies.
+                # AAS Property sources are resolved separately above: absent
+                # an effective interval, they must use repository events.
+                effective_interval = src.polling_interval or mapping.default_polling_interval
+                src.polling_interval = effective_interval
             datasource_ids.append(self._add_datasource(ctx, mapping, src))
         missing = [i for i, d in enumerate(datasource_ids) if d is None]
         if missing:
@@ -464,6 +479,8 @@ class DescriptorCompiler:
             "transformers": [transformer_id] if transformer_id else [],
             "datasinks": sink_ids,
         }
+        if mapping.trigger_source_ids is not None:
+            route["triggerData"] = {"triggerSourceIds": list(mapping.trigger_source_ids)}
         if transformer_id and len(sink_ids) > 1:
             route["datasinkMappingConfiguration"] = {
                 sink: [transformer_id] for sink in sink_ids
@@ -526,17 +543,18 @@ class DescriptorCompiler:
         method = (bidi.rest_method or "POST").upper()
         protocol = (bidi.protocol or sink.protocol or "").lower()
 
-        command_sink_id: str | None = None
+        command_sink_ids: list[str] = []
         trigger_data: dict[str, Any] = {}
 
         if protocol == "mqtt":
-            command_sink_id = self._add_interaction_mqtt_command(ctx, scope, action, sink)
-            if command_sink_id is None:
+            for sink_id, action_sink in bidi.command_sinks or [(bidi.command_sink_id, sink)]:
+                endpoint_id = self._add_interaction_mqtt_command(
+                    ctx, f"{scope}_{sink_id}", action, action_sink, sink_id)
+                if endpoint_id is not None:
+                    command_sink_ids.append(endpoint_id)
+            if len(command_sink_ids) != len(bidi.command_sinks or [None]):
                 return
-            trigger_data = {
-                "protocol": "mqtt",
-                "timeoutSeconds": int(bidi.timeout_seconds),
-            }
+            trigger_data = {}
             if bidi.request_reply:
                 # the DECLARED MQTT 5 request/reply correlation: the
                 # paho-mqtt5-inout endpoint owns the reply subscription
@@ -550,11 +568,15 @@ class DescriptorCompiler:
                 logger.warning("interaction %s: MQTT request/reply terms are required", action)
                 return
         elif protocol in ("rest", "http"):
-            command_sink_id = self._add_http_datasink(
-                ctx, scope, sink, f"command sink of interaction {action}")
-            if command_sink_id is None:
+            for sink_id, action_sink in bidi.command_sinks or [(bidi.command_sink_id, sink)]:
+                endpoint_id = self._add_http_datasink(
+                    ctx, f"{scope}_{sink_id}", action_sink,
+                    f"command sink {sink_id} of interaction {action}")
+                if endpoint_id is not None:
+                    command_sink_ids.append(endpoint_id)
+            if len(command_sink_ids) != len(bidi.command_sinks or [None]):
                 return
-            trigger_data = {"protocol": "http"}
+            trigger_data = {}
         elif protocol == "opcua":
             # UA Method INVOCATION (OPC-10101 §7.1.3): the Call service needs
             # the owning Object (uav_componentOf) + the Method NodeId — the
@@ -564,23 +586,45 @@ class DescriptorCompiler:
                                "NodeId (§6.2 convention /?id=<nodeId>); skipping",
                                action)
                 return
-            command_sink_id = self._add_opcua_datasink(
-                ctx, scope, sink, f"command sink of interaction {action}",
-                method_node=sink.method_node)
-            if command_sink_id is None:
+            for sink_id, action_sink in bidi.command_sinks or [(bidi.command_sink_id, sink)]:
+                endpoint_id = self._add_opcua_datasink(
+                    ctx, f"{scope}_{sink_id}", action_sink,
+                    f"command sink {sink_id} of interaction {action}",
+                    method_node=action_sink.method_node)
+                if endpoint_id is not None:
+                    command_sink_ids.append(endpoint_id)
+            if len(command_sink_ids) != len(bidi.command_sinks or [None]):
                 return
-            trigger_data = {"protocol": "opcua"}
+            trigger_data = {}
         elif protocol in ("modbus", "plc4x", "bacnet"):
-            command_sink_id = self._add_plc4x_datasink(
-                ctx, scope, sink, f"command sink of interaction {action}")
-            if command_sink_id is None:
+            for sink_id, action_sink in bidi.command_sinks or [(bidi.command_sink_id, sink)]:
+                endpoint_id = self._add_plc4x_datasink(
+                    ctx, f"{scope}_{sink_id}", action_sink,
+                    f"command sink {sink_id} of interaction {action}")
+                if endpoint_id is not None:
+                    command_sink_ids.append(endpoint_id)
+            if len(command_sink_ids) != len(bidi.command_sinks or [None]):
                 return
-            trigger_data = {"protocol": "plc4x"}
+            trigger_data = {}
         else:
             logger.warning("interaction %s: no bridge builder for command "
                            "protocol %r (AID action affordance); skipping",
                            action, protocol)
             return
+
+        target_options: dict[str, Any] = {"timeoutSeconds": int(bidi.timeout_seconds)}
+        if protocol == "mqtt":
+            target_options.update({
+                "requestReply": bool(trigger_data.get("requestReply")),
+                "responseTopic": trigger_data.get("responseTopic"),
+            })
+        elif protocol in ("rest", "http"):
+            target_options["httpMethod"] = (sink.http_method or "POST").upper()
+        trigger_data.pop("requestReply", None)
+        trigger_data.pop("responseTopic", None)
+        trigger_data["action"] = action
+        if target_options:
+            trigger_data["targetOptions"] = target_options
 
         request_transformer_id = ctx.register_entity(
             f"{scope}_request_transformer", f"request transformer of interaction {action}")
@@ -593,11 +637,8 @@ class DescriptorCompiler:
 
         ctx.lua_transformers.append({
             "uniqueId": request_transformer_id,
-            "queryLanguage": "LUA",
             "queryPath": request_path,
-            "inputType": "JsonString",
-            "outputType": "JsonString",
-            "sourceKeys": action,
+            "sourceKeys": ",".join(bidi.request_source_ids),
         })
         response_blob = bidi.response_blob or (
             # one-MC authoring: replies flow through unchanged (the bridge
@@ -607,11 +648,11 @@ class DescriptorCompiler:
             "end\n")
         ctx.lua_transformers.append({
             "uniqueId": response_transformer_id,
-            "queryLanguage": "LUA",
             "queryPath": response_path,
-            "inputType": "JsonString",
-            "outputType": "JsonString",
-            "sourceKeys": action,
+            "sourceKeys": (",".join(source.source_id for source in bidi.response_sources)
+                           if bidi.explicit_response_mapping and bidi.response_sources
+                           else (bidi.operation_source_id if bidi.explicit_response_mapping
+                                 else action)),
         })
 
         trigger_data.update({
@@ -620,174 +661,106 @@ class DescriptorCompiler:
             "restPath": rest_path,
             "restMethod": method,
             "responseTransformer": response_transformer_id,
+            "operationSourceId": bidi.operation_source_id,
+            "requestSourceIds": list(bidi.request_source_ids),
+            "commandSinkId": bidi.command_sink_id,
+            "commandSinkIds": command_sink_ids,
+            "commandSinkBindings": [
+                {"sinkId": sink_id, "dataSinkId": endpoint_id,
+                 "valuePath": action_sink.value_path}
+                for (sink_id, action_sink), endpoint_id
+                in zip(bidi.command_sinks, command_sink_ids)
+            ],
+            "callerReplySinkId": (bidi.caller_reply_sink_id or bidi.operation_source_id
+                                  if bidi.explicit_response_mapping else action),
+            "explicitResponseMapping": bidi.explicit_response_mapping,
         })
+        if bidi.trigger_source_ids is not None:
+            trigger_data["triggerSourceIds"] = list(bidi.trigger_source_ids)
+        response_sink_ids: list[str] = []
+        response_bindings: list[dict[str, Any]] = []
+        if bidi.explicit_response_mapping:
+            for sink_id, resolved_sink, sink_ref in zip(
+                    bidi.response_sink_ids, bidi.response_sinks, bidi.response_sink_refs):
+                # The caller-reply identity selects the Operation result; it
+                # is not a second write destination.
+                if sink_id == bidi.caller_reply_sink_id:
+                    continue
+                if resolved_sink.aas:
+                    endpoint_id = self._add_aas_sink(
+                        ctx, bidi, sink_ref, sink_id, entity_scope=scope)
+                elif resolved_sink.protocol == "mqtt":
+                    endpoint_id = self._add_mqtt_datasink(
+                        ctx, bidi, resolved_sink, sink_id, entity_scope=scope)
+                elif resolved_sink.protocol in ("rest", "http"):
+                    endpoint_id = self._add_http_datasink(
+                        ctx, f"{scope}_{sink_id}", resolved_sink,
+                        f"response sink {sink_id} of interaction {action}")
+                elif resolved_sink.protocol == "opcua":
+                    endpoint_id = self._add_opcua_datasink(
+                        ctx, f"{scope}_{sink_id}", resolved_sink,
+                        f"response sink {sink_id} of interaction {action}",
+                        method_node=resolved_sink.method_node)
+                elif resolved_sink.protocol in ("modbus", "plc4x"):
+                    endpoint_id = self._add_plc4x_datasink(
+                        ctx, f"{scope}_{sink_id}", resolved_sink,
+                        f"response sink {sink_id} of interaction {action}")
+                else:
+                    endpoint_id = None
+                if endpoint_id is None:
+                    logger.warning("interaction %s: could not compile ResponseSink %s",
+                                   action, sink_id)
+                    return
+                response_sink_ids.append(endpoint_id)
+                response_bindings.append({
+                    "sinkId": sink_id,
+                    "dataSinkId": endpoint_id,
+                    "payloadGroup": resolved_sink.payload_group,
+                    "valuePath": resolved_sink.value_path,
+                    "payloadSchema": resolved_sink.payload_schema,
+                    "schema": resolved_sink.schema,
+                    "aas": resolved_sink.aas,
+                    "jsonPayload": (not resolved_sink.aas
+                                    and resolved_sink.protocol in ("mqtt", "rest", "http")
+                                    and bool(resolved_sink.payload_schema or resolved_sink.schema)),
+                })
+            trigger_data["responseSourceBindings"] = [
+                {"sourceId": source.source_id, "valuePath": source.value_path}
+                for source in bidi.response_sources
+            ]
+            if not bidi.response_sources:
+                trigger_data["responseSourceBindings"] = [{
+                    "sourceId": bidi.operation_source_id, "valuePath": None,
+                }]
+            trigger_data["responseSinkBindings"] = response_bindings
+            trigger_data["extraResponseSinkIds"] = [binding["sinkId"] for binding in response_bindings]
         # DECLARED interaction contract (AID form terms + DataSchemas),
         # consumed by the bridge at instantiation — value parsing and MQTT 5
         # request/reply correlation are data-driven, never name-hardcoded
         if bidi.input_types:
             trigger_data["parameterTypes"] = dict(bidi.input_types)
+        if sink.payload_schema and sink.payload_schema.get("required"):
+            trigger_data["parameterRequired"] = list(sink.payload_schema["required"])
         if bidi.output_types:
             trigger_data["responseTypes"] = dict(bidi.output_types)
-        if bidi.response_order:
-            # the CCI operation's POSITIONAL output order — the awaited UA
-            # Call zip's contract (the responseTypes map carries types, not
-            # the method-signature order)
-            trigger_data["responseOrder"] = list(bidi.response_order)
+        if sink.output_schema is not None:
+            trigger_data["responseSchema"] = sink.output_schema
+            if sink.output_schema.get("required"):
+                trigger_data["responseRequired"] = list(sink.output_schema["required"])
+        if bidi.caller_response_order:
+            # Caller OperationVariable[] order, never UA Method argument order.
+            trigger_data["callerOutputOrder"] = list(bidi.caller_response_order)
         ctx.routes.append({
             "routeId": route_id,
             "trigger": "bridge",
             "datasources": [],
             "transformers": [request_transformer_id],
-            "datasinks": [command_sink_id],
+            "datasinks": command_sink_ids + response_sink_ids,
             "triggerData": trigger_data,
         })
 
         ctx.files[request_path] = bidi.request_blob or ""
         ctx.files[response_path] = response_blob
-
-    # -- property write delegation (W2) ------------------------------------- #
-    def _compile_write_delegation(self, ctx: DescriptorContext,
-                                  write: "ResolvedPropertyWrite") -> None:
-        """One write-delegation mapping (W2, Shape A) → one caller-facing
-        PUT route with ack-then-writeback:
-
-        - camel-rest PUT consumer on the derived ``/properties/...`` path;
-        - request Lua (caller body → device command) → device write
-          (opcua node write / mqtt correlated command+reply / http request);
-        - ack-then-writeback: after the device acknowledges, the effective
-          value envelope (response Lua output, or the accepted command for
-          write-status acks) is written to the AAS writeback property;
-        - the caller response is the device ack/reply JSON.
-        """
-        if write.unresolved:
-            logger.warning("property write %s unresolved (%s); skipping",
-                           write.id_short, "; ".join(write.unresolved))
-            return
-        device = write.device_source
-        sink = ResolvedSink(
-            sink_id=write.id_short,
-            protocol=device.protocol,
-            interface=device.interface,
-            affordance_kind=device.affordance_kind,
-            base=device.base,
-            topic=device.topic,
-            data_point=device.data_point,
-            qos=device.qos,
-            retain=device.retain,
-            response_topic=device.response_topic,
-            request_reply=device.request_reply,
-            input_types=dict(device.input_types),
-            output_types=dict(device.output_types),
-            node=device.node,
-            method_node=device.method_node,
-            component_of=device.component_of,
-        )
-        rest_path = _substitute(write.rest_path, self.aas_id,
-                                self.aas_id_short or self.unit)
-        if "{aas_id_short}" in rest_path or "{aas_id}" in rest_path:
-            logger.warning("property write %s: unresolved {aas_id_short} macro "
-                           "in rest path %r; skipping", write.id_short,
-                           write.rest_path)
-            return
-
-        scope = f"{self.unit}_{write.id_short}"
-        protocol = (write.protocol or device.protocol or "").lower()
-        # ONE REST consumer per path: the MQTT leg (the documented caller
-        # contract) keeps the plain path; every further binding gets the
-        # /{protocol} suffix — same convention as the interaction surface
-        if protocol != "mqtt":
-            rest_path = rest_path.rstrip("/") + f"/{protocol}"
-
-        # device leg
-        if protocol == "mqtt":
-            command_sink_id = self._add_interaction_mqtt_command(
-                ctx, scope, write.id_short, sink)
-            absolute_response_topic = self._absolute_reply_topic(write.id_short, sink)
-            if (command_sink_id is None or absolute_response_topic is None
-                    or not sink.request_reply):
-                logger.warning("property write %s: MQTT request/reply terms are required",
-                               write.id_short)
-                return
-        elif protocol == "opcua":
-            command_sink_id = self._add_opcua_datasink(
-                ctx, scope, sink, f"device sink of property write {write.id_short}")
-            if command_sink_id is None:
-                return
-        elif protocol in ("rest", "http"):
-            command_sink_id = self._add_http_datasink(
-                ctx, scope, sink, f"device sink of property write {write.id_short}")
-            if command_sink_id is None:
-                return
-        else:
-            logger.warning("property write %s: unsupported protocol %r; skipping",
-                           write.id_short, write.protocol)
-            return
-
-        # writeback leg (AAS property)
-        aas_sink_id = self._add_aas_sink(
-            ctx, write, write.writeback_ref, write.writeback_sink_id)
-        if aas_sink_id is None:
-            return
-
-        request_transformer_id = ctx.register_entity(
-            f"{scope}_request_transformer",
-            f"request transformer of property write {write.id_short}")
-        response_transformer_id = None
-        if write.response_blob is not None:
-            response_transformer_id = ctx.register_entity(
-                f"{scope}_response_transformer",
-                f"response transformer of property write {write.id_short}")
-
-        # the Lua blobs ride the SAME luatransformer.json surface as the
-        # other mapping transformers (sourceKeys = the writeback sink id —
-        # the blob envelope key)
-        source_keys = write.writeback_sink_id or write.id_short
-        ctx.lua_transformers.append({
-            "uniqueId": request_transformer_id,
-            "queryLanguage": "LUA",
-            "queryPath": f"queries/{scope}_request.lua",
-            "inputType": "JsonString",
-            "outputType": "JsonString",
-            "sourceKeys": source_keys,
-        })
-        if response_transformer_id is not None:
-            ctx.lua_transformers.append({
-                "uniqueId": response_transformer_id,
-                "queryLanguage": "LUA",
-                "queryPath": f"queries/{scope}_response.lua",
-                "inputType": "JsonString",
-                "outputType": "JsonString",
-                "sourceKeys": source_keys,
-            })
-
-        trigger_data = {
-            "protocol": protocol,
-            "restPath": rest_path,
-            "restMethod": "PUT",
-            "writebackSink": aas_sink_id,
-            "timeoutSeconds": int(write.timeout_seconds),
-        }
-        if protocol == "mqtt":
-            trigger_data["requestReply"] = True
-            trigger_data["responseTopic"] = absolute_response_topic
-            if sink.input_types:
-                trigger_data["parameterTypes"] = dict(sink.input_types)
-            if sink.output_types:
-                trigger_data["responseTypes"] = dict(sink.output_types)
-        if response_transformer_id is not None:
-            trigger_data["responseTransformer"] = response_transformer_id
-
-        ctx.routes.append({
-            "routeId": f"{scope}_write",
-            "trigger": "write-delegation",
-            "datasources": [],
-            "transformers": [request_transformer_id],
-            "datasinks": [command_sink_id],
-            "triggerData": trigger_data,
-        })
-        ctx.files[f"queries/{scope}_request.lua"] = write.request_blob or ""
-        if write.response_blob is not None:
-            ctx.files[f"queries/{scope}_response.lua"] = write.response_blob
 
     # -- interaction legs (per protocol) ------------------------------------ #
     def _absolute_reply_topic(self, action: str, sink: ResolvedSink) -> str | None:
@@ -802,7 +775,8 @@ class DescriptorCompiler:
         return ((base_path.rstrip("/") + rt) if base_path else rt).lstrip("/")
 
     def _add_interaction_mqtt_command(self, ctx: DescriptorContext, scope: str,
-                                      action: str, sink: ResolvedSink) -> str | None:
+                                      action: str, sink: ResolvedSink,
+                                      sink_id: str) -> str | None:
         host, port, base_path = parse_endpoint(sink.base)
         if not host or not port:
             logger.warning("interaction %s: incomplete MQTT base %r",
@@ -818,9 +792,10 @@ class DescriptorCompiler:
             logger.warning("interaction %s: empty command topic; skipping", action)
             return None
         command_sink_id = ctx.register_entity(
-            f"{scope}_command_sink", f"command sink of interaction {action}")
+            f"{scope}_command_sink", f"command sink {sink_id} of interaction {action}")
         cmd_entry: dict[str, Any] = {
             "uniqueId": command_sink_id,
+            "sinkId": sink_id,
             "serverUrl": host,
             "serverPort": port,
             "topic": full_topic,
@@ -829,6 +804,7 @@ class DescriptorCompiler:
             "password": "",
         }
         _mqtt_qualifier_fields(cmd_entry, sink)
+        _device_schema_fields(cmd_entry, sink)
         ctx.mqtt_sinks.append(cmd_entry)
         return command_sink_id
 
@@ -867,32 +843,25 @@ class DescriptorCompiler:
 
     # -- transformers ------------------------------------------------------ #
     def _emit_transformer(self, ctx: DescriptorContext, mapping: ResolvedMapping) -> str | None:
-        """Emits the transformer for the mapping's engine (ADR-015); passthrough
+        """Emits the mapping's Lua transformer; passthrough
         identity when no Transformation blob exists (exact SinkId==SourceId
         pairs only)."""
         if mapping.transformation:
-            return self._add_engine_transformer(ctx, mapping)
+            return self._add_lua_transformer(ctx, mapping)
         if mapping.sink_ids:
             return self._passthrough_transformer(ctx, mapping)
         return None
 
-    def _add_engine_transformer(self, ctx: DescriptorContext, mapping: ResolvedMapping) -> str:
-        engine = (mapping.transformation_engine or "LUA").upper()
+    def _add_lua_transformer(self, ctx: DescriptorContext, mapping: ResolvedMapping) -> str:
         unique_id = ctx.register_entity(
-            self._transformer_id(mapping), f"{engine.lower()} transformer of mapping {mapping.id_short}")
+            self._transformer_id(mapping), f"Lua transformer of mapping {mapping.id_short}")
         query_path = self._blob_path(mapping)
         entry: dict[str, Any] = {
             "uniqueId": unique_id,
-            "queryLanguage": "JSONATA" if engine == "JSONATA" else "LUA",
             "queryPath": query_path,
-            "inputType": "JsonString",
-            "outputType": "JsonString",
+            "sourceKeys": ",".join(s.source_id for s in mapping.sources) or "body",
         }
-        if engine != "JSONATA":
-            # raw SourceIds, comma-separated (blob contract): the Lua component
-            # disassembles the aggregated {SourceId: payload} map (SPEC §6.4)
-            entry["sourceKeys"] = ",".join(s.source_id for s in mapping.sources) or "body"
-        (ctx.jsonata_transformers if engine == "JSONATA" else ctx.lua_transformers).append(entry)
+        ctx.lua_transformers.append(entry)
         ctx.files[query_path] = mapping.transformation or ""
         return unique_id
 
@@ -928,10 +897,7 @@ class DescriptorCompiler:
         ctx.lua_transformers.append(
             {
                 "uniqueId": unique_id,
-                "queryLanguage": "LUA",
                 "queryPath": query_path,
-                "inputType": "JsonString",
-                "outputType": "JsonString",
                 "sourceKeys": ",".join(s.source_id for s in mapping.sources) or "body",
             }
         )
@@ -1006,6 +972,7 @@ class DescriptorCompiler:
             # timer route samples the sync surface at the declared interval
             entry["pollingIntervalMs"] = int(source.polling_interval * 1000)
         _mqtt_source_qualifiers(entry, source)
+        _device_schema_fields(entry, source)
         if source.value_path:
             # AUTHORED fine granularity (ADR-020): the DMP disassembles the
             # payload to this JSON Pointer leaf before placing it under SourceId
@@ -1129,6 +1096,7 @@ class DescriptorCompiler:
         if source.value_path:
             entry["valuePath"] = source.value_path
         ctx.opcua_sources.append(entry)
+        _device_schema_fields(entry, source)
         return unique_id
 
     def _add_plc4x_source(self, ctx: DescriptorContext, mapping: ResolvedMapping,
@@ -1158,6 +1126,7 @@ class DescriptorCompiler:
             plc_entry["pollingIntervalMs"] = int(source.polling_interval * 1000)
         if source.value_path:
             plc_entry["valuePath"] = source.value_path
+        _device_schema_fields(plc_entry, source)
         ctx.plc4x_sources.append(plc_entry)
         return unique_id
 
@@ -1200,12 +1169,14 @@ class DescriptorCompiler:
             entry["pollingIntervalMs"] = int(source.polling_interval * 1000)
         if source.value_path:
             entry["valuePath"] = source.value_path
+        _device_schema_fields(entry, source)
         ctx.http_sources.append(entry)
         return unique_id
 
     # -- sinks (per protocol) ---------------------------------------------- #
     def _add_mqtt_datasink(self, ctx: DescriptorContext, mapping: ResolvedMapping,
-                           sink: ResolvedSink, sink_id: str) -> str | None:
+                           sink: ResolvedSink, sink_id: str, *,
+                           entity_scope: str | None = None) -> str | None:
         """Registers an MQTT datasink (paho producer) from a resolved AID sink.
 
         Coarse (no authored ``value_path``): the DMP publishes the whole
@@ -1230,8 +1201,10 @@ class DescriptorCompiler:
             topic = "/" + topic
         full_topic = ((base_path.rstrip("/") + topic) if base_path else topic).lstrip("/")
 
+        entity_id = (f"{entity_scope}_{sink_id}_sink" if entity_scope is not None
+                     else self._sink_entity_id(mapping, sink_id))
         unique_id = ctx.register_entity(
-            self._sink_entity_id(mapping, sink_id),
+            entity_id,
             f"mqtt sink {sink_id} of mapping {mapping.id_short}")
         entry: dict[str, Any] = {
             "uniqueId": unique_id,
@@ -1241,18 +1214,20 @@ class DescriptorCompiler:
             "serverUrl": host,
             "serverPort": port,
             "topic": full_topic,
-            "clientId": f"dmp-{self._sink_entity_id(mapping, sink_id)}",
+            "clientId": f"dmp-{entity_id}",
             "userName": "",
             "password": "",
         }
         _mqtt_qualifier_fields(entry, sink)
+        _device_schema_fields(entry, sink)
         if sink.value_path:
             entry["valuePath"] = sink.value_path
         ctx.mqtt_sinks.append(entry)
         return unique_id
 
     def _add_aas_sink(self, ctx: DescriptorContext, mapping: ResolvedMapping,
-                      sink_ref: Any, sink_id: str) -> str | None:
+                      sink_ref: Any, sink_id: str, *,
+                      entity_scope: str | None = None) -> str | None:
         path = reference_values(sink_ref)
         if len(path) <= 1:
             # Without element keys there is nothing to address inside the
@@ -1270,8 +1245,10 @@ class DescriptorCompiler:
         # '.variable' compatibility suffix is applied.
         id_short_path = "/".join(path[1:])
 
+        entity_id = (f"{entity_scope}_{sink_id}_sink" if entity_scope is not None
+                     else self._sink_entity_id(mapping, sink_id))
         unique_id = ctx.register_entity(
-            self._sink_entity_id(mapping, sink_id),
+            entity_id,
             f"aas sink {sink_id} of mapping {mapping.id_short}")
         ctx.aas_sinks.append(
             {
@@ -1328,6 +1305,7 @@ class DescriptorCompiler:
             entry["query"] = query
         if sink.value_path:
             entry["valuePath"] = sink.value_path
+        _device_schema_fields(entry, sink)
         ctx.http_sinks.append(entry)
         return unique_id
 
@@ -1378,6 +1356,7 @@ class DescriptorCompiler:
             entry["configuration"] = {"method": f"RAW({method_node})"}
         if sink.value_path:
             entry["valuePath"] = sink.value_path
+        _device_schema_fields(entry, sink)
         ctx.opcua_sinks.append(entry)
         return unique_id
 
@@ -1411,6 +1390,7 @@ class DescriptorCompiler:
         }
         if sink.value_path:
             entry["valuePath"] = sink.value_path
+        _device_schema_fields(entry, sink)
         ctx.plc4x_sinks.append(entry)
         return unique_id
 

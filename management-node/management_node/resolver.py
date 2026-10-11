@@ -42,7 +42,9 @@ import logging
 import re
 from dataclasses import dataclass, field
 
+from aas_model.json_schema_aid import schema_from_datapoint
 from aas_model.submodel_templates import Aimc
+from aas_model.submodel_templates.aid import DmpAssetInterfacesDescription
 from management_node.execution_policy import (
     ACTION_AFFORDANCE,
     EVENT_AFFORDANCE,
@@ -51,7 +53,6 @@ from management_node.execution_policy import (
     protocol_from_declared_semantic_ids,
     protocol_from_interface_name,
 )
-from aas_model.submodel_templates.aid import DmpAssetInterfacesDescription
 
 logger = logging.getLogger(__name__)
 
@@ -71,8 +72,7 @@ _INTERFACE_PROTOCOLS = {
     "InterfaceTemplateForIOLINK_OVER_PROFINET_REST": "rest",
 }
 
-#: Documented private namespace selecting the JSONata engine (ADR-015).
-JSONATA_SEMANTIC_NAMESPACE = "https://example.org/jsonata/"
+_RETIRED_JSONATA_SEMANTIC_NAMESPACE = "https://example.org/jsonata/"
 
 
 @dataclass
@@ -92,6 +92,7 @@ class ResolvedSource:
     #: interactive actions only — the DECLARED reply topic (forms.response.href
     #: or the MQTT 5 ``mqv_response_topic`` form term)
     response_topic: str | None = None
+    http_method: str | None = None  # HTTP binding form methodName
     #: MQTT 5 request/reply correlation DECLARED on the form
     #: (``mqv_request_reply``) — see ResolvedSink
     request_reply: bool = False
@@ -103,6 +104,8 @@ class ResolvedSource:
     polling_interval: float | None = None
     data_point: str | None = None  # AID data point name
     value_path: str | None = None  # schema-walk pointer derived from the reference keys
+    schema: dict | None = None  # selected device payload (or member) schema
+    payload_group: str | None = None
     # OPC UA (OPC-10101): see ResolvedSink — ``node`` doubles as the Variable
     # NodeId (writes) or the owning Object NodeId (method calls).
     node: str | None = None
@@ -139,6 +142,10 @@ class ResolvedSink:
     topic: str | None = None
     data_point: str | None = None
     value_path: str | None = None  # schema-walk pointer derived from the reference keys
+    schema: dict | None = None  # selected member schema
+    payload_schema: dict | None = None  # complete affordance payload schema
+    output_schema: dict | None = None  # correlated action reply schema
+    payload_group: str | None = None  # anchored affordance identity, not endpoint URI
     #: DECLARED MQTT delivery qualifiers (mqv_qos / mqv_retain) — wired into
     #: the compiled runtime config, never guessed
     qos: int | None = None
@@ -180,12 +187,14 @@ class ResolvedMapping:
     sink_ids: list[str] = field(default_factory=list)
     resolved_sinks: list[ResolvedSink] = field(default_factory=list)
     transformation: str | None = None
-    transformation_engine: str = "LUA"  # ADR-015 / SPEC §7.6
     default_polling_interval: float | None = None
+    #: None preserves legacy any-contribution triggering; [] is never valid.
+    trigger_source_ids: list[str] | None = None
+    trigger_errors: list[str] = field(default_factory=list)
 
     @property
     def unresolved(self) -> list[str]:
-        return [s.source_id for s in self.sources if not s.protocol] + [
+        return list(self.trigger_errors) + [s.source_id for s in self.sources if not s.protocol] + [
             f"sink:{s.sink_id}" for s in self.resolved_sinks
             if not s.aas and not s.protocol
         ]
@@ -211,6 +220,17 @@ class ResolvedInteraction:
     #: protocol of the command affordance ("mqtt", "rest", "opcua", ...)
     protocol: str = ""
     command_sink: "ResolvedSink | None" = None
+    command_sink_id: str = ""
+    command_sinks: list[tuple[str, "ResolvedSink"]] = field(default_factory=list)
+    operation_source_id: str = ""
+    caller_reply_sink_id: str | None = None
+    request_source_ids: list[str] = field(default_factory=list)
+    trigger_source_ids: list[str] | None = None
+    response_sources: list[ResolvedSource] = field(default_factory=list)
+    response_sink_refs: list[object] = field(default_factory=list)
+    response_sinks: list[ResolvedSink] = field(default_factory=list)
+    response_sink_ids: list[str] = field(default_factory=list)
+    explicit_response_mapping: bool = False
     request_blob: str | None = None
     response_blob: str | None = None
     #: DECLARED MQTT 5 request/reply correlation (copied from the command
@@ -223,45 +243,8 @@ class ResolvedInteraction:
     #: embedded input/output DataSchemas) — the DMP parses values with them
     input_types: dict[str, str] = field(default_factory=dict)
     output_types: dict[str, str] = field(default_factory=dict)
-    #: DECLARED positional reply order (the CCI operation's output_variable
-    #: id_shorts, in order): the positional contract of the method's output
-    #: arguments. The AID's embedded output DataSchema carries TYPES, not the
-    #: positional order (its property order follows the schema file, not the
-    #: method signature) — the awaited UA Call zip uses THIS order.
-    response_order: list[str] = field(default_factory=list)
+    caller_response_order: list[str] = field(default_factory=list)
     #: reply deadline (fixed DMP runtime semantic, decision 2026-09-15)
-    timeout_seconds: float = 30.0
-    unresolved: list[str] = field(default_factory=list)
-
-
-@dataclass
-class ResolvedPropertyWrite:
-    """A resolved property write-delegation (W2, Shape A).
-
-    The AIMC mapping carries the ``writeDelegation`` qualifier; its SOURCE
-    is the DEVICE affordance to write (a writable UA variable, an MQTT
-    command/reply property pair, an HTTP resource — any supported protocol)
-    and its SINK is the AAS property that receives the effective value
-    AFTER the device acknowledges (ack-then-writeback). The caller PUTs the
-    derived surface: ``rest_path`` = ``/properties/{aas_id_short}/{name}``
-    (from the qualifier value's ``{delegation_base}...`` convention or by
-    convention from the writeback reference)."""
-
-    id_short: str
-    rest_path: str | None = None
-    rest_method: str = "PUT"
-    #: protocol of the device affordance ("mqtt", "opcua", "rest", ...)
-    protocol: str = ""
-    device_source: "ResolvedSource | None" = None
-    #: AAS writeback reference (key values) + SinkId for the value envelope
-    writeback_keys: list[str] = field(default_factory=list)
-    writeback_sink_id: str = ""
-    #: the raw sink ModelReference (the descriptor's AAS-sink builder reads it)
-    writeback_ref: object | None = None
-    request_blob: str | None = None
-    #: reply-direction blob (device ack → effective value envelope); MQTT
-    #: acks REQUIRE it (the correlated reply carries the effective value)
-    response_blob: str | None = None
     timeout_seconds: float = 30.0
     unresolved: list[str] = field(default_factory=list)
 
@@ -273,13 +256,11 @@ class ResolutionResult:
     asset_id_short: str
     mappings: list[ResolvedMapping] = field(default_factory=list)
     interactions: list[ResolvedInteraction] = field(default_factory=list)
-    property_writes: list[ResolvedPropertyWrite] = field(default_factory=list)
 
     @property
     def all_resolved(self) -> bool:
         return all(not m.unresolved for m in self.mappings) and \
-            all(not i.unresolved for i in self.interactions) and \
-            all(not w.unresolved for w in self.property_writes)
+            all(not i.unresolved for i in self.interactions)
 
 
 # --------------------------------------------------------------------------- #
@@ -379,12 +360,15 @@ def _locate_data_point(props, acts, evts, keys: list[str]) -> tuple[str | None, 
     return None, "", -1
 
 
-def _schema_pointer(dp, keys: list[str], data_point_idx: int) -> str | None:
+def _schema_target(dp, keys: list[str], data_point_idx: int,
+                   kind: str, *, outgoing: bool) -> tuple[str | None, object]:
     """Derive the fine-granularity JSON Pointer from the reference keys by
     walking the affordance's DECLARED data schema (ADR-020 as revised: no
     authored marker — the AID schema mirror IS the payload contract).
 
     Walk rules over the trailing keys past the data point:
+    - actions start at their ``input`` (sink) or ``output`` (source) schema;
+      the corresponding reference key is transparent to the payload pointer;
     - a key naming a schema child inside the current node's ``properties``
       container contributes the payload key as a pointer token;
     - the literal container step ``properties`` is transparent (no token),
@@ -398,15 +382,33 @@ def _schema_pointer(dp, keys: list[str], data_point_idx: int) -> str | None:
     - anything else addresses nothing in the schema and fails loudly naming
       the available keys (an authoring error, never silently ignored).
     """
-    node = dp
+    node = getattr(dp, "input" if outgoing else "output", None) if kind == ACTION_AFFORDANCE else dp
+    if node is None:
+        if keys[data_point_idx + 1:]:
+            raise ValueError("action reference selects a parameter but its declared "
+                             "input/output schema is absent")
+        return None, dp
     tokens: list[str] = []
     trailing = keys[data_point_idx + 1:]
+    if kind == ACTION_AFFORDANCE and trailing and trailing[0] in ("input", "output"):
+        expected = "input" if outgoing else "output"
+        if trailing[0] != expected:
+            raise ValueError(f"action reference must select {expected}, not {trailing[0]}")
+        trailing = trailing[1:]
     for pos, k in enumerate(trailing):
         container = getattr(node, "properties", None)
         named = dict(getattr(container, "property_name", {}) or {})
-        if k in named:
-            node = named[k]
-            tokens.append(k)
+        child = named.get(k)
+        if child is None:
+            # Unsafe JSON Schema property names are stored under generated
+            # AAS-safe idShort aliases; references use the original wire name.
+            child = next((candidate for candidate in named.values()
+                          if getattr(getattr(candidate, "key", None), "value", None) == k), None)
+        if child is not None:
+            node = child
+            key_element = getattr(node, "key", None)
+            payload_name = getattr(key_element, "value", None) or k
+            tokens.append(str(payload_name))
             continue
         if k == "properties" and container is not None:
             continue
@@ -421,7 +423,23 @@ def _schema_pointer(dp, keys: list[str], data_point_idx: int) -> str | None:
             f"reference key '{k}' is not a key of the declared data schema "
             f"(available: {sorted(named) or 'none'}); fix the reference or "
             "bind the whole data point")
-    return "$." + ".".join(tokens) if tokens else None
+    if not tokens:
+        return None, node
+    if any(not token or any(c in token for c in ".[]/ ~") for token in tokens):
+        if any(not token for token in tokens):
+            raise ValueError("an empty schema property name cannot be addressed by a DMP valuePath")
+        pointer = "/" + "/".join(t.replace("~", "~0").replace("/", "~1") for t in tokens)
+    else:
+        pointer = "$." + ".".join(tokens)
+    return pointer, node
+
+
+def _resolved_schema(node) -> dict | None:
+    # Older AIDs can omit the DataSchema entirely; do not invent constraints.
+    if node is None:
+        return None
+    schema = schema_from_datapoint(node)
+    return schema or None
 
 
 def _apply_interface(aid_model, container, keys: list[str], interface_name: str,
@@ -446,7 +464,10 @@ def _apply_interface(aid_model, container, keys: list[str], interface_name: str,
     dp = {PROPERTY_AFFORDANCE: props, ACTION_AFFORDANCE: acts,
           EVENT_AFFORDANCE: evts}[kind][data_point]
     resolved.affordance_kind = kind
-    resolved.value_path = _schema_pointer(dp, keys, data_point_idx) if dp is not None else None
+    resolved.value_path, selected = _schema_target(dp, keys, data_point_idx, kind,
+                                                    outgoing=False)
+    resolved.schema = _resolved_schema(selected)
+    resolved.payload_group = "/".join(keys[:data_point_idx + 1])
     if dp is not None:
         _apply_declared_form_facts(resolved, dp, kind)
         if hasattr(resolved, "modbus_entity"):
@@ -466,9 +487,15 @@ def _apply_interface(aid_model, container, keys: list[str], interface_name: str,
         op=_form_prop(dp, "op") if dp is not None else "",
         observable=_dp_observable(dp) if dp is not None else None,
     )
-    # an EXPLICITLY declared IDTA polling interval pulls the affordance — the
-    # transport-default push classification yields to the authored cadence
-    # (e.g. a retained MQTT topic sampled by the DMP's timer route)
+    # A subscription queue cannot implement a fresh MQTT Read. Reject rather
+    # than treating retained/event messages as periodic values.
+    if resolved.protocol == "mqtt" and kind == PROPERTY_AFFORDANCE:
+        if resolved.polling_interval or resolved.delivery == "sync":
+            raise ValueError(
+                "MQTT property sources support Observe, not Read; "
+                "remove readproperty/PollingInterval or use a protocol with a Read binding"
+            )
+    # An explicitly declared polling interval pulls a readable affordance.
     if resolved.polling_interval:
         resolved.delivery = "sync"
     return True
@@ -488,7 +515,7 @@ def _resolve_source(source, aid: DmpAssetInterfacesDescription,
         source_id=source.SourceId.value,
         protocol="",
         interface=interface_name or "",
-        polling_interval=_float(source.PollingInterval),
+        polling_interval=_float(getattr(source, "PollingInterval", None)),
     )
 
     if not interface_name:
@@ -574,8 +601,19 @@ def _apply_sink_interface(aid_model, sink, keys: list[str], interface_name: str,
     resolved.protocol = _declared_protocol(interface_name, interface, template_protocol)
     resolved.data_point = data_point
     resolved.affordance_kind = kind
-    dp = props.get(data_point) or acts.get(data_point) or evts.get(data_point)
-    resolved.value_path = _schema_pointer(dp, keys, data_point_idx) if dp is not None else None
+    dp = {
+        PROPERTY_AFFORDANCE: props,
+        ACTION_AFFORDANCE: acts,
+        EVENT_AFFORDANCE: evts,
+    }[kind].get(data_point)
+    resolved.value_path, selected = _schema_target(dp, keys, data_point_idx, kind,
+                                                    outgoing=True)
+    resolved.schema = _resolved_schema(selected)
+    payload = getattr(dp, "input", None) if kind == ACTION_AFFORDANCE else dp
+    resolved.payload_schema = _resolved_schema(payload)
+    if kind == ACTION_AFFORDANCE:
+        resolved.output_schema = _resolved_schema(getattr(dp, "output", None))
+    resolved.payload_group = "/".join(keys[:data_point_idx + 1])
     if dp is not None:
         _apply_declared_form_facts(resolved, dp, kind)
     return True
@@ -607,11 +645,22 @@ def _data_schema_types(dp, attr: str) -> dict[str, str]:
     props = getattr(data_schema, "properties", None)
     names = getattr(props, "property_name", None) or {}
     out: dict[str, str] = {}
+
+    def schema_type(schema) -> str | None:
+        type_element = getattr(schema, "type", None)
+        type_name = getattr(type_element, "value", None)
+        if type_name != "array":
+            return str(type_name).strip() if type_name else None
+        item_schema = getattr(schema, "items", None)
+        item_type = schema_type(item_schema) if item_schema is not None else None
+        return f"array<{item_type or 'unknown'}>"
+
     for name, schema in names.items():
-        t = getattr(schema, "type", None)
-        value = getattr(t, "value", None)
+        value = schema_type(schema)
         if value:
-            out[name] = str(value).strip()
+            key_element = getattr(schema, "key", None)
+            payload_name = getattr(key_element, "value", None) or name
+            out[str(payload_name)] = str(value).strip()
     return out
 
 
@@ -623,8 +672,8 @@ def _apply_declared_form_facts(resolved, dp, kind: str) -> None:
     request/reply correlation terms (``mqv_request_reply`` /
     ``mqv_response_topic``) and the embedded input/output parameter types."""
     resolved.topic = _form_prop(dp, "href")
-    declared_op = (_form_prop(dp, "op") or "").lower()
     if kind == ACTION_AFFORDANCE:
+        resolved.http_method = _form_prop(dp, "htv_methodName")
         response_href = _declared_response_form(dp)
         if isinstance(response_href, str) and response_href.startswith("/"):
             resolved.response_topic = response_href.lstrip("/")
@@ -636,20 +685,6 @@ def _apply_declared_form_facts(resolved, dp, kind: str) -> None:
         if isinstance(rt, str) and rt.strip():
             resolved.response_topic = rt.strip().lstrip("/")
         # the affordance's DECLARED parameter types (input/output DataSchemas)
-        resolved.input_types = _data_schema_types(dp, "input")
-        resolved.output_types = _data_schema_types(dp, "output")
-    elif kind == PROPERTY_AFFORDANCE and declared_op == "writeproperty":
-        # a WRITABLE property may declare a command/reply pair (W2 Shape A:
-        # the correlated ack on the declared response topic is the write's
-        # ack) — same declared-facts contract as actions
-        response_href = _declared_response_form(dp)
-        if isinstance(response_href, str) and response_href.startswith("/"):
-            resolved.response_topic = response_href.lstrip("/")
-        rr = (_form_prop(dp, "mqv_request_reply") or "").strip().lower()
-        resolved.request_reply = rr in ("true", "1")
-        rt = _form_prop(dp, "mqv_response_topic")
-        if isinstance(rt, str) and rt.strip():
-            resolved.response_topic = rt.strip().lstrip("/")
         resolved.input_types = _data_schema_types(dp, "input")
         resolved.output_types = _data_schema_types(dp, "output")
     qos_text = _form_prop(dp, "mqv_qos")
@@ -692,7 +727,6 @@ def resolve(aimc: Aimc, aid: DmpAssetInterfacesDescription | None, *,
     classified as interactions and never enter ``mappings`` — they compile to
     ProtocolBridge routes, not execution-policy polls."""
     result = ResolutionResult(asset_id_short=aimc.id_short or "")
-    write_names: set[str] = set()
     order = operation_output_order or {}
 
     def verify_reference(ref, *, context: str) -> None:
@@ -713,6 +747,22 @@ def resolve(aimc: Aimc, aid: DmpAssetInterfacesDescription | None, *,
             )
 
     for index, mc in enumerate(aimc.MappingConfigurations.value):
+        mapping_name = _mapping_name(mc, index)
+        for qualifier in getattr(mc, "qualifiers", None) or []:
+            if (getattr(qualifier, "type_", "") or "").lower() == "writedelegation":
+                raise ValueError(f"mapping {mapping_name}: retired writeDelegation qualifier "
+                                 "is no longer supported; migrate the mapping before use")
+        _reject_retired_jsonata(mc, mapping_name)
+        request_source_ids = [source.SourceId.value for source in mc.Sources.value]
+        if len(request_source_ids) != len(set(request_source_ids)):
+            raise ValueError(f"mapping {_mapping_name(mc, index)}: request SourceIds must be unique")
+        trigger_source_ids = _declared_trigger_source_ids(mc, index)
+        if trigger_source_ids is not None:
+            unknown = [source_id for source_id in trigger_source_ids
+                       if source_id not in set(request_source_ids)]
+            if unknown:
+                raise ValueError(f"mapping {_mapping_name(mc, index)}: ExecutionSemantics selects "
+                                 f"unknown request SourceIds {unknown}")
         for source in mc.Sources.value:
             verify_reference(source.Source.value,
                              context=f"mapping {_mapping_name(mc, index)} source {source.SourceId.value}")
@@ -720,21 +770,17 @@ def resolve(aimc: Aimc, aid: DmpAssetInterfacesDescription | None, *,
             verify_reference(sink.Sink.value,
                              context=f"mapping {_mapping_name(mc, index)} sink {sink.SinkId.value}")
         operation = _operation_interaction(mc, aid, aid_for_anchor,
-                                           response_order=order.get(_operation_action_name(mc)))
+                                           response_order=order.get(_operation_action_name(mc)),
+                                           trigger_source_ids=trigger_source_ids)
         if operation is not None:
             result.interactions.append(operation)
-            continue
-        write = _property_write(mc, aid, index, aid_for_anchor, write_names)
-        if write is not None:
-            write_names.add(write.id_short)
-            result.property_writes.append(write)
             continue
         resolved_sources = [_resolve_source(s, aid, aid_for_anchor) for s in mc.Sources.value]
         for source in resolved_sources:
             if source.affordance_kind == ACTION_AFFORDANCE:
                 raise ValueError(
                     f"mapping {_mapping_name(mc, index)} source {source.source_id}: "
-                    "an action affordance requires an operation or write delegation"
+                    "an action affordance requires an operation delegation"
                 )
             if source.protocol in ("rest", "http", "modbus", "plc4x", "bacnet") \
                     and source.delivery == "async":
@@ -744,6 +790,12 @@ def resolve(aimc: Aimc, aid: DmpAssetInterfacesDescription | None, *,
                 )
         sink_refs = [s.Sink.value for s in mc.Sinks.value]
         resolved_sinks = [_resolve_sink(s, aid, aid_for_anchor) for s in mc.Sinks.value]
+        for sink in resolved_sinks:
+            if sink.affordance_kind == ACTION_AFFORDANCE:
+                raise ValueError(
+                    f"mapping {_mapping_name(mc, index)} sink {sink.sink_id}: "
+                    "an action affordance requires an operation delegation"
+                )
         result.mappings.append(
             ResolvedMapping(
                 id_short=_mapping_name(mc, index),
@@ -752,8 +804,8 @@ def resolve(aimc: Aimc, aid: DmpAssetInterfacesDescription | None, *,
                 sink_ids=[s.SinkId.value for s in mc.Sinks.value],
                 resolved_sinks=resolved_sinks,
                 transformation=_blob_text(mc.Transformation),
-                transformation_engine=transformation_engine(mc),
                 default_polling_interval=_float(mc.DefaultPollingInterval),
+                trigger_source_ids=trigger_source_ids,
             )
         )
     _disambiguate_binding_paths(result.interactions)
@@ -794,6 +846,21 @@ _MAPPING_PLACEHOLDER_NAMES = (
 )
 
 
+def _declared_trigger_source_ids(mc, index: int) -> list[str] | None:
+    semantics = getattr(mc, "ExecutionSemantics", None)
+    if semantics is None:
+        return None
+    source_list = getattr(semantics, "TriggerSourceIds", None)
+    values = getattr(source_list, "value", None) if source_list is not None else None
+    ids = [str(getattr(value, "value", value)) for value in (values or [])]
+    name = _mapping_name(mc, index)
+    if not ids or any(not source_id or source_id == "None" for source_id in ids):
+        raise ValueError(f"mapping {name}: authored ExecutionSemantics.TriggerSourceIds must be nonempty")
+    if len(ids) != len(set(ids)):
+        raise ValueError(f"mapping {name}: ExecutionSemantics.TriggerSourceIds must be unique")
+    return ids
+
+
 def _mapping_name(mc, index: int) -> str:
     """The mapping's name: the SMC ``id_short`` when meaningful, else
     ``mapping_<index>`` from the MappingConfigurations list position."""
@@ -823,17 +890,20 @@ def _blob_text(blob) -> str | None:
     return v
 
 
-def transformation_engine(mc) -> str:
-    """Engine selected by the Transformation blob's semantic id (ADR-015 / §7.6)."""
-    tr = getattr(mc, "Transformation", None)
-    if tr is None:
-        return "LUA"
-    sids = [getattr(tr, "semantic_id", None) or ""]
-    sids += list(getattr(tr, "supplemental_semantic_ids", None) or [])
-    for sid in sids:
-        if str(sid).lower().startswith(JSONATA_SEMANTIC_NAMESPACE):
-            return "JSONATA"
-    return "LUA"
+def _reject_retired_jsonata(mc, mapping_name: str) -> None:
+    """Do not reinterpret a retired JSONata descriptor as Lua source."""
+    for blob_name in ("Transformation", "ResponseTransformation"):
+        tr = getattr(mc, blob_name, None)
+        if tr is None:
+            continue
+        sids = [getattr(tr, "semantic_id", None) or ""]
+        sids += list(getattr(tr, "supplemental_semantic_ids", None) or [])
+        for sid in sids:
+            if str(sid).lower().startswith(_RETIRED_JSONATA_SEMANTIC_NAMESPACE):
+                raise ValueError(
+                    f"mapping {mapping_name}: JSONata transformations are no longer supported; "
+                    f"migrate the {blob_name} blob to Lua"
+                )
 
 
 # --------------------------------------------------------------------------- #
@@ -904,7 +974,8 @@ def _operation_action_name(mc) -> str | None:
 
 def _operation_interaction(mc, aid: DmpAssetInterfacesDescription,
                            aid_for_anchor=None,
-                           response_order: list[str] | None = None) -> ResolvedInteraction | None:
+                           response_order: list[str] | None = None,
+                           trigger_source_ids: list[str] | None = None) -> ResolvedInteraction | None:
     """Classify a mapping as an operation delegation and resolve its endpoints.
 
     Returns ``None`` when no source targets an Operation element (the mapping
@@ -930,20 +1001,45 @@ def _operation_interaction(mc, aid: DmpAssetInterfacesDescription,
         # the reply direction; one-MC authoring leaves it absent and replies
         # pass through unchanged
         response_blob=_blob_text(getattr(mc, "ResponseTransformation", None)),
-        # the CCI operation's positional output order (the awaited UA Call
-        # zip's contract); absent → the readback/self-describing fallback
-        response_order=list(response_order or []),
+        operation_source_id=mc.Sources.value[
+            next(i for i, source in enumerate(mc.Sources.value)
+                 if reference_keys(source.Source.value)[-1].type_ == OPERATION_KEY_TYPE)
+        ].SourceId.value,
+        request_source_ids=[source.SourceId.value for source in mc.Sources.value],
+        trigger_source_ids=trigger_source_ids,
+        caller_response_order=list(response_order or []),
     )
+    if trigger_source_ids is not None and trigger_source_ids != [resolved.operation_source_id]:
+        resolved.unresolved.append(
+            f"{action}: delegated action ExecutionSemantics must select exactly its Operation "
+            f"SourceId {resolved.operation_source_id!r}")
     if len(operation_keys) > 1:
         resolved.unresolved.append(
             f"{action}: mapping targets {len(operation_keys)} Operation "
             "elements — one mapping per operation (split the sources)")
     if other_keys:
         resolved.unresolved.append(
-            f"{action}: mapping mixes Operation-element and affordance sources "
-            "— an operation delegation maps exactly one operation invocation")
-
-    sink = _command_sink(mc, aid, aid_for_anchor)
+            f"{action}: enrichment sources are declared but invocation-time sampling "
+            "is not implemented yet; refusing to invoke Lua with missing SourceIds")
+    if len(set(resolved.request_source_ids)) != len(resolved.request_source_ids):
+        resolved.unresolved.append(f"{action}: request SourceIds must be unique")
+    action_sinks = _command_sinks(mc, aid, aid_for_anchor)
+    if len(action_sinks) != len(mc.Sinks.value):
+        resolved.unresolved.append(
+            f"{action}: every request sink must address a member of the same "
+            "ACTION affordance")
+    distinct = {item.payload_group or item.data_point for _, item in action_sinks}
+    if len(distinct) > 1:
+        resolved.unresolved.append(
+            f"{action}: one action route cannot target multiple distinct ACTION affordances")
+    command_sink_ids = [sink_id for sink_id, _ in action_sinks]
+    if len(command_sink_ids) != len(set(command_sink_ids)):
+        resolved.unresolved.append(f"{action}: command SinkIds must be unique")
+    command_paths = [item.value_path for _, item in action_sinks]
+    if len(action_sinks) > 1 and (None in command_paths or len(command_paths) != len(set(command_paths))):
+        resolved.unresolved.append(
+            f"{action}: multiple command sinks must select distinct members, not mix a whole-affordance sink")
+    sink = action_sinks[0][1] if action_sinks else None
     if sink is None:
         resolved.unresolved.append(
             f"{action}: no native command affordance sink (the sink must be an "
@@ -951,6 +1047,8 @@ def _operation_interaction(mc, aid: DmpAssetInterfacesDescription,
             "property)")
     else:
         resolved.command_sink = sink
+        resolved.command_sink_id = action_sinks[0][0]
+        resolved.command_sinks = action_sinks
         resolved.protocol = sink.protocol
         # the DECLARED contract of the command affordance rides with the
         # interaction: MQTT 5 request/reply correlation, reply topic and the
@@ -959,12 +1057,62 @@ def _operation_interaction(mc, aid: DmpAssetInterfacesDescription,
         resolved.response_topic = sink.response_topic
         resolved.input_types = dict(sink.input_types)
         resolved.output_types = dict(sink.output_types)
+        if sink.protocol in ("plc4x", "modbus", "bacnet"):
+            resolved.unresolved.append(
+                f"{action}: {sink.protocol} exposes tag/register Write, not a native "
+                "synchronous action invocation")
         if sink.protocol == "mqtt" and not sink.response_topic:
             # the correlated reply leg rides the DECLARED response form of the
             # command affordance; there is nothing to rewrite, ever
             resolved.unresolved.append(
                 f"{action}: command affordance {sink.data_point!r} declares no "
                 "response form (set forms.response.href explicitly)")
+
+    response_sources = list(getattr(getattr(mc, "ResponseSources", None), "value", None) or [])
+    response_sinks = list(getattr(getattr(mc, "ResponseSinks", None), "value", None) or [])
+    resolved.explicit_response_mapping = bool(response_sources or response_sinks)
+    response_source_ids = [item.SourceId.value for item in response_sources]
+    resolved.response_sink_ids = [item.SinkId.value for item in response_sinks]
+    if len(set(response_source_ids)) != len(response_source_ids):
+        resolved.unresolved.append(f"{action}: ResponseSource ids must be unique")
+    if len(set(resolved.response_sink_ids)) != len(resolved.response_sink_ids):
+        resolved.unresolved.append(f"{action}: ResponseSink ids must be unique")
+    for item in response_sources:
+        source = _resolve_source(item, aid, aid_for_anchor)
+        if (sink is None or source.affordance_kind != ACTION_AFFORDANCE
+                or source.payload_group != sink.payload_group):
+            resolved.unresolved.append(
+                f"{action}: ResponseSource {source.source_id} must select output of "
+                "the command ACTION affordance")
+        resolved.response_sources.append(source)
+    member_paths = [source.value_path for source in resolved.response_sources]
+    if len(member_paths) != len(set(member_paths)) or (None in member_paths and len(member_paths) > 1):
+        resolved.unresolved.append(f"{action}: ResponseSources must select distinct output members")
+
+    for item in response_sinks:
+        response_keys = reference_keys(item.Sink.value)
+        if response_keys and response_keys[-1].type_ == OPERATION_KEY_TYPE:
+            if [key.value for key in response_keys] != [key.value for key in keys]:
+                resolved.unresolved.append(
+                    f"{action}: Operation ResponseSink must reference the original Operation")
+            elif resolved.caller_reply_sink_id is not None:
+                resolved.unresolved.append(
+                    f"{action}: only one ResponseSink may select the original Operation")
+            else:
+                resolved.caller_reply_sink_id = item.SinkId.value
+        response_sink = _resolve_sink(item, aid, aid_for_anchor)
+        if response_sink.affordance_kind == ACTION_AFFORDANCE:
+            resolved.unresolved.append(
+                f"{action}: an ACTION affordance cannot be a ResponseSink (chained actions are unsupported)")
+        resolved.response_sink_refs.append(item.Sink.value)
+        resolved.response_sinks.append(response_sink)
+    response_targets = [(item.payload_group, item.value_path) for item in resolved.response_sinks
+                       if not item.aas]
+    if len(response_targets) != len(set(response_targets)):
+        resolved.unresolved.append(f"{action}: ResponseSinks must target distinct affordance members")
+    if resolved.explicit_response_mapping and resolved.response_blob is None:
+        resolved.unresolved.append(
+            f"{action}: explicit ResponseSources/ResponseSinks require a ResponseTransformation")
 
     if resolved.request_blob is None:
         resolved.unresolved.append(f"{action}: mapping carries no Transformation "
@@ -976,144 +1124,13 @@ def _operation_interaction(mc, aid: DmpAssetInterfacesDescription,
     return resolved
 
 
-def _write_delegation_qualifier(mc):
-    """The ``writeDelegation`` ConceptQualifier carried by an AIMC mapping
-    (W2 authoring), or ``None`` — its presence classifies the mapping as a
-    property write-delegation instead of a data poll."""
-    for qualifier in (getattr(mc, "qualifiers", None) or []):
-        if (getattr(qualifier, "type_", "") or "").lower() == "writedelegation":
-            return qualifier
-    return None
-
-
-def _write_name_from_device(device, index: int, taken: set[str] | None) -> str:
-    """The delegation name for a write whose authored list-item idShort did
-    not survive serialization: ``{data_point}_{protocol}`` from the device
-    reference (the SubmodelElementList round-trip drops element names, AAS
-    spec — interactions resolve the same way from their reference keys).
-    Collisions (same data point bound twice on one protocol) get a stable
-    index suffix."""
-    name = f"{device.data_point}_{device.protocol or 'device'}"
-    if not taken or name not in taken:
-        return name
-    candidate = f"{name}_{index}"
-    n = index
-    while candidate in taken:
-        n += 1
-        candidate = f"{name}_{n}"
-    return candidate
-
-
-def _property_write(mc, aid: DmpAssetInterfacesDescription, index: int = 0,
-                    aid_for_anchor=None, taken: set[str] | None = None) \
-        -> ResolvedPropertyWrite | None:
-    """Classify a mapping as a property write-delegation (W2, Shape A) and
-    resolve its legs.
-
-    Requires the ``writeDelegation`` qualifier on the mapping; the SOURCE is
-    the DEVICE affordance to write (any supported protocol — a writable UA
-    variable, an MQTT command/reply property pair, an HTTP resource) and the
-    SINK is the AAS property receiving the effective value after the device
-    acknowledges. Fails loud instead of wiring a wrong endpoint."""
-    qualifier = _write_delegation_qualifier(mc)
-    if qualifier is None:
-        return None
-
-    resolved = ResolvedPropertyWrite(id_short=_mapping_name(mc, index))
-    resolved.request_blob = _blob_text(mc.Transformation)
-    resolved.response_blob = _blob_text(
-        getattr(mc, "ResponseTransformation", None))
-
-    qualifier_value = (getattr(qualifier, "value", "") or "")
-    if "{delegation_base}" in qualifier_value:
-        tail = qualifier_value.split("{delegation_base}", 1)[1]
-        resolved.rest_path = tail if tail.startswith("/") else "/" + tail
-    elif qualifier_value.startswith("/"):
-        resolved.rest_path = qualifier_value
-
-    # ── device leg: exactly one affordance source ─────────────────────────
-    sources = mc.Sources.value
-    if len(sources) != 1:
-        resolved.unresolved.append(
-            f"{resolved.id_short}: a write delegation maps exactly one device affordance "
-            f"(found {len(sources)} sources)")
-    else:
-        device = _resolve_source(sources[0], aid, aid_for_anchor)
-        resolved.device_source = device
-        resolved.protocol = device.protocol
-        # authored list-item names do not survive the SubmodelElementList
-        # round-trip (AAS spec: list elements carry no idShort) — derive the
-        # delegation name from the device reference
-        if resolved.id_short.startswith("mapping_"):
-            resolved.id_short = _write_name_from_device(device, index, taken)
-        name = resolved.id_short
-        if not device.protocol or device.protocol == "aas":
-            resolved.unresolved.append(
-                f"{name}: source does not resolve to a device affordance "
-                f"(keys={reference_values(sources[0].Source.value)})")
-        elif device.protocol == "mqtt":
-            # the correlated reply leg IS the ack — without the declared
-            # response form there is nothing to await
-            if not device.response_topic:
-                resolved.unresolved.append(
-                    f"{name}: MQTT write affordance {device.data_point!r} "
-                    "declares no response form (set forms.response.href "
-                    "explicitly)")
-            if resolved.request_blob is None or resolved.response_blob is None:
-                resolved.unresolved.append(
-                    f"{name}: MQTT write delegation needs a Transformation "
-                    "request blob (command shape) AND a ResponseTransformation "
-                    "blob (ack → effective value envelope)")
-        elif device.protocol == "opcua":
-            if not device.node:
-                resolved.unresolved.append(
-                    f"{name}: OPC UA write affordance {device.data_point!r} "
-                    "carries no node information (uav_browsePath or §6.2 href)")
-        elif device.protocol in ("rest", "http"):
-            if not device.topic and not device.value_path:
-                resolved.unresolved.append(
-                    f"{name}: HTTP write affordance {device.data_point!r} "
-                    "declares no href")
-
-    name = resolved.id_short
-    if resolved.request_blob is None and resolved.protocol != "mqtt":
-        resolved.unresolved.append(
-            f"{name}: mapping carries no Transformation request blob")
-
-    # ── writeback leg: exactly one AAS-element sink ───────────────────────
-    sinks = mc.Sinks.value
-    if len(sinks) != 1:
-        resolved.unresolved.append(
-            f"{name}: a write delegation declares exactly one AAS writeback "
-            f"sink (found {len(sinks)})")
-    else:
-        keys = reference_values(sinks[0].Sink.value)
-        if any(k.startswith("interface_") for k in keys):
-            resolved.unresolved.append(
-                f"{name}: the writeback sink must be the AAS property "
-                "(Variables/Parameters submodel), never a device affordance")
-        elif not keys:
-            resolved.unresolved.append(f"{name}: writeback sink has no reference")
-        else:
-            resolved.writeback_keys = keys
-            resolved.writeback_sink_id = sinks[0].SinkId.value
-            resolved.writeback_ref = sinks[0].Sink.value
-            if resolved.rest_path is None:
-                resolved.rest_path = \
-                    f"/properties/{{aas_id_short}}/{keys[-1]}"
-
-    if resolved.unresolved:
-        logger.warning("property write %s unresolved: %s", name,
-                       "; ".join(resolved.unresolved))
-    return resolved
-
-
-def _command_sink(mc, aid: DmpAssetInterfacesDescription,
-                  aid_for_anchor=None):
+def _command_sinks(mc, aid: DmpAssetInterfacesDescription,
+                   aid_for_anchor=None):
     """The mapping's native command affordance sink: an ACTION affordance on
     one of the AID's own interfaces, any protocol. AAS-element sinks and
     property/event affordances are not command targets — the interaction
     stays unresolved rather than wiring a wrong endpoint."""
+    found = []
     for sink in mc.Sinks.value:
         resolved = _resolve_sink(sink, aid, aid_for_anchor)
         if resolved.aas or not resolved.protocol:
@@ -1124,5 +1141,5 @@ def _command_sink(mc, aid: DmpAssetInterfacesDescription,
                 "affordance", resolved.data_point,
                 resolved.affordance_kind or "unknown", resolved.protocol)
             continue
-        return resolved
-    return None
+        found.append((sink.SinkId.value, resolved))
+    return found

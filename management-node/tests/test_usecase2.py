@@ -134,7 +134,7 @@ def test_passthrough_identity_transform_when_no_transformation():
     xformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
     assert len(xformers) == 1
     t = xformers[0]
-    assert t["queryLanguage"] == "LUA"
+    assert not ({"queryLanguage", "inputType", "outputType"} & t.keys())
     assert t["uniqueId"].endswith("_passthrough")
     blob = descriptor.files[t["queryPath"]]
     assert "function aimc_main" in blob

@@ -15,7 +15,6 @@ from typing import Any
 
 from aas_model.submodel_templates import Aimc
 
-from ..resolver import JSONATA_SEMANTIC_NAMESPACE
 from .validate import validate_aimc
 
 logger = logging.getLogger(__name__)
@@ -24,25 +23,6 @@ logger = logging.getLogger(__name__)
 AIMC_SEMANTIC_ID = (
     "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/Submodel"
 )
-
-#: Transformation engines selectable by the blob's semantic id (ADR-015 / SPEC §7.6).
-ENGINE_LUA = "LUA"
-ENGINE_JSONATA = "JSONATA"
-
-
-def transformation_engine(semantic_ids: list[str] | None) -> str:
-    """Selects the transformation engine from the blob's semantic ids.
-
-    A semantic id starting with the private ``https://example.org/jsonata/``
-    namespace selects the fast/simple JSONata engine; anything else (including
-    the AIMC 2.0 default Transformation semantic id) selects the AIMC-compliant
-    Lua engine."""
-    for sid in semantic_ids or []:
-        # strict prefix on the documented private namespace (T3.3)
-        if sid.lower().startswith(JSONATA_SEMANTIC_NAMESPACE):
-            return ENGINE_JSONATA
-    return ENGINE_LUA
-
 
 def parse_aimc(submodel: dict[str, Any] | str) -> Aimc:
     """Parse an AIMC submodel into the shared ``Aimc`` pydantic model.

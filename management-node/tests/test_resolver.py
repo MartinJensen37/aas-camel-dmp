@@ -12,8 +12,10 @@ from aas_pydantic.submodel_templates.asset_interfaces_mapping_configuration impo
 )
 from aas_model.testing import (
     build_aid, build_aimc, aimc_mapping, aimc_source, aimc_sink, aimc_ref,
-    mqtt_interface, opcua_interface, write_delegation_qualifier,
+    mqtt_interface, opcua_interface,
 )
+from aas_model.resource_template.asset_interfaces_mapping_configuration import operation_ref, response_sink
+from aas_pydantic import Key, ModelReference, Qualifier
 from management_node.parsers import aid, aimc
 from management_node.resolver import resolve, reference_values
 
@@ -91,6 +93,27 @@ def test_reference_group_cannot_select_same_named_property():
     result = resolve(build_aimc(aimc_mapping(
         sources=[aimc_source("State", ref)], sinks=[])), aid_model)
     assert result.mappings[0].sources[0].protocol == ""
+
+
+def test_action_sink_uses_action_when_property_has_same_name():
+    aid_model = build_aid(mqtt=mqtt_interface(
+        "mqtt://broker:1883/line", properties={"Move": "/property-move"},
+        actions={"Move": ("/action-move", "/action-move/reply")}))
+    action_ref = aimc_ref("a/submodels/AID", "interface_mqtt",
+                          "InteractionMetadata", "actions", "Move")
+    mapping = aimc_mapping(
+        id_short="MoveAction",
+        sources=[aimc_source("Invoke", operation_ref("Move"))],
+        sinks=[aimc_sink("Move", action_ref)],
+        transformation="function aimc_main(sources) return { Move = { X = 1 } } end",
+    )
+
+    result = resolve(build_aimc(mapping), aid_model)
+
+    interaction = result.interactions[0]
+    assert interaction.command_sink is not None
+    assert interaction.command_sink.affordance_kind == "action"
+    assert interaction.command_sink.topic == "/action-move"
 
 
 def test_aas_property_named_interface_is_not_device_interface():
@@ -208,6 +231,44 @@ def test_resolves_operation_mapping_to_derived_interaction():
     assert interaction.response_blob is None
 
 
+@pytest.mark.parametrize("action", [False, True], ids=["ordinary", "action"])
+def test_retired_write_delegation_qualifier_is_rejected_before_classification(action):
+    model = _halt_aimc() if action else build_aimc(aimc_mapping(
+        sources=[aimc_source("State", aimc_ref("a/submodels/AID", "interface_mqtt",
+                                              "InteractionMetadata", "properties", "State"))],
+        sinks=[aimc_sink("State", aimc_ref("a/submodels/Variables", "State"))],
+        transformation="function aimc_main(sources) return { State = sources.State } end",
+    ))
+    model.MappingConfigurations.value[0].qualifiers = [Qualifier(
+        type_="writeDelegation", value_type="xs:string", value="/properties/unit/State")]
+    with pytest.raises(ValueError, match="retired writeDelegation qualifier"):
+        resolve(model, _halt_aid())
+
+
+@pytest.mark.parametrize("anchor,operation", [
+    ("other/submodels/ControlComponentInstance", "Halt"),
+    ("{aas_id}/submodels/ControlComponentInstance", "Move"),
+])
+def test_operation_response_sink_must_reference_the_original_operation(anchor, operation):
+    from management_node.descriptor import compile_descriptor
+    from aas_model.submodel_templates.aimc import DmpResponseSinks, DmpResponseTransformation
+
+    model = _halt_aimc()
+    mapping = model.MappingConfigurations.value[0]
+    response_ref = ModelReference(key=(Key(type_="Submodel", value=anchor),
+                                       *operation_ref(operation).key[1:]))
+    mapping.ResponseSinks = DmpResponseSinks(value=[response_sink(
+        "Reply", response_ref)])
+    mapping.ResponseTransformation = DmpResponseTransformation(
+        value=b"function aimc_main(sources) return { Reply = sources.Halt } end")
+    resolved = resolve(model, _halt_aid())
+    assert any("original Operation" in reason for reason in resolved.interactions[0].unresolved)
+    descriptor = compile_descriptor(resolved, aas_base_url="http://aas:8081",
+                                    aas_id="unit", aas_id_short="unit")
+    assert "aasdatasink.json" not in descriptor.files
+    assert "routes.json" not in descriptor.files
+
+
 def test_resolves_cross_aas_operation_source():
     """A cross-AAS Operation reference classifies the same way — the key types
     alone identify the delegation, no ownership scan."""
@@ -248,8 +309,8 @@ def test_interaction_without_transformation_blob_is_unresolved():
 
 
 def test_mixed_operation_and_affordance_sources_are_unresolved():
-    """An operation delegation maps exactly one operation invocation — a
-    mapping mixing Operation-element and affordance sources fails loudly."""
+    """Enrichment is legal by design, but must fail until invocation-time
+    sampling is implemented rather than silently pass a missing source to Lua."""
     aid_model = _halt_aid()
     mqtt_ref = aimc_ref("{aas_id}/submodels/AID", "interface_mqtt",
                         "InteractionMetadata", "actions", "Halt")
@@ -264,7 +325,7 @@ def test_mixed_operation_and_affordance_sources_are_unresolved():
     )
     result = resolve(build_aimc(mc), aid_model)
     assert not result.all_resolved
-    assert any("mixes" in reason for reason in
+    assert any("sampling" in reason for reason in
                result.interactions[0].unresolved)
 
 
@@ -396,179 +457,8 @@ def test_opcua_only_delegation_keeps_plain_path():
     assert result.interactions[0].rest_path == "/operations/{aas_id_short}/Halt"
 
 
-# --------------------------------------------------------------------------- #
-# Property write delegations (W2, Shape A): the AIMC mapping carries the
-# writeDelegation qualifier; the SOURCE is the device affordance to write and
-# the SINK is the AAS property that receives the effective value after the
-# device acknowledges. Authored list-item names do not survive the
-# SubmodelElementList round-trip (AAS spec: list elements carry no idShort) —
-# placeholder-named delegations are renamed from the device reference.
-# --------------------------------------------------------------------------- #
-
-REQUEST_BLOB = (
-    "function aimc_main(sources)\n"
-    "    return { Parameter = sources.Parameter.value }\n"
-    "end\n"
-)
-RESPONSE_BLOB = (
-    "function aimc_main(sources)\n"
-    "    return { Parameter = sources.Parameter.value }\n"
-    "end\n"
-)
-
-
-def _writable_property_aid():
-    """AID with a writable Parameter affordance on BOTH bindings: the MQTT
-    command/reply property pair (op writeproperty + declared ack topic) and
-    the writable OPC UA variable (§6.2 href NodeId)."""
-    return build_aid(
-        mqtt=mqtt_interface(
-            "mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering",
-            properties={"Parameter": ("/CMD/Parameter", "/DATA/Parameter",
-                                      "writeproperty")}),
-        opcua=opcua_interface(
-            "opc.tcp://192.168.0.104:4840/stoppering/",
-            properties={"Parameter": "/?id=ns=2;s=Parameter"},
-            op="writeproperty"),
-    )
-
-
-def _write_mc(interface_name, *, id_short="mapping", response_blob=RESPONSE_BLOB,
-              qualifier=True):
-    sources = [aimc_source("Parameter", aimc_ref(
-        "{aas_id}/submodels/AID", interface_name,
-        "InteractionMetadata", "properties", "Parameter"))]
-    sinks = [aimc_sink("Parameter", aimc_ref(
-        "{aas_id}/submodels/Variables", "Parameter"))]
-    return aimc_mapping(
-        id_short=id_short,
-        sources=sources, sinks=sinks,
-        transformation=REQUEST_BLOB,
-        response_transformation=response_blob,
-        qualifiers=[write_delegation_qualifier()] if qualifier else None,
-    )
-
-
-def test_mqtt_write_delegation_resolves_ack_and_rest_path():
-    result = resolve(build_aimc(_write_mc("interface_mqtt")),
-                     _writable_property_aid())
-    assert result.all_resolved, [w.unresolved for w in result.property_writes]
-    write = result.property_writes[0]
-    assert write.protocol == "mqtt"
-    # placeholder name → derived from the device reference
-    assert write.id_short == "Parameter_mqtt"
-    # the correlated ack rides the DECLARED response form
-    assert write.device_source.response_topic == "DATA/Parameter"
-    assert write.device_source.topic == "/CMD/Parameter"
-    # the qualifier's {delegation_base} tail is the derived caller surface
-    assert write.rest_path == "/properties/{aas_id_short}/Parameter"
-    assert write.rest_method == "PUT"
-    assert write.request_blob is not None and write.response_blob is not None
-    assert write.writeback_keys[-1] == "Parameter"
-    assert write.writeback_sink_id == "Parameter"
-
-
-def test_opcua_write_delegation_resolves_node():
-    result = resolve(build_aimc(_write_mc("interface_opcua")),
-                     _writable_property_aid())
-    assert result.all_resolved, [w.unresolved for w in result.property_writes]
-    write = result.property_writes[0]
-    assert write.protocol == "opcua"
-    assert write.id_short == "Parameter_opcua"
-    # the §6.2 href NodeId of the writable variable
-    assert write.device_source.node == "ns=2;s=Parameter"
-    assert write.rest_path == "/properties/{aas_id_short}/Parameter"
-
-
-def test_write_delegation_keeps_authored_name():
-    result = resolve(build_aimc(_write_mc("interface_mqtt",
-                                          id_short="ParameterWriteMqtt")),
-                     _writable_property_aid())
-    assert result.all_resolved, [w.unresolved for w in result.property_writes]
-    assert result.property_writes[0].id_short == "ParameterWriteMqtt"
-
-
-def test_write_delegation_name_collision_gets_index_suffix():
-    result = resolve(build_aimc(
-        _write_mc("interface_mqtt"), _write_mc("interface_mqtt")),
-        _writable_property_aid())
-    names = [w.id_short for w in result.property_writes]
-    assert names[0] == "Parameter_mqtt"
-    assert names[1] == "Parameter_mqtt_1"
-
-
-def test_mqtt_write_delegation_requires_response_form_and_blobs():
-    # no declared ack form and no ack → envelope blob: unresolved, both defects
-    aid_model = build_aid(mqtt=mqtt_interface(
-        "mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering",
-        properties={"Parameter": ("/CMD/Parameter", None, "writeproperty")}))
-    mc = aimc_mapping(
-        sources=[aimc_source("Parameter", aimc_ref(
-            "{aas_id}/submodels/AID", "interface_mqtt",
-            "InteractionMetadata", "properties", "Parameter"))],
-        sinks=[aimc_sink("Parameter", aimc_ref(
-            "{aas_id}/submodels/Variables", "Parameter"))],
-        transformation=REQUEST_BLOB,
-        qualifiers=[write_delegation_qualifier()],
-    )
-    result = resolve(build_aimc(mc), aid_model)
-    write = result.property_writes[0]
-    assert not result.all_resolved
-    assert any("no response form" in u for u in write.unresolved), write.unresolved
-    assert any("ResponseTransformation" in u for u in write.unresolved), write.unresolved
-
-
-def test_write_delegation_rest_path_falls_back_to_writeback_keys():
-    # a qualifier value without the {delegation_base} convention: the derived
-    # surface comes from the writeback reference's last key
-    qualifier = write_delegation_qualifier()
-    qualifier.value = "true"
-    mc = _write_mc("interface_mqtt")
-    mc.qualifiers = [qualifier]
-    result = resolve(build_aimc(mc), _writable_property_aid())
-    assert result.all_resolved, [w.unresolved for w in result.property_writes]
-    assert result.property_writes[0].rest_path == \
-        "/properties/{aas_id_short}/Parameter"
-
-
-def test_write_delegation_rejects_device_affordance_writeback():
-    # the writeback sink must be the AAS property, never a device affordance
-    mc = aimc_mapping(
-        sources=[aimc_source("Parameter", aimc_ref(
-            "{aas_id}/submodels/AID", "interface_mqtt",
-            "InteractionMetadata", "properties", "Parameter"))],
-        sinks=[aimc_sink("Parameter", aimc_ref(
-            "{aas_id}/submodels/AID", "interface_mqtt",
-            "InteractionMetadata", "properties", "Parameter"))],
-        transformation=REQUEST_BLOB, response_transformation=RESPONSE_BLOB,
-        qualifiers=[write_delegation_qualifier()],
-    )
-    result = resolve(build_aimc(mc), _writable_property_aid())
-    write = result.property_writes[0]
-    assert any("must be the AAS property" in u for u in write.unresolved), \
-        write.unresolved
-
-
-def test_data_mapping_with_qualifier_keyword_stays_data_mapping():
-    # the qualifier must carry the writeDelegation type — a mapping without it
-    # (same shape otherwise) resolves as a plain data mapping
-    mc = aimc_mapping(
-        sources=[aimc_source("Parameter", aimc_ref(
-            "{aas_id}/submodels/AID", "interface_mqtt",
-            "InteractionMetadata", "properties", "Parameter"))],
-        sinks=[aimc_sink("Parameter", aimc_ref(
-            "{aas_id}/submodels/Variables", "Parameter"))],
-        transformation=REQUEST_BLOB,
-    )
-    result = resolve(build_aimc(mc), _writable_property_aid())
-    assert len(result.property_writes) == 0
-    assert len(result.mappings) == 1
-
-
-def test_declared_polling_interval_pulls_mqtt_affordance():
-    """An EXPLICIT IDTA polling interval on an MQTT source overrides the
-    transport-default push classification: the DMP samples the retained
-    topic on a timer route (scenario A2, the sync surface)."""
+def test_declared_polling_interval_cannot_turn_mqtt_observe_into_read():
+    """A subscription queue cannot satisfy a periodic fresh Read contract."""
     src = aimc_source("StationState", aimc_ref(
         "{aas_id}/submodels/AID", "interface_mqtt",
         "InteractionMetadata", "properties", "StationState"))
@@ -584,8 +474,5 @@ def test_declared_polling_interval_pulls_mqtt_affordance():
     aid_model = build_aid(mqtt=mqtt_interface(
         "mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering",
         properties={"StationState": "/DATA/State"}))
-    result = resolve(build_aimc(mc), aid_model)
-    assert result.all_resolved, result.mappings[0].unresolved
-    source = result.mappings[0].sources[0]
-    assert source.delivery == "sync"
-    assert source.polling_interval == 2.0
+    with pytest.raises(ValueError, match="MQTT property sources support Observe, not Read"):
+        resolve(build_aimc(mc), aid_model)

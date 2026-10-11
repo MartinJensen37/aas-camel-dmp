@@ -68,19 +68,9 @@ def test_accepts_json_string(submodel):
     assert len(model.MappingConfigurations.value) == 5
 
 
-def test_transformation_default_semantic_id_selects_lua(submodel):
+def test_resolved_mapping_has_no_engine_selector(submodel):
     mqtt = next(m for m in _resolved_aimc(submodel).mappings if m.id_short == "mapping_0")
-    assert mqtt.transformation_engine == "LUA"
-
-
-def test_transformation_engine_helper_selects_jsonata_by_semantic_id():
-    # T3.3: strict prefix on the documented private namespace only
-    assert aimc.transformation_engine(["https://example.org/jsonata/expression/1/0"]) == "JSONATA"
-    assert aimc.transformation_engine(["HTTPS://EXAMPLE.ORG/JSONATA/expr"]) == "JSONATA"
-    # substring mentions outside the namespace no longer select JSONata
-    assert aimc.transformation_engine(["https://x/.../jsonata"]) == "LUA"
-    assert aimc.transformation_engine([]) == "LUA"
-    assert aimc.transformation_engine(["https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Transformation"]) == "LUA"
+    assert not hasattr(mqtt, "transformation_engine")
 
 
 def test_empty_input_returns_none():

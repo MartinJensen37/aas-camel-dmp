@@ -19,6 +19,10 @@ flattened, so ``smElementPath`` is the bare element id
 nested ``VariableItem`` shape could never do. ``sme_created.json`` is the
 throwaway-element capture from the T0.1 run (submodel ``DmpEventProbe``); its
 path is a single id, so it carries no shape assumption.
+
+``sm_created.json`` is a migrated capture: its retired ``writeDelegation``
+qualifier was removed. It pins the event envelope, not unchanged deployed
+authoring; rejection of the original qualifier is covered by resolver tests.
 """
 
 from __future__ import annotations
@@ -38,7 +42,7 @@ def _load(name: str) -> dict:
     return json.loads((EVENTS_DIR / f"{name}.json").read_text())
 
 
-def test_captured_events_are_present_and_unmodified():
+def test_captured_event_envelopes_are_present():
     for name in ("sm_created", "sm_created_aid", "sm_created_non_aimc",
                  "sm_updated", "sme_created", "sme_updated", "sm_deleted"):
         assert isinstance(_load(name), dict), name

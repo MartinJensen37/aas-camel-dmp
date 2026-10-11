@@ -12,11 +12,16 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from aas_model.testing import (
     aimc_mapping, aimc_ref, aimc_sink, aimc_source, build_aid, build_aimc,
     modbus_interface, mqtt_interface,
 )
 from aas_pydantic import Key, ModelReference
+from aas_model.json_schema_aid import datapoint_from_schema
+from aas_model.submodel_templates.aid import DmpActionInput
+from aas_model.resource_template.asset_interfaces_mapping_configuration import operation_ref
 
 from management_node.descriptor import compile_descriptor
 from management_node.parsers import aid, aimc
@@ -86,6 +91,11 @@ def contract_descriptors():
                 "State", ref, [_sink()], interval=2.5 if mode == "poll" else None,
                 name=f"{element_type}{mode}")), build_aid())
             options = {"aas_event_broker": ("kafka", 9092)} if mode == "event" else {}
+            if element_type == "SubmodelElementCollection" and mode == "event":
+                with pytest.raises(ValueError, match="observation capability is not assumed"):
+                    compile_descriptor(model, aas_base_url=BASE_URL, aas_id=AAS_ID,
+                                       aas_id_short="contract", **options)
+                continue
             yield f"aas-{name}-{mode}", compile_descriptor(
                 model, aas_base_url=BASE_URL, aas_id=AAS_ID,
                 aas_id_short="contract", **options)
@@ -108,6 +118,24 @@ def contract_descriptors():
         build_aid(mqtt=_schema_iface({"SetPoint": ("/SET/SetPoint", SETPOINT_SCHEMA)})))
     yield "fine-path", compile_descriptor(fine, aas_base_url=BASE_URL,
                                           aas_id=AAS_ID, aas_id_short="contract")
+
+    grouped_iface = mqtt_interface("mqtt://192.168.0.104:1883/base",
+                                  properties={"State": "/state"},
+                                  actions={"Move": ("/move", "/move/reply")})
+    grouped_iface.InteractionMetadata.actions.property_name["Move"].input = datapoint_from_schema(
+        {"type": "object", "properties": {"X": {"type": "number"},
+                                          "Y": {"type": "number"}},
+         "required": ["X", "Y"]}, cls=DmpActionInput)
+    action_path = ("a/submodels/AID", "interface_mqtt", "InteractionMetadata",
+                   "actions", "Move", "input")
+    grouped = resolve(build_aimc(aimc_mapping(
+        id_short="Grouped", sources=[aimc_source("Invoke", operation_ref("Move"))],
+        sinks=[aimc_sink("X", aimc_ref(*action_path, "X")),
+               aimc_sink("Y", aimc_ref(*action_path, "Y"))],
+        transformation="function aimc_main(sources) return { X=1, Y=2 } end",
+    )), build_aid(mqtt=grouped_iface))
+    yield "grouped-action", compile_descriptor(grouped, aas_base_url=BASE_URL,
+                                                aas_id=AAS_ID, aas_id_short="contract")
 
     # schema-nested pointers on the NON-MQTT builders (Phase 4 T4.1/T4.2):
     # the runtime must read valuePath on http/opcua/plc4x sources and sinks,

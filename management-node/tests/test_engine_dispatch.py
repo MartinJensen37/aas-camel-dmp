@@ -1,10 +1,4 @@
-"""Tests for transformation engine dispatch by semantic id (ADR-015 / SPEC §7.6).
-
-The AIMC ``Transformation`` blob's semantic id selects Lua (AIMC-compliant,
-default) or JSONata (fast/simple). Both share the same SourceId/SinkId contract
-and the same dis/assembly pipeline; the descriptor emits ``luatransformer.json``
-or ``jsonatatransformer.json`` accordingly.
-"""
+"""Lua-only transformation compilation and retired-engine rejection tests."""
 
 from __future__ import annotations
 
@@ -12,44 +6,38 @@ import json
 
 import pytest
 
-from management_node.descriptor import (
-    JSONATA_TRANSFORMER_FILE,
-    LUA_TRANSFORMER_FILE,
-    ROUTES_FILE,
-    compile_descriptor,
-)
+from management_node.descriptor import LUA_TRANSFORMER_FILE, ROUTES_FILE, compile_descriptor
 from management_node.resolver import resolve
 
 from aas_model.testing import (
-    build_aid, build_aimc, aimc_mapping, aimc_source, aimc_sink, aimc_ref,
+    aimc_mapping, aimc_ref, aimc_sink, aimc_source, build_aid, build_aimc,
     mqtt_interface,
 )
+from aas_model.resource_template.asset_interfaces_mapping_configuration import operation_ref
 
 BASE = "mqtt://192.168.0.104:1883/NN/Nybrovej/InnoLab/Stoppering"
-AIMC_LUA_SID = ("https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/"
-                "2/0/MappingConfiguration/Transformation")
+AIMC_TRANSFORMATION_SID = (
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/"
+    "2/0/MappingConfiguration/Transformation"
+)
 JSONATA_SID = "https://example.org/jsonata/expression/1/0"
 
 
 def _aid():
-    return build_aid(mqtt=mqtt_interface(BASE, properties={"StationState": "/DATA/State",
-                                                           "StationMode": "/DATA/Mode"}))
+    return build_aid(mqtt=mqtt_interface(BASE, properties={
+        "StationState": "/DATA/State", "StationMode": "/DATA/Mode"}))
 
 
-def _ref(data_point: str = "StationState"):
+def _ref(data_point: str):
     return aimc_ref("a/submodels/AID", "interface_mqtt", "InteractionMetadata",
                     "properties", data_point)
 
 
-def _vars_ref():
-    return aimc_ref("{aas_id}/submodels/Variables", "Out")
-
-
-def _mapping(id_short: str, sid: str, blob: str, data_point: str = "StationState"):
+def _mapping(id_short: str, blob: str, data_point: str = "StationState", sid: str = AIMC_TRANSFORMATION_SID):
     return aimc_mapping(
         id_short=id_short,
         sources=[aimc_source(data_point, _ref(data_point))],
-        sinks=[aimc_sink("Out", _vars_ref())],
+        sinks=[aimc_sink("Out", aimc_ref("{aas_id}/submodels/Variables", "Out"))],
         transformation=blob,
         transformation_semantic_id=sid,
     )
@@ -64,77 +52,63 @@ def _compile(*mappings):
     )
 
 
-def test_jsonata_semantic_id_dispatches_to_jsonata_transformer():
-    descriptor = _compile(_mapping("StateMap", JSONATA_SID, '{"out": station_state}'))
+def test_mapping_emits_only_lua_configuration_with_decoded_value_contract():
+    lua = "function aimc_main(sources) return { Out = sources.StationState } end"
+    descriptor = _compile(_mapping("StateMap", lua))
 
-    assert JSONATA_TRANSFORMER_FILE in descriptor.files
-    assert LUA_TRANSFORMER_FILE not in descriptor.files
-
-    xformers = json.loads(descriptor.files[JSONATA_TRANSFORMER_FILE])
-    assert len(xformers) == 1
-    t = xformers[0]
-    assert t["queryLanguage"] == "JSONATA"
-    assert t["queryPath"] == "queries/syntegonStopperingSystem_StateMap.jsonata"
-    assert descriptor.files[t["queryPath"]] == '{"out": station_state}'
-
+    assert LUA_TRANSFORMER_FILE in descriptor.files
+    assert "jsonatatransformer.json" not in descriptor.files
+    transformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
+    assert len(transformers) == 1
+    entry = transformers[0]
+    assert entry["queryPath"] == "queries/syntegonStopperingSystem_StateMap.lua"
+    assert entry["sourceKeys"] == "StationState"
+    assert not ({"queryLanguage", "inputType", "outputType"} & entry.keys())
+    assert descriptor.files[entry["queryPath"]] == lua
     route = json.loads(descriptor.files[ROUTES_FILE])[0]
-    assert route["transformers"] == [t["uniqueId"]]
+    assert route["transformers"] == [entry["uniqueId"]]
 
 
-def test_aimc_default_semantic_id_uses_lua():
-    descriptor = _compile(_mapping("StateMap", AIMC_LUA_SID,
-                                   "function aimc_main(sources) return { x = sources.StationState } end"))
-
-    assert LUA_TRANSFORMER_FILE in descriptor.files
-    assert JSONATA_TRANSFORMER_FILE not in descriptor.files
-
-    xformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
-    assert xformers[0]["queryLanguage"] == "LUA"
-    assert xformers[0]["queryPath"].endswith(".lua")
+def test_retired_jsonata_semantic_id_fails_loudly_instead_of_running_as_lua():
+    with pytest.raises(ValueError, match="JSONata transformations are no longer supported"):
+        _compile(_mapping("StateMap", '{"Out": station_state}', sid=JSONATA_SID))
 
 
-def test_jsonata_outside_private_namespace_uses_lua():
-    sid = "https://other.example.org/transforms/jsonata/expression/1/0"
-    descriptor = _compile(_mapping(
-        "StateMap", sid,
-        "function aimc_main(sources) return { x = sources.StationState } end",
-    ))
-
-    assert LUA_TRANSFORMER_FILE in descriptor.files
-    assert JSONATA_TRANSFORMER_FILE not in descriptor.files
-    xformers = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
-    assert xformers[0]["queryLanguage"] == "LUA"
-    assert xformers[0]["queryPath"].endswith(".lua")
-
-
-def test_mixed_engines_in_one_asset():
-    """Two mappings of one asset may each pick their engine; they consume
-    DISTINCT feeds (identical push feeds across mappings fail compilation —
-    the source-overlap guard, W2.7)."""
-    descriptor = _compile(
-        _mapping("LuaMap", AIMC_LUA_SID,
-                 "function aimc_main(sources) return { x = sources.StationState } end"),
-        _mapping("FastMap", JSONATA_SID, '{"x": station_mode}', "StationMode"),
+@pytest.mark.parametrize("action", [False, True], ids=["ordinary", "action"])
+@pytest.mark.parametrize("blob_name", ["Transformation", "ResponseTransformation"])
+@pytest.mark.parametrize("supplemental", [False, True], ids=["semantic", "supplemental"])
+def test_retired_jsonata_is_rejected_on_both_mapping_legs(action, blob_name, supplemental):
+    lua = "function aimc_main(sources) return {} end"
+    mapping = aimc_mapping(
+        sources=[aimc_source("Invoke", operation_ref("Move"))] if action
+                else [aimc_source("StationState", _ref("StationState"))],
+        sinks=[aimc_sink("Command", aimc_ref("a/submodels/AID", "interface_mqtt",
+                                             "InteractionMetadata", "actions", "Move"))] if action
+              else [aimc_sink("Out", aimc_ref("a/submodels/Variables", "Out"))],
+        transformation=lua,
+        response_transformation=lua,
     )
+    blob = getattr(mapping, blob_name)
+    if supplemental:
+        blob.supplemental_semantic_ids = [JSONATA_SID.upper()]
+    else:
+        blob.semantic_id = JSONATA_SID
+    aid = build_aid(mqtt=mqtt_interface(BASE, properties={"StationState": "/state"},
+                                       actions={"Move": ("/move", "/reply")}))
+    with pytest.raises(ValueError, match="JSONata.*" + blob_name):
+        resolve(build_aimc(mapping), aid)
 
-    lua = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])
-    jx = json.loads(descriptor.files[JSONATA_TRANSFORMER_FILE])
-    assert [t["queryLanguage"] for t in lua] == ["LUA"]
-    assert [t["queryLanguage"] for t in jx] == ["JSONATA"]
 
-    routes = json.loads(descriptor.files[ROUTES_FILE])
-    assert len(routes) == 2
-    by_id = {r["transformers"][0]: r for r in routes}
-    assert set(by_id) == {lua[0]["uniqueId"], jx[0]["uniqueId"]}
+def test_standard_aimc_transformation_blob_remains_lua():
+    descriptor = _compile(_mapping(
+        "StateMap", "function aimc_main(sources) return { Out = sources.StationState } end"))
+    entry = json.loads(descriptor.files[LUA_TRANSFORMER_FILE])[0]
+    assert entry["queryPath"].endswith(".lua")
 
 
 def test_identical_push_feeds_across_mappings_fail_compilation():
-    """Two mappings subscribing to the same broker+topic compile to
-    byte-identical consumer URIs (Camel refuses the second consumer) — the
-    overlap guard fails loudly and names both mappings + the fan-in remedy."""
     with pytest.raises(ValueError, match="source-overlap"):
         _compile(
-            _mapping("LuaMap", AIMC_LUA_SID,
-                     "function aimc_main(sources) return { x = sources.StationState } end"),
-            _mapping("FastMap", JSONATA_SID, '{"x": station_state}'),
+            _mapping("LuaMap", "function aimc_main(sources) return { Out = sources.StationState } end"),
+            _mapping("SecondLuaMap", "function aimc_main(sources) return { Out = sources.StationState } end"),
         )

@@ -80,16 +80,16 @@ def test_resolver_threads_response_order_into_interactions():
     resolution = resolve(aimc_model, aid_model,
                          operation_output_order={"Stoppering": ["State", "Outcome"]})
     by_name = {i.id_short: i for i in resolution.interactions}
-    assert by_name["Stoppering"].response_order == ["State", "Outcome"]
+    assert by_name["Stoppering"].caller_response_order == ["State", "Outcome"]
     # undeclared actions keep an empty positional contract
-    assert by_name["Halt"].response_order == []
+    assert by_name["Halt"].caller_response_order == []
 
     # absent map → empty everywhere
     resolution2 = resolve(aimc_model, aid_model)
-    assert all(not i.response_order for i in resolution2.interactions)
+    assert all(not i.caller_response_order for i in resolution2.interactions)
 
 
-def test_descriptor_emits_response_order_in_trigger_data():
+def test_descriptor_emits_caller_output_order_not_ua_method_order():
     from management_node.descriptor import DescriptorCompiler
 
     aid_model, aimc_model = _models()
@@ -104,4 +104,4 @@ def test_descriptor_emits_response_order_in_trigger_data():
     stoppering = [r for r in routes if r["routeId"].endswith("Stoppering_interaction")]
     assert stoppering, [r["routeId"] for r in routes]
     trigger_data = stoppering[0]["triggerData"]
-    assert trigger_data["responseOrder"] == ["State", "Outcome"]
+    assert trigger_data["callerOutputOrder"] == ["State", "Outcome"]

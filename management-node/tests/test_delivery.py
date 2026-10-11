@@ -120,7 +120,7 @@ def test_observation_subprotocol_makes_source_async_without_op():
 
 def test_aas_element_source_is_sync():
     source_ref = aimc_ref("{aas_id}/submodels/Variables", "MachineState", "State")
-    resolution = resolve(_model(source_ref), build_aid())
+    resolution = resolve(_model(source_ref, default_polling_interval=1), build_aid())
     assert resolution.mappings[0].sources[0].delivery == "sync"
 
 
@@ -140,7 +140,7 @@ def test_aas_property_without_interval_requires_change_stream():
         Key(type_="Property", value="State"),
     ))
     resolution = resolve(_model(source_ref, "State"), build_aid())
-    with pytest.raises(ValueError, match="change stream"):
+    with pytest.raises(ValueError, match="usable event stream"):
         _compile(resolution)
 
 
@@ -167,16 +167,14 @@ def test_aas_property_without_interval_emits_filtered_event_source():
     assert "pollingIntervalMs" not in event_source
 
 
-def test_smc_source_emits_element_event_when_eventing_is_available():
+def test_smc_source_requires_explicit_polling_without_declared_observation_capability():
     source_ref = aimc_ref("a/submodels/Runtime", "Runtime", "State")
     resolution = resolve(_model(source_ref, "State"), build_aid())
-    descriptor = compile_descriptor(
-        resolution,
-        aas_base_url="http://aas-server:8081",
-        aas_id="a",
-        aas_id_short="a",
-        aas_event_broker=("kafka", 9092),
-    )
-    event_source = json.loads(descriptor.files[KAFKA_DATASOURCE_FILE])[0]
-    assert event_source["sourceKind"] == "aas-element-event"
-    assert event_source["eventFilter"]["modelType"] == "SubmodelElementCollection"
+    with pytest.raises(ValueError, match="require a positive effective polling interval"):
+        compile_descriptor(
+            resolution,
+            aas_base_url="http://aas-server:8081",
+            aas_id="a",
+            aas_id_short="a",
+            aas_event_broker=("kafka", 9092),
+        )

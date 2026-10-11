@@ -1,12 +1,10 @@
 """Declared-fact delivery classification (SPEC §6.1, protocol-agnostic).
 
-Execution is a FIXED DMP runtime semantic (decision 2026-09-15, replacing the
-ADR-020 authorable policy): every mapping evaluates on any source update —
-an async arrival or the sync source's declared polling interval — once ALL of
-its sources have delivered; sync sources are read at their declared IDTA
-polling interval. Nothing about execution is authored on the AIMC, so there
-is no policy parsing here anymore. This module keeps the classification
-helpers the descriptor and registration tooling share.
+Endpoint acquisition is classified from declared AID facts. AIMC
+`ExecutionSemantics.TriggerSourceIds` separately selects which contributions
+execute a mapping; absent semantics retains the legacy any-source default.
+This module contains the shared interaction-to-Read/Observe classifier used
+by descriptor generation and registration tooling.
 """
 
 from __future__ import annotations
@@ -29,10 +27,9 @@ __all__ = [
 # --------------------------------------------------------------------------- #
 #
 # Transport classes derived from W3C-TD supplemental semantic ids on the
-# AID interface. Push transports deliver asynchronously by their very
-# definition; pull transports are request/response reads. Per-affordance
-# declarations (`op` containing observe*/subscribe*, observable=true,
-# event-group membership) override toward push; nothing else does.
+# AID interface. Per-affordance `op` identifies the selected interaction
+# (Read vs Observe); observation capability and transport defaults are
+# considered only when no more specific read/observe form is authored.
 
 #: TD transport semantic id -> ("push"|"pull", canonical protocol name)
 TD_TRANSPORT_SEMANTIC_IDS = {
@@ -91,15 +88,18 @@ def classify_delivery(*, affordance_kind: str, protocol: str, op: str = "",
     1. event affordances push;
     2. affordances whose ``op`` declares observe/subscribe semantics push;
     3. properties with ``observable=true`` push;
-    4. transport-declared push protocols (MQTT) push everything that is not
-       explicitly a read form;
-    5. everything else is pulled (polled request/response)."""
+    4. an explicit ``readproperty`` form selects Read even on a push-capable
+       transport;
+    5. observable properties and declared push transports select Observe;
+    6. everything else is pulled (Read/polling)."""
     kind = (affordance_kind or "").lower()
     if kind == EVENT_AFFORDANCE:
         return "async"
     lowered = (op or "").lower()
     if any(marker in lowered for marker in OBSERVE_OP_MARKERS):
         return "async"
+    if "readproperty" in lowered:
+        return "sync"
     if observable is True:
         return "async"
     if protocol in PUSH_PROTOCOLS and kind != ACTION_AFFORDANCE:
