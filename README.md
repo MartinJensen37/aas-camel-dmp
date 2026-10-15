@@ -1,37 +1,173 @@
-# Eclipse BaSyx DMP
-[![BaSyx Logo](https://www.eclipse.org/basyx/img/basyxlogo.png)](https://www.eclipse.org/basyx/)
+# aas-camel-dmp
 
-The Eclipse BaSyx DMP is part of the [Eclipse BaSyx middleware](https://www.eclipse.org/basyx/). It has been created within the [BaSys](https://www.basys40.de/) project.
+A data-mapping processor (DMP) for Asset Administration Shells, built on
+[Apache Camel](https://camel.apache.org/) 4 and Java 21. It is a fork of the
+[Eclipse BaSyx DataBridge](https://github.com/eclipse-basyx/basyx-databridge).
 
-The DMP can be used to integrate data sources within Asset Administration Shells.
-It utilizes [Apache Camel](https://camel.apache.org/) to enable multiple datasources, transformers and the usage of the AAS as a datasink.
+The DMP runs as **one Java process**. It has no configuration files: every
+route is built at runtime from the AAS repository and kept current from
+submodel events.
 
-To learn more on how to use and adapt the DMP component, visit the [documentation](https://wiki.basyx.org/en/latest/content/user_documentation/basyx_components/databridge/index.html) in the BaSyx Wiki or take a look at the [Device Integration Example](https://wiki.basyx.org/en/latest/content/user_documentation/developer/basyx_java_v1/knowledge_base/scenarios/device-integration.html).
+## How it works
 
-## aas-camel-dmp
+1. **Discovery at startup, on a need-to-know basis.** The DMP lists the AIMC
+   (Asset Interfaces Mapping Configuration 2.0) submodels of the AAS v3
+   repository (BaSyx v2) by semanticId (`GET /submodels?semanticId=…`), which
+   returns them whole. Every Source and Sink is a ModelReference whose first key
+   is a submodel and whose remaining keys are the idShort path to the element.
+   The DMP groups these references per submodel and reads each submodel once:
+   - an **AID** (Asset Interfaces Description) whole, because a target needs
+     the interface's endpoint metadata, forms and schemas, not just the
+     referenced property. An AID is recognised by its fixed idShort
+     (`…/AssetInterfacesDescription`) or by the semanticId in `$metadata`;
+   - **any other submodel** as `$metadata` plus the referenced element subtrees
+     (`GET …/submodel-elements/<idShortPath>`), or whole when it is referenced
+     at more than eight separate paths.
 
-This repository is a fork of the Eclipse BaSyx DMP, renamed to **`aas-camel-dmp`**. It reworks the DMP into the **DMP** (DMP MQTT Platform): a per-asset integration container that
+   Shells are never read. This is the only full discovery.
+2. **Compilation.** Each mapping becomes one isolated bundle of Camel routes.
+   Lua transformations arrive as Blobs in the AIMC and are compiled in memory;
+   Lua is never read from files. A referenced element contributes its
+   structure: the Property `valueType` (or a list's `valueTypeListElement`)
+   types the values Lua receives and returns; Property values are never part of
+   the configuration.
+3. **Lifecycle from events.** Repository submodel events arrive over Kafka or
+   MQTT (`DMP_MANAGED_EVENT_TRANSPORT`). The DMP keeps an index of what its
+   mappings reference and drops every event that cannot change a mapping:
+   events on other submodels, elements nothing references, and value-only
+   updates of referenced Properties. A relevant event re-reads only the changed
+   submodel and recompiles only the AIMCs that depend on it; a new submodel is
+   read once to see whether it is an AIMC. Unchanged mappings (same
+   fingerprint) keep their routes. There is no periodic repair; a pass that
+   fails transiently is retried with backoff.
 
-1. consumes data from industrial protocols (OPC UA, PLC, MQTT, Kafka, HTTP, …),
-2. transforms incoming data with **Lua only** in compliance with the **AIMC** (Asset Interfaces Mapping Configuration v2.0) transformation contract, and
-3. writes transformed data to sinks (AAS submodel elements, MQTT topics, other protocols).
+### What a mapping can do
 
-See [SPEC.md](SPEC.md) for the full design specification, milestones, and decision records.
+- **Property and event routing.** Read or observe a source (MQTT, OPC UA,
+  HTTP polling, Modbus/BACnet via PLC4X, AAS elements), transform it with Lua,
+  and write to sinks (AAS elements, MQTT, OPC UA, HTTP, PLC4X). An AAS Property
+  source without a `PollingInterval` follows the repository's change events
+  instead of being polled: each event carries the new value. These values come
+  from a separate value feed, not the configuration consumer: it reads only
+  new events (Kafka: own consumer group at the latest offset, nothing
+  committed; MQTT: clean session), so values published while the DMP was down
+  are never replayed to devices. It runs only while such sources exist.
+- **Synchronous actions.** BaSyx delegates an AAS Operation to the URL in its
+  `invocationDelegation` qualifier; the DMP serves `POST` on that URL's path
+  (by convention `/operations/{aasIdShort}/{skill}`). It invokes the device
+  action over HTTP, an OPC UA Method, or MQTT 5 request/reply, and returns the
+  typed result. Operation input, output and InOut variables must be uniquely
+  named scalar Properties.
 
-### Key changes vs. upstream
+### Lua
 
-- **Baseline:** Apache Camel **4.x** on **Java 17** (upstream was Camel 3.21 / Java 11).
-- **`dmp.camel-lua`:** Camel component (`lua:` scheme) that runs AIMC transformation blobs via **LuaJ** (`org.luaj:luaj-jse:3.0.1`). There is no `org.apache.camel:camel-lua` on Maven Central — this module *is* the Lua integration. Lua receives isolated native Lua values converted from decoded Java values and returns decoded Java values; input/output modes are not configurable.
-  - Whitelisted sandbox (base functions, `math`, `table`, `string`, `json`, `os.clock`; no `io`, `os` (except `clock`), `require`/`dofile`/`loadfile`/`load`, `debug`, `luajava`, `package`, `coroutine`).
-  - CPU timeout via instruction-count hook (default 2 s per invocation).
-  - Runtime-loaded blobs with mtime/sha-based reload; max blob size enforced at load.
-  - `LuaHarness` CLI + contract tests to verify blobs before deployment.
-- **Runtime config:** `<config>/luatransformer.json` and `<config>/queries/*.lua` blobs; `LUA_ENV_VAR_NAME` (`luatransformer`). JSON encoding/decoding occurs only at connector wire boundaries that require it; opaque strings and bytes are not guessed to be JSON.
+The `lua:` Camel component (`dmp.camel-lua`) runs AIMC transformation blobs
+with LuaJ. A blob defines `function aimc_main(sources)` and returns a table
+keyed by SinkId.
 
-### Provenance
+- Sandbox: base functions, `math`, `table`, `string`, `json` and `os.clock`
+  only. No `io`, `require`/`load*`, `debug`, `luajava`, `package` or
+  `coroutine`.
+- A CPU budget per invocation, enforced by an instruction-count hook
+  (default 2 s).
+- Each blob is compiled once per mapping. Each invocation gets a fresh,
+  isolated environment.
+
+### AAS API
+
+AAS sources and sinks speak only the AAS Part 2 HTTP/REST API v3:
+`<repository>/submodels/<base64url(id)>`, `GET …/submodel-elements/<path>`
+to read and `PATCH …/$value` to write. BaSyx v1 is not supported.
+
+## Running
+
+```bash
+mvn clean install
+docker build -t aas-camel-dmp dmp.component   # after mvn package -Pdocker-push copies target/lib
+```
+
+The container listens on port 8080 for operation calls, `/health` and
+`/management/status`.
+
+| Setting | Meaning / default |
+| --- | --- |
+| `DMP_MANAGED_AAS_REPOSITORY_URI` | **Required.** Credential-free HTTP(S) repository root |
+| `DMP_MANAGED_AAS_AUTHORIZATION` | Optional `Authorization` header for repository reads (secret) |
+| `DMP_MANAGED_EVENT_TRANSPORT` | `kafka` (default) or `mqtt`: where repository events come from |
+| `DMP_MANAGED_KAFKA_BROKERS` | **Required for Kafka.** Kafka bootstrap servers for control events |
+| `DMP_MANAGED_CONTROL_TOPIC` | **Required for Kafka.** 1–8 comma-separated literal topic names, e.g. `submodel-events` |
+| `DMP_MANAGED_CONTROL_GROUP_ID` | **Required for Kafka.** Consumer group of the control listener |
+| `DMP_MANAGED_DATA_PLANE_GROUP_IDS` | Data-plane Kafka groups the control group must not share |
+| `DMP_MANAGED_KAFKA_SECURITY_PROTOCOL` | `PLAINTEXT` (default), `SASL_PLAINTEXT` or `SASL_SSL`; control plane only |
+| `DMP_MANAGED_KAFKA_SASL_MECHANISM` | With SASL: `PLAIN`, `SCRAM-SHA-256` or `SCRAM-SHA-512` |
+| `DMP_MANAGED_KAFKA_SASL_USERNAME`, `…_PASSWORD` | With SASL: nonblank credentials; never logged or exposed |
+| `DMP_MANAGED_MQTT_BROKER_URI` | **Required for MQTT.** `tcp://`, `ssl://`, `ws://` or `wss://` broker of the BaSyx MQTT feature |
+| `DMP_MANAGED_MQTT_CLIENT_ID` | `dmp-control` (≤ 54 characters); sessions are resumed as `<id>-submodels` and `<id>-elements` |
+| `DMP_MANAGED_MQTT_USERNAME`, `…_PASSWORD` | Optional, together; never logged or exposed |
+| `DMP_MANAGED_MQTT_REPOSITORY_ID` | `+`: the `sm-repository/<id>/…` topic level to follow |
+| `DMP_MANAGED_MQTT_SESSION_EXPIRY_SECONDS` | 86400 |
+| `DMP_MANAGED_AIMC_IDS` | Optional JSON array of exact AIMC IDs to adopt; read by ID instead of listing |
+| `DMP_MANAGED_MAX_MAPPINGS`, `DMP_MANAGED_MAX_INVALIDATIONS` | 4096 each |
+| `DMP_MANAGED_MAX_PARALLEL_READS` | 4 (1–64) concurrent repository reads |
+| `DMP_MANAGED_RETRY_INTERVAL_MS` | 5000: first retry after a failed pass, doubling up to 16× |
+| `DMP_MANAGED_CONNECT_TIMEOUT_MS`, `DMP_MANAGED_REQUEST_TIMEOUT_MS` | 5000 / 15000 |
+| `DMP_MANAGED_PAGE_SIZE`, `DMP_MANAGED_MAX_PAGES` | 100 / 100 |
+| `DMP_AFFORDANCE_VALIDATION` | `OFF` (default), `ON` or `REPORT` |
+| `DATABRIDGE_HEALTH_PORT` / `-Ddatabridge.health.port` | HTTP listener port, default 8080 |
+
+### Health and status
+
+- `/health` returns 200 once the initial repository scan has completed and the
+  event transport is connected (Kafka: the control consumer is assigned on every
+  topic), otherwise 503.
+- `/management/status` reports convergence and, per mapping, its state
+  (`installed`, `blocked`, `stale`, `failed`), generation, desired/installed
+  fingerprints and a failure category. Repository IDs appear only as SHA-256
+  tokens. Blocked mappings can coexist with a ready process; `converged`
+  distinguishes the two.
+
+### Operational limits
+
+- There is no lease or cluster coordination. Run exactly one DMP per set of
+  mappings.
+- Replacing a mapping drains in-flight requests; calls during the swap receive
+  "unavailable". Device actions are never retried or replayed.
+- Repository reads are not a multi-submodel transaction. The event consumer
+  starts before the first scan, so an edit made during a read arrives as an
+  event and converges.
+- Kafka resumes from committed offsets. The DMP uses Kafka 4.3 clients, which
+  work with brokers from Kafka 2.1 on (the compose stack runs cp-kafka 7.9 =
+  Kafka 3.9). MQTT uses Camel's `paho-mqtt5` with two
+  fixed QoS 1 subscriptions on persistent sessions
+  (`sm-repository/<repo>/submodels/+` and `…/submodels/+/submodelElements/#`,
+  clients `<clientId>-submodels` and `<clientId>-elements`), so events published
+  while the DMP was disconnected arrive on reconnect. If the broker drops the
+  session (expiry, broker reset), events from that gap are lost until the next
+  restart.
+- The event transport is only the repository's channel. MQTT sources and sinks
+  from AID forms use their own MQTT 5 clients (`paho-mqtt5`), one per endpoint,
+  also when Kafka carries the events. Their credentials are bound in the Camel
+  registry per bundle; endpoint URIs only reference them by name.
+- An AAS Property source that follows events has no value until its first
+  change event; startup does not replay current values.
+
+## Modules
+
+| Module | Purpose |
+| --- | --- |
+| `dmp.core` | Route model, execution policies, fan-in/out, bundle lifecycle (`DmpComponent`) |
+| `dmp.management` | Repository client, AIMC/AID projection, mapping compiler, reconciliation, Kafka and MQTT event consumers |
+| `dmp.component` | Executable, runtime settings, health/status endpoints, Docker image |
+| `dmp.camel-lua` | `lua:` component and sandbox |
+| `dmp.camel-aas` | AAS element source/sink, `aas-event:` event source and the operation bridge |
+| `dmp.camel-paho`, `-opcua`, `-httppolling`, `-plc4x` | Connectors reachable from AID bindings |
+| `dmp.camel-kafka`, `-activemq`, `-hono`, `-sql`, `-jsonjackson` | Connector components without an AID binding |
+
+See [SPEC.md](SPEC.md) for the design specification and decision records.
+
+## Provenance
 
 - Fork origin: [eclipse-basyx/basyx-databridge](https://github.com/eclipse-basyx/basyx-databridge) (MIT).
-- Derived files retain the original MIT copyright headers (`Copyright (C) … the Eclipse BaSyx Authors`, SPDX-License-Identifier: MIT); the project remains **MIT** overall (see `LICENSE`).
-- AIMC/AID submodel template semantics: IDTA submodel templates (`admin-shell-io/submodel-templates`, CC BY 4.0).
-- Submodel template models: `aas_pydantic` (`SebBehrendt/aas_pydantic`, MIT).
+- Derived files keep their original MIT headers; the project remains MIT (see `LICENSE`).
+- AIMC/AID semantics: IDTA submodel templates (`admin-shell-io/submodel-templates`, CC BY 4.0).
 - This is a derivative work, not an official Eclipse/BaSyx component.
