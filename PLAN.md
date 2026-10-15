@@ -179,7 +179,7 @@ Decide per item: keep (and schedule), or drop (and delete it from SPEC).
 
 | # | Item |
 | --- | --- |
-| E1 | `luaj-jse` 3.0.1 (2015) is unmaintained. Its process-wide string metatable let one blob change string methods for all others; fixed in `6167ad5`. Candidates: **Cobalt** (pure Java, LuaJ-derived, maintained with CC: Tweaked, sandbox-oriented, but no API stability promise) and **luajava** (real Lua 5.1–5.4/LuaJIT via JNI; a native crash takes down the whole DMP). Next step if wanted: run the Lua contract tests against Cobalt. |
+| E1 | `luaj-jse` 3.0.1 (2015) is unmaintained and no LuaJ fork is actively maintained. Its process-wide string metatable let one blob change string methods for all others; fixed in `6167ad5`. Cobalt is ruled out: its README promises no API stability and advises against general use. The only maintained alternative found is **luajava** (real Lua 5.1–5.4/LuaJIT via JNI), where a native crash takes down the whole DMP. Decision for now: stay on LuaJ, work around its defects in `LuaSandbox`, and revisit if a defect cannot be worked around. |
 | E2 | `dmp.camel-hono` mixes Hono 1.x and 2.x clients and old test dependencies (only relevant if A8 keeps it). |
 | E3 | Minor version lags needing a networked build: mariadb, postgresql, sqlite-jdbc, mysql-connector-j. |
 | E4 | Java 25: blocked until Milo, PLC4X, LuaJ and the `linux/arm/v7` image are verified on it. |
