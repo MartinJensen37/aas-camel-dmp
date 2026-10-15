@@ -9,7 +9,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.EndpointI
 public final class MqttEndpointIdentityProvider implements EndpointIdentityProvider {
 	@Override
 	public boolean supports(String endpointUri) {
-		return endpointUri != null && (endpointUri.startsWith("paho:")
+		return endpointUri != null && (endpointUri.startsWith("paho-mqtt5:")
 				|| endpointUri.startsWith("paho-mqtt5-inout:"));
 	}
 

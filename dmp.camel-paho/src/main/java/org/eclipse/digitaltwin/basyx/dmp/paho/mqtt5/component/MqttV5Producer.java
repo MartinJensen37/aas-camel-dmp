@@ -28,10 +28,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.camel.Exchange;
-import org.apache.camel.ProducerTemplate;
 import org.apache.camel.support.DefaultProducer;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
@@ -57,8 +56,9 @@ import org.slf4j.LoggerFactory;
  * stays a plain upstream publish.
  *
  * <p>
- * The wire protocol — connections, reconnects, persistence — stays upstream's;
- * this component owns only the InOut semantics. The correlation data rides
+ * Wire encoding stays upstream's; this component owns finite client waits and
+ * request/reply lifetime. Reply connections can reconnect, but command connections
+ * never automatically reconnect or replay outstanding QoS publications. The correlation data rides
  * the optional {@code correlationHeader} exchange header when the endpoint
  * declares it: a non-blank header value IS the correlation, otherwise a UUID
  * is minted and exposed on the header.
@@ -71,8 +71,9 @@ public class MqttV5Producer extends DefaultProducer {
 
 	private final MqttV5Endpoint endpoint;
 
-	private volatile org.apache.camel.ProducerTemplate publisher;
-	private final AtomicBoolean replyRouteRegistered = new AtomicBoolean(false);
+	private boolean stopping;
+	private volatile boolean cleanupPending;
+	private long generation;
 
 	public MqttV5Producer(MqttV5Endpoint endpoint) {
 		super(endpoint);
@@ -81,6 +82,12 @@ public class MqttV5Producer extends DefaultProducer {
 
 	@Override
 	public void process(Exchange exchange) throws Exception {
+		long deadline = endpoint.invocationDeadline();
+		long invocationGeneration;
+		synchronized (this) {
+			assertAdmitted(generation);
+			invocationGeneration = generation;
+		}
 		Object body = exchange.getMessage().getBody();
 		byte[] payload = body == null ? new byte[0]
 				: (body instanceof byte[] b ? b : (body == JsonPointer.JSON_NULL
@@ -93,19 +100,21 @@ public class MqttV5Producer extends DefaultProducer {
 			// plain publish through the upstream transport (one-way /
 			// data-sink exchanges)
 			LOGGER.debug("paho-mqtt5-inout: one-way publish on {}", endpoint.getTopic());
-			publisher().sendBodyAndHeader(upstreamPublishUri(), payload,
-					org.apache.camel.component.paho.mqtt5.PahoMqtt5Constants.CAMEL_PAHO_MSG_QOS,
-					endpoint.getQos());
+			lockTransport(deadline);
+			try {
+				synchronized (this) { assertAdmitted(invocationGeneration); }
+				publish(payload, org.apache.camel.component.paho.mqtt5.PahoMqtt5Constants.CAMEL_PAHO_MSG_QOS,
+						endpoint.getQos(), deadline);
+			} finally {
+				finishTransport(invocationGeneration);
+			}
 			return;
 		}
 
 		String replyTopic = endpoint.getReplyTopic();
 		if (replyTopic == null || replyTopic.isBlank()) {
-			throw new IllegalStateException("paho-mqtt5-inout endpoint '" + endpoint.getEndpointUri()
-					+ "' was invoked InOut without a replyTopic option");
+			throw new IllegalStateException("MQTT InOut invocation requires a replyTopic option");
 		}
-		ensureReplyRouteRegistered();
-
 		String correlation = correlationOf(exchange);
 		if (correlation == null || correlation.isBlank()) {
 			correlation = UUID.randomUUID().toString();
@@ -114,15 +123,25 @@ public class MqttV5Producer extends DefaultProducer {
 		properties.setResponseTopic(replyTopic);
 		properties.setCorrelationData(correlation.getBytes(StandardCharsets.UTF_8));
 
-		var future = MqttV5ReplyRegistry.register(correlation);
+		CompletableFuture<String> future = null;
 		try {
-			publisher().sendBodyAndHeader(upstreamPublishUri(), payload,
-					org.apache.camel.component.paho.mqtt5.PahoMqtt5Constants.CAMEL_PAHO_MSG_PROPERTIES,
-					properties);
+			lockTransport(deadline);
+			try {
+				synchronized (this) { assertAdmitted(invocationGeneration); }
+				endpoint.acquireReplyRoute(this, upstreamReplyUri(), deadline);
+				synchronized (this) {
+					assertAdmitted(invocationGeneration);
+					future = endpoint.replies.register(this, endpoint.getBrokerUrl(), replyTopic, correlation);
+				}
+				// Publication is admitted once. Stop can cancel its reply but cannot replay it.
+				publish(payload, org.apache.camel.component.paho.mqtt5.PahoMqtt5Constants.CAMEL_PAHO_MSG_PROPERTIES,
+						properties, deadline);
+			} finally {
+				finishTransport(invocationGeneration);
+			}
 			LOGGER.debug("paho-mqtt5-inout: published request on {} (replyTopic={}, correlation={})",
 					endpoint.getTopic(), replyTopic, correlation);
-			String reply = future.get(endpoint.getReplyTimeout() * 1_000L
-					+ MqttV5ReplyRegistry.WAIT_MARGIN_MILLIS,
+			String reply = future.get(MqttV5Endpoint.remainingMillis(deadline),
 					java.util.concurrent.TimeUnit.MILLISECONDS);
 			exchange.getMessage().setBody(reply);
 		} catch (java.util.concurrent.TimeoutException e) {
@@ -131,12 +150,57 @@ public class MqttV5Producer extends DefaultProducer {
 					java.util.Map.of("topic", endpoint.getTopic(), "responseTopic", replyTopic,
 							"timeoutSeconds", endpoint.getReplyTimeout()));
 		} catch (java.util.concurrent.ExecutionException e) {
-			throw new IllegalStateException("correlated reply failed: " + e.getMessage(), e);
+			throw new IllegalStateException("MQTT correlated reply failed", e);
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			throw new IllegalStateException("interrupted while awaiting the correlated reply", e);
+		} catch (Exception e) {
+			for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+				if (cause instanceof org.eclipse.paho.mqttv5.common.MqttException mqtt
+						&& mqtt.getReasonCode() == org.eclipse.paho.mqttv5.client.MqttClientException.REASON_CODE_CLIENT_TIMEOUT) {
+					throw new ConnectorInvocationException(ConnectorInvocationException.Category.TIMEOUT,
+							"MQTT_REQUEST_TIMEOUT", "MQTT transport deadline expired", Map.of());
+				}
+			}
+			throw e;
 		} finally {
-			MqttV5ReplyRegistry.unregister(correlation, future);
+			if (future != null) {
+				endpoint.replies.unregister(this, endpoint.getBrokerUrl(), replyTopic, correlation, future);
+			}
+		}
+	}
+
+	private void finishTransport(long invocationGeneration) throws Exception {
+		try {
+			boolean retiring;
+			synchronized (this) { retiring = stopping && generation == invocationGeneration; }
+			// Camel regards a failed stop as stopped and will not call stop again.
+			// The finite admitted transport call must therefore release its own owner.
+			if (retiring) releaseOwnedResources();
+		} finally {
+			endpoint.transportLock.unlock();
+		}
+	}
+
+	private void lockTransport(long deadline) throws Exception {
+		if (!endpoint.transportLock.tryLock(MqttV5Endpoint.remainingMillis(deadline),
+				java.util.concurrent.TimeUnit.MILLISECONDS)) {
+			throw new java.util.concurrent.TimeoutException("MQTT transport admission deadline expired");
+		}
+	}
+
+	private void publish(byte[] payload, String header, Object value, long deadline) throws Exception {
+		try {
+			String uri = upstreamPublishUri();
+			var publisher = endpoint.acquirePublisher(this);
+			endpoint.preparePublisher(uri, deadline);
+			publisher.sendBodyAndHeader(uri, payload, header, value);
+		} catch (Exception failure) {
+			// Paho leaves timed-out QoS tokens alive. Retire the connection rather
+			// than allow a reconnect or another invocation to resend that command.
+			try { endpoint.discardPublisher(); }
+			catch (Exception cleanup) { failure.addSuppressed(cleanup); }
+			throw failure;
 		}
 	}
 
@@ -160,17 +224,12 @@ public class MqttV5Producer extends DefaultProducer {
 	 * (Paho forbids two connections sharing one id). Reconnects and
 	 * resubscriptions are the upstream client's job.
 	 */
-	private String upstreamReplyUri() {
+	protected String upstreamReplyUri() {
 		StringBuilder uri = new StringBuilder("paho-mqtt5:").append(endpoint.getReplyTopic());
 		uri.append("?brokerUrl=").append(endpoint.getBrokerUrl());
-		uri.append("&clientId=").append(endpoint.getClientId()).append("-reply");
+		uri.append("&clientId=").append(endpoint.replyClientId());
 		uri.append("&qos=").append(endpoint.getQos());
-		if (endpoint.getUserName() != null && !endpoint.getUserName().isBlank()) {
-			uri.append("&userName=").append(endpoint.getUserName());
-		}
-		if (endpoint.getPassword() != null) {
-			uri.append("&password=").append(endpoint.getPassword());
-		}
+		appendCredentials(uri);
 		return uri.toString();
 	}
 
@@ -180,65 +239,75 @@ public class MqttV5Producer extends DefaultProducer {
 	 * retain flag; the v5 properties ride the CamelPahoMqtt5MsgProperties
 	 * header.
 	 */
-	private String upstreamPublishUri() {
+	protected String upstreamPublishUri() {
 		StringBuilder uri = new StringBuilder("paho-mqtt5:").append(endpoint.getTopic());
 		uri.append("?brokerUrl=").append(endpoint.getBrokerUrl());
 		uri.append("&clientId=").append(endpoint.getClientId());
 		uri.append("&qos=").append(endpoint.getQos());
 		uri.append("&retained=").append(endpoint.isRetained());
+		appendCredentials(uri);
+		return uri.toString();
+	}
+
+	/** Bound credentials are passed on by reference; only unmanaged endpoints carry them inline. */
+	private void appendCredentials(StringBuilder uri) {
+		if (endpoint.getCredentials() != null) {
+			uri.append("&userName=#bean:").append(endpoint.getCredentials()).append(".user");
+			uri.append("&password=#bean:").append(endpoint.getCredentials()).append(".password");
+			return;
+		}
 		if (endpoint.getUserName() != null && !endpoint.getUserName().isBlank()) {
 			uri.append("&userName=").append(endpoint.getUserName());
 		}
 		if (endpoint.getPassword() != null) {
 			uri.append("&password=").append(endpoint.getPassword());
 		}
-		return uri.toString();
 	}
 
-	/**
-	 * Registers the reply-consumer route lazily (before the first InOut
-	 * publish) so the subscription exists before the request rides the wire —
-	 * an immediate reply cannot race the subscription. Route addition at
-	 * runtime is the supported pattern (the route builder phase is long over).
-	 */
-	private void ensureReplyRouteRegistered() throws Exception {
-		if (!replyRouteRegistered.compareAndSet(false, true)) {
-			return;
+	private void assertAdmitted(long invocationGeneration) {
+		if (stopping || generation != invocationGeneration) {
+			throw new IllegalStateException("MQTT producer invocation belongs to a stopped generation");
 		}
-		String replyUri = upstreamReplyUri();
-		String routeId = "paho-mqtt5-inout-reply-" + Integer.toHexString(
-				endpoint.getEndpointKey().hashCode());
-		endpoint.getCamelContext().addRoutes(new org.apache.camel.builder.RouteBuilder() {
-			@Override
-			public void configure() {
-				from(replyUri)
-						.routeId(routeId)
-						.process(new MqttV5ReplyMatcher(endpoint.getSkipReplyStates()));
-			}
-		});
-		LOGGER.info("paho-mqtt5-inout: reply consumer registered {}", replyUri);
 	}
 
-	private org.apache.camel.ProducerTemplate publisher() {
-		org.apache.camel.ProducerTemplate template = publisher;
-		if (template == null) {
-			synchronized (this) {
-				if (template == null) {
-					template = endpoint.getCamelContext().createProducerTemplate();
-					publisher = template;
-				}
-			}
-		}
-		return template;
+	@Override
+	protected synchronized void doStart() throws Exception {
+		if (cleanupPending) throw new IllegalStateException("MQTT producer cleanup remains pending");
+		super.doStart();
+		generation++;
+		stopping = false;
 	}
 
 	@Override
 	protected void doStop() throws Exception {
-		super.doStop();
-		if (publisher != null) {
-			publisher.stop();
-			publisher = null;
+		synchronized (this) {
+			stopping = true;
+			cleanupPending = true;
+			endpoint.replies.cancelOwner(this);
 		}
+		if (!endpoint.transportLock.tryLock(MqttV5Endpoint.STOP_TIMEOUT_MILLIS,
+				java.util.concurrent.TimeUnit.MILLISECONDS)) {
+			throw new java.util.concurrent.TimeoutException("MQTT transport cleanup remains in flight");
+		}
+		try {
+			releaseOwnedResources();
+		} finally {
+			endpoint.transportLock.unlock();
+			super.doStop();
+		}
+	}
+
+	private void releaseOwnedResources() throws Exception {
+		Exception failure = null;
+		try { endpoint.releaseReplyRoute(this); }
+		catch (Exception e) { failure = e; }
+		try { endpoint.releasePublisher(this); }
+		catch (Exception e) {
+			if (failure == null) failure = e;
+			else failure.addSuppressed(e);
+		}
+		if (failure != null) throw failure;
+		cleanupPending = false;
 	}
 
 }

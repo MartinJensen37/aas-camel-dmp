@@ -13,16 +13,27 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.Synchrono
 import org.junit.jupiter.api.Test;
 
 public class MqttSynchronousInvocationAdapterTest {
+	@Test
+	void inventoryIdentifiesDerivedRequestReplyEndpointWithoutPublishing() {
+		var adapter = new MqttSynchronousInvocationAdapter();
+		var schema = new SynchronousInvocationAdapter.InvocationSchema(Map.of(), Set.of(), Map.of(), Set.of(),
+				Map.of("requestReply", true, "responseTopic", "reply/channel", "timeoutSeconds", 4));
+		assertEquals(Set.of("paho-mqtt5-inout:command?brokerUrl=tcp://127.0.0.1:1883"
+				+ "&replyTopic=reply/channel&replyTimeout=4&skipReplyStates=RUNNING"),
+				adapter.ownedEndpointUris("paho-mqtt5:command?brokerUrl=tcp://127.0.0.1:1883", schema));
+	}
 
 	@Test
 	void requiresDeclaredRequestReplyBeforePublishing() {
 		var adapter = new MqttSynchronousInvocationAdapter();
 		ConnectorInvocationException failure = assertThrows(ConnectorInvocationException.class,
-				() -> adapter.invoke(new DefaultCamelContext(), "paho:command", Map.of("value", 1),
+				() -> adapter.invoke(new DefaultCamelContext(), "paho-mqtt5:command", Map.of("value", 1),
 					new SynchronousInvocationAdapter.InvocationSchema(
 							Map.of(), Set.of(), Map.of(), Set.of(), Map.of())));
 		assertEquals(ConnectorInvocationException.Category.CONFIGURATION, failure.getCategory());
 		assertEquals("MQTT_REQUEST_REPLY_NOT_DECLARED", failure.getConnectorCode());
+		assertThrows(ConnectorInvocationException.class, () -> adapter.ownedEndpointUris("paho-mqtt5:command",
+				new SynchronousInvocationAdapter.InvocationSchema(Map.of(), Set.of(), Map.of(), Set.of(), Map.of())));
 	}
 
 	@Test
@@ -41,6 +52,14 @@ public class MqttSynchronousInvocationAdapterTest {
 		var failure = MqttSynchronousInvocationAdapter.translateFailure(wrapped);
 		assertEquals(ConnectorInvocationException.Category.TIMEOUT, failure.getCategory());
 		assertEquals("MQTT_REQUEST_TIMEOUT", failure.getConnectorCode());
+	}
+
+	@Test
+	void untypedTransportFailureDoesNotCopyCredentialBearingMessagesIntoDetails() {
+		String secret = "paho-mqtt5:command?password=not-public&userName=private";
+		var failure = MqttSynchronousInvocationAdapter.translateFailure(new IllegalStateException(secret));
+		assertEquals("MQTT_REQUEST_FAILED", failure.getConnectorCode());
+		assertEquals(Map.of(), failure.getDetails());
 	}
 
 }

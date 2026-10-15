@@ -27,7 +27,6 @@ package org.eclipse.digitaltwin.basyx.dmp.paho.mqtt5.component;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
@@ -57,13 +56,26 @@ public class MqttV5ReplyMatcher implements Processor {
 			new com.fasterxml.jackson.databind.ObjectMapper();
 
 	private final List<String> skipReplyStates;
+	private final MqttV5ReplyRegistry registry;
+	private final org.apache.camel.CamelContext context;
+	private final String broker;
+	private final String replyTopic;
 
-	public MqttV5ReplyMatcher(String skipReplyStates) {
+	MqttV5ReplyMatcher(MqttV5ReplyRegistry registry, org.apache.camel.CamelContext context,
+			String broker, String replyTopic, String skipReplyStates) {
+		this.registry = registry;
+		this.context = context;
+		this.broker = broker;
+		this.replyTopic = replyTopic;
 		this.skipReplyStates = parseStates(skipReplyStates);
 	}
 
 	@Override
 	public void process(Exchange exchange) {
+		if (exchange.getContext() != context || !replyTopic.equals(exchange.getMessage().getHeader(
+				org.apache.camel.component.paho.mqtt5.PahoMqtt5Constants.MQTT_TOPIC, String.class))) {
+			return;
+		}
 		String payload = exchange.getMessage().getBody(String.class);
 		if (isIntermediate(payload, skipReplyStates)) {
 			// the PackML intermediate progress ack never completes an exchange
@@ -76,14 +88,12 @@ public class MqttV5ReplyMatcher implements Processor {
 			LOGGER.debug("paho-mqtt5-inout: reply without correlation data — ignored");
 			return;
 		}
-		CompletableFuture<String> future = MqttV5ReplyRegistry.pending(correlation);
-		if (future == null) {
+		if (!registry.complete(broker, replyTopic, correlation, payload)) {
 			LOGGER.debug("paho-mqtt5-inout: reply with unknown correlation {} — ignored", correlation);
 			return;
 		}
 		LOGGER.debug("paho-mqtt5-inout: terminal reply for correlation {} ({} bytes)",
 				correlation, payload == null ? 0 : payload.length());
-		future.complete(payload);
 	}
 
 	private static String correlationOf(Exchange exchange) {
@@ -93,7 +103,7 @@ public class MqttV5ReplyMatcher implements Processor {
 				|| properties.getCorrelationData() == null) {
 			return null;
 		}
-		return new String(properties.getCorrelationData(), StandardCharsets.UTF_8).trim();
+		return new String(properties.getCorrelationData(), StandardCharsets.UTF_8);
 	}
 
 	/**

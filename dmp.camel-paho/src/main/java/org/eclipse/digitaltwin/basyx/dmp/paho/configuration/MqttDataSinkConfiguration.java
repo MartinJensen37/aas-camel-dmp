@@ -25,14 +25,17 @@
 
 package org.eclipse.digitaltwin.basyx.dmp.paho.configuration;
 
+import org.apache.camel.CamelContext;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource;
+import org.eclipse.digitaltwin.basyx.dmp.core.security.BoundCredential;
 
 /**
  * An implementation of MQTT producer configuration
  * @author rana
  *
  */
-public class MqttDataSinkConfiguration extends DataSinkConfiguration {
+public class MqttDataSinkConfiguration extends DataSinkConfiguration implements ManagedRouteResource {
 		
 	private String serverUrl;
 	private int serverPort;
@@ -40,6 +43,7 @@ public class MqttDataSinkConfiguration extends DataSinkConfiguration {
 	private String userName;
 	private String password;
 	private String clientId;
+	private BoundCredential bound;
 	/** DECLARED MQTT qualifiers (mqv_qos/mqv_retain) — absent stays unset. */
 	private Integer qos;
 	private Boolean retained;
@@ -124,13 +128,31 @@ public class MqttDataSinkConfiguration extends DataSinkConfiguration {
 			options.append("&retained=");
 			options.append(getRetained().booleanValue());
 		}
-		if (!getUserName().isBlank()) {
+		// The URI only names the credentials; the owning bundle binds them in the registry.
+		BoundCredential credential = boundCredential();
+		if (credential != null) {
 			options.append("&userName=");
-			options.append(getUserName());
+			options.append(credential.userNameReference());
 			options.append("&password=");
-			options.append(getPassword());
+			options.append(credential.passwordReference());
 		}
 		return options.toString();
+	}
+
+	private synchronized BoundCredential boundCredential() {
+		if (bound == null && userName != null && !userName.isBlank()) bound = new BoundCredential(userName, password);
+		return bound;
+	}
+
+	@Override
+	public void bind(CamelContext context) {
+		BoundCredential credential = boundCredential();
+		if (credential != null) credential.bind(context);
+	}
+
+	@Override
+	public synchronized void close() {
+		if (bound != null) bound.close();
 	}
 
 	public Integer getQos() {
@@ -151,10 +173,9 @@ public class MqttDataSinkConfiguration extends DataSinkConfiguration {
 
 	@Override
 	public String getConnectionURI() {
-		// brokerUrl already carries the port; do NOT append it again (bug fix:
-		// the trailing getServerPort() produced a malformed paho: URI).
+		// brokerUrl already carries the port; do NOT append it again.
 		StringBuilder connUri = new StringBuilder();
-		connUri.append("paho:");
+		connUri.append("paho-mqtt5:");
 		connUri.append(getTopic());
 		connUri.append(buildOptions());
 

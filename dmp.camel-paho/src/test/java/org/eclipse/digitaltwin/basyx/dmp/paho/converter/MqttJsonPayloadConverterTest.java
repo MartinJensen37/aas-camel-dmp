@@ -12,29 +12,32 @@ import org.junit.jupiter.api.Test;
 
 class MqttJsonPayloadConverterTest {
 	@Test
-	void convertsDecodedMapsToJsonOnlyAtMqttByteBoundary() {
-		var context = new DefaultCamelContext();
-		byte[] payload = context.getTypeConverter().convertTo(byte[].class,
-				Map.of("state", "READY", "count", 7));
-		assertEquals(Map.of("state", "READY", "count", 7L),
-				org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec.parseJson(
-						new String(payload, StandardCharsets.UTF_8)));
+	void convertsDecodedMapsToJsonOnlyAtMqttByteBoundary() throws Exception {
+		try (var context = new DefaultCamelContext()) {
+			byte[] payload = context.getTypeConverter().convertTo(byte[].class,
+					Map.of("state", "READY", "count", 7));
+			assertEquals(Map.of("state", "READY", "count", 7L),
+					org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec.parseJson(
+							new String(payload, StandardCharsets.UTF_8)));
+		}
 	}
 
 	@Test
-	void preservesTopLevelJsonNullOnTheMqttWire() {
-		var context = new DefaultCamelContext();
-		byte[] payload = context.getTypeConverter().convertTo(byte[].class, JsonPointer.JSON_NULL);
-		assertEquals("null", new String(payload, StandardCharsets.UTF_8));
+	void preservesTopLevelJsonNullOnTheMqttWire() throws Exception {
+		try (var context = new DefaultCamelContext()) {
+			byte[] payload = context.getTypeConverter().convertTo(byte[].class, JsonPointer.JSON_NULL);
+			assertEquals("null", new String(payload, StandardCharsets.UTF_8));
+		}
 	}
 
 	@Test
-	void distinguishesJsonStringValuesFromOpaqueTextAtTheConnectorBoundary() {
-		var context = new DefaultCamelContext();
-		byte[] jsonString = context.getTypeConverter().convertTo(byte[].class,
-				new ConnectorJsonPayload("103.5585973"));
-		assertEquals("\"103.5585973\"", new String(jsonString, StandardCharsets.UTF_8));
-		byte[] opaqueText = context.getTypeConverter().convertTo(byte[].class, "103.5585973");
-		assertEquals("103.5585973", new String(opaqueText, StandardCharsets.UTF_8));
+	void distinguishesJsonStringValuesFromOpaqueTextAtTheConnectorBoundary() throws Exception {
+		try (var context = new DefaultCamelContext()) {
+			byte[] jsonString = context.getTypeConverter().convertTo(byte[].class,
+					new ConnectorJsonPayload("103.5585973"));
+			assertEquals("\"103.5585973\"", new String(jsonString, StandardCharsets.UTF_8));
+			byte[] opaqueText = context.getTypeConverter().convertTo(byte[].class, "103.5585973");
+			assertEquals("103.5585973", new String(opaqueText, StandardCharsets.UTF_8));
+		}
 	}
 }

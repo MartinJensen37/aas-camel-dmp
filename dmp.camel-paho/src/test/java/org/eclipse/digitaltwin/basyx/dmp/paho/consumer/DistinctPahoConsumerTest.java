@@ -28,7 +28,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.camel.CamelContext;
@@ -39,16 +38,11 @@ import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.test.junit5.CamelTestSupport;
 import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.MqttDataSourceConfiguration;
-import org.eclipse.paho.client.mqttv3.MqttClient;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.eclipse.digitaltwin.basyx.dmp.paho.testing.Mqtt5TestBroker;
 import org.junit.jupiter.api.Test;
 
-import io.moquette.broker.Server;
-import io.moquette.broker.config.IConfig;
-import io.moquette.broker.config.MemoryConfig;
 
 /**
  * W4.7 distinct-consumer regression (plan §4 W4.7): two routes consuming an
@@ -64,7 +58,7 @@ class DistinctPahoConsumerTest extends CamelTestSupport {
 
 	private static final String TOPIC = "shared/topic";
 
-	private static Server broker;
+	private static Mqtt5TestBroker broker;
 	private static int brokerPort;
 
 	@EndpointInject("mock:consumer1")
@@ -75,29 +69,17 @@ class DistinctPahoConsumerTest extends CamelTestSupport {
 
 	@BeforeAll
 	static void startBroker() throws Exception {
-		brokerPort = freePort();
-		broker = new Server();
-		Properties properties = new Properties();
-		properties.setProperty(io.moquette.BrokerConstants.PORT_PROPERTY_NAME, String.valueOf(brokerPort));
-		properties.setProperty(io.moquette.BrokerConstants.HOST_PROPERTY_NAME, "127.0.0.1");
-		properties.setProperty(io.moquette.BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME, "true");
-		properties.setProperty(io.moquette.BrokerConstants.WEB_SOCKET_PORT_PROPERTY_NAME, "disabled");
-		broker.startServer(new MemoryConfig(properties));
+		broker = new Mqtt5TestBroker();
+		brokerPort = broker.port();
 	}
 
 	@AfterAll
-	static void stopBroker() {
-		broker.stopServer();
-	}
-
-	private static int freePort() throws Exception {
-		try (java.net.ServerSocket socket = new java.net.ServerSocket(0)) {
-			return socket.getLocalPort();
-		}
+	static void stopBroker() throws Exception {
+		broker.close();
 	}
 
 	private static String consumerUri(String clientId) {
-		return "paho:" + TOPIC + "?brokerUrl=tcp://127.0.0.1:" + brokerPort
+		return "paho-mqtt5:" + TOPIC + "?brokerUrl=tcp://127.0.0.1:" + brokerPort
 				+ (clientId == null ? "" : "&clientId=" + clientId);
 	}
 
@@ -175,11 +157,6 @@ class DistinctPahoConsumerTest extends CamelTestSupport {
 	}
 
 	private static void publishMqttMessage(String topic, String payload) throws Exception {
-		MqttClient client = new MqttClient("tcp://127.0.0.1:" + brokerPort,
-				"dmp-test-publisher-" + System.nanoTime(), new MemoryPersistence());
-		client.connect();
-		client.publish(topic, new MqttMessage(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-		client.disconnect();
-		client.close();
+		broker.publish(topic, payload);
 	}
 }

@@ -10,25 +10,25 @@ import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 
 /** MQTT 5 request/reply invocation binding and reply normalization. */
 public final class MqttSynchronousInvocationAdapter implements SynchronousInvocationAdapter {
+	private static final String SINK_SCHEME = "paho-mqtt5:";
+	/** A sink's bound credentials, referenced as two beans; the InOut endpoint takes the binding by name. */
+	private static final java.util.regex.Pattern CREDENTIALS =
+			java.util.regex.Pattern.compile("userName=#bean:([^&]+)\\.user&password=#bean:\\1\\.password");
 
 	@Override
 	public boolean supports(String endpointUri) {
-		return endpointUri != null && endpointUri.startsWith("paho:");
+		return endpointUri != null && endpointUri.startsWith(SINK_SCHEME);
+	}
+
+	@Override
+	public java.util.Set<String> ownedEndpointUris(String endpointUri, InvocationSchema schema) {
+		return java.util.Set.of(invocationUri(endpointUri, schema));
 	}
 
 	@Override
 	public Map<String, Object> invoke(CamelContext context, String endpointUri,
 			Map<String, Object> namedRequest, InvocationSchema schema) {
-		Object requestReply = schema.connectorOptions().get("requestReply");
-		Object topic = schema.connectorOptions().get("responseTopic");
-		if (!Boolean.TRUE.equals(requestReply) || topic == null || String.valueOf(topic).isBlank()) {
-			throw new ConnectorInvocationException(ConnectorInvocationException.Category.CONFIGURATION,
-					"MQTT_REQUEST_REPLY_NOT_DECLARED",
-					"MQTT action form must declare request/reply and a response topic", Map.of());
-		}
-		long timeout = number(schema.connectorOptions().get("timeoutSeconds"), 30);
-		String uri = "paho-mqtt5-inout:" + endpointUri.substring("paho:".length())
-				+ "&replyTopic=" + topic + "&replyTimeout=" + timeout + "&skipReplyStates=RUNNING";
+		String uri = invocationUri(endpointUri, schema);
 		ProducerTemplate template = context.createProducerTemplate();
 		try {
 			Object body = template.requestBody(uri, namedRequest);
@@ -49,6 +49,19 @@ public final class MqttSynchronousInvocationAdapter implements SynchronousInvoca
 		}
 	}
 
+	private static String invocationUri(String endpointUri, InvocationSchema schema) {
+		Object requestReply = schema.connectorOptions().get("requestReply");
+		Object topic = schema.connectorOptions().get("responseTopic");
+		if (!Boolean.TRUE.equals(requestReply) || topic == null || String.valueOf(topic).isBlank()) {
+			throw new ConnectorInvocationException(ConnectorInvocationException.Category.CONFIGURATION,
+					"MQTT_REQUEST_REPLY_NOT_DECLARED",
+					"MQTT action form must declare request/reply and a response topic", Map.of());
+		}
+		long timeout = number(schema.connectorOptions().get("timeoutSeconds"), 30);
+		String options = CREDENTIALS.matcher(endpointUri.substring(SINK_SCHEME.length())).replaceAll("credentials=$1");
+		return "paho-mqtt5-inout:" + options + "&replyTopic=" + topic + "&replyTimeout=" + timeout + "&skipReplyStates=RUNNING";
+	}
+
 	static ConnectorInvocationException connectorFailure(Throwable failure) {
 		for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
 			if (cause instanceof ConnectorInvocationException typed) return typed;
@@ -63,11 +76,11 @@ public final class MqttSynchronousInvocationAdapter implements SynchronousInvoca
 		if (hasTimeoutCause(failure)) {
 			return new ConnectorInvocationException(ConnectorInvocationException.Category.TIMEOUT,
 					"MQTT_REQUEST_TIMEOUT", "Timed out awaiting correlated MQTT reply",
-					Map.of("cause", String.valueOf(failure.getMessage())));
+					Map.of());
 		}
 		return new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
 				"MQTT_REQUEST_FAILED", "MQTT request/reply exchange failed",
-				Map.of("cause", String.valueOf(failure.getMessage())));
+				Map.of());
 	}
 
 	private static boolean hasTimeoutCause(Throwable failure) {

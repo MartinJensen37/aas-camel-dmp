@@ -86,12 +86,13 @@ class MqttV5EndpointTest extends CamelTestSupport {
 		MqttV5Endpoint endpoint = context().getEndpoint(
 				"paho-mqtt5-inout:NN/x/CMD/Halt?brokerUrl=tcp://127.0.0.1:11883&clientId=test-no-reply",
 				MqttV5Endpoint.class);
-		MqttV5Producer producer = new MqttV5Producer(endpoint);
-		Exchange exchange = new DefaultExchange(context(), ExchangePattern.InOut);
-		exchange.getIn().setBody("{}");
-		IllegalStateException e = assertThrows(IllegalStateException.class,
-				() -> producer.process(exchange));
-		assertTrue(e.getMessage().contains("replyTopic"));
+		try (MqttV5Producer producer = new MqttV5Producer(endpoint)) {
+			Exchange exchange = new DefaultExchange(context(), ExchangePattern.InOut);
+			exchange.getIn().setBody("{}");
+			IllegalStateException e = assertThrows(IllegalStateException.class,
+					() -> producer.process(exchange));
+			assertTrue(e.getMessage().contains("replyTopic"));
+		}
 	}
 
 	@Test
@@ -116,10 +117,13 @@ class MqttV5EndpointTest extends CamelTestSupport {
 
 	@Test
 	void replyMatcherCompletesPendingByCorrelation() throws Exception {
-		MqttV5ReplyMatcher matcher = new MqttV5ReplyMatcher("RUNNING");
+		MqttV5ReplyRegistry registry = new MqttV5ReplyRegistry();
+		Object owner = new Object();
+		MqttV5ReplyMatcher matcher = new MqttV5ReplyMatcher(registry, PROBE_CONTEXT,
+				"tcp://matcher-test:1883", "reply", "RUNNING");
 
 		// a RUNNING progress ack never completes the pending future
-		CompletableFuture<String> pending = MqttV5ReplyRegistry.register("corr-match");
+		CompletableFuture<String> pending = registry.register(owner, "tcp://matcher-test:1883", "reply", "corr-match");
 		matcher.process(reply("{\"State\": \"RUNNING\", \"Uuid\": \"x\"}", "corr-match"));
 		assertFalse(pending.isDone(), "the RUNNING ack must not complete the exchange");
 
@@ -128,7 +132,7 @@ class MqttV5EndpointTest extends CamelTestSupport {
 		assertEquals("{\"State\": \"SUCCESS\", \"Outcome\": 0}", pending.getNow(null));
 
 		// an unknown correlation is ignored
-		CompletableFuture<String> pending2 = MqttV5ReplyRegistry.register("corr-other");
+		CompletableFuture<String> pending2 = registry.register(owner, "tcp://matcher-test:1883", "reply", "corr-other");
 		matcher.process(reply("{\"State\": \"SUCCESS\"}", "corr-foreign"));
 		assertFalse(pending2.isDone());
 
@@ -136,11 +140,13 @@ class MqttV5EndpointTest extends CamelTestSupport {
 		Exchange noProps = new DefaultExchange(PROBE_CONTEXT);
 		noProps.getMessage().setBody("{}");
 		matcher.process(noProps);
+		registry.cancelOwner(owner);
 	}
 
 	private static Exchange reply(String payload, String correlation) {
 		Exchange exchange = new DefaultExchange(PROBE_CONTEXT);
 		exchange.getMessage().setBody(payload);
+		exchange.getMessage().setHeader(org.apache.camel.component.paho.mqtt5.PahoMqtt5Constants.MQTT_TOPIC, "reply");
 		MqttProperties properties = new MqttProperties();
 		properties.setCorrelationData(correlation.getBytes(StandardCharsets.UTF_8));
 		exchange.getMessage().setHeader(

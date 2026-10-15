@@ -25,16 +25,19 @@
 package org.eclipse.digitaltwin.basyx.dmp.paho.configuration;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
+import org.apache.camel.CamelContext;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource;
 import org.eclipse.digitaltwin.basyx.dmp.core.security.BasicCredential;
+import org.eclipse.digitaltwin.basyx.dmp.core.security.BoundCredential;
 
 /**
  * An implementation of MQTT consumer configuration
  * @author haque
  *
  */
-public class MqttDataSourceConfiguration extends DataSourceConfiguration {
+public class MqttDataSourceConfiguration extends DataSourceConfiguration implements ManagedRouteResource {
 	
-	private static final String MQTT_PROTOCOL_NAME = "paho:";
+	private static final String MQTT_PROTOCOL_NAME = "paho-mqtt5:";
 	private static final String BROKER_URL_PARAM_NAME = "brokerUrl";
 	private static final String BROKER_URL_PREFIX = "tcp://";
 	private static final String USERNAME_PARAMETER = "userName";
@@ -43,6 +46,7 @@ public class MqttDataSourceConfiguration extends DataSourceConfiguration {
 	private String topic;
 	private String clientId;
 	private BasicCredential credentials;
+	private BoundCredential bound;
 	/** DECLARED subscription quality of service (mqv_qos) — absent stays unset. */
 	private Integer qos;
 
@@ -97,15 +101,33 @@ public class MqttDataSourceConfiguration extends DataSourceConfiguration {
 		return connectionUriBuilder.toString();
 	}
 	
+	/** The URI only names the credentials; the owning bundle binds them in the registry. */
 	private void addCredentialsIfConfigured(StringBuilder connectionUriBuilder) {
-		
-		if (credentials == null || credentials.getUserName().isBlank())
+		BoundCredential credential = boundCredential();
+		if (credential == null)
 			return;
 		
 		connectionUriBuilder.append("&" + USERNAME_PARAMETER + "=");
-		connectionUriBuilder.append(credentials.getUserName());
+		connectionUriBuilder.append(credential.userNameReference());
 		connectionUriBuilder.append("&" + PASSWORD_PARAMETER + "=");
-		connectionUriBuilder.append(credentials.getPassword());
+		connectionUriBuilder.append(credential.passwordReference());
+	}
+
+	private synchronized BoundCredential boundCredential() {
+		if (bound == null && credentials != null && credentials.getUserName() != null && !credentials.getUserName().isBlank())
+			bound = new BoundCredential(credentials.getUserName(), credentials.getPassword());
+		return bound;
+	}
+
+	@Override
+	public void bind(CamelContext context) {
+		BoundCredential credential = boundCredential();
+		if (credential != null) credential.bind(context);
+	}
+
+	@Override
+	public synchronized void close() {
+		if (bound != null) bound.close();
 	}
 
 	private String getMqttBrokerUrl(String serverUrl, int port) {
