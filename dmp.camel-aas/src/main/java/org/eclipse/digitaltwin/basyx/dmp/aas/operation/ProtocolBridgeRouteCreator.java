@@ -30,6 +30,7 @@ import org.apache.camel.builder.RouteBuilder;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteCreator;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteCreatorHelper;
+import org.eclipse.digitaltwin.basyx.dmp.core.routebuilder.DmpRouteBuilder;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.AffordanceValidation;
@@ -146,12 +147,15 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		// from the DERIVED operation path. Camel merges the rest consumer and
 		// the direct route it targets into a single route; the direct route's
 		// id wins, so it carries the canonical bridge id.
+		org.apache.camel.model.rest.RestDefinition rest = routeBuilder.rest();
 		org.apache.camel.model.rest.RestDefinition restVerb;
 		if ("GET".equalsIgnoreCase(method)) {
-			restVerb = routeBuilder.rest().get(restPath);
+			restVerb = rest.get(restPath);
 		} else {
-			restVerb = routeBuilder.rest().post(restPath);
+			restVerb = rest.post(restPath);
 		}
+		String restRouteId = routeBuilder instanceof DmpRouteBuilder ? routeId + "-rest-consumer" : null;
+		if (restRouteId != null) restVerb.getVerbs().get(restVerb.getVerbs().size() - 1).setRouteId(restRouteId);
 		restVerb
 				.consumes(CONTENT_TYPE_JSON)
 				.produces(CONTENT_TYPE_JSON)
@@ -166,17 +170,21 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 				bridgeConfig.isExplicitResponseMapping(), bridgeConfig.getParameterRequired(),
 				bridgeConfig.getResponseRequired(), bridgeConfig.getTargetOptions(),
 				java.util.Arrays.asList(requestTransformers),
-				authoredSinkTransformers);
+				authoredSinkTransformers, bridgeConfig.getCallerResponseTypes());
 		SyncOperationProcessor operation = new SyncOperationProcessor(routeBuilder.getContext(), operationContext,
 				commandValidation, new AffordanceValidation(bridgeConfig.getResponseSchema(),
-						"bridge output " + action), responseSourceBindings, responseSinkTargets);
+						"bridge output " + action), responseSourceBindings, responseSinkTargets, routeId);
+		registerManagedResource(operation);
 		String responseWriteRouteId = routeId + "-response-write";
 		String responseWriteUri = "direct:" + responseWriteRouteId;
 		if (!responseSinkTargets.isEmpty()) {
+			registerRouteId(responseWriteRouteId);
 			routeBuilder.from(responseWriteUri)
 					.routeId(responseWriteRouteId)
 					.process(operation::dispatchResponseWriteJob);
 		}
+		registerRouteId(routeId);
+		if (routeBuilder instanceof DmpRouteBuilder managed) managed.registerIngressRouteId(routeId);
 		var operationRoute = routeBuilder.from("direct:" + routeId).routeId(routeId);
 		operationRoute.doTry()
 				.process(operation::prepareRequest)
@@ -209,6 +217,7 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 			var responseJobs = operationRoute.split(org.apache.camel.builder.Builder.body());
 			var enqueue = responseJobs.doTry();
 			enqueue.wireTap(responseWriteUri)
+					.onPrepare(org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.ResponseSinkFanOutProcessor::prepareDetachedExchange)
 					.executorService(operation.responseWriteExecutor());
 			enqueue.doCatch(Exception.class)
 				.process(operation::recordResponseWriteRejection)
@@ -221,15 +230,30 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 					.process(operation::handleFailure)
 				.end();
 		operationRoute.process(ProtocolBridgeRouteCreator::encodeRestResponse);
-		LOGGER.info("bridge route {}: {} {} -> connector endpoint {} (callerOutputOrder {})",
-				routeId, method, restPath, commandSinkUri,
+		registerRestReservation(method, restPath, rest, restRouteId);
+		LOGGER.info("bridge route {}: {} {} (callerOutputOrder {})",
+				routeId, method, restPath,
 				operationContext.callerOutputOrder);
 	}
 
 	private static void encodeRestResponse(org.apache.camel.Exchange exchange) {
 		if (Boolean.TRUE.equals(exchange.getProperty(OperationPayloads.OPERATION_DELEGATION_FAILED))) return;
-		exchange.getMessage().setBody(org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec
-				.toJson(exchange.getMessage().getBody()));
+		exchange.getMessage().setBody(OperationPayloads.encodeReply(exchange.getMessage().getBody()));
+	}
+
+	private void registerRouteId(String routeId) {
+		if (routeBuilder instanceof DmpRouteBuilder managed) managed.registerRouteId(routeId);
+	}
+
+	private void registerRestReservation(String method, String path,
+			org.apache.camel.model.rest.RestDefinition definition, String restRouteId) {
+		if (routeBuilder instanceof DmpRouteBuilder managed) {
+			managed.registerRestReservation(method, path, definition, restRouteId);
+		}
+	}
+
+	private void registerManagedResource(SyncOperationProcessor operation) {
+		if (routeBuilder instanceof DmpRouteBuilder managed) managed.registerManagedResource(operation);
 	}
 
 	private java.util.Map<String, java.util.List<String>> nativeSinkTransformerChains(
@@ -243,6 +267,7 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 				continue;
 			}
 			String chainRouteId = routeId + "-sink-chain-" + index++;
+			registerRouteId(chainRouteId);
 			routeBuilder.from("direct:" + chainRouteId)
 					.routeId(chainRouteId)
 					.to(chain.toArray(String[]::new));
@@ -264,6 +289,7 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 				String sinkId = String.valueOf(binding.get("sinkId"));
 				String adapterRouteId = (config.getRouteId() + "-aas-response-" + aasRouteIndex++)
 						.replaceAll("[^A-Za-z0-9_.-]", "-");
+				registerRouteId(adapterRouteId);
 				String adapterUri = "direct:" + adapterRouteId;
 				routeBuilder.from(adapterUri)
 						.routeId(adapterRouteId)

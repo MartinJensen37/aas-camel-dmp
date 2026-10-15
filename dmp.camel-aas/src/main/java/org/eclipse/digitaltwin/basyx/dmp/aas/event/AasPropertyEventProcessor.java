@@ -86,11 +86,20 @@ final class AasPropertyEventProcessor implements Processor {
 		exchange.getMessage().setHeader(EVENT_TIME_HEADER,
 				text(event, "timestamp") != null ? text(event, "timestamp") : text(event, "eventTime"));
 
-		JsonElement value = propertyValue(event);
-		if (value == null && "SM_UPDATED".equals(eventType)) {
-			value = propertyValueFromSubmodel(event.get("submodel"),
-					String.valueOf(configuration.getEventFilter().get("elementPath")),
-					String.valueOf(configuration.getEventFilter().get("modelType")));
+		String watched = String.valueOf(configuration.getEventFilter().get("elementPath"));
+		String expectedType = String.valueOf(configuration.getEventFilter().get("modelType"));
+		JsonElement value = null;
+		if (elementPath != null && watched.equals(elementPath.replace('/', '.'))) {
+			value = propertyValue(event);
+		} else if (elementPath != null && event.get("smElement") != null) {
+			String ancestor = elementPath.replace('/', '.');
+			String rest = watched.substring(ancestor.length());
+			if (rest.startsWith(".")) {
+				value = propertyValueFromSubmodel(event.get("smElement"), rest.substring(1), expectedType);
+			}
+		}
+		if (value == null && ("SM_UPDATED".equals(eventType) || "SM_CREATED".equals(eventType))) {
+			value = propertyValueFromSubmodel(event.get("submodel"), watched, expectedType);
 		}
 		if (value == null) {
 			value = readCurrentValue();
@@ -137,23 +146,27 @@ final class AasPropertyEventProcessor implements Processor {
 		if (!expectedSubmodel.equals(actualSubmodel)) {
 			return false;
 		}
+		String type = text(event, "type");
+		if ("SM_UPDATED".equals(type) || "SM_CREATED".equals(type)) {
+			return true;
+		}
+		if (!"SME_CREATED".equals(type) && !"SME_UPDATED".equals(type)) {
+			return false;
+		}
 		String expectedPath = String.valueOf(filter.get("elementPath"));
 		String actualPath = text(event, "smElementPath");
-		String type = text(event, "type");
-		boolean pathMatches = expectedPath.equals(actualPath)
-				|| (actualPath != null && expectedPath.equals(actualPath.replace('/', '.')));
-		if (!pathMatches && !"SM_UPDATED".equals(type)) {
+		if (actualPath == null) {
 			return false;
+		}
+		actualPath = actualPath.replace('/', '.');
+		if (!expectedPath.equals(actualPath)) {
+			// An update of an ancestor carries the watched element in its subtree.
+			return expectedPath.startsWith(actualPath + ".") || expectedPath.startsWith(actualPath + "[");
 		}
 		JsonElement element = event.get("smElement");
 		Object expectedType = filter.get("modelType");
-		if (expectedType != null && element != null && element.isJsonObject()
-				&& !String.valueOf(expectedType).equals(
-						text(element.getAsJsonObject(), "modelType"))) {
-			return false;
-		}
-		return "SME_CREATED".equals(type) || "SME_UPDATED".equals(type)
-				|| "SM_UPDATED".equals(type);
+		return expectedType == null || element == null || !element.isJsonObject()
+				|| String.valueOf(expectedType).equals(text(element.getAsJsonObject(), "modelType"));
 	}
 
 	private JsonElement propertyValue(JsonObject event) {

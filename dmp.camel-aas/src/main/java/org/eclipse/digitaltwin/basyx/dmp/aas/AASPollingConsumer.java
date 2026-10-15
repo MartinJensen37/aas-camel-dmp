@@ -34,25 +34,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import com.google.gson.Gson;
 import org.apache.camel.Exchange;
 import org.apache.camel.support.DefaultMessage;
 import org.apache.camel.support.PollingConsumerSupport;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
-import org.eclipse.basyx.submodel.metamodel.connected.ConnectedSubmodel;
-import org.eclipse.basyx.submodel.metamodel.connected.submodelelement.dataelement.ConnectedProperty;
-import org.eclipse.basyx.submodel.metamodel.facade.SubmodelElementMapCollectionConverter;
-import org.eclipse.basyx.vab.modelprovider.VABElementProxy;
-import org.eclipse.basyx.vab.modelprovider.api.IModelProvider;
-import org.eclipse.basyx.vab.protocol.http.connector.HTTPConnectorFactory;
-import org.eclipse.digitaltwin.basyx.dmp.aas.api.ApiType;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * An implementation of AASPolling Consumer
@@ -60,20 +45,13 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class AASPollingConsumer extends PollingConsumerSupport {
-	private static final Gson GSON = new Gson();
-	
-	private static final Logger logger = LoggerFactory.getLogger(AASPollingConsumer.class);
-	
 	private static final int WAIT_INDEFINITELY = -1;
 	private static final int NO_WAIT = 0;
-	private VABElementProxy proxy;
 	private AASEndpoint endpoint;
 	
 	public AASPollingConsumer(AASEndpoint endpoint) {
 		super(endpoint);
 		this.endpoint = endpoint;
-		
-		connectToAasElement();
 	}
 	
 	@Override
@@ -127,18 +105,6 @@ public class AASPollingConsumer extends PollingConsumerSupport {
 		return null;
 	}
 	
-	/**
-	 * Connect to AAS Element for data dumping 
-	 */
-	private void connectToAasElement() {
-
-		HTTPConnectorFactory factory = new HTTPConnectorFactory();
-    	String proxyUrl = this.getMetamodelUrl();
-    	
-    	IModelProvider provider = factory.getConnector(proxyUrl);
-    	this.proxy = new VABElementProxy("", provider);
-	}
-	
 	private Exchange createExchange(Object decodedValue) {
 		
 		Exchange exchange = endpoint.createExchange();
@@ -155,52 +121,24 @@ public class AASPollingConsumer extends PollingConsumerSupport {
 	 * @return serialized meta model
 	 */
 	private Object getMetamodelValue() throws IOException {
-		if(this.endpoint.getApi() == ApiType.BASYX) {
-			if (!getEndpoint().getPropertyPath().isEmpty()
-					&& isPropertyElement()) {
-				ConnectedProperty prop = new ConnectedProperty(this.proxy);
-				return JsonCodec.fromJsonTree(GSON.toJsonTree(prop.getLocalCopy()));
-			}
-			if (!getEndpoint().getPropertyPath().isEmpty()) {
-				return JsonCodec.parseJson(readElementJson());
-			}
-
-			ConnectedSubmodel sm = new ConnectedSubmodel(this.proxy);
-			return JsonCodec.copyValue(SubmodelElementMapCollectionConverter.smToMap(sm.getLocalCopy()));
-		}else{
-			return JsonCodec.parseJson(readJson(getMetamodelUrl(), "AAS"));
-		}
+		return JsonCodec.parseJson(readJson(getMetamodelUrl(), "AAS"));
 	}
 
-	private boolean isPropertyElement() {
-		String elementType = getEndpoint().getElementType();
-		return elementType == null || elementType.isBlank()
-				|| "Property".equalsIgnoreCase(elementType)
-				|| "SubmodelElementProperty".equalsIgnoreCase(elementType);
-	}
-
-	private String readElementJson() throws IOException {
-		return readJson(getMetamodelUrl(), "AAS element");
-	}
+	private static final java.net.http.HttpClient CLIENT = java.net.http.HttpClient.newBuilder()
+			.connectTimeout(java.time.Duration.ofSeconds(10)).build();
 
 	private static String readJson(String url, String description) throws IOException {
-		try (CloseableHttpClient client = HttpClients.createDefault();
-				CloseableHttpResponse response = client.execute(createGetRequestWithHeader(url))) {
-			if (response.getStatusLine().getStatusCode() < 200
-					|| response.getStatusLine().getStatusCode() >= 300) {
-				throw new IOException(description + " read failed with HTTP "
-						+ response.getStatusLine().getStatusCode());
-			}
-			return EntityUtils.toString(response.getEntity(), "UTF-8");
+		var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).timeout(java.time.Duration.ofSeconds(30))
+				.header("Content-type", "application/json").header("Accept", "application/json").GET().build();
+		java.net.http.HttpResponse<String> response;
+		try { response = CLIENT.send(request, java.net.http.HttpResponse.BodyHandlers.ofString(java.nio.charset.StandardCharsets.UTF_8)); }
+		catch (InterruptedException interrupted) {
+			Thread.currentThread().interrupt();
+			throw new IOException(description + " read interrupted", interrupted);
 		}
-	}
-
-	private static HttpGet createGetRequestWithHeader(String url) {
-		HttpGet aasCreateRequest = new HttpGet(url);
-		aasCreateRequest.setHeader("Content-type", "application/json");
-		aasCreateRequest.setHeader("Accept", "application/json");
-
-		return aasCreateRequest;
+		if (response.statusCode() < 200 || response.statusCode() >= 300)
+			throw new IOException(description + " read failed with HTTP " + response.statusCode());
+		return response.body();
 	}
 
 	/**

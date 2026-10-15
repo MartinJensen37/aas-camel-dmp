@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.camel.impl.DefaultCamelContext;
-import org.eclipse.digitaltwin.basyx.dmp.aas.api.ApiType;
 import org.junit.jupiter.api.Test;
 
 import com.sun.net.httpserver.HttpServer;
@@ -76,7 +75,6 @@ class AASPollingConsumerTest {
 		AASComponent component = context.getComponent("aas", AASComponent.class);
 		AASEndpoint endpoint = (AASEndpoint) component.createEndpoint(
 				"aas:http://127.0.0.1:" + server.getAddress().getPort() + "/submodels/test");
-		endpoint.setApi(ApiType.DOT_AAS_V3);
 		endpoint.setPropertyPath("");
 		return new AASPollingConsumer(endpoint);
 	}

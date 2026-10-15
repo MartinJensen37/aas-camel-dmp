@@ -42,7 +42,6 @@ public class AASProducer extends DefaultProducer {
 	public AASProducer(AASEndpoint endpoint) {
 		super(endpoint);
 		this.endpoint = endpoint;
-		endpoint.connectToElement();
 		
 		LOG.info("Creating AAS Producer for endpoint " + endpoint.getEndpointUri());
 	}

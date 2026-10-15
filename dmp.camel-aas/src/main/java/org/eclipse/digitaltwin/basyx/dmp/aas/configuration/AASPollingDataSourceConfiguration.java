@@ -25,7 +25,7 @@
 
 package org.eclipse.digitaltwin.basyx.dmp.aas.configuration;
 
-import org.eclipse.digitaltwin.basyx.dmp.aas.api.ApiType;
+import org.eclipse.digitaltwin.basyx.dmp.aas.AASEndpoint;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 
 /**
@@ -37,14 +37,14 @@ public class AASPollingDataSourceConfiguration extends DataSourceConfiguration {
 	
 	private String idShortPath;
 	private String submodelEndpoint;
+	/** Legacy descriptor field; only the DotAAS-V3 API is supported. */
 	private String api;
 	private String elementType;
 	
-	public AASPollingDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String idShortPath, String submodelEndpoint, String api) {
+	public AASPollingDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String idShortPath, String submodelEndpoint) {
 		super(uniqueId, serverUrl, serverPort);
 		this.submodelEndpoint = submodelEndpoint;
 		this.idShortPath = idShortPath;
-		this.api = api;
 	}
 	
 	public String getSubmodelEndpoint() {
@@ -63,14 +63,6 @@ public class AASPollingDataSourceConfiguration extends DataSourceConfiguration {
 		this.submodelEndpoint = endpoint;
 	}
 	
-	public String getApi() {
-		return api;
-	}
-
-	public void setApi(String api) {
-		this.api = api;
-	}
-
 	public String getElementType() {
 		return elementType;
 	}
@@ -81,22 +73,16 @@ public class AASPollingDataSourceConfiguration extends DataSourceConfiguration {
 	
 	@Override
 	public String getConnectionURI() {
-		
+		AASEndpoint.requireSupportedApi(api);
 		StringBuilder endpointDefinition = new StringBuilder();
 		endpointDefinition.append("aas:");
 		endpointDefinition.append(this.submodelEndpoint);
 		endpointDefinition.append("?propertyPath=");
 		endpointDefinition.append(this.idShortPath);
-		endpointDefinition.append("&api=");
-		endpointDefinition.append(getApiIfConfigured());
 		if (elementType != null && !elementType.isBlank()) {
 			endpointDefinition.append("&elementType=").append(elementType);
 		}
 		
 		return endpointDefinition.toString();
-	}
-
-	private String getApiIfConfigured() {
-		return api != null ? api : ApiType.BASYX.getName();
 	}
 }

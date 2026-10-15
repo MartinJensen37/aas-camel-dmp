@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
-import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.test.junit5.CamelTestSupport;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfiguration;
@@ -284,13 +283,15 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 		return status;
 	}
 
-	private static String realLuaResponseUri() {
-		try {
-			String path = java.nio.file.Path.of(ProtocolBridgeRouteCreatorTest.class
-					.getResource("/response-object.lua").toURI()).toString();
-			return "lua:file:" + path + "?sourceKeys=body";
+	/** Compiles the response Lua fixture in memory and binds it like the runtime does. */
+	private String realLuaResponseUri() {
+		try (var input = ProtocolBridgeRouteCreatorTest.class.getResourceAsStream("/response-object.lua")) {
+			String name = "response-object-" + java.util.UUID.randomUUID();
+			context.getRegistry().bind(name, org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaCompiledSource
+					.fromBytes(input.readAllBytes(), "response-object.lua", 1 << 20));
+			return "lua:managed:" + name + "?sourceKeys=body";
 		} catch (Exception e) {
-			throw new IllegalStateException("could not locate response Lua fixture", e);
+			throw new IllegalStateException("could not compile response Lua fixture", e);
 		}
 	}
 
@@ -329,7 +330,8 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 		StringBuilder body = new StringBuilder();
 		int status = post("/operations/packingCellAAS/Restart/failure", "{}", body);
 		assertEquals(500, status);
-		assertTrue(body.toString().contains("request transformer failed"));
+		assertEquals(java.util.Map.of("code", "DMP_OPERATION_FAILED", "error", "Operation failed"),
+				org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec.parseJson(body.toString()));
 		assertEquals(before, COMMAND_INVOCATIONS.get());
 	}
 
@@ -339,7 +341,8 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 		StringBuilder body = new StringBuilder();
 		int status = post("/operations/packingCellAAS/Restart/reply-failure", "{}", body);
 		assertEquals(500, status);
-		assertTrue(body.toString().contains("response transformer failed"));
+		assertEquals(java.util.Map.of("code", "DMP_OPERATION_FAILED", "error", "Operation failed"),
+				org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec.parseJson(body.toString()));
 		assertEquals(before + 1, COMMAND_INVOCATIONS.get());
 	}
 

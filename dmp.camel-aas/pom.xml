@@ -14,13 +14,17 @@
 	<packaging>jar</packaging>
 
 	<properties>
-		<maven.compiler.source>17</maven.compiler.source>
-		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 
 	<dependencies>
+		<!-- AAS metamodel v3 and its JSON serialization (the format BaSyx v2 serves). -->
+		<dependency>
+			<groupId>org.eclipse.digitaltwin.aas4j</groupId>
+			<artifactId>aas4j-dataformat-json</artifactId>
+			<version>2.0.1</version>
+		</dependency>
 		<!-- camel -->
 		<dependency>
 			<groupId>org.apache.camel</groupId>
@@ -59,16 +63,10 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- BaSyx SDK -->
-		<dependency>
-			<groupId>org.eclipse.basyx</groupId>
-			<artifactId>basyx.sdk</artifactId>
-			<version>1.4.0</version>
-		</dependency>
-		
 		<dependency>
 			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-paho</artifactId>
+			<artifactId>camel-paho-mqtt5</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 	<build>
@@ -79,8 +77,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.12.1</version>
 				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
+					<release>${maven.compiler.release}</release>
 				</configuration>
 			</plugin>
 

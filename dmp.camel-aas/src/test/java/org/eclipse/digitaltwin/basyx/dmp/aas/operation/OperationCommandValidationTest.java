@@ -49,6 +49,75 @@ class OperationCommandValidationTest {
 	}
 
 	@Test
+	void actionWholeAndMemberOverlapMergesWithoutUnwrappingPayloadAgain() {
+		Map<String, Object> whole = Map.of("sinkId", Map.of("x", 1), "sibling", "keep");
+		assertEquals(whole, OperationPayloads.assembleCommand(Map.of("sinkId", whole),
+				List.of("sinkId"), Map.of(), "sinkId"));
+		assertEquals(whole, OperationPayloads.assembleCommand(Map.of("sinkId", whole),
+				List.of("sinkId"), Map.of("sinkId", "$"), "sinkId"));
+		assertEquals(whole, OperationPayloads.assembleCommand(Map.of("sinkId", whole, "Member", 1),
+				List.of("sinkId", "Member"), Map.of("Member", "$.sinkId.x"), "sinkId"));
+		assertThrows(IllegalArgumentException.class, () -> OperationPayloads.assembleCommand(
+				Map.of("sinkId", whole, "Member", 2), List.of("sinkId", "Member"),
+				Map.of("Member", "$.sinkId.x"), "sinkId"));
+	}
+
+	@Test
+	void actionArrayMembersUseTheSharedPresenceAwareAssembler() {
+		assertEquals(Map.of("items", List.of("first", "second")), OperationPayloads.assembleCommand(
+				Map.of("First", "first", "Second", "second"), List.of("Second", "First"),
+				Map.of("First", "$.items[0]", "Second", "$.items[1]"), "Action"));
+		assertThrows(IllegalArgumentException.class, () -> OperationPayloads.assembleCommand(
+				Map.of("First", "first"), List.of("First", "Second"),
+				Map.of("First", "$.items[0]", "Second", "$.items[1]"), "Action"));
+	}
+
+	@Test
+	void actionSinkIdsAreExactStringsNotStringifiedForeignKeys() {
+		assertThrows(IllegalArgumentException.class, () -> OperationPayloads.assembleCommand(
+				Map.of(1, Map.of("x", 1)), List.of("1"), Map.of(), "Action"));
+	}
+
+	@Test
+	void invalidActionGroupFailsBeforeAnyDeviceInvocation() throws Exception {
+		DefaultCamelContext camel = new DefaultCamelContext();
+		AtomicInteger invocations = new AtomicInteger();
+		AtomicReference<Object> command = new AtomicReference<>();
+		camel.addRoutes(new RouteBuilder() {
+			@Override public void configure() {
+				from("direct:group-device").process(exchange -> {
+					invocations.incrementAndGet();
+					command.set(exchange.getMessage().getBody());
+					exchange.getMessage().setBody(Map.of("Done", true));
+				});
+			}
+		});
+		camel.start();
+		try {
+			OperationContext context = new OperationContext("Move", "direct:unused", null,
+					"direct:group-device", Map.of(), Map.of(), List.of(), "Invoke", "Whole", "Reply",
+					List.of("Whole", "Member"), Map.of("Member", "$.member"),
+					false, List.of(), List.of(), Map.of());
+			try (SyncOperationProcessor processor = new SyncOperationProcessor(camel, context,
+					new AffordanceValidation(null, "command"), new AffordanceValidation(null, "reply"),
+					List.of(), List.of())) {
+				var exchange = new DefaultExchange(camel);
+				exchange.getMessage().setBody(Map.of("Whole", Map.of("member", "a")));
+				assertThrows(IllegalArgumentException.class, () -> processor.invokeAndPrepareReply(exchange));
+				exchange.getMessage().setBody(Map.of("Whole", Map.of("member", "a"), "Member", "b"));
+				assertThrows(IllegalArgumentException.class, () -> processor.invokeAndPrepareReply(exchange));
+				assertEquals(0, invocations.get());
+				exchange.getMessage().setBody(Map.of("Whole", Map.of("member", "a"), "Member", "a"));
+				processor.invokeAndPrepareReply(exchange);
+				assertEquals(1, invocations.get());
+				assertEquals(Map.of("member", "a"), command.get());
+			}
+		} finally {
+			camel.stop();
+		}
+	}
+
+	@Test
 	void requestValueIsKeyedByTheAuthoredOperationSourceId() throws Exception {
 		var exchange = new DefaultExchange(new DefaultCamelContext());
 		exchange.getMessage().setBody("{\"Position\":{\"x\":1}}");
@@ -60,7 +129,7 @@ class OperationCommandValidationTest {
 	@Test
 	void operationRequestProcessorMarksBaSyxArrayBeforeFlattening() throws Exception {
 		var exchange = new DefaultExchange(new DefaultCamelContext());
-		exchange.getMessage().setBody("[{\"value\":{\"idShort\":\"Uuid\",\"value\":\"abc\"}}]");
+		exchange.getMessage().setBody("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Uuid\",\"valueType\":\"xs:string\",\"value\":\"abc\"}}]");
 		new OperationRequestProcessor("Invoke").process(exchange);
 		assertEquals(true, exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY));
 	}
@@ -98,10 +167,12 @@ class OperationCommandValidationTest {
 					Map.of("First", List.of("direct:first-transformer"),
 							"Second", List.of("direct:second-transformer")));
 			var exchange = new DefaultExchange(camel);
-			exchange.getMessage().setBody("[{\"value\":{\"idShort\":\"Invoke\",\"value\":{}}}]");
-			new SyncOperationProcessor(camel, context,
+			exchange.getMessage().setBody("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Invoke\",\"valueType\":\"xs:string\",\"value\":\"\"}}]");
+			try (var processor = new SyncOperationProcessor(camel, context,
 					new AffordanceValidation(null, "command"),
-					new AffordanceValidation(null, "reply"), List.of(), List.of()).process(exchange);
+					new AffordanceValidation(null, "reply"), List.of(), List.of())) {
+				processor.process(exchange);
+			}
 
 			assertEquals(Map.of("X", Map.of("x", 10), "Y", Map.of("y", 20)), command.get());
 			assertEquals(2, requestTransformations.get(), "every request transformer must run in order");

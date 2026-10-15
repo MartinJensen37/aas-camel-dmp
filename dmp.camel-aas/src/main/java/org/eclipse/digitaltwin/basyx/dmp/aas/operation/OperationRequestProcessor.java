@@ -34,7 +34,8 @@ import org.slf4j.LoggerFactory;
  * First step of the declarative operation-delegation route: the BaSyx
  * operation-delegation client POSTs an {@code OperationVariable[]} (JSON
  * ARRAY) body — flatten it into the {@code {idShort: value}} map the mapping
- * Lua expects; direct REST callers (object bodies) pass through unchanged.
+ * Lua expects; direct REST caller values retain their structure. Both caller
+ * forms receive exactly one authored SourceId envelope at this boundary.
  *
  * @author aas-camel-dmp
  */
@@ -54,17 +55,15 @@ public class OperationRequestProcessor implements Processor {
 	@Override
 	public void process(Exchange exchange) throws Exception {
 		Object body = decodeRestJson(exchange.getMessage().getBody());
-		if (OperationPayloads.isOperationVariables(body)) {
+		if (body instanceof java.util.List<?> && OperationPayloads.isOperationVariables(body)) {
 			LOGGER.debug("BaSyx delegation body detected — flattening OperationVariable[]");
 			exchange.setProperty(OperationPayloads.BASYX_DELEGATION_BODY, true);
 			body = OperationPayloads.flattenOperationVariables(body);
 		}
 		if (operationSourceId != null && !operationSourceId.isBlank()) {
-			if (body instanceof java.util.Map<?, ?> map && !map.containsKey(operationSourceId)) {
-				java.util.Map<String, Object> keyed = new java.util.LinkedHashMap<>();
-				keyed.put(operationSourceId, body);
-				body = keyed;
-			}
+			java.util.Map<String, Object> keyed = new java.util.LinkedHashMap<>();
+			keyed.put(operationSourceId, body);
+			body = keyed;
 		}
 		exchange.getMessage().setBody(JsonCodec.copyValue(body));
 	}

@@ -26,10 +26,11 @@ package org.eclipse.digitaltwin.basyx.dmp.aas.operation;
 
 
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.apache.http.HttpStatus;
+import java.net.HttpURLConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,28 +57,36 @@ public class OperationReplyProcessor implements Processor {
 	@Override
 	public void process(Exchange exchange) {
 		Object reply = exchange.getMessage().getBody();
+		// Only a response transform/mapping creates a SinkId envelope. Native reply
+		// fields may themselves have the action's name and must not be unwrapped.
 		Object unwrapped = context.explicitResponseMapping
 				? OperationPayloads.requireSinkValue(reply, context.callerReplySinkId)
-				: OperationPayloads.unwrapValue(reply, context.callerReplySinkId);
-		Map<String, Object> replyMap = unwrapped instanceof Map<?, ?>
-				? OperationPayloads.unwrap(unwrapped, context.callerReplySinkId) : null;
+				: context.responseLuaUri == null ? reply
+						: OperationPayloads.unwrapValue(reply, context.callerReplySinkId);
+		Map<String, Object> replyMap = null;
+		if (unwrapped instanceof Map<?, ?> map) {
+			replyMap = new LinkedHashMap<>();
+			for (var entry : map.entrySet()) {
+				replyMap.put(String.valueOf(entry.getKey()), entry.getValue());
+			}
+		}
 		replyMap = OperationPayloads.selectCallerOutputs(replyMap, context.callerOutputOrder);
 		boolean basyxDelegation = Boolean.TRUE.equals(
 				exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY, Boolean.class));
 		if (basyxDelegation) {
-			if (replyMap == null && context.responseTypes.size() == 1) {
-				String name = context.responseTypes.keySet().iterator().next();
+			if (replyMap == null && context.callerResponseTypes.size() == 1) {
+				String name = context.callerResponseTypes.keySet().iterator().next();
 				replyMap = new java.util.LinkedHashMap<>();
 				replyMap.put(name, unwrapped);
 			}
 			exchange.getMessage().setBody(
-					OperationPayloads.toOperationVariables(coerce(replyMap), context.responseTypes,
+					OperationPayloads.toOperationVariables(coerce(replyMap), context.callerResponseTypes,
 							context.callerOutputOrder));
-			LOGGER.debug("operation {}: delegation reply {}", context.action, replyMap);
+			LOGGER.debug("Operation delegation reply prepared");
 		} else {
 			exchange.getMessage().setBody(replyMap == null ? unwrapped : coerce(replyMap));
 		}
-		exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, HttpStatus.SC_OK);
+		exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, HttpURLConnection.HTTP_OK);
 	}
 
 	/**
@@ -94,7 +103,7 @@ public class OperationReplyProcessor implements Processor {
 		if (replyMap == null) {
 			return null;
 		}
-		OperationPayloads.coerceFields(replyMap, context.responseTypes);
+		OperationPayloads.coerceFields(replyMap, context.callerResponseTypes);
 		return replyMap;
 	}
 }

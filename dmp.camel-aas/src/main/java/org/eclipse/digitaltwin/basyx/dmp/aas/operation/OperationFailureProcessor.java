@@ -29,7 +29,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.PayloadValidationException;
-import org.apache.http.HttpStatus;
+import java.net.HttpURLConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
@@ -38,9 +38,9 @@ import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
  * Exception mapping of the declarative operation-delegation route
  * ({@code doCatch}): marks the delegation failed (the writeback must NOT
  * store an error payload as the effective value) and answers the caller with
- * the status the route creator wired — a correlation timeout maps to 504,
- * any other failure to 500 (matching the Python operation-delegation
- * reference).
+ * a safe diagnostic category. Typed failures map to 500/502/504; untyped
+ * failures use the status wired by the route creator. Exception messages and
+ * connector/validation details are never public diagnostics or log fields.
  *
  * @author aas-camel-dmp
  */
@@ -48,79 +48,89 @@ public class OperationFailureProcessor implements Processor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(OperationFailureProcessor.class);
 
-	private final OperationContext context;
 	private final int status;
 
 	public OperationFailureProcessor(OperationContext context, int status) {
-		this.context = context;
 		this.status = status;
 	}
 
 	@Override
 	public void process(Exchange exchange) {
-		Exception caught = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
-		String message = caught == null || caught.getMessage() == null
-				? "unknown failure" : caught.getMessage();
-		LOGGER.warn("operation {} failed ({}): {}", context.action, status, message);
+		Throwable caught = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
+		var seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<Throwable, Boolean>());
+		for (Throwable cause = caught; cause != null && seen.add(cause); cause = cause.getCause()) {
+			if (cause instanceof OperationValidationException || cause instanceof PayloadValidationException
+					|| cause instanceof ConnectorInvocationException) {
+				caught = cause;
+				break;
+			}
+		}
+		int callerStatus = status;
+		String code = status == HttpURLConnection.HTTP_GATEWAY_TIMEOUT ? "DMP_DEVICE_TIMEOUT" : "DMP_OPERATION_FAILED";
+		String message = status == HttpURLConnection.HTTP_GATEWAY_TIMEOUT ? "Device invocation timed out" : "Operation failed";
 		exchange.setProperty(OperationPayloads.OPERATION_DELEGATION_FAILED, true);
+		// Typed failures still contain untrusted URI, device and validation text.
+		// Only these fixed categories and messages may cross the public boundary.
 		if (caught instanceof OperationValidationException validation) {
-			exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, validation.getStatus());
-			exchange.getMessage().setBody(JsonCodec.toJson(java.util.Map.of(
-					"code", validation.getCode(), "error", validation.getMessage(),
-					"violations", validation.getViolations())));
+			callerStatus = HttpURLConnection.HTTP_INTERNAL_ERROR;
+			code = "DMP_OPERATION_VALIDATION_FAILED";
+			message = "Operation validation failed";
+			if ("DMP_COMMAND_VALIDATION_FAILED".equals(validation.getCode())) {
+				code = "DMP_COMMAND_VALIDATION_FAILED";
+				message = "Mapped command violates the declared input schema";
+			} else if ("DMP_RESPONSE_VALIDATION_FAILED".equals(validation.getCode())) {
+				callerStatus = HttpURLConnection.HTTP_BAD_GATEWAY;
+				code = "DMP_RESPONSE_VALIDATION_FAILED";
+				message = "Device response violates the declared output schema";
+			} else if ("DMP_RESPONSE_MAPPING_FAILED".equals(validation.getCode())) {
+				code = "DMP_RESPONSE_MAPPING_FAILED";
+				message = "Response mapping failed";
+			}
 		} else if (caught instanceof PayloadValidationException validation) {
-			String code;
-			int callerStatus;
 			switch (validation.getStage()) {
 			case COMMAND -> {
 				code = "DMP_COMMAND_VALIDATION_FAILED";
-				callerStatus = HttpStatus.SC_INTERNAL_SERVER_ERROR;
+				callerStatus = HttpURLConnection.HTTP_INTERNAL_ERROR;
+				message = "Mapped command violates the declared input schema";
 			}
 			case RESPONSE -> {
 				code = "DMP_RESPONSE_VALIDATION_FAILED";
-				callerStatus = HttpStatus.SC_BAD_GATEWAY;
+				callerStatus = HttpURLConnection.HTTP_BAD_GATEWAY;
+				message = "Device response violates the declared output schema";
 			}
 			default -> {
 				code = "DMP_RESPONSE_MAPPING_FAILED";
-				callerStatus = HttpStatus.SC_INTERNAL_SERVER_ERROR;
+				callerStatus = HttpURLConnection.HTTP_INTERNAL_ERROR;
+				message = "Response mapping failed";
 			}
 			}
-			exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, callerStatus);
-			exchange.getMessage().setBody(JsonCodec.toJson(java.util.Map.of(
-					"code", code, "error", validation.getMessage(),
-					"violations", validation.getViolations())));
 		} else if (caught instanceof ConnectorInvocationException connectorFailure) {
-			int callerStatus;
-			String callerCode;
 			switch (connectorFailure.getCategory()) {
 			case REMOTE -> {
-				callerStatus = HttpStatus.SC_BAD_GATEWAY;
-				callerCode = "DMP_DEVICE_ERROR";
+				callerStatus = HttpURLConnection.HTTP_BAD_GATEWAY;
+				code = "DMP_DEVICE_ERROR";
+				message = "Device invocation failed";
 			}
 			case TIMEOUT -> {
-				callerStatus = HttpStatus.SC_GATEWAY_TIMEOUT;
-				callerCode = "DMP_DEVICE_TIMEOUT";
+				callerStatus = HttpURLConnection.HTTP_GATEWAY_TIMEOUT;
+				code = "DMP_DEVICE_TIMEOUT";
+				message = "Device invocation timed out";
 			}
 			case TRANSPORT -> {
-				callerStatus = HttpStatus.SC_BAD_GATEWAY;
-				callerCode = "DMP_DEVICE_TRANSPORT_ERROR";
+				callerStatus = HttpURLConnection.HTTP_BAD_GATEWAY;
+				code = "DMP_DEVICE_TRANSPORT_ERROR";
+				message = "Device transport failed";
 			}
 			default -> {
-				callerStatus = HttpStatus.SC_INTERNAL_SERVER_ERROR;
-				callerCode = "DMP_CONNECTOR_CONFIGURATION_ERROR";
+				callerStatus = HttpURLConnection.HTTP_INTERNAL_ERROR;
+				code = "DMP_CONNECTOR_CONFIGURATION_ERROR";
+				message = "Connector configuration failed";
 			}
 			}
-			exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, callerStatus);
-			java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
-			body.put("code", callerCode);
-			body.put("error", connectorFailure.getMessage());
-			body.put("connectorCode", connectorFailure.getConnectorCode());
-			if (!connectorFailure.getDetails().isEmpty()) body.put("details", connectorFailure.getDetails());
-			exchange.getMessage().setBody(JsonCodec.toJson(body));
-		} else {
-			exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, status);
-			exchange.getMessage().setBody(JsonCodec.toJson(java.util.Map.of("error", message)));
 		}
+		LOGGER.warn("Operation failed ({}): {}", callerStatus, code);
+		exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, callerStatus);
+		exchange.getMessage().setBody(JsonCodec.toJson(java.util.Map.of("code", code, "error", message)));
 	}
 
 }

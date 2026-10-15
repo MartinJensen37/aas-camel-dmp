@@ -1,0 +1,66 @@
+package org.eclipse.digitaltwin.basyx.dmp.aas;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.impl.DefaultCamelContext;
+import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASDatasinkConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.FanOut;
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
+import org.junit.jupiter.api.Test;
+
+import com.sun.net.httpserver.HttpServer;
+
+class AASOrdinarySinkContractTest {
+	@Test
+	void authoredSinkIdAndConnectorSelectorWriteEachDecodedValueExactlyOnce() throws Exception {
+		List<String> writes = new CopyOnWriteArrayList<>();
+		HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		server.createContext("/submodels/test/submodel-elements/Value/$value", request -> {
+			assertEquals("PATCH", request.getRequestMethod());
+			writes.add(new String(request.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+			request.sendResponseHeaders(204, -1);
+			request.close();
+		});
+		server.start();
+		try (DefaultCamelContext context = new DefaultCamelContext()) {
+			AASDatasinkConfiguration sink = new AASDatasinkConfiguration(
+					"http://127.0.0.1:" + server.getAddress().getPort() + "/submodels/test",
+					"Value", "internal-sink-id");
+			sink.setSinkId("AuthoredId");
+			sink.setValuePath("AuthoredId");
+			RouteConfiguration route = new RouteConfiguration("execution-policy", List.of(), List.of(),
+					List.of("internal-sink-id"));
+			RoutesConfiguration configuration = new RoutesConfiguration(List.of(), List.of(), List.of(sink),
+					List.of(route));
+			context.addRoutes(new RouteBuilder() {
+				@Override
+				public void configure() {
+					FanOut.apply(from("direct:ordinary"), configuration, route, new String[0],
+							new String[] {sink.getConnectionURI()}, Map.of(), "ordinary");
+				}
+			});
+			context.start();
+			try (var producer = context.createProducerTemplate()) {
+				for (Object value : List.of("\"authored quotes\"", Map.of("AuthoredId", 7L, "sibling", 9L))) {
+					producer.sendBody("direct:ordinary", Map.of("AuthoredId", value));
+					assertEquals(JsonCodec.toJson(value), writes.get(writes.size() - 1));
+				}
+				producer.sendBody("direct:ordinary", Collections.singletonMap("AuthoredId", null));
+				assertEquals(3, writes.size());
+				assertEquals("null", writes.get(2));
+			}
+		} finally {
+			server.stop(0);
+		}
+	}
+}

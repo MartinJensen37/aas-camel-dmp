@@ -45,6 +45,7 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public static final String PARAMETER_TYPES = "parameterTypes";
 	/** DECLARED reply field types (AID output DataSchema: name → JSON type). */
 	public static final String RESPONSE_TYPES = "responseTypes";
+	public static final String CALLER_RESPONSE_TYPES = "callerResponseTypes";
 	/** DECLARED positional reply order (CCI operation output_variable order). */
 	public static final String RESPONSE_ORDER = "responseOrder";
 	public static final String OPERATION_SOURCE_ID = "operationSourceId";
@@ -94,6 +95,12 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	/** DECLARED reply field types (name → JSON-schema type); never null. */
 	public java.util.Map<String, String> getResponseTypes() {
 		return typeMap(RESPONSE_TYPES);
+	}
+
+	/** Old standalone descriptors used the device types for both boundaries. */
+	public java.util.Map<String, String> getCallerResponseTypes() {
+		return getTriggerData().containsKey(CALLER_RESPONSE_TYPES)
+				? typeMap(CALLER_RESPONSE_TYPES) : getResponseTypes();
 	}
 
 	public java.util.List<String> getParameterRequired() {

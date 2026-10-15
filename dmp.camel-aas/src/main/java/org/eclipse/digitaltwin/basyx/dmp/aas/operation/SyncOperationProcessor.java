@@ -27,6 +27,7 @@ package org.eclipse.digitaltwin.basyx.dmp.aas.operation;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousInvocationAdapter;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.ResponseProjectionProcessor;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.ResponseSinkFanOutProcessor;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource;
 
 import java.util.Map;
 
@@ -34,7 +35,7 @@ import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.ProducerTemplate;
-import org.apache.http.HttpStatus;
+import java.net.HttpURLConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.AffordanceValidation;
@@ -58,20 +59,21 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.Affor
  *
  * @author aas-camel-dmp
  */
-public class SyncOperationProcessor implements Processor {
+public class SyncOperationProcessor implements Processor, ManagedRouteResource {
 	private static final String CALLER_REPLY_RESULT = "dmp.operation.callerReplyResult";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SyncOperationProcessor.class);
 
 	private final OperationContext context;
+	private final CamelContext camelContext;
 	private final ProducerTemplate producerTemplate;
 	private final AffordanceValidation validation;
-	private final AffordanceValidation responseValidation;
 	private final OperationReplyValidationProcessor replyValidationProcessor;
 	private final java.util.List<java.util.Map<String, Object>> responseSourceBindings;
 	private final java.util.List<java.util.Map<String, Object>> responseSinkTargets;
 	private final ResponseSinkFanOutProcessor responseFanOut;
 	private final java.util.List<SynchronousInvocationAdapter> invocationAdapters;
+	private final SynchronousInvocationAdapter.InvocationSchema invocationSchema;
 
 	public SyncOperationProcessor(CamelContext camelContext, OperationContext context) {
 		this(camelContext, context, new AffordanceValidation(null, "operation " + context.action),
@@ -93,19 +95,61 @@ public class SyncOperationProcessor implements Processor {
 			AffordanceValidation validation, AffordanceValidation responseValidation,
 			java.util.List<java.util.Map<String, Object>> responseSourceBindings,
 			java.util.List<java.util.Map<String, Object>> responseSinkTargets) {
+		this(camelContext, context, validation, responseValidation, responseSourceBindings,
+				responseSinkTargets, context.action);
+	}
+
+	public SyncOperationProcessor(CamelContext camelContext, OperationContext context,
+			AffordanceValidation validation, AffordanceValidation responseValidation,
+			java.util.List<java.util.Map<String, Object>> responseSourceBindings,
+			java.util.List<java.util.Map<String, Object>> responseSinkTargets, String resourceIdentity) {
+		this(camelContext, context, validation, responseValidation, responseSourceBindings,
+				responseSinkTargets, resourceIdentity, null);
+	}
+
+	SyncOperationProcessor(CamelContext camelContext, OperationContext context,
+			AffordanceValidation validation, AffordanceValidation responseValidation,
+			java.util.List<java.util.Map<String, Object>> responseSourceBindings,
+			java.util.List<java.util.Map<String, Object>> responseSinkTargets, String resourceIdentity,
+			java.util.List<SynchronousInvocationAdapter> adapters) {
 		this.context = context;
-		this.producerTemplate = camelContext.createProducerTemplate();
+		this.camelContext = camelContext;
 		this.validation = validation;
-		this.responseValidation = responseValidation;
 		this.replyValidationProcessor = new OperationReplyValidationProcessor(context.action, responseValidation);
 		this.responseSourceBindings = java.util.List.copyOf(responseSourceBindings);
 		this.responseSinkTargets = java.util.List.copyOf(responseSinkTargets);
-		this.responseFanOut = new ResponseSinkFanOutProcessor(camelContext,
-				context.action, this.responseSinkTargets);
-		this.invocationAdapters = java.util.ServiceLoader
+		this.invocationSchema = new SynchronousInvocationAdapter.InvocationSchema(context.parameterTypes,
+				context.parameterRequired, context.responseTypes, context.responseRequired, context.targetOptions);
+		this.invocationAdapters = adapters == null ? java.util.ServiceLoader
 				.load(SynchronousInvocationAdapter.class,
 						Thread.currentThread().getContextClassLoader())
-				.stream().map(java.util.ServiceLoader.Provider::get).toList();
+				.stream().map(java.util.ServiceLoader.Provider::get).toList() : java.util.List.copyOf(adapters);
+		this.responseFanOut = new ResponseSinkFanOutProcessor(camelContext,
+				resourceIdentity, this.responseSinkTargets);
+		this.producerTemplate = camelContext.createProducerTemplate();
+	}
+
+	@Override
+	public void bind(CamelContext owner) {
+		if (camelContext != owner) throw new IllegalArgumentException("operation processor belongs to another Camel context");
+	}
+
+	@Override
+	public java.util.Set<String> endpointUris() {
+		return invocationAdapters.stream().filter(adapter -> adapter.supports(context.commandSinkUri)).findFirst()
+				.map(adapter -> adapter.ownedEndpointUris(context.commandSinkUri, invocationSchema))
+				.orElseGet(() -> java.util.Set.of(context.commandSinkUri));
+	}
+
+	@Override
+	public void close() throws Exception {
+		responseFanOut.close();
+		producerTemplate.stop();
+	}
+
+	@Override
+	public void drain(java.time.Duration timeout) throws Exception {
+		responseFanOut.drain(timeout);
 	}
 
 	@Override
@@ -154,20 +198,17 @@ public class SyncOperationProcessor implements Processor {
 			} catch (IllegalArgumentException invalid) {
 				throw new OperationValidationException("DMP_COMMAND_VALIDATION_FAILED", 500,
 						"Mapped command violates the declared input schema",
-						java.util.List.of(invalid.getMessage()));
+					java.util.List.of(invalid.getMessage()));
 			}
-			LOGGER.debug("sync '{}': lua out={} command={} -> sink {}",
-					context.action, transformed, command, context.commandSinkUri);
 			SynchronousInvocationAdapter connector = invocationAdapters.stream()
 					.filter(candidate -> candidate.supports(context.commandSinkUri)).findFirst().orElse(null);
+			LOGGER.debug("sync '{}': invoking declared command endpoint", context.action);
 			Object reply = connector == null
 					? producerTemplate.requestBody(context.commandSinkUri, command)
 					: connector.invoke(exchange.getContext(), context.commandSinkUri, command,
-							new SynchronousInvocationAdapter.InvocationSchema(context.parameterTypes,
-									context.parameterRequired, context.responseTypes, context.responseRequired,
-									context.targetOptions));
-			LOGGER.debug("sync '{}': reply type={} value={}", context.action,
-					reply == null ? "null" : reply.getClass().getName(), reply);
+							invocationSchema);
+			LOGGER.debug("sync '{}': reply type={}", context.action,
+					reply == null ? "null" : reply.getClass().getName());
 
 			// Connector adapters normalize replies to a named logical object;
 			// the generic response path validates/projects/transforms it once.
@@ -181,9 +222,7 @@ public class SyncOperationProcessor implements Processor {
 	}
 
 	public void prepareResponseWrites(Exchange exchange) {
-			Object raw = exchange.getMessage().getBody();
-			Object result = context.explicitResponseMapping
-					? raw : OperationPayloads.unwrapValue(raw, context.action);
+			Object result = exchange.getMessage().getBody();
 			if (context.explicitResponseMapping) {
 				OperationPayloads.requireSinkValue(result, context.callerReplySinkId);
 			}
@@ -222,9 +261,8 @@ public class SyncOperationProcessor implements Processor {
 	}
 
 	private void fail(Exchange exchange, Throwable failure) {
-		LOGGER.error("synchronous operation '{}' failed", context.action, failure);
 		exchange.setProperty(Exchange.EXCEPTION_CAUGHT, failure);
-		new OperationFailureProcessor(context, HttpStatus.SC_INTERNAL_SERVER_ERROR).process(exchange);
+		new OperationFailureProcessor(context, HttpURLConnection.HTTP_INTERNAL_ERROR).process(exchange);
 		exchange.setRouteStop(true);
 	}
 

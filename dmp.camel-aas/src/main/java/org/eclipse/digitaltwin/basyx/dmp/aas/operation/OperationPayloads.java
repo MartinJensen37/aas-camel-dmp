@@ -24,8 +24,14 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.aas.operation;
 
+import org.eclipse.digitaltwin.aas4j.v3.model.OperationVariable;
+import org.eclipse.digitaltwin.aas4j.v3.model.Property;
+import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultOperationVariable;
+import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultProperty;
+import org.eclipse.digitaltwin.basyx.dmp.aas.model.Aas;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.PayloadAssembler;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
@@ -57,7 +63,8 @@ public final class OperationPayloads {
 
 	/**
 	 * Deterministic value parse per a DECLARED JSON-schema type (the AID
-	 * action's embedded input/output DataSchema). The declared type — not a
+	 * action's embedded input/output DataSchema), or a caller CCI primitive
+	 * {@code xs:*} valueType. The declared type — not a
 	 * payload convention — decides the wire representation:
 	 * <ul>
 	 * <li>{@code string}: stringified (integral numbers keep their plain
@@ -74,7 +81,16 @@ public final class OperationPayloads {
 			return null;
 		}
 		if (raw == JsonPointer.JSON_NULL) return raw;
-		String type = jsonType == null ? "" : jsonType.trim().toLowerCase();
+		String type = jsonType == null ? "" : jsonType.trim().toLowerCase(java.util.Locale.ROOT);
+		if (type.startsWith("xs:")) {
+			type = switch (type.substring(3)) {
+			case "string", "normalizedstring", "token", "anyuri" -> "string";
+			case "byte", "short", "int", "integer", "long", "unsignedbyte", "unsignedshort", "unsignedint", "unsignedlong" -> "integer";
+			case "float", "double", "decimal" -> "number";
+			case "boolean" -> "boolean";
+			default -> type;
+			};
+		}
 		switch (type) {
 			case "string":
 				if (raw instanceof String s) {
@@ -157,10 +173,16 @@ public final class OperationPayloads {
 	 * The BaSyx value type for a DECLARED JSON-schema type (reply envelope
 	 * building): string → xs:string, integer → xs:integer, number →
 	 * xs:double, boolean → xs:boolean; unknown → xs:string (BaSyx's trivial
-	 * cast answers a string).
+	 * cast answers a string). Supported authored CCI {@code xs:*} aliases are
+	 * preserved rather than replaced by their JSON-category defaults.
 	 */
 	public static String basyxValueType(String jsonType) {
-		String type = jsonType == null ? "" : jsonType.trim().toLowerCase();
+		String type = jsonType == null ? "" : jsonType.trim().toLowerCase(java.util.Locale.ROOT);
+		if (java.util.Set.of("xs:string", "xs:anyuri", "xs:boolean",
+				"xs:byte", "xs:short", "xs:int", "xs:integer", "xs:long", "xs:unsignedbyte", "xs:unsignedshort",
+				"xs:unsignedint", "xs:unsignedlong", "xs:float", "xs:double", "xs:decimal").contains(type)) {
+			return jsonType.trim();
+		}
 		switch (type) {
 			case "integer":
 			case "int":
@@ -180,71 +202,63 @@ public final class OperationPayloads {
 
 	/** True for the BaSyx OperationVariable envelope, not arbitrary JSON arrays. */
 	public static boolean isOperationVariables(Object body) {
-		Object decoded = decodeOperationBody(body);
-		if (!(decoded instanceof List<?> variables)) return false;
-		if (variables.isEmpty()) return true;
-		return variables.stream().allMatch(OperationPayloads::isOperationVariable);
+		return operationVariables(body) != null;
 	}
 
-	/** Flattens decoded OperationVariable[] into the request value tree. */
+	/** Flattens a delegated OperationVariable[] into the {@code {idShort: value}} request tree. */
 	public static Map<String, Object> flattenOperationVariables(Object body) {
-		Object decoded = decodeOperationBody(body);
-		if (!(decoded instanceof List<?> variables) || !variables.isEmpty()
-				&& variables.stream().anyMatch(variable -> !isOperationVariable(variable))) {
-			throw new IllegalArgumentException("BaSyx Operation request is not an OperationVariable array");
-		}
+		java.util.List<OperationVariable> variables = operationVariables(body);
+		if (variables == null) throw new IllegalArgumentException("BaSyx Operation request is not an OperationVariable array");
 		Map<String, Object> flat = new java.util.LinkedHashMap<>();
-		for (Object element : variables) {
-			Map<?, ?> variable = (Map<?, ?>) element;
-			Map<?, ?> property = (Map<?, ?>) variable.get("value");
-			flat.put(String.valueOf(property.get("idShort")), JsonCodec.copyValue(property.get("value")));
+		for (OperationVariable variable : variables) {
+			Property property = (Property) variable.getValue();
+			flat.put(property.getIdShort(), property.getValue());
 		}
 		return flat;
 	}
 
-	private static Object decodeOperationBody(Object body) {
-		if (body instanceof String text) return JsonCodec.parseJson(text);
-		if (body instanceof byte[] bytes) {
-			return JsonCodec.parseJson(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
-		}
-		if (body instanceof java.io.InputStream stream) {
-			try {
-				return JsonCodec.parseJson(new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
-			} catch (java.io.IOException e) {
-				throw new IllegalArgumentException("could not read BaSyx Operation request", e);
-			}
-		}
-		return body;
+	/** The scalar-Property OperationVariables of a delegated body, or null when it is not that envelope. */
+	private static java.util.List<OperationVariable> operationVariables(Object body) {
+		String json = operationBodyJson(body);
+		if (json == null || !json.stripLeading().startsWith("[")) return null;
+		java.util.List<OperationVariable> variables;
+		try { variables = Aas.readList(json, OperationVariable.class); }
+		catch (IllegalArgumentException notAnEnvelope) { return null; }
+		for (OperationVariable variable : variables)
+			if (!(variable.getValue() instanceof Property property) || property.getIdShort() == null) return null;
+		return variables;
 	}
 
-	private static boolean isOperationVariable(Object value) {
-		if (!(value instanceof Map<?, ?> variable) || !(variable.get("value") instanceof Map<?, ?> property)) {
-			return false;
+	private static String operationBodyJson(Object body) {
+		if (body instanceof String text) return text;
+		if (body instanceof byte[] bytes) return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+		if (body instanceof java.io.InputStream stream) {
+			try { return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8); }
+			catch (java.io.IOException e) { throw new IllegalArgumentException("could not read BaSyx Operation request", e); }
 		}
-		return property.get("idShort") instanceof String && property.containsKey("value");
+		return body instanceof java.util.List<?> ? JsonCodec.toJson(body) : null;
 	}
 
 	/** Maps a flat reply into the BaSyx OperationVariable[] envelope. */
-	public static java.util.List<Map<String, Object>> toOperationVariables(
-			Map<String, Object> map) {
+	public static java.util.List<OperationVariable> toOperationVariables(Map<String, Object> map) {
 		return toOperationVariables(map, java.util.Map.of());
 	}
 
 	/** Maps a flat reply into OperationVariables using declared reply types. */
-	public static java.util.List<Map<String, Object>> toOperationVariables(
+	public static java.util.List<OperationVariable> toOperationVariables(
 			Map<String, Object> map, java.util.Map<String, String> declaredTypes) {
 		return toOperationVariables(map, declaredTypes, java.util.List.of());
 	}
 
 	/** Maps a flat reply to caller OperationVariables in the CCI-declared order. */
-	public static java.util.List<Map<String, Object>> toOperationVariables(
+	public static java.util.List<OperationVariable> toOperationVariables(
 			Map<String, Object> map, java.util.Map<String, String> declaredTypes,
 			java.util.List<String> callerOrder) {
 		if (map == null) {
 			return java.util.List.of();
 		}
 		java.util.Map<String, String> types = declaredTypes == null ? java.util.Map.of() : declaredTypes;
-		java.util.List<Map<String, Object>> variables = new java.util.ArrayList<>();
+		java.util.List<OperationVariable> variables = new java.util.ArrayList<>();
 		java.util.LinkedHashSet<String> order = new java.util.LinkedHashSet<>();
 		if (callerOrder != null && !callerOrder.isEmpty()) order.addAll(callerOrder);
 		else order.addAll(map.keySet());
@@ -252,16 +266,18 @@ public final class OperationPayloads {
 			if (!map.containsKey(name)) continue;
 			Object rawValue = map.get(name);
 			String type = types.getOrDefault(name, "string");
-			Map<String, Object> property = new java.util.LinkedHashMap<>();
-			property.put("modelType", "Property");
-			property.put("idShort", name);
-			property.put("valueType", basyxValueType(type));
-			Object value = rawValue == null || rawValue == JsonPointer.JSON_NULL
-					? JsonPointer.JSON_NULL : coerceTyped(rawValue, type);
-			property.put("value", value == JsonPointer.JSON_NULL ? value : String.valueOf(value));
-			variables.add(Map.of("value", property));
+			Object value = rawValue == null || rawValue == JsonPointer.JSON_NULL ? null : coerceTyped(rawValue, type);
+			variables.add(new DefaultOperationVariable.Builder().value(new DefaultProperty.Builder().idShort(name)
+					.valueType(Aas.xsd(basyxValueType(type))).value(value == null ? null : String.valueOf(value)).build()).build());
 		}
-		return variables;
+		return java.util.List.copyOf(variables);
+	}
+
+	/** Encodes a caller reply: OperationVariables as AAS JSON, any other decoded value as plain JSON. */
+	public static String encodeReply(Object body) {
+		if (body instanceof java.util.List<?> list && !list.isEmpty() && list.stream().allMatch(OperationVariable.class::isInstance))
+			return Aas.writeList(list);
+		return JsonCodec.toJson(body);
 	}
 
 	/**
@@ -280,27 +296,13 @@ public final class OperationPayloads {
 	public static Map<String, Object> assembleCommand(Object transformed,
 			java.util.List<String> sinkIds, Map<String, String> valuePaths, String legacySinkId) {
 		if (sinkIds == null || sinkIds.isEmpty()) return unwrap(transformed, legacySinkId);
-		Map<String, Object> sinkValues = keyedValues(transformed);
-		Map<String, Object> result = new java.util.LinkedHashMap<>();
-		boolean hasPath = false;
-		for (String sinkId : sinkIds) {
-			Object value = requireCommandSinkValue(sinkValues, sinkId);
-			String path = valuePaths == null ? null : valuePaths.get(sinkId);
-			if (path == null || path.isBlank()) {
-				if (sinkIds.size() != 1) {
-					throw new IllegalArgumentException("multiple command SinkIds require member valuePaths");
-				}
-				if (!(value instanceof Map<?, ?> map)) {
-					throw new IllegalArgumentException("whole-affordance command must be an object");
-				}
-				Map<String, Object> wholePayload = new java.util.LinkedHashMap<>();
-				map.forEach((key, member) -> wholePayload.put(String.valueOf(key), member));
-				return wholePayload;
-			}
-			hasPath = true;
-			putAt(result, org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.parse(path).tokens(), value);
+		Object payload = PayloadAssembler.assemble(keyedValues(transformed), sinkIds, valuePaths);
+		if (!(payload instanceof Map<?, ?> map)) {
+			throw new IllegalArgumentException("whole-affordance command must be an object");
 		}
-		return hasPath ? result : unwrap(transformed, legacySinkId);
+		Map<String, Object> command = new java.util.LinkedHashMap<>();
+		map.forEach((key, value) -> command.put((String) key, value));
+		return command;
 	}
 
 	/** Parses a Lua result as an authored SinkId map without guessing missing keys. */
@@ -309,7 +311,12 @@ public final class OperationPayloads {
 			throw new IllegalArgumentException("request Lua did not return a SinkId object");
 		}
 		Map<String, Object> values = new java.util.LinkedHashMap<>();
-		map.forEach((key, value) -> values.put(String.valueOf(key), value));
+		map.forEach((key, value) -> {
+			if (!(key instanceof String sinkId)) {
+				throw new IllegalArgumentException("request Lua SinkId keys must be strings");
+			}
+			values.put(sinkId, value);
+		});
 		return values;
 	}
 
@@ -319,52 +326,6 @@ public final class OperationPayloads {
 			throw new IllegalArgumentException("request mapping omitted command SinkId " + sinkId);
 		}
 		return values.get(sinkId);
-	}
-
-	@SuppressWarnings("unchecked")
-	private static void putAt(Map<String, Object> root, java.util.List<String> tokens, Object value) {
-		if (tokens.isEmpty()) {
-			if (!(value instanceof Map<?, ?> map)) {
-				throw new IllegalArgumentException("root command contribution must be an object");
-			}
-			mergeInto(root, (Map<String, Object>) map);
-			return;
-		}
-		Map<String, Object> current = root;
-		for (int i = 0; i < tokens.size(); i++) {
-			String token = tokens.get(i);
-			if (token.startsWith("[") && token.endsWith("]")) {
-				throw new IllegalArgumentException("array-index command valuePaths are not supported for grouped sends");
-			}
-			if (i == tokens.size() - 1) {
-				if (current.containsKey(token)) mergeValue(current.get(token), value, token);
-				else current.put(token, value);
-			} else {
-				Object child = current.computeIfAbsent(token, ignored -> new java.util.LinkedHashMap<String, Object>());
-				if (!(child instanceof Map<?, ?>)) {
-					throw new IllegalArgumentException("overlapping command valuePaths at " + token);
-				}
-				current = (Map<String, Object>) child;
-			}
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private static void mergeValue(Object oldValue, Object newValue, String key) {
-		if (oldValue instanceof Map<?, ?> oldMap && newValue instanceof Map<?, ?> newMap) {
-			mergeInto((Map<String, Object>) oldMap, (Map<String, Object>) newMap);
-			return;
-		}
-		if (!java.util.Objects.equals(oldValue, newValue)) {
-			throw new IllegalArgumentException("conflicting command values at " + key);
-		}
-	}
-
-	private static void mergeInto(Map<String, Object> target, Map<String, Object> source) {
-		source.forEach((key, value) -> {
-			if (target.containsKey(key)) mergeValue(target.get(key), value, key);
-			else target.put(key, value);
-		});
 	}
 
 	/** Unwraps only an outer action envelope while preserving scalar/array replies. */

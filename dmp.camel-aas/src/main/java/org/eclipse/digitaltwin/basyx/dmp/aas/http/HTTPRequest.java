@@ -25,66 +25,39 @@
 package org.eclipse.digitaltwin.basyx.dmp.aas.http;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpPatch;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
-
-/**
- * A helper class for sending HTTP requests
- * 
- * @author danish
- *
- */
+/** JSON writes to the AAS repository over the JDK HTTP client. */
 public class HTTPRequest {
-	
+	private static final HttpClient CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+
 	public static void patchRequest(String url, String content) throws IOException {
-		try (CloseableHttpClient client = HttpClientBuilder.create().build();
-			 CloseableHttpResponse response = client.execute(createPatchRequest(url, content))) {
-			ensureSuccessful(response);
-		}
+		send("PATCH", url, content);
 	}
 
-	private static HttpPatch createPatchRequest(String url, String content) throws UnsupportedEncodingException {
-		HttpPatch patchRequest = new HttpPatch(url);
-
-		patchRequest.setHeader("Content-type", "application/json");
-		patchRequest.setEntity(new StringEntity(content));
-
-		return patchRequest;
-	}
-	
 	public static void putRequest(String url, String content) throws IOException {
-		try (CloseableHttpClient client = HttpClientBuilder.create().build();
-			 CloseableHttpResponse response = client.execute(createPutRequest(url, content))) {
-			ensureSuccessful(response);
+		send("PUT", url, content);
+	}
+
+	private static void send(String method, String url, String content) throws IOException {
+		HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(30))
+				.header("Content-type", "application/json")
+				.method(method, HttpRequest.BodyPublishers.ofString(content, StandardCharsets.UTF_8)).build();
+		HttpResponse<String> response;
+		try { response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)); }
+		catch (InterruptedException interrupted) {
+			Thread.currentThread().interrupt();
+			throw new IOException("AAS write interrupted", interrupted);
 		}
-	}
-
-	private static HttpPut createPutRequest(String url, String content) throws UnsupportedEncodingException {
-		HttpPut putRequest = new HttpPut(url);
-
-		putRequest.setHeader("Content-type", "application/json");
-		putRequest.setEntity(new StringEntity(content));
-
-		return putRequest;
-	}
-
-	private static void ensureSuccessful(HttpResponse response) throws IOException {
-		int status = response.getStatusLine().getStatusCode();
-		HttpEntity entity = response.getEntity();
-		String detail = entity == null ? "" : EntityUtils.toString(entity);
+		int status = response.statusCode();
+		String detail = response.body() == null ? "" : response.body();
 		if (status < 200 || status >= 300) {
-			throw new IOException("AAS write failed with HTTP " + status
-					+ (detail.isBlank() ? "" : ": " + detail));
+			throw new IOException("AAS write failed with HTTP " + status + (detail.isBlank() ? "" : ": " + detail));
 		}
 	}
-
 }

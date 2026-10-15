@@ -24,7 +24,7 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.aas.configuration;
 
-import org.eclipse.digitaltwin.basyx.dmp.aas.api.ApiType;
+import org.eclipse.digitaltwin.basyx.dmp.aas.AASEndpoint;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfiguration;
 
 /**
@@ -39,20 +39,20 @@ public class AASDatasinkConfiguration extends DataSinkConfiguration {
 	private String type;
 	private String submodelEndpoint;
 	private String idShortPath;
+	/** Legacy descriptor field; only the DotAAS-V3 API is supported. */
 	private String api;
 
 	public AASDatasinkConfiguration() {}
 	
-	public AASDatasinkConfiguration(String submodelEndpoint, String idShortPath, String uniqueId, String api) {
+	public AASDatasinkConfiguration(String submodelEndpoint, String idShortPath, String uniqueId) {
 		super(uniqueId);
 		this.type = PROPERTY_TYPE;
 		this.submodelEndpoint = submodelEndpoint;
 		this.idShortPath = idShortPath;
-		this.api = api;
 	}
 	
 	public AASDatasinkConfiguration(String submodelEndpoint, String idShortPath) {
-		this(submodelEndpoint, idShortPath, null, ApiType.BASYX.getName());
+		this(submodelEndpoint, idShortPath, null);
 	}
 
 	public String getType() {
@@ -79,14 +79,6 @@ public class AASDatasinkConfiguration extends DataSinkConfiguration {
 		this.idShortPath = path;
 	}
 
-	public String getApi() {
-		return api;
-	}
-
-	public void setApi(String api) {
-		this.api = api;
-	}
-
 	// the optional JSON field selector (valuePath) is inherited from
 	// DataSinkConfiguration; this sink applies it internally (handlesValuePathInternally)
 
@@ -97,17 +89,13 @@ public class AASDatasinkConfiguration extends DataSinkConfiguration {
 
 	@Override
 	public String getConnectionURI() {
+		AASEndpoint.requireSupportedApi(api);
 		String endpointDefinition = "aas:";
 		endpointDefinition += this.submodelEndpoint;
 		endpointDefinition += "?propertyPath=" + this.idShortPath;
-		endpointDefinition += "&api=" + getApiIfConfigured();
 		if (getValuePath() != null && !getValuePath().isBlank()) {
 			endpointDefinition += "&valuePath=" + getValuePath();
 		}
 		return endpointDefinition;
-	}
-
-	private String getApiIfConfigured() {
-		return api != null ? api : ApiType.BASYX.getName();
 	}
 }

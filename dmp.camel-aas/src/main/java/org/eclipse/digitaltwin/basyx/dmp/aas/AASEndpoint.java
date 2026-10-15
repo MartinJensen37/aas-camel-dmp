@@ -38,17 +38,7 @@ import org.apache.camel.spi.UriEndpoint;
 import org.apache.camel.spi.UriParam;
 import org.apache.camel.spi.UriPath;
 import org.apache.camel.support.DefaultEndpoint;
-import org.eclipse.basyx.submodel.metamodel.api.reference.enums.KeyElements;
-import org.eclipse.basyx.submodel.metamodel.connected.submodelelement.dataelement.ConnectedDataElement;
-import org.eclipse.basyx.submodel.metamodel.map.submodelelement.dataelement.property.Property;
-import org.eclipse.basyx.submodel.metamodel.map.submodelelement.dataelement.property.valuetype.ValueType;
-import org.eclipse.basyx.submodel.metamodel.map.submodelelement.dataelement.property.valuetype.ValueTypeHelper;
-import org.eclipse.basyx.vab.modelprovider.VABElementProxy;
-import org.eclipse.basyx.vab.modelprovider.api.IModelProvider;
-import org.eclipse.basyx.vab.protocol.http.connector.HTTPConnectorFactory;
-import org.eclipse.digitaltwin.basyx.dmp.aas.api.ApiType;
 import org.eclipse.digitaltwin.basyx.dmp.aas.http.HTTPRequest;
-import org.eclipse.digitaltwin.basyx.dmp.aas.util.AASComponentUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,9 +51,9 @@ import org.slf4j.LoggerFactory;
 public class AASEndpoint extends DefaultEndpoint {
 	private static final Logger logger = LoggerFactory.getLogger(AASEndpoint.class);
 
-	private ConnectedDataElement connectedDataElement;
+	/** The only supported AAS API: AAS Part 2 HTTP/REST API v3. */
+	public static final String DOT_AAS_V3 = "DotAAS-V3";
 	private static final String API_V3_SUFFIX = "/$value";
-	private static final String BASYX_API_SUFFIX = "/value";
 
 	@UriPath
 	@Metadata(required = true)
@@ -72,8 +62,9 @@ public class AASEndpoint extends DefaultEndpoint {
 	@UriParam(defaultValue = "")
 	private String propertyPath;
 
-	@UriParam(defaultValue = "BaSyx")
-	private ApiType api = ApiType.BASYX;
+	/** Legacy selector; only the DotAAS-V3 API remains, so it is validated and otherwise ignored. */
+	@UriParam(defaultValue = DOT_AAS_V3)
+	private String api = DOT_AAS_V3;
 
 	/**
 	 * Optional JSON field to extract from the message body before writing
@@ -138,22 +129,23 @@ public class AASEndpoint extends DefaultEndpoint {
 		this.elementType = elementType;
 	}
 
-	/**
-	 * The Api type for this endpoint
-	 * 
-	 * @return ApiType
-	 */
-	protected ApiType getApi() {
+	public String getApi() {
 		return api;
 	}
 
-	/**
-	 * Sets the Api type for this endpoint
-	 * 
-	 * @param api
-	 */
-	protected void setApi(ApiType api) {
+	public void setApi(String api) {
+		requireSupportedApi(api);
 		this.api = api;
+	}
+
+	/**
+	 * Rejects descriptors that still select the removed BaSyx v1 API. Every
+	 * historical spelling of the v3 API (DotAAS-V3, DotAasV3, DOT_AAS_V3) is accepted.
+	 */
+	public static void requireSupportedApi(String api) {
+		if (api != null && !"DOTAASV3".equals(api.replaceAll("[^A-Za-z0-9]", "").toUpperCase(java.util.Locale.ROOT)))
+			throw new IllegalArgumentException("AAS api '" + api + "' is not supported; only " + DOT_AAS_V3
+					+ " (BaSyx v2 / AAS Part 2 API v3) remains. Remove the api field or set it to " + DOT_AAS_V3 + ".");
 	}
 
 	public void setPropertyValue(Object content) throws IOException {
@@ -161,18 +153,8 @@ public class AASEndpoint extends DefaultEndpoint {
 		if (value == org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL) value = null;
 		logger.debug("AAS write {} <- {} ({})", propertyPath, value,
 				value == null ? "null" : value.getClass().getSimpleName());
-		if (api.equals(ApiType.BASYX)) {
-			setPropertyValueUsingBaSyxAPI(value);
-		} else {
-			// the DotAasV3 $value surface takes the JSON-encoded literal the
-			// transformer chains emit (quoted scalars, object/array literals
-			// wrapped as JSON strings) — the legacy wrapContent contract.
-			// JAVA COLLECTIONS need the Jackson encoding: their toString() is
-			// the Java format, whose naive wrap is INVALID JSON that the
-			// server truncates (e.g. the occupation queue leaf). String
-			// values keep the legacy wrap byte-for-byte (the example specs).
-			setPropertyValueUsingDotAasV3Api(MAPPER.writeValueAsString(value));
-		}
+		// Encode decoded values once at the DotAAS-V3 wire boundary.
+		HTTPRequest.patchRequest(getFullProxyUrl() + API_V3_SUFFIX, MAPPER.writeValueAsString(value));
 
 		logger.info("Transferred message={}", value);
 	}
@@ -215,77 +197,12 @@ public class AASEndpoint extends DefaultEndpoint {
 		this.valuePath = valuePath;
 	}
 
-	/**
-	 * Connect the Submodel Element for data dumping
-	 */
-	protected void connectToElement() {
-		if (!api.equals(ApiType.BASYX))
-			return;
-
-		HTTPConnectorFactory factory = new HTTPConnectorFactory();
-		String proxyUrl = getFullProxyUrl();
-		IModelProvider provider = factory.getConnector(proxyUrl);
-		VABElementProxy proxy = new VABElementProxy("", provider);
-		this.connectedDataElement = new ConnectedDataElement(proxy);
-	}
-
-	private void setPropertyValueUsingBaSyxAPI(Object messageBody) throws IOException {
-		if (!connectedDataElement.getModelType().equals(KeyElements.PROPERTY.getStandardizedLiteral())) {
-			HTTPRequest.putRequest(getFullProxyUrl() + BASYX_API_SUFFIX,
-					messageBody == null ? "null" : MAPPER.writeValueAsString(messageBody));
-
-			return;
-		}
-
-		ValueType valueType = Property.createAsFacade(connectedDataElement.getLocalCopy()).getValueType();
-
-		connectedDataElement.setValue(getContent(messageBody, valueType));
-	}
-
-	private void setPropertyValueUsingDotAasV3Api(String content) throws IOException {
-		HTTPRequest.patchRequest(getFullProxyUrl() + API_V3_SUFFIX, content);
-	}
-
 	private String createDotAasApiProxyUrl() {
 		String proxyUrl = String.format("%s/submodel-elements/%s", getSubmodelEndpoint(), propertyPath);
 
 		logger.info("Proxy URL: " + proxyUrl);
 
 		return proxyUrl;
-	}
-
-	private String createBaSyxApiProxyUrl() {
-		String proxyUrl = String.format("%s/submodelElements/%s", getSubmodelEndpoint(), propertyPath);
-
-		logger.info("Proxy URL: " + proxyUrl);
-
-		return proxyUrl;
-	}
-
-	private Object getContent(Object messageBody, ValueType propertyValueType) {
-		if (messageBody == null) {
-			return null;
-		}
-		if (messageBody == org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL) return null;
-		if (propertyValueType.equals(ValueType.String)) {
-			if (messageBody instanceof Map<?, ?> || messageBody instanceof List<?>) {
-				return org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec.toJson(messageBody);
-			}
-			return removeQuotesFromString(messageBody.toString());
-		}
-
-		return ValueTypeHelper.getJavaObject(messageBody, propertyValueType);
-	}
-
-	private String removeQuotesFromString(String messageBody) {
-		if (messageBody == null)
-			return null;
-
-		if (AASComponentUtil.isAlreadyWrapped(messageBody)) {
-			return messageBody.substring(1, messageBody.length() - 1);
-		}
-
-		return messageBody;
 	}
 
 	public String getSubmodelEndpoint() {
@@ -308,9 +225,6 @@ public class AASEndpoint extends DefaultEndpoint {
 	}
 
 	public String getFullProxyUrl() {
-		if (api.equals(ApiType.BASYX))
-			return createBaSyxApiProxyUrl();
-
 		return createDotAasApiProxyUrl();
 	}
 
