@@ -24,6 +24,7 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.lua.sandbox;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -77,5 +78,29 @@ class LuaSandboxTest {
 			LuaValue v = globals.get(name);
 			assertTrue(v.isnil() || v.isfunction() == false, "dangerous global not excluded: " + name);
 		}
+	}
+
+	@Test
+	void oneBlobCannotChangeStringMethodsForAnother() throws Exception {
+		// LuaJ keeps the string metatable in a static field, so run in a fresh class
+		// loader where the poisoning sandbox is the first one ever created.
+		java.net.URL[] classpath = java.util.Arrays.stream(System.getProperty("java.class.path")
+				.split(java.io.File.pathSeparator)).map(entry -> {
+					try { return java.nio.file.Path.of(entry).toUri().toURL(); }
+					catch (java.net.MalformedURLException e) { throw new IllegalStateException(e); }
+				}).toArray(java.net.URL[]::new);
+		try (var loader = new java.net.URLClassLoader(classpath, ClassLoader.getPlatformClassLoader())) {
+			var sandbox = loader.loadClass(LuaSandbox.class.getName()).getMethod("createGlobals");
+			Object poisoner = sandbox.invoke(null);
+			run(poisoner, "string.sub = function() return 'poisoned' end");
+			Object other = sandbox.invoke(null);
+			Object result = run(other, "return ('abc'):sub(1, 1)");
+			assertEquals("a", result.getClass().getMethod("tojstring").invoke(result));
+		}
+	}
+
+	private static Object run(Object globals, String chunk) throws Exception {
+		Object function = globals.getClass().getMethod("load", String.class).invoke(globals, chunk);
+		return function.getClass().getMethod("call").invoke(function);
 	}
 }

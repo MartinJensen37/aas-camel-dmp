@@ -64,6 +64,17 @@ public final class LuaSandbox {
 	private static final Set<String> STRIPPED_BASE_FUNCTIONS = new HashSet<>(Arrays.asList(
 			"dofile", "loadfile", "load", "getmetatable", "setmetatable", "collectgarbage"));
 
+	static {
+		// LuaJ makes the first loaded string library the metatable of every string,
+		// process-wide and permanently. Load a private one before any blob runs, so
+		// no blob owns the table behind ("..."):method() calls in other sandboxes.
+		Globals primer = new Globals();
+		LuaValue packageTable = LuaValue.tableOf();
+		packageTable.set("loaded", LuaValue.tableOf());
+		primer.set("package", packageTable);
+		primer.load(new StringLib());
+	}
+
 	private LuaSandbox() {
 		throw new IllegalStateException("Utility class");
 	}
