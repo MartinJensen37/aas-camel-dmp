@@ -1,13 +1,13 @@
 package org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Map;
 
 import org.apache.camel.impl.DefaultCamelContext;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class Plc4xInvocationCapabilityTest {
 	@Test

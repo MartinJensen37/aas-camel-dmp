@@ -1,8 +1,8 @@
 package org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -14,7 +14,7 @@ import com.sun.net.httpserver.HttpServer;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousInvocationAdapter;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class HttpSynchronousInvocationAdapterTest {
 	@Test
@@ -34,9 +34,15 @@ public class HttpSynchronousInvocationAdapterTest {
 		camel.start();
 		try {
 			var adapter = new HttpSynchronousInvocationAdapter();
+			String uri = "http://127.0.0.1:" + server.getAddress().getPort() + "/invoke";
+			int baseline = camel.getEndpoints().size();
+			var inventory = adapter.ownedEndpointUris(uri, schema("PUT"));
+			assertEquals(1, inventory.size());
+			assertEquals(baseline, camel.getEndpoints().size(), "preflight inventory must not allocate endpoints");
 			Map<String, Object> result = adapter.invoke(camel,
-					"http://127.0.0.1:" + server.getAddress().getPort() + "/invoke",
+					uri,
 					Map.of("input", "value"), schema("PUT"));
+			org.junit.jupiter.api.Assertions.assertNotNull(camel.hasEndpoint(inventory.iterator().next()), "inventory must identify the actual lazy invocation endpoint");
 			assertEquals("PUT", method.get());
 			assertEquals("accepted", result.get("result"));
 		} finally {
@@ -106,7 +112,7 @@ public class HttpSynchronousInvocationAdapterTest {
 							() -> adapter.invoke(camel, uri, Map.of("input", "value"), schema(method)));
 					assertEquals(ConnectorInvocationException.Category.REMOTE, failure.getCategory());
 					assertEquals("HTTP_" + retryableStatus, failure.getConnectorCode());
-					assertEquals(method + " must not retry HTTP " + retryableStatus, 1, commands.get());
+					assertEquals(1, commands.get(), method + " must not retry HTTP " + retryableStatus);
 					assertEquals("mode=quick", query.get());
 				}
 			}

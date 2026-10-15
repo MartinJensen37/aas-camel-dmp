@@ -26,7 +26,7 @@ package org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration;
 
 import java.net.URISyntaxException;
 import java.util.List;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.core5.net.URIBuilder;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.deserializer.OptionDeserializer;
 

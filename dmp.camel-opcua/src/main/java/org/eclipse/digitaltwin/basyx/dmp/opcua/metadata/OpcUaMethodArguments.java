@@ -157,11 +157,40 @@ public final class OpcUaMethodArguments {
 		}
 		Map<String, Object> named = new java.util.LinkedHashMap<>();
 		for (int i = 0; i < values.size(); i++) {
-			String name = signature.outputs().get(i).name();
+			var argument = signature.outputs().get(i);
+			String name = argument.name();
 			if (named.containsKey(name)) throw mismatch("duplicate UA OutputArgument name " + name);
+			validateOutputValue(values.get(i), argument.valueRank(), jsonType(argument.dataType()),
+					Integer.valueOf(15).equals(builtinTypeId(argument.dataType())), name);
 			named.put(name, values.get(i));
 		}
 		return named;
+	}
+
+	private static void validateOutputValue(Object value, int rank, String type, boolean byteString, String name) {
+		if (value == null) return; // UA null Variants are legal; required/null schema rules are separate.
+		boolean array = value instanceof List<?> || value.getClass().isArray();
+		if ((rank == -1 && array) || (rank >= 0 && !array))
+			throw mismatch("UA OutputArgument " + name + " value does not match its declared rank");
+		if (array) {
+			int next = rank > 1 ? rank - 1 : rank == 1 || rank == -3 ? -1 : -2;
+			if (value instanceof List<?> list) {
+				for (Object item : list) validateOutputValue(item, next, type, byteString, name);
+			} else {
+				for (int i = 0; i < java.lang.reflect.Array.getLength(value); i++)
+					validateOutputValue(java.lang.reflect.Array.get(value, i), next, type, byteString, name);
+			}
+			return;
+		}
+		boolean valid = type == null || switch (type) {
+			case "boolean" -> value instanceof Boolean;
+			case "string" -> byteString || value instanceof String;
+			case "number" -> value instanceof Number number && Double.isFinite(number.doubleValue());
+			case "integer" -> value instanceof Number number && Double.isFinite(number.doubleValue())
+					&& new java.math.BigDecimal(number.toString()).stripTrailingZeros().scale() <= 0;
+			default -> true;
+		};
+		if (!valid) throw mismatch("UA OutputArgument " + name + " value does not match its declared type");
 	}
 
 	private static boolean isUaString(String dataType) {

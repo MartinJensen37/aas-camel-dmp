@@ -1,6 +1,5 @@
 package org.eclipse.digitaltwin.basyx.dmp.opcua.metadata;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -11,10 +10,15 @@ import java.util.concurrent.TimeoutException;
 import org.apache.camel.CamelContext;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.component.milo.MiloConstants;
+import org.apache.camel.component.milo.client.MiloClientEndpoint;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousInvocationAdapter;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.PayloadValidationException;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
+import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.structured.CallMethodRequest;
+import org.eclipse.milo.opcua.stack.core.types.structured.CallMethodResult;
 
 import com.google.gson.Gson;
 
@@ -73,23 +77,43 @@ public final class OpcUaSynchronousInvocationAdapter implements SynchronousInvoc
 			}
 		}
 
-		ProducerTemplate template = context.createProducerTemplate();
 		try {
 			long timeoutSeconds = timeoutSeconds(schema.connectorOptions().get("timeoutSeconds"));
-			Object rawReply = await(template.asyncRequestBodyAndHeader(endpointUri, requestBody,
-					MiloConstants.HEADER_AWAIT, true), timeoutSeconds);
-			return decode(context, rawReply, signature);
+			if (context.getEndpoint(endpointUri) instanceof MiloClientEndpoint endpoint) {
+				var connection = endpoint.createConnection();
+				try {
+					var client = connection.getOpcUaClient();
+					if (client == null) throw new IllegalStateException("OPC UA client is not connected");
+					var node = ExpandedNodeId.parse(endpoint.getNode()).toNodeIdOrThrow(client.getNamespaceTable());
+					var method = ExpandedNodeId.parse(endpoint.getMethod()).toNodeIdOrThrow(client.getNamespaceTable());
+					Variant[] arguments = requestBody instanceof Variant[] variants ? variants
+							: new Variant[] { new Variant(requestBody) };
+					// Camel 4.22's SubscriptionManager.call discards the result. Use the same owned client, once.
+					var response = (org.eclipse.milo.opcua.stack.core.types.structured.CallResponse) await(
+							client.callAsync(List.of(new CallMethodRequest(node, method, arguments))), timeoutSeconds);
+					if (response == null || response.getResults() == null || response.getResults().length != 1) {
+						throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
+								"METHOD_RESULT_INVALID", "OPC UA Method returned an unreadable result", Map.of());
+					}
+					return decode(context, response.getResults()[0], signature);
+				} finally {
+					endpoint.releaseConnection(connection);
+				}
+			}
+			ProducerTemplate template = context.createProducerTemplate();
+			try {
+				return decode(context, await(template.asyncRequestBodyAndHeader(endpointUri, requestBody,
+						MiloConstants.HEADER_AWAIT, true), timeoutSeconds), signature);
+			} finally { template.stop(); }
 		} catch (ConnectorInvocationException error) {
 			throw error;
-		} catch (RuntimeException error) {
+		} catch (RuntimeException | org.eclipse.milo.opcua.stack.core.UaException error) {
 			throw failure(ConnectorInvocationException.Category.REMOTE,
 					"METHOD_CALL_FAILED", "OPC UA Method invocation failed", error);
-		} finally {
-			template.stop();
 		}
 	}
 
-	private static Object await(Future<Object> future, long timeoutSeconds) {
+	private static Object await(Future<?> future, long timeoutSeconds) {
 		try {
 			return future.get(timeoutSeconds, TimeUnit.SECONDS);
 		} catch (TimeoutException timeout) {
@@ -116,6 +140,15 @@ public final class OpcUaSynchronousInvocationAdapter implements SynchronousInvoc
 
 	static Map<String, Object> decode(CamelContext context, Object raw,
 			OpcUaMethodMetadataProvider.MethodSignature signature) {
+		if (raw instanceof CallMethodResult call) {
+			if (call.getStatusCode() == null || !call.getStatusCode().isGood()) {
+				throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
+						"METHOD_STATUS_BAD", "OPC UA Method returned a bad status", Map.of());
+			}
+			var output = call.getOutputArguments();
+			raw = Map.of("statusCode", Map.of("good", true), "outputArguments", output == null ? List.of()
+					: java.util.Arrays.stream(output).map(variant -> variant == null ? null : variant.getValue()).toList());
+		}
 		if (raw == null) return Map.of();
 		Map<?, ?> result;
 		try {
@@ -145,7 +178,7 @@ public final class OpcUaSynchronousInvocationAdapter implements SynchronousInvoc
 		try {
 			return OpcUaMethodArguments.fromPositional(values, signature);
 		} catch (PayloadValidationException mismatch) {
-			throw new ConnectorInvocationException(ConnectorInvocationException.Category.CONFIGURATION,
+			throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
 					"METHOD_RESULT_MISMATCH", mismatch.getMessage(),
 					Map.of("violations", mismatch.getViolations()));
 		}
@@ -162,7 +195,7 @@ public final class OpcUaSynchronousInvocationAdapter implements SynchronousInvoc
 	}
 
 	private static ConnectorInvocationException failure(ConnectorInvocationException.Category category,
-			String code, String message, RuntimeException cause) {
+			String code, String message, Exception cause) {
 		return new ConnectorInvocationException(category, code, message,
 				Map.of("cause", String.valueOf(cause.getMessage())));
 	}

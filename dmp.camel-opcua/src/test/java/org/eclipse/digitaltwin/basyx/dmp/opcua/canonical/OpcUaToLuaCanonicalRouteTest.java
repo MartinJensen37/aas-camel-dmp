@@ -66,7 +66,9 @@ class OpcUaToLuaCanonicalRouteTest extends CamelTestSupport {
 				end
 				""", StandardCharsets.UTF_8);
 
-		String uri = "lua:file:" + blob + "?timeoutSeconds=2";
+		context.getRegistry().bind("opc2mqtt", org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaCompiledSource
+				.fromBytes(Files.readAllBytes(blob), "opc2mqtt.lua", 1 << 20));
+		String uri = "lua:managed:opc2mqtt?timeoutSeconds=2";
 
 		context.addRoutes(new RouteBuilder() {
 			@Override

@@ -28,14 +28,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
-import org.eclipse.basyx.vab.protocol.opcua.types.SecurityPolicy;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.opcua.configuration.factory.OpcuaDataSinkConfigurationDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.annotations.JsonAdapter;
 
 /**
  * An implementation of OpcUa Producer configuration
@@ -43,7 +39,6 @@ import com.google.gson.annotations.JsonAdapter;
  * @author zielstor
  *
  */
-@JsonAdapter(OpcuaDataSinkConfigurationDeserializer.class)
 public class OpcuaDataSinkConfiguration extends DataSinkConfiguration {
     protected static Logger logger = LoggerFactory.getLogger(OpcuaDataSinkConfiguration.class);
 
@@ -79,7 +74,7 @@ public class OpcuaDataSinkConfiguration extends DataSinkConfiguration {
         this.configuration = configuration;
 
         if (!this.configuration.containsKey("allowedSecurityPolicies"))
-            this.configuration.put("allowedSecurityPolicies", SecurityPolicy.None.name());
+            this.configuration.put("allowedSecurityPolicies", "None");
         if (!this.configuration.containsKey("requestedPublishingInterval"))
             this.configuration.put("requestedPublishingInterval", "1000");
     }
@@ -141,7 +136,7 @@ public class OpcuaDataSinkConfiguration extends DataSinkConfiguration {
     }
 
     public String getConnectionURI() {
-        String credentials = username == null || password == null ? StringUtils.EMPTY : username + ":" + password + "@";
+        String credentials = username == null || password == null ? "" : username + ":" + password + "@";
         String parameters = this.configuration.entrySet()
                 .parallelStream()
                 .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
@@ -155,6 +150,6 @@ public class OpcuaDataSinkConfiguration extends DataSinkConfiguration {
 				getServerPort(),
                 getPathToService(),
                 getNodeInformation(),
-                parameters.length() > 0 ? "&" + parameters : StringUtils.EMPTY);
+                parameters.length() > 0 ? "&" + parameters : "");
     }
 }

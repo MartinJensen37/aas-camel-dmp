@@ -26,7 +26,7 @@ package org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration;
 
 import java.net.URISyntaxException;
 
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.core5.net.URIBuilder;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfiguration;
 
 /**

@@ -21,7 +21,7 @@ class OpcUaSynchronousSourceReadAdapterTest {
 		String uri = "milo-client:opc.tcp://localhost:4840/server?node=RAW(ns=2;s=Machine.State)";
 
 		assertTrue(adapter.supports(uri));
-		assertFalse(adapter.supports("paho:state?brokerUrl=tcp://localhost:1883"));
+		assertFalse(adapter.supports("paho-mqtt5:state?brokerUrl=tcp://localhost:1883"));
 		assertEquals("ns=2;s=Machine.State", OpcUaSynchronousSourceReadAdapter.nodeIdFromEndpoint(uri));
 	}
 

@@ -75,7 +75,7 @@ class OpcUaCanonicalConverterTest {
 			Exchange exchange = new DefaultExchange(context);
 			exchange.getMessage().setBody(new DataValue(new Variant(false), StatusCode.GOOD, null, null));
 
-			Map<String, Object> canonical = exchange.getMessage().getBody(Map.class);
+			Map<?, ?> canonical = exchange.getMessage().getBody(Map.class);
 
 			assertNotNull(canonical);
 			assertEquals(Boolean.FALSE, canonical.get("value"));
@@ -97,15 +97,13 @@ class OpcUaCanonicalConverterTest {
 
 			// the very call SyncOperationProcessor performs:
 			// typeConverter.convertTo(Map.class, reply)
-			Map<String, Object> canonical = context.getTypeConverter()
+			Map<?, ?> canonical = context.getTypeConverter()
 					.convertTo(Map.class, exchange.getMessage().getBody());
 
 			assertNotNull(canonical, "the awaited CallMethodResult must decode canonically");
-			@SuppressWarnings("unchecked")
-			java.util.List<Object> outputs = (java.util.List<Object>) canonical.get("outputArguments");
+			java.util.List<?> outputs = (java.util.List<?>) canonical.get("outputArguments");
 			assertEquals(java.util.List.of("SUCCESS", 0), outputs);
-			@SuppressWarnings("unchecked")
-			Map<String, Object> status = (Map<String, Object>) canonical.get("statusCode");
+			Map<?, ?> status = (Map<?, ?>) canonical.get("statusCode");
 			assertEquals(Boolean.TRUE, status.get("good"));
 		}
 	}

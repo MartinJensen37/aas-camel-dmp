@@ -88,7 +88,7 @@ public class Plc4xDataSinkConfiguration extends DataSinkConfiguration {
 
 	@Override
 	public String getConnectionURI() {
-		org.apache.http.client.utils.URIBuilder uriBuilder = new org.apache.http.client.utils.URIBuilder();
+		org.apache.hc.core5.net.URIBuilder uriBuilder = new org.apache.hc.core5.net.URIBuilder();
 		uriBuilder.setScheme(PLC4X_PROTOCOL_NAME + driver);
 		uriBuilder.setHost(getServerUrl());
 		uriBuilder.setPort(getServerPort());

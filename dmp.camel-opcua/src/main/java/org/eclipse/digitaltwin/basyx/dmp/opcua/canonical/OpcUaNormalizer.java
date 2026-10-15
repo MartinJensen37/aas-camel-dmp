@@ -53,8 +53,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Route usage:
  *
  * <pre>
- * from("paho:aas/&lt;asset&gt;/cmd?brokerUrl=...")
- *     .to("lua:file:/etc/dmp/mqtt2opc.lua")
+ * from("paho-mqtt5:aas/&lt;asset&gt;/cmd?brokerUrl=...")
+ *     .to("lua:managed:<binding>")
  *     .process(new OpcUaNormalizer())
  *     .to("milo-client:opc.tcp://&lt;asset&gt;:4840?node=RAW(ns=2;s=State)")
  * </pre>

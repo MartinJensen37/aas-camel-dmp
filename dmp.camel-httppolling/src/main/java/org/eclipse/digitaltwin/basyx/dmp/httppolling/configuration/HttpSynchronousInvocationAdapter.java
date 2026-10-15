@@ -27,6 +27,11 @@ public final class HttpSynchronousInvocationAdapter implements SynchronousInvoca
 	}
 
 	@Override
+	public java.util.Set<String> ownedEndpointUris(String endpointUri, InvocationSchema schema) {
+		return java.util.Set.of(invocationUri(endpointUri));
+	}
+
+	@Override
 	public Map<String, Object> invoke(CamelContext context, String endpointUri,
 			Map<String, Object> namedRequest, InvocationSchema schema) {
 		Map<String, Object> headers = new LinkedHashMap<>();
@@ -38,10 +43,8 @@ public final class HttpSynchronousInvocationAdapter implements SynchronousInvoca
 		try {
 			long timeoutSeconds = number(schema.connectorOptions().get("timeoutSeconds"), 30);
 			// Isolate the action client's no-retry policy from ordinary HTTP endpoints.
-			String invokeUri = endpointUri + (endpointUri.contains("?") ? "&" : "?")
-					+ "httpClientConfigurer=#class:" + NoRetryHttpClientConfigurer.class.getName();
 			Future<Object> future = template.asyncRequestBodyAndHeaders(
-					invokeUri, JsonCodec.toJson(namedRequest), headers);
+					invocationUri(endpointUri), JsonCodec.toJson(namedRequest), headers);
 			Object reply = await(future, timeoutSeconds);
 			if (reply instanceof Map<?, ?> map) return stringMap(map);
 			String text = reply == null ? null : context.getTypeConverter().convertTo(String.class, reply);
@@ -79,6 +82,11 @@ public final class HttpSynchronousInvocationAdapter implements SynchronousInvoca
 		public void configureHttpClient(HttpClientBuilder clientBuilder) {
 			clientBuilder.disableAutomaticRetries();
 		}
+	}
+
+	private static String invocationUri(String endpointUri) {
+		return endpointUri + (endpointUri.contains("?") ? "&" : "?")
+				+ "httpClientConfigurer=#class:" + NoRetryHttpClientConfigurer.class.getName();
 	}
 
 	private static Object await(Future<Object> future, long timeoutSeconds) {

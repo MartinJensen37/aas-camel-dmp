@@ -2,6 +2,7 @@ package org.eclipse.digitaltwin.basyx.dmp.opcua.metadata;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -53,6 +54,20 @@ class OpcUaMethodArgumentsTest {
 		assertThrows(PayloadValidationException.class, () -> OpcUaMethodArguments.toPositional(
 				Map.of("Uuid", "asset"), signature(List.of(argument("Uuid", "i=12", -1),
 						argument("Uuid", "i=12", -1)), List.of())));
+	}
+
+	@Test
+	void rejectsOutputValuesThatContradictTheNativeSignatureWithoutCoercingText() {
+		var output = signature(List.of(), List.of(argument("Count", "i=6", -1), argument("Samples", "i=6", 1)));
+		assertEquals(Map.of("Count", 7, "Samples", List.of(2, 4)),
+				OpcUaMethodArguments.fromPositional(List.of(7, List.of(2, 4)), output));
+		for (var invalid : List.of(List.of("007", List.of(2, 4)), List.of(7, List.of(2, "4")),
+				List.of(7.5, List.of(2, 4)), List.of(7, 2), List.of(List.of(7), List.of(2, 4)),
+				List.of(7, List.of(List.of(2, 4)))))
+			assertThrows(PayloadValidationException.class, () -> OpcUaMethodArguments.fromPositional(invalid, output));
+		var nullable = new java.util.ArrayList<Object>();
+		nullable.add(null); nullable.add(new int[] { 2, 4 });
+		assertNull(OpcUaMethodArguments.fromPositional(nullable, output).get("Count"));
 	}
 
 	@Test

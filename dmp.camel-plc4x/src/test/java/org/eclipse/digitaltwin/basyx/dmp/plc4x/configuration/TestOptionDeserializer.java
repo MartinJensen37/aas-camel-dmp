@@ -24,8 +24,8 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.deserializer.DeserializationException;
 import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.deserializer.OptionDeserializer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -96,9 +96,10 @@ public class TestOptionDeserializer {
 		assertEqualOptions(expectedOptions, actualOptions);
 	}
 
-	@Test(expected = DeserializationException.class)
+	@Test
 	public void deserializeInvalidOption() {
-		new OptionDeserializer().deserialize(INVALID_OPTION);
+		org.junit.jupiter.api.Assertions.assertThrows(DeserializationException.class,
+				() -> new OptionDeserializer().deserialize(INVALID_OPTION));
 	}
 
 	private void assertEqualOptions(List<Option> expectedOptions, List<Option> actualOptions) {
