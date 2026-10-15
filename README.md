@@ -115,6 +115,9 @@ The container listens on port 8080 for operation calls, `/health` and
 | `DMP_MANAGED_PAGE_SIZE`, `DMP_MANAGED_MAX_PAGES` | 100 / 100 |
 | `DMP_AFFORDANCE_VALIDATION` | `OFF` (default), `ON` or `REPORT` |
 | `DATABRIDGE_HEALTH_PORT` / `-Ddatabridge.health.port` | HTTP listener port, default 8080 |
+| `DMP_AUDIT_INFLUX_URL` | Optional InfluxDB base URL; enables the AAS interaction log |
+| `DMP_AUDIT_INFLUX_TOKEN`, `…_ORG`, `…_BUCKET` | Required with the URL; the token is never logged or exposed |
+| `DMP_AUDIT_INFLUX_QUEUE_SIZE`, `…_BATCH_SIZE`, `…_FLUSH_INTERVAL_MS` | 10000 / 500 / 1000 |
 
 ### Health and status
 
@@ -126,6 +129,18 @@ The container listens on port 8080 for operation calls, `/health` and
   fingerprints and a failure category. Repository IDs appear only as SHA-256
   tokens. Blocked mappings can coexist with a ready process; `converged`
   distinguishes the two.
+
+### AAS interaction log
+
+With `DMP_AUDIT_INFLUX_URL` set, every AAS-side interaction is written to
+InfluxDB (v2 write API): AAS reads (`aas_read`), change events used as source
+values (`aas_event`), writes (`aas_write`), Operation calls (`aas_invoke`) and
+answers (`aas_reply`), and mapping lifecycle changes (`dmp_mapping`). Points
+carry the submodel ID and element path as tags and the value in a field per
+type (`value_num`, `value_bool`, `value_str`, `value_json`, `value_null`).
+Logging never holds back the data flow: points go to a bounded queue, and when
+it is full or InfluxDB is unreachable they are dropped and counted under
+`audit` in `/management/status`.
 
 ### Operational limits
 

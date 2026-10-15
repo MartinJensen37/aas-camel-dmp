@@ -80,6 +80,11 @@ fake Modbus/PLC4X endpoint and a Milo test server with a long-running Method.
 
 ### P2. AAS interaction log and TimeSeries sinks (InfluxDB)
 
+**Status:** the interaction log is implemented (SPEC §10). TimeSeries sinks
+are not. Known gaps accepted for now (2026-10-15): no gap markers or sequence
+numbers, write-time timestamps that can collide within a series, no starting
+snapshot beyond the first `dmp_mapping` and read points.
+
 Supersedes the parent plan `.kilo/plans/1788502800000-dmp-wire-tap-telemetry-plan.md`
 (2026-09-30) where they differ.
 

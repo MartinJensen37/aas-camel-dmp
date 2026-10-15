@@ -301,14 +301,42 @@ end
 Data-plane MQTT clients are one per endpoint; their credentials are bound in
 the Camel registry per bundle and referenced by name in URIs.
 
-## 10. Security
+## 10. AAS interaction log
+
+Optional (`DMP_AUDIT_INFLUX_URL`). Every AAS-side interaction becomes one
+InfluxDB point:
+
+| Measurement | Recorded when | Tags | Notable fields |
+| --- | --- | --- | --- |
+| `aas_read` | AAS element poll | `submodel`, `path`, `outcome` | value, `durationMs`, `error` |
+| `aas_event` | Change event used as a source value | `submodel`, `path`, `eventType` | value, `eventId`, `eventTime` |
+| `aas_write` | AAS element write (including response sinks) | `submodel`, `path`, `outcome` | value, `durationMs`, `error` |
+| `aas_invoke` | Operation call accepted | `submodel`, `path`, `skill`, `restPath`, `aas`, `caller` | input values, `invocation` |
+| `aas_reply` | Operation answered or failed | as `aas_invoke`, plus `outcome` | `invocation`, `httpStatus`, `errorCode`, `durationMs` |
+| `dmp_mapping` | Mapping state, fingerprint or category changed | `aimc`, `mapping`, `state` | `generation`, fingerprints, `category` |
+
+- Values use one field per type (`value_num` as float, `value_bool`,
+  `value_str`, `value_json` for objects and arrays, `value_null`), because
+  InfluxDB fixes a field's type per measurement.
+- Recording never blocks or fails the data flow: points go to a bounded
+  in-memory queue; a full queue drops the point. One writer thread sends
+  batches in line protocol; unreachable/5xx/408/429 are retried with backoff,
+  other 4xx batches are dropped as rejected. Counters (`queued`, `written`,
+  `dropped`, `rejected`, `lastSuccess`, `lastError`) appear under `audit` in
+  `/management/status`. On shutdown the queue is flushed for up to 3 s.
+- The log is the DMP's own view: AAS changes made by other clients are not in
+  it. Lost points are counted, not marked in the series.
+- Points carry write-time timestamps (ns); two points of the same series with
+  the same timestamp would overwrite each other in InfluxDB.
+
+## 11. Security
 
 - Lua blobs are untrusted: sandbox, CPU budget, size limit.
 - Secrets (repository authorization, Kafka SASL, MQTT credentials) come from
   environment variables and are never logged or exposed in status.
 - Repository access is read-only (GET); the DMP never writes models.
 
-## 11. Decisions
+## 12. Decisions
 
 | ID | Decision |
 | --- | --- |
@@ -336,7 +364,7 @@ ADR-010 (Kafka-only eventing), ADR-013 (Python management node), ADR-015
 (JSONata), ADR-018 (timer/event fan-in split), ADR-021 (instance attribution and
 local-AID pins).
 
-## 12. Provenance and licensing
+## 13. Provenance and licensing
 
 - Fork of [eclipse-basyx/basyx-databridge](https://github.com/eclipse-basyx/basyx-databridge)
   (MIT). Derived files keep their MIT headers; the project stays MIT.

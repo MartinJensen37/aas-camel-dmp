@@ -114,7 +114,10 @@ final class AasPropertyEventProcessor implements Processor {
 			}
 		}
 
-		exchange.getMessage().setBody(toJava(value));
+		Object decoded = toJava(value);
+		exchange.getMessage().setBody(decoded);
+		org.eclipse.digitaltwin.basyx.dmp.aas.AasAudit.event(submodelId, watched, decoded, eventType, eventId,
+				(String) exchange.getMessage().getHeader(EVENT_TIME_HEADER));
 		exchange.setProperty(MATCH_PROPERTY, true);
 		exchange.setProperty(SourceEventAdapter.CONTRIBUTION_PROPERTY, true);
 	}

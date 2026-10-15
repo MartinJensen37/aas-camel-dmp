@@ -294,6 +294,13 @@ public final class ConnectorConfigurationFactory {
 		trigger.put(ProtocolBridgeRouteConfiguration.REST_PATH,restPath);
 		trigger.put(ProtocolBridgeRouteConfiguration.REST_METHOD,"POST");
 		trigger.put("action",action);
+		// The Operation's AAS identity, for the interaction log: submodel ID and idShort path.
+		List<Key> operationKeys=Aas.keys(operation.reference());
+		if(!operationKeys.isEmpty()) {
+			trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_SUBMODEL_ID,operationKeys.get(0).getValue());
+			trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_PATH,String.join(".",
+					operationKeys.subList(1,operationKeys.size()).stream().map(Key::getValue).toList()));
+		}
 		trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_SOURCE_ID,operation.id());
 		trigger.put("requestSourceIds",List.of(operation.id()));
 		trigger.put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_ID,mapping.sinks().get(0).id());

@@ -175,6 +175,7 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		SyncOperationProcessor operation = new SyncOperationProcessor(routeBuilder.getContext(), operationContext,
 				commandValidation, new AffordanceValidation(bridgeConfig.getResponseSchema(),
 						"bridge output " + action), responseSourceBindings, responseSinkTargets, routeId);
+		operation.setAuditTags(bridgeConfig.getAuditTags());
 		registerManagedResource(operation);
 		String responseWriteRouteId = routeId + "-response-write";
 		String responseWriteUri = "direct:" + responseWriteRouteId;

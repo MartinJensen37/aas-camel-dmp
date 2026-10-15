@@ -154,7 +154,14 @@ public class AASEndpoint extends DefaultEndpoint {
 		logger.debug("AAS write {} <- {} ({})", propertyPath, value,
 				value == null ? "null" : value.getClass().getSimpleName());
 		// Encode decoded values once at the DotAAS-V3 wire boundary.
-		HTTPRequest.patchRequest(getFullProxyUrl() + API_V3_SUFFIX, MAPPER.writeValueAsString(value));
+		long started = System.nanoTime();
+		try {
+			HTTPRequest.patchRequest(getFullProxyUrl() + API_V3_SUFFIX, MAPPER.writeValueAsString(value));
+		} catch (IOException | RuntimeException failure) {
+			AasAudit.write(this, value, started, failure);
+			throw failure;
+		}
+		AasAudit.write(this, value, started, null);
 
 		logger.info("Transferred message={}", value);
 	}

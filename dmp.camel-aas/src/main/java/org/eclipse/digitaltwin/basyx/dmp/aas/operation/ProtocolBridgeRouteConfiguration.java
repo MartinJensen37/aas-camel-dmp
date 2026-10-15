@@ -47,6 +47,8 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public static final String RESPONSE_TYPES = "responseTypes";
 	public static final String CALLER_RESPONSE_TYPES = "callerResponseTypes";
 	public static final String CALLER_INPUT_TEMPLATES = "callerInputTemplates";
+	public static final String OPERATION_SUBMODEL_ID = "operationSubmodelId";
+	public static final String OPERATION_PATH = "operationPath";
 	public static final String CALLER_OUTPUT_TEMPLATES = "callerOutputTemplates";
 	/** DECLARED positional reply order (CCI operation output_variable order). */
 	public static final String RESPONSE_ORDER = "responseOrder";
@@ -100,6 +102,20 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	}
 
 	/** Old standalone descriptors used the device types for both boundaries. */
+	/** Interaction-log identity of the Operation: submodel ID, idShort path, REST path and skill. */
+	public java.util.Map<String, String> getAuditTags() {
+		java.util.Map<String, String> tags = new java.util.LinkedHashMap<>();
+		tags.put("submodel", stringValue(OPERATION_SUBMODEL_ID));
+		tags.put("path", stringValue(OPERATION_PATH));
+		tags.put("skill", stringValue("action"));
+		String restPath = getRestPath();
+		tags.put("restPath", restPath);
+		if (restPath != null && restPath.matches("/operations/[^/]+/[^/]+"))
+			tags.put("aas", java.net.URLDecoder.decode(restPath.split("/")[2], java.nio.charset.StandardCharsets.UTF_8));
+		tags.values().removeIf(java.util.Objects::isNull);
+		return tags;
+	}
+
 	/** Declared caller input and InOut variables (AAS JSON by idShort). */
 	public java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> getCallerInputTemplates() {
 		return templates(CALLER_INPUT_TEMPLATES);

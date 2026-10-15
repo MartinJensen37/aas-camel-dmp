@@ -23,6 +23,8 @@ import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultProperty;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultSubmodelElementCollection;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultSubmodelElementList;
 import org.eclipse.digitaltwin.basyx.dmp.aas.model.Aas;
+import org.eclipse.digitaltwin.basyx.dmp.core.audit.AuditLog;
+import org.eclipse.digitaltwin.basyx.dmp.core.audit.AuditPoint;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
@@ -110,7 +112,42 @@ class OperationStructuredVariableRouteTest {
 
 	@Test
 	void replyThatContradictsTheDeclaredShapeFails() throws Exception {
-		String basyx = Aas.writeList(List.of(variable(collection("Target", value(property("x", "xs:double"), "1.5"),
+		String basyx = basyxRequest();
+		String scalarForList = "function aimc_main(sources) return { Reply = { Plan = 'not a list' } } end";
+		var reply = JsonCodec.parseJson(invoke(basyx, new AtomicReference<>(), scalarForList, 500));
+		assertEquals("DMP_RESPONSE_MAPPING_FAILED", ((Map<?, ?>) reply).get("code"));
+	}
+
+	@Test
+	void callsAndRepliesAreLoggedWithOneInvocationId() throws Exception {
+		List<AuditPoint> points = new java.util.concurrent.CopyOnWriteArrayList<>();
+		AuditLog capture = points::add;
+		AuditLog.install(capture);
+		try {
+			String request = "{\"Target\":{\"x\":1.5,\"y\":2},\"Codes\":[3,4],\"Plan\":[{\"id\":\"a\",\"speed\":5}]}";
+			invoke(request, new AtomicReference<>(), RESPONSE_LUA);
+			invoke(basyxRequest(), new AtomicReference<>(), "function aimc_main(sources) return { Reply = { Plan = 'x' } } end", 500);
+		} finally {
+			AuditLog.uninstall(capture);
+		}
+		assertEquals(List.of("aas_invoke", "aas_reply", "aas_invoke", "aas_reply"),
+				points.stream().map(AuditPoint::measurement).toList());
+		AuditPoint invoke = points.get(0), reply = points.get(1), failed = points.get(3);
+		assertEquals(Map.of("caller", "rest", "skill", "Move", "restPath", "/structured", "submodel", "urn:cci",
+				"path", "Skills.Move.operation"), invoke.tags());
+		assertEquals(Map.of("Target", Map.of("x", 1.5, "y", 2L), "Codes", List.of(3L, 4L),
+				"Plan", List.of(Map.of("id", "a", "speed", 5L))), JsonCodec.parseJson((String) invoke.fields().get("value_json")));
+		assertEquals(invoke.fields().get("invocation"), reply.fields().get("invocation"));
+		assertEquals("ok", reply.tags().get("outcome"));
+		assertEquals(200L, reply.fields().get("httpStatus"));
+		assertEquals("failed", failed.tags().get("outcome"));
+		assertEquals("DMP_RESPONSE_MAPPING_FAILED", failed.fields().get("errorCode"));
+		assertEquals(500L, failed.fields().get("httpStatus"));
+		assertEquals(points.get(2).fields().get("invocation"), failed.fields().get("invocation"));
+	}
+
+	private static String basyxRequest() {
+		return Aas.writeList(List.of(variable(collection("Target", value(property("x", "xs:double"), "1.5"),
 				value(property("y", "xs:double"), "2"))), variable(new DefaultSubmodelElementList.Builder().idShort("Codes")
 						.typeValueListElement(AasSubmodelElements.PROPERTY).valueTypeListElement(Aas.xsd("xs:int"))
 						.value(List.of(value(property(null, "xs:int"), "3"), value(property(null, "xs:int"), "4"))).build()),
@@ -118,9 +155,6 @@ class OperationStructuredVariableRouteTest {
 						.typeValueListElement(AasSubmodelElements.SUBMODEL_ELEMENT_COLLECTION)
 						.value(List.of(collection(null, value(property("id", "xs:string"), "a"),
 								value(property("speed", "xs:int"), "5")))).build())));
-		String scalarForList = "function aimc_main(sources) return { Reply = { Plan = 'not a list' } } end";
-		var reply = JsonCodec.parseJson(invoke(basyx, new AtomicReference<>(), scalarForList, 500));
-		assertEquals("DMP_RESPONSE_MAPPING_FAILED", ((Map<?, ?>) reply).get("code"));
 	}
 
 	private static OperationVariable variable(SubmodelElement value) {
@@ -162,6 +196,8 @@ class OperationStructuredVariableRouteTest {
 						bridge.setRouteId("structured");
 						var data = bridge.getTriggerData();
 						data.put("restPath", "/structured");
+						data.put("operationSubmodelId", "urn:cci");
+						data.put("operationPath", "Skills.Move.operation");
 						data.put("action", "Move");
 						data.put("operationSourceId", "Request");
 						data.put("commandSinkId", "Command");

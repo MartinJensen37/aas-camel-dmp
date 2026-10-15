@@ -54,7 +54,11 @@ public final class ManagedDmpRuntime implements AutoCloseable {
 			component.startComponent();
 			reconciliation = new MappingReconciliationService(component, discovery, new RuntimeSettings(settings.repositoryUri()),
 					settings.maxMappings(), settings.maxQueuedInvalidations(), settings.retryMillis());
-			reconciliation.setReportListener(ManagedRuntimeStatus::publish);
+			MappingAudit mappingAudit = new MappingAudit();
+			reconciliation.setReportListener(report -> {
+				mappingAudit.publish(report);
+				ManagedRuntimeStatus.publish(report);
+			});
 			ManagedRuntimeStatus.trackReconciliation(reconciliation, component);
 			RouteBuilder controlRoute = controlRoutes.create(settings, reconciliation);
 			if (controlRoute instanceof KafkaControlEventRouteBuilder kafkaRoute) {
