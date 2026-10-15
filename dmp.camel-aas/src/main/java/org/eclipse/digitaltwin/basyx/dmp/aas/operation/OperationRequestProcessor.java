@@ -43,13 +43,20 @@ public class OperationRequestProcessor implements Processor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(OperationRequestProcessor.class);
 	private final String operationSourceId;
+	private final java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> inputTemplates;
 
 	public OperationRequestProcessor() {
 		this(null);
 	}
 
 	public OperationRequestProcessor(String operationSourceId) {
+		this(operationSourceId, java.util.Map.of());
+	}
+
+	public OperationRequestProcessor(String operationSourceId,
+			java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> inputTemplates) {
 		this.operationSourceId = operationSourceId;
+		this.inputTemplates = inputTemplates == null ? java.util.Map.of() : inputTemplates;
 	}
 
 	@Override
@@ -58,7 +65,7 @@ public class OperationRequestProcessor implements Processor {
 		if (body instanceof java.util.List<?> && OperationPayloads.isOperationVariables(body)) {
 			LOGGER.debug("BaSyx delegation body detected — flattening OperationVariable[]");
 			exchange.setProperty(OperationPayloads.BASYX_DELEGATION_BODY, true);
-			body = OperationPayloads.flattenOperationVariables(body);
+			body = OperationPayloads.flattenOperationVariables(body, inputTemplates);
 		}
 		if (operationSourceId != null && !operationSourceId.isBlank()) {
 			java.util.Map<String, Object> keyed = new java.util.LinkedHashMap<>();

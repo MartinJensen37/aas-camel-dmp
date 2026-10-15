@@ -41,7 +41,7 @@ Decide per item: keep (and schedule), or drop (and delete it from SPEC).
 | --- | --- | --- |
 | A1 | **Action enrichment**: extra AAS sources on a bridge mapping, sampled at invocation time and passed to the request Lua | A bridge mapping must have exactly one source (the Operation). |
 | A2 | **Acknowledged writes to a different AAS Property**: correlated `ResponseSources`/`ResponseSinks` on ordinary mappings (terminal success/failure/timeout, no replay) | Response fields on ordinary mappings are rejected. |
-| A3 | **Non-scalar Operation variables**: collections, lists, arrays and custom types as input/output/InOut | Only uniquely named scalar Properties are accepted. |
+| A3 | **Operation variables of other element types** (Range, MultiLanguageProperty, File, Blob, ReferenceElement) | Properties, collections and lists (nested) are supported (SPEC §7); other types block the mapping. |
 | A4 | **Custom/structured OPC UA datatypes** in Method arguments and reads | Basic types and arrays of them only. |
 | A5 | **Per-element array fan-out** via `valuePath` (apply a mapping to every array element) | Not expressible; Lua must loop. |
 | A6 | **PLC4X/Modbus action invocation** with a native result contract | Rejected; tag writes are Write only. |

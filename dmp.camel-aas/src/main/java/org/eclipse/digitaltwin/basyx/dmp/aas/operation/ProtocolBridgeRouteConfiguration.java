@@ -46,6 +46,8 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	/** DECLARED reply field types (AID output DataSchema: name → JSON type). */
 	public static final String RESPONSE_TYPES = "responseTypes";
 	public static final String CALLER_RESPONSE_TYPES = "callerResponseTypes";
+	public static final String CALLER_INPUT_TEMPLATES = "callerInputTemplates";
+	public static final String CALLER_OUTPUT_TEMPLATES = "callerOutputTemplates";
 	/** DECLARED positional reply order (CCI operation output_variable order). */
 	public static final String RESPONSE_ORDER = "responseOrder";
 	public static final String OPERATION_SOURCE_ID = "operationSourceId";
@@ -98,6 +100,24 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	}
 
 	/** Old standalone descriptors used the device types for both boundaries. */
+	/** Declared caller input and InOut variables (AAS JSON by idShort). */
+	public java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> getCallerInputTemplates() {
+		return templates(CALLER_INPUT_TEMPLATES);
+	}
+
+	/** Declared caller InOut and output variables (AAS JSON by idShort). */
+	public java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> getCallerOutputTemplates() {
+		return templates(CALLER_OUTPUT_TEMPLATES);
+	}
+
+	private java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> templates(String key) {
+		if (!(getTriggerData().get(key) instanceof java.util.Map<?, ?> map)) return java.util.Map.of();
+		java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> out = new java.util.LinkedHashMap<>();
+		map.forEach((name, json) -> out.put(String.valueOf(name), org.eclipse.digitaltwin.basyx.dmp.aas.model.Aas.read(
+				String.valueOf(json), org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement.class)));
+		return out;
+	}
+
 	public java.util.Map<String, String> getCallerResponseTypes() {
 		return getTriggerData().containsKey(CALLER_RESPONSE_TYPES)
 				? typeMap(CALLER_RESPONSE_TYPES) : getResponseTypes();

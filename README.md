@@ -56,8 +56,9 @@ submodel events.
   `invocationDelegation` qualifier; the DMP serves `POST` on that URL's path
   (by convention `/operations/{aasIdShort}/{skill}`). It invokes the device
   action over HTTP, an OPC UA Method, or MQTT 5 request/reply, and returns the
-  typed result. Operation input, output and InOut variables must be uniquely
-  named scalar Properties.
+  typed result. Operation input, output and InOut variables may be Properties,
+  SubmodelElementCollections (objects) or SubmodelElementLists (arrays),
+  nested freely; Lua sees them as typed Lua values.
 
 ### Lua
 

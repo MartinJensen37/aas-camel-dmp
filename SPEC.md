@@ -225,8 +225,20 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    absolute delegation URL blocks its mapping.
 2. The mapping has exactly one source (the Operation) and one sink: an AID
    action affordance of the same skill. Operation input, output and InOut
-   variables must be uniquely named scalar Properties with supported
-   `valueType`s.
+   variables have unique idShorts and are one of:
+   - a **Property** with a supported `valueType` → a typed scalar;
+   - a **SubmodelElementCollection** of such variables (members uniquely
+     named) → an object keyed by member idShort;
+   - a **SubmodelElementList** → an array. Every member must have the list's
+     `typeValueListElement` (and, for Properties, `valueTypeListElement`).
+     The first authored member defines the member shape; an empty list is
+     only allowed for Properties with a `valueTypeListElement`.
+   Nesting is unrestricted. Other element types (Range, File, Blob, …) block
+   the mapping. Lua receives inputs and InOut values typed by their declared
+   `valueType`s. The reply is rebuilt from the declared variables: list
+   members get no idShort (AASd-120), list metadata and semantic IDs are
+   copied, members the declaration lacks are dropped, and a value whose shape
+   contradicts the declaration fails with `DMP_RESPONSE_MAPPING_FAILED`.
 3. The request Lua is mandatory and turns the caller's input variables into the
    device command.
 4. The command leg is synchronous per protocol:

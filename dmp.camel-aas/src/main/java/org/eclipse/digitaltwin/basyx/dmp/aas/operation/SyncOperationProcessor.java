@@ -178,7 +178,7 @@ public class SyncOperationProcessor implements Processor, ManagedRouteResource {
 	}
 
 	public void prepareRequest(Exchange exchange) throws Exception {
-		new OperationRequestProcessor(context.operationSourceId).process(exchange);
+		new OperationRequestProcessor(context.operationSourceId, context.callerInputTemplates).process(exchange);
 	}
 
 	public void invokeAndPrepareReply(Exchange exchange) throws Exception {

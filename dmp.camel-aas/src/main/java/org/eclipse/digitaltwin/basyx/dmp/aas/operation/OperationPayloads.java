@@ -25,7 +25,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.aas.operation;
 
 import org.eclipse.digitaltwin.aas4j.v3.model.OperationVariable;
-import org.eclipse.digitaltwin.aas4j.v3.model.Property;
+import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultOperationVariable;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultProperty;
 import org.eclipse.digitaltwin.basyx.dmp.aas.model.Aas;
@@ -207,17 +207,28 @@ public final class OperationPayloads {
 
 	/** Flattens a delegated OperationVariable[] into the {@code {idShort: value}} request tree. */
 	public static Map<String, Object> flattenOperationVariables(Object body) {
+		return flattenOperationVariables(body, java.util.Map.of());
+	}
+
+	/**
+	 * Flattens a delegated OperationVariable[] into the {@code {idShort: value}}
+	 * request tree: Properties become typed scalars, collections maps and lists
+	 * lists. Declared variables ({@code templates}) type the values.
+	 */
+	public static Map<String, Object> flattenOperationVariables(Object body,
+			java.util.Map<String, SubmodelElement> templates) {
 		java.util.List<OperationVariable> variables = operationVariables(body);
 		if (variables == null) throw new IllegalArgumentException("BaSyx Operation request is not an OperationVariable array");
 		Map<String, Object> flat = new java.util.LinkedHashMap<>();
 		for (OperationVariable variable : variables) {
-			Property property = (Property) variable.getValue();
-			flat.put(property.getIdShort(), property.getValue());
+			SubmodelElement element = variable.getValue();
+			flat.put(element.getIdShort(), OperationVariableValues.coerce(templates.get(element.getIdShort()),
+					OperationVariableValues.toValue(element)));
 		}
 		return flat;
 	}
 
-	/** The scalar-Property OperationVariables of a delegated body, or null when it is not that envelope. */
+	/** The OperationVariables of a delegated body, or null when it is not that envelope. */
 	private static java.util.List<OperationVariable> operationVariables(Object body) {
 		String json = operationBodyJson(body);
 		if (json == null || !json.stripLeading().startsWith("[")) return null;
@@ -225,7 +236,8 @@ public final class OperationPayloads {
 		try { variables = Aas.readList(json, OperationVariable.class); }
 		catch (IllegalArgumentException notAnEnvelope) { return null; }
 		for (OperationVariable variable : variables)
-			if (!(variable.getValue() instanceof Property property) || property.getIdShort() == null) return null;
+			if (variable.getValue() == null || variable.getValue().getIdShort() == null
+					|| !OperationVariableValues.supported(variable.getValue())) return null;
 		return variables;
 	}
 
@@ -254,6 +266,17 @@ public final class OperationPayloads {
 	public static java.util.List<OperationVariable> toOperationVariables(
 			Map<String, Object> map, java.util.Map<String, String> declaredTypes,
 			java.util.List<String> callerOrder) {
+		return toOperationVariables(map, declaredTypes, callerOrder, java.util.Map.of());
+	}
+
+	/**
+	 * Maps a flat reply to caller OperationVariables in the CCI-declared order.
+	 * A declared variable ({@code templates}) is rebuilt with its declared
+	 * structure; other names become Properties of their declared scalar type.
+	 */
+	public static java.util.List<OperationVariable> toOperationVariables(
+			Map<String, Object> map, java.util.Map<String, String> declaredTypes,
+			java.util.List<String> callerOrder, java.util.Map<String, SubmodelElement> templates) {
 		if (map == null) {
 			return java.util.List.of();
 		}
@@ -265,6 +288,12 @@ public final class OperationPayloads {
 		for (String name : order) {
 			if (!map.containsKey(name)) continue;
 			Object rawValue = map.get(name);
+			SubmodelElement template = templates == null ? null : templates.get(name);
+			if (template != null) {
+				variables.add(new DefaultOperationVariable.Builder()
+						.value(OperationVariableValues.toElement(template, rawValue)).build());
+				continue;
+			}
 			String type = types.getOrDefault(name, "string");
 			Object value = rawValue == null || rawValue == JsonPointer.JSON_NULL ? null : coerceTyped(rawValue, type);
 			variables.add(new DefaultOperationVariable.Builder().value(new DefaultProperty.Builder().idShort(name)

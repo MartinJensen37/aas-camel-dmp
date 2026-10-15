@@ -74,14 +74,16 @@ public class OperationReplyProcessor implements Processor {
 		boolean basyxDelegation = Boolean.TRUE.equals(
 				exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY, Boolean.class));
 		if (basyxDelegation) {
-			if (replyMap == null && context.callerResponseTypes.size() == 1) {
-				String name = context.callerResponseTypes.keySet().iterator().next();
+			java.util.Set<String> declared = new java.util.LinkedHashSet<>(context.callerResponseTypes.keySet());
+			declared.addAll(context.callerOutputTemplates.keySet());
+			if (replyMap == null && declared.size() == 1) {
+				String name = declared.iterator().next();
 				replyMap = new java.util.LinkedHashMap<>();
 				replyMap.put(name, unwrapped);
 			}
 			exchange.getMessage().setBody(
 					OperationPayloads.toOperationVariables(coerce(replyMap), context.callerResponseTypes,
-							context.callerOutputOrder));
+							context.callerOutputOrder, context.callerOutputTemplates));
 			LOGGER.debug("Operation delegation reply prepared");
 		} else {
 			exchange.getMessage().setBody(replyMap == null ? unwrapped : coerce(replyMap));
@@ -104,6 +106,9 @@ public class OperationReplyProcessor implements Processor {
 			return null;
 		}
 		OperationPayloads.coerceFields(replyMap, context.callerResponseTypes);
+		context.callerOutputTemplates.forEach((name, template) -> {
+			if (replyMap.containsKey(name)) replyMap.put(name, OperationVariableValues.coerce(template, replyMap.get(name)));
+		});
 		return replyMap;
 	}
 }

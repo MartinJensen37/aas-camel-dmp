@@ -9,6 +9,12 @@ import java.nio.charset.StandardCharsets;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.digitaltwin.aas4j.v3.model.AasSubmodelElements;
+import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultFile;
+import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultSubmodelElementList;
+import org.eclipse.digitaltwin.basyx.dmp.aas.model.Aas;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASDatasinkConfiguration;
@@ -403,16 +409,44 @@ class ConnectorConfigurationFactoryTest {
 		assertEquals(List.of("Uuid","Trace","Limit","Count"),bridge.getTriggerData().get("callerOutputOrder"));
 	}
 
-	@Test void rejectsUnsupportedCollectionAndDuplicateCciInoutputs() {
+	@Test void structuredCciVariablesAreDeclaredTemplates() {
+		var position=AasFixtures.collection("Target",AasFixtures.property("x","xs:double",null),
+				AasFixtures.property("y","xs:double",null));
+		var waypoints=new DefaultSubmodelElementList.Builder().idShort("Waypoints")
+				.typeValueListElement(AasSubmodelElements.SUBMODEL_ELEMENT_COLLECTION)
+				.value(List.of(AasFixtures.collection(null,AasFixtures.property("x","xs:double",null)))).build();
+		var codes=new DefaultSubmodelElementList.Builder().idShort("Codes").typeValueListElement(AasSubmodelElements.PROPERTY)
+				.valueTypeListElement(Aas.xsd("xs:int")).build();
+		var result=factory.create(explicitResponsePlan("aid-command",
+				List.of(AasFixtures.variable(position),AasFixtures.variable(waypoints),AasFixtures.variable(codes))),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
+		assertEquals(List.of("Target","Waypoints","Codes","Count"),bridge.getTriggerData().get("callerOutputOrder"));
+		assertEquals(Map.of("Count","xs:string"),bridge.getTriggerData().get("callerResponseTypes"),
+				"only scalar Properties have a scalar caller type");
+		assertEquals(Set.of("Target","Waypoints","Codes"),bridge.getCallerInputTemplates().keySet());
+		assertEquals(Set.of("Target","Waypoints","Codes","Count"),bridge.getCallerOutputTemplates().keySet());
+		assertEquals(position,bridge.getCallerOutputTemplates().get("Target"));
+		assertEquals(waypoints,bridge.getCallerInputTemplates().get("Waypoints"));
+	}
+
+	@Test void rejectsUnsupportedStructuredAndDuplicateCciInoutputs() {
 		var customType=AasFixtures.property("Uuid","xs:dateTime",null);
-		var collection=AasFixtures.collection("Uuid",property("child","value"));
+		var nestedCustomType=AasFixtures.collection("Uuid",AasFixtures.property("at","xs:dateTime",null));
+		var duplicateMembers=AasFixtures.collection("Uuid",property("a","1"),property("a","2"));
+		var mixedList=new DefaultSubmodelElementList.Builder().idShort("Uuid").typeValueListElement(AasSubmodelElements.PROPERTY)
+				.valueTypeListElement(Aas.xsd("xs:int")).value(List.of(property("a","x"))).build();
+		var untypedEmptyList=new DefaultSubmodelElementList.Builder().idShort("Uuid")
+				.typeValueListElement(AasSubmodelElements.SUBMODEL_ELEMENT_COLLECTION).build();
+		var file=new DefaultFile.Builder().idShort("Uuid").contentType("text/plain").build();
 		var trace=AasFixtures.variable(property("Trace","trace"));
-		for (var inoutputs : List.of(List.of(AasFixtures.variable(customType)),
-				List.of(AasFixtures.variable(collection)),List.of(trace,trace))) {
+		for (var inoutputs : List.of(List.of(AasFixtures.variable(customType)),List.of(AasFixtures.variable(nestedCustomType)),
+				List.of(AasFixtures.variable(duplicateMembers)),List.of(AasFixtures.variable(mixedList)),
+				List.of(AasFixtures.variable(untypedEmptyList)),List.of(AasFixtures.variable(file)),List.of(trace,trace))) {
 			var result=factory.create(explicitResponsePlan("aid-command",inoutputs),"bridge");
-			assertTrue(result.configuration().getRoutes().isEmpty());
+			assertTrue(result.configuration().getRoutes().isEmpty(),inoutputs.toString());
 			assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("CCI inoutput")),
-					"InOut variables must be uniquely named scalar Properties with supported valueTypes");
+					"InOut variables must be supported Properties, collections or lists with unique names");
 		}
 	}
 

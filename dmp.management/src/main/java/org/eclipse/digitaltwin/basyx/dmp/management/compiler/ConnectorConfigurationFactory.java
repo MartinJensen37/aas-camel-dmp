@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.poli
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASDatasinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AasEventDataSourceConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.aas.operation.OperationVariableValues;
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.ProtocolBridgeRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpDataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpPollingDataSourceConfiguration;
@@ -54,6 +56,7 @@ import org.eclipse.digitaltwin.aas4j.v3.model.Qualifier;
 import org.eclipse.digitaltwin.aas4j.v3.model.QualifierKind;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
+import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementCollection;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementList;
 import org.eclipse.digitaltwin.basyx.dmp.aas.model.Aas;
 import org.eclipse.digitaltwin.basyx.dmp.management.model.WireModel;
@@ -315,6 +318,8 @@ public final class ConnectorConfigurationFactory {
 				? Aas.nonNull(cciOperation.getOutputVariables()).stream().map(variable -> variable.getValue()==null?null:variable.getValue().getIdShort())
 						.filter(Objects::nonNull).toList() : List.of();
 		Map<String,String> callerTypes=new LinkedHashMap<>();
+		Map<String,String> inputTemplates=new LinkedHashMap<>();
+		Map<String,String> outputTemplates=new LinkedHashMap<>();
 		Operation cci=(Operation)((DirectTarget)operation.target()).resolved().element();
 		List<String> callerOrder=new ArrayList<>();
 		Set<String> callerNames=new LinkedHashSet<>();
@@ -325,15 +330,24 @@ public final class ConnectorConfigurationFactory {
 		categories.put("output",Aas.nonNull(cci.getOutputVariables()));
 		categories.forEach((category,variables) -> {
 			for(OperationVariable variable:variables) {
-				if(!callerVariableSupported(variable) || !callerNames.add(variable.getValue().getIdShort())) {
-					issue(issues,mapping,root+"/Sources","CCI "+category+" must use uniquely named scalar Properties with supported valueTypes");
-				} else if(!"input".equals(category)) {
-					callerTypes.put(variable.getValue().getIdShort(),callerVariableValueType(variable));
-					callerOrder.add(variable.getValue().getIdShort());
+				SubmodelElement value=variable==null?null:variable.getValue();
+				if(value==null || !callerElementSupported(value,true) || !callerNames.add(value.getIdShort())) {
+					issue(issues,mapping,root+"/Sources","CCI "+category+" variables must be uniquely named Properties with"
+							+" supported valueTypes, or collections and lists of them");
+					continue;
+				}
+				String template=Aas.write(value);
+				if(!"output".equals(category))inputTemplates.put(value.getIdShort(),template);
+				if(!"input".equals(category)) {
+					outputTemplates.put(value.getIdShort(),template);
+					if(value instanceof Property property)callerTypes.put(value.getIdShort(),Aas.xsd(property.getValueType()));
+					callerOrder.add(value.getIdShort());
 				}
 			}
 		});
 		trigger.put("callerResponseTypes",Map.copyOf(callerTypes));
+		trigger.put(ProtocolBridgeRouteConfiguration.CALLER_INPUT_TEMPLATES,Map.copyOf(inputTemplates));
+		trigger.put(ProtocolBridgeRouteConfiguration.CALLER_OUTPUT_TEMPLATES,Map.copyOf(outputTemplates));
 		if(!responseOrder.isEmpty()) {
 			trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_ORDER,responseOrder);
 		}
@@ -979,15 +993,43 @@ public final class ConnectorConfigurationFactory {
 		};
 	}
 
-	private static boolean callerVariableSupported(OperationVariable variable) {
-		return callerVariableValueType(variable)!=null && variable.getValue().getIdShort()!=null
-				&& !variable.getValue().getIdShort().isBlank();
+	/**
+	 * Operation variables are Properties with a supported valueType, collections
+	 * of uniquely named variables, or lists whose members all have the declared
+	 * list type (the first member, or valueTypeListElement, is the member shape).
+	 */
+	private static boolean callerElementSupported(SubmodelElement element,boolean named) {
+		if(named && (element.getIdShort()==null || element.getIdShort().isBlank()))return false;
+		if(element instanceof Property property)return schemaType(Aas.xsd(property.getValueType()))!=null;
+		if(element instanceof SubmodelElementCollection collection) {
+			Set<String> names=new HashSet<>();
+			for(SubmodelElement child:Aas.nonNull(collection.getValue()))
+				if(!callerElementSupported(child,true) || !names.add(child.getIdShort()))return false;
+			return true;
+		}
+		if(element instanceof SubmodelElementList list) {
+			SubmodelElement item=OperationVariableValues.itemTemplate(list);
+			if(item==null)return false;
+			List<SubmodelElement> members=new ArrayList<>(Aas.nonNull(list.getValue()));
+			if(members.isEmpty())members.add(item);
+			for(SubmodelElement member:members)
+				if(!listMemberMatches(list,member) || !callerElementSupported(member,false))return false;
+			return true;
+		}
+		return false;
 	}
 
-	private static String callerVariableValueType(OperationVariable variable) {
-		if(variable==null || !(variable.getValue() instanceof Property property))return null;
-		String value=Aas.xsd(property.getValueType());
-		return schemaType(value)==null?null:value;
+	/** AASd-108/109: a member has the list's declared element type and, for Properties, value type. */
+	private static boolean listMemberMatches(SubmodelElementList list,SubmodelElement member) {
+		AasSubmodelElements declared=list.getTypeValueListElement();
+		boolean kind=declared==null || switch(declared) {
+			case PROPERTY -> member instanceof Property;
+			case SUBMODEL_ELEMENT_COLLECTION -> member instanceof SubmodelElementCollection;
+			case SUBMODEL_ELEMENT_LIST -> member instanceof SubmodelElementList;
+			default -> false;
+		};
+		return kind && (!(member instanceof Property property) || list.getValueTypeListElement()==null
+				|| list.getValueTypeListElement()==property.getValueType());
 	}
 
 	private static boolean hasIssue(List<Issue> issues, MappingPlan mapping) {
