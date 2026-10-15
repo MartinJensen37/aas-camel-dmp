@@ -69,7 +69,7 @@ public class SqlConnectionFactory {
             try {
                 configureMariaDbDataSource(context);
             } catch (SQLException e) {
-                e.printStackTrace();
+                throw new IllegalStateException("Could not configure the MariaDB data source", e);
             }
             break;
         case POSTGRESQL:

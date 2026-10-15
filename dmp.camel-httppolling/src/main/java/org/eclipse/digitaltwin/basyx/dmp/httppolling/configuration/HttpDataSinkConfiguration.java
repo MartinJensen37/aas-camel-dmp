@@ -125,8 +125,7 @@ public class HttpDataSinkConfiguration extends DataSinkConfiguration{
 		try {
 			return uriBuilder.build().toString();
 		} catch (URISyntaxException e) {
-			e.printStackTrace();
-			throw new RuntimeException("Exception occurred while creating HttpProducerEndPoint ");
+			throw new IllegalStateException("Exception occurred while creating HttpProducerEndPoint", e);
 		}
 	}
 

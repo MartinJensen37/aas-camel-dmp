@@ -108,8 +108,7 @@ public class Plc4xDataSourceConfiguration extends DataSourceConfiguration {
 		try {
 			return uriBuilder.build().toString();
 		} catch (URISyntaxException e) {
-			e.printStackTrace();
-			throw new RuntimeException("Exception occurred while creating Plc4XEndpoint");
+			throw new IllegalStateException("Exception occurred while creating Plc4XEndpoint", e);
 		}
 	}
 }

@@ -120,17 +120,6 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
-# generated code after execution
-basyx.components.updater.camel-hono/src/generated/
-basyx.components.updater.camel-aas/src/generated/
-
-### Kafka ###
-basyx.components.databridge.examples/kafka-multiple-zookeeper-multiple-server/zk-multiple-kafka-multiple/
-basyx.components.databridge.examples/kafka-multiple-zookeeper-single-server/zk-single-kafka-multiple/
-basyx.components.databridge.examples/kafka-single-broker-server/zk-single-kafka-single
-
-### MQTT ###
-*.moquette_uuid
 
 ### META-INF ###
 **/MANIFEST.MF
