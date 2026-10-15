@@ -1,0 +1,961 @@
+{
+  "description": [
+    {
+      "language": "en",
+      "text": "The AIMC 2.0 is used to describe how data is mapped from asset to AAS or from AAS to AAS."
+    }
+  ],
+  "embeddedDataSpecifications": [
+    {
+      "dataSpecification": {
+        "keys": [
+          {
+            "type": "GlobalReference",
+            "value": "contractAAS/submodels/AIMC"
+          }
+        ],
+        "type": "ExternalReference"
+      },
+      "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+          {
+            "language": "en",
+            "text": "class"
+          }
+        ],
+        "value": "DmpAimc"
+      }
+    },
+    {
+      "dataSpecification": {
+        "keys": [
+          {
+            "type": "GlobalReference",
+            "value": "MappingConfigurations"
+          }
+        ],
+        "type": "ExternalReference"
+      },
+      "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+          {
+            "language": "en",
+            "text": "attribute"
+          }
+        ],
+        "value": "MappingConfigurations"
+      }
+    },
+    {
+      "dataSpecification": {
+        "keys": [
+          {
+            "type": "GlobalReference",
+            "value": "MappingConfigurations"
+          }
+        ],
+        "type": "ExternalReference"
+      },
+      "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+          {
+            "language": "en",
+            "text": "default"
+          }
+        ],
+        "value": "SubmodelElementList"
+      }
+    }
+  ],
+  "id": "contractAAS/submodels/AIMC",
+  "idShort": "AIMC",
+  "modelType": "Submodel",
+  "semanticId": {
+    "keys": [
+      {
+        "type": "GlobalReference",
+        "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/Submodel"
+      }
+    ],
+    "type": "ExternalReference"
+  },
+  "submodelElements": [
+    {
+      "description": [
+        {
+          "language": "en",
+          "text": "List of MappingConfigurations that each map and transform data from their sources to their sinks."
+        }
+      ],
+      "idShort": "MappingConfigurations",
+      "modelType": "SubmodelElementList",
+      "orderRelevant": true,
+      "semanticId": {
+        "keys": [
+          {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/1/0/MappingConfigurations"
+          }
+        ],
+        "type": "ExternalReference"
+      },
+      "typeValueListElement": "SubmodelElementCollection",
+      "value": [
+        {
+          "description": [
+            {
+              "language": "en",
+              "text": "A MappingConfiguration defines one logical unit of sources (inputs) and sinks (outputs) that are in relation to one another. The relation can be expressed via a transformation."
+            }
+          ],
+          "embeddedDataSpecifications": [
+            {
+              "dataSpecification": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "Fan"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                  {
+                    "language": "en",
+                    "text": "class"
+                  }
+                ],
+                "value": "DmpMappingConfiguration"
+              }
+            },
+            {
+              "dataSpecification": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "e7530bfdedad57cbbd150f4eed9dbde6"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                  {
+                    "language": "en",
+                    "text": "attribute"
+                  }
+                ],
+                "value": "DefaultPollingInterval"
+              }
+            },
+            {
+              "dataSpecification": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "Transformation"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                  {
+                    "language": "en",
+                    "text": "attribute"
+                  }
+                ],
+                "value": "Transformation"
+              }
+            },
+            {
+              "dataSpecification": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "Sources"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                  {
+                    "language": "en",
+                    "text": "attribute"
+                  }
+                ],
+                "value": "Sources"
+              }
+            },
+            {
+              "dataSpecification": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "Sinks"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                  {
+                    "language": "en",
+                    "text": "attribute"
+                  }
+                ],
+                "value": "Sinks"
+              }
+            },
+            {
+              "dataSpecification": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "cfa5e6d25fa85d9db7530c45c24cced8"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                  {
+                    "language": "en",
+                    "text": "attribute"
+                  }
+                ],
+                "value": "ResponseTransformation"
+              }
+            },
+            {
+              "dataSpecification": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "d8a7b8214f68585a8fc71480eb1aff35"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                  {
+                    "language": "en",
+                    "text": "attribute"
+                  }
+                ],
+                "value": "ResponseSources"
+              }
+            },
+            {
+              "dataSpecification": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "2386f5f156d751a9a4a60059f036939b"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                  {
+                    "language": "en",
+                    "text": "attribute"
+                  }
+                ],
+                "value": "ResponseSinks"
+              }
+            },
+            {
+              "dataSpecification": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "d416f5678b9d5fe8bfc334eaec3e5d56"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                  {
+                    "language": "en",
+                    "text": "attribute"
+                  }
+                ],
+                "value": "ExecutionSemantics"
+              }
+            }
+          ],
+          "modelType": "SubmodelElementCollection",
+          "value": [
+            {
+              "contentType": "text/plain",
+              "description": [
+                {
+                  "language": "en",
+                  "text": "The transformation allows for transforming incoming data before writing it to the sinks. The transformation must contain an \"aimc_main(sources)\" entrypoint function in Lua."
+                }
+              ],
+              "idShort": "Transformation",
+              "modelType": "Blob",
+              "semanticId": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Transformation"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIHJldHVybiB7IE91dCA9IHNvdXJjZXMuU3RhdGUsIE1pcnJvciA9IHNvdXJjZXMuTW9kZSB9IGVuZA=="
+            },
+            {
+              "description": [
+                {
+                  "language": "en",
+                  "text": "This list includes all data sources that are used in this MappingConfiguration."
+                }
+              ],
+              "idShort": "Sources",
+              "modelType": "SubmodelElementList",
+              "orderRelevant": true,
+              "semanticId": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sources"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "typeValueListElement": "SubmodelElementCollection",
+              "value": [
+                {
+                  "description": [
+                    {
+                      "language": "en",
+                      "text": "A data source is defined by a Source reference, PollingInterval and SourceId."
+                    }
+                  ],
+                  "embeddedDataSpecifications": [
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "FixtureItem0"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "class"
+                          }
+                        ],
+                        "value": "Source"
+                      }
+                    },
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "Source"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "attribute"
+                          }
+                        ],
+                        "value": "Source"
+                      }
+                    },
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "b03fbd508af557fa92b21d3c0272be23"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "attribute"
+                          }
+                        ],
+                        "value": "PollingInterval"
+                      }
+                    },
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "SourceId"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "attribute"
+                          }
+                        ],
+                        "value": "SourceId"
+                      }
+                    }
+                  ],
+                  "modelType": "SubmodelElementCollection",
+                  "value": [
+                    {
+                      "description": [
+                        {
+                          "language": "en",
+                          "text": "This holds a reference to the respective SubmodelElement used as data source. A data source can be any SubmodelElement including those defined in the InteractionMetadata of AID Submodels for fetching live-data from assets."
+                        }
+                      ],
+                      "idShort": "Source",
+                      "modelType": "ReferenceElement",
+                      "semanticId": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/Source"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "value": {
+                        "keys": [
+                          {
+                            "type": "Submodel",
+                            "value": "a/submodels/AID"
+                          },
+                          {
+                            "type": "SubmodelElementCollection",
+                            "value": "interface_mqtt"
+                          },
+                          {
+                            "type": "SubmodelElementCollection",
+                            "value": "InteractionMetadata"
+                          },
+                          {
+                            "type": "SubmodelElementCollection",
+                            "value": "properties"
+                          },
+                          {
+                            "type": "SubmodelElementCollection",
+                            "value": "State"
+                          }
+                        ],
+                        "type": "ModelReference"
+                      }
+                    },
+                    {
+                      "description": [
+                        {
+                          "language": "en",
+                          "text": "This is a unique and non-empty identifier that facilitates data access in the Lua transformation or establishes a relationship to a corresponding sink when no transformation is given. It must only be unique with respect to the Sources-list of the parent MappingConfiguration and not globally."
+                        }
+                      ],
+                      "idShort": "SourceId",
+                      "modelType": "Property",
+                      "semanticId": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/SourceId"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "value": "State",
+                      "valueType": "xs:string"
+                    }
+                  ]
+                },
+                {
+                  "description": [
+                    {
+                      "language": "en",
+                      "text": "A data source is defined by a Source reference, PollingInterval and SourceId."
+                    }
+                  ],
+                  "embeddedDataSpecifications": [
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "FixtureItem1"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "class"
+                          }
+                        ],
+                        "value": "Source"
+                      }
+                    },
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "Source"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "attribute"
+                          }
+                        ],
+                        "value": "Source"
+                      }
+                    },
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "67beab74bbd0508c8f69c6dee3df8f52"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "attribute"
+                          }
+                        ],
+                        "value": "PollingInterval"
+                      }
+                    },
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "SourceId"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "attribute"
+                          }
+                        ],
+                        "value": "SourceId"
+                      }
+                    }
+                  ],
+                  "modelType": "SubmodelElementCollection",
+                  "value": [
+                    {
+                      "description": [
+                        {
+                          "language": "en",
+                          "text": "This holds a reference to the respective SubmodelElement used as data source. A data source can be any SubmodelElement including those defined in the InteractionMetadata of AID Submodels for fetching live-data from assets."
+                        }
+                      ],
+                      "idShort": "Source",
+                      "modelType": "ReferenceElement",
+                      "semanticId": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/Source"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "value": {
+                        "keys": [
+                          {
+                            "type": "Submodel",
+                            "value": "a/submodels/AID"
+                          },
+                          {
+                            "type": "SubmodelElementCollection",
+                            "value": "interface_mqtt"
+                          },
+                          {
+                            "type": "SubmodelElementCollection",
+                            "value": "InteractionMetadata"
+                          },
+                          {
+                            "type": "SubmodelElementCollection",
+                            "value": "properties"
+                          },
+                          {
+                            "type": "SubmodelElementCollection",
+                            "value": "Mode"
+                          }
+                        ],
+                        "type": "ModelReference"
+                      }
+                    },
+                    {
+                      "description": [
+                        {
+                          "language": "en",
+                          "text": "This is a unique and non-empty identifier that facilitates data access in the Lua transformation or establishes a relationship to a corresponding sink when no transformation is given. It must only be unique with respect to the Sources-list of the parent MappingConfiguration and not globally."
+                        }
+                      ],
+                      "idShort": "SourceId",
+                      "modelType": "Property",
+                      "semanticId": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/SourceId"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "value": "Mode",
+                      "valueType": "xs:string"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "description": [
+                {
+                  "language": "en",
+                  "text": "This list includes all data sinks that are used in this MappingConfiguration."
+                }
+              ],
+              "idShort": "Sinks",
+              "modelType": "SubmodelElementList",
+              "orderRelevant": true,
+              "semanticId": {
+                "keys": [
+                  {
+                    "type": "GlobalReference",
+                    "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sinks"
+                  }
+                ],
+                "type": "ExternalReference"
+              },
+              "typeValueListElement": "SubmodelElementCollection",
+              "value": [
+                {
+                  "description": [
+                    {
+                      "language": "en",
+                      "text": "A data sink is defined by a Sink reference and SinkId."
+                    }
+                  ],
+                  "embeddedDataSpecifications": [
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "FixtureItem0"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "class"
+                          }
+                        ],
+                        "value": "Sink"
+                      }
+                    },
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "Sink"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "attribute"
+                          }
+                        ],
+                        "value": "Sink"
+                      }
+                    },
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "SinkId"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "attribute"
+                          }
+                        ],
+                        "value": "SinkId"
+                      }
+                    }
+                  ],
+                  "modelType": "SubmodelElementCollection",
+                  "value": [
+                    {
+                      "description": [
+                        {
+                          "language": "en",
+                          "text": "This holds a reference to the respective SubmodelElement used as data sink for live-data."
+                        }
+                      ],
+                      "idShort": "Sink",
+                      "modelType": "ReferenceElement",
+                      "semanticId": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/Sink"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "value": {
+                        "keys": [
+                          {
+                            "type": "Submodel",
+                            "value": "{aas_id}/submodels/KPI"
+                          },
+                          {
+                            "type": "SubmodelElementCollection",
+                            "value": "Out"
+                          }
+                        ],
+                        "type": "ModelReference"
+                      }
+                    },
+                    {
+                      "description": [
+                        {
+                          "language": "en",
+                          "text": "This is a unique and non-empty identifier that facilitates data writing in the Lua transformation or establishes a relationship to a corresponding source when no transformation is given. It must only be unique with respect to the Sinks-list of the containing MappingConfiguration and not globally."
+                        }
+                      ],
+                      "idShort": "SinkId",
+                      "modelType": "Property",
+                      "semanticId": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/SinkId"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "value": "Out",
+                      "valueType": "xs:string"
+                    }
+                  ]
+                },
+                {
+                  "description": [
+                    {
+                      "language": "en",
+                      "text": "A data sink is defined by a Sink reference and SinkId."
+                    }
+                  ],
+                  "embeddedDataSpecifications": [
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "FixtureItem1"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "class"
+                          }
+                        ],
+                        "value": "Sink"
+                      }
+                    },
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "Sink"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "attribute"
+                          }
+                        ],
+                        "value": "Sink"
+                      }
+                    },
+                    {
+                      "dataSpecification": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "SinkId"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "dataSpecificationContent": {
+                        "modelType": "DataSpecificationIec61360",
+                        "preferredName": [
+                          {
+                            "language": "en",
+                            "text": "attribute"
+                          }
+                        ],
+                        "value": "SinkId"
+                      }
+                    }
+                  ],
+                  "modelType": "SubmodelElementCollection",
+                  "value": [
+                    {
+                      "description": [
+                        {
+                          "language": "en",
+                          "text": "This holds a reference to the respective SubmodelElement used as data sink for live-data."
+                        }
+                      ],
+                      "idShort": "Sink",
+                      "modelType": "ReferenceElement",
+                      "semanticId": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/Sink"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "value": {
+                        "keys": [
+                          {
+                            "type": "Submodel",
+                            "value": "{aas_id}/submodels/KPI"
+                          },
+                          {
+                            "type": "SubmodelElementCollection",
+                            "value": "Mirror"
+                          }
+                        ],
+                        "type": "ModelReference"
+                      }
+                    },
+                    {
+                      "description": [
+                        {
+                          "language": "en",
+                          "text": "This is a unique and non-empty identifier that facilitates data writing in the Lua transformation or establishes a relationship to a corresponding source when no transformation is given. It must only be unique with respect to the Sinks-list of the containing MappingConfiguration and not globally."
+                        }
+                      ],
+                      "idShort": "SinkId",
+                      "modelType": "Property",
+                      "semanticId": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/SinkId"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "value": "Mirror",
+                      "valueType": "xs:string"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

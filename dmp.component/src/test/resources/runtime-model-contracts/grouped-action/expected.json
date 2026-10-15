@@ -1,0 +1,915 @@
+{
+  "authoredMappings": [
+    {
+      "idShort": "Grouped",
+      "index": 0,
+      "qualifiers": [],
+      "responseSinkIds": [],
+      "responseSourceIds": [],
+      "responseTransformationBase64": null,
+      "sinkIds": [
+        "X",
+        "Y"
+      ],
+      "sourceIds": [
+        "Invoke"
+      ],
+      "transformationBase64": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIHJldHVybiB7IFg9MSwgWT0yIH0gZW5k",
+      "triggerSourceIds": []
+    }
+  ],
+  "compilerContext": {
+    "aas_base_url": "http://aas-server:8081",
+    "aas_id": "contractAAS",
+    "aas_id_short": "contract"
+  },
+  "elements": {
+    "aid": [
+      {
+        "idShort": "AID",
+        "modelType": "Submodel",
+        "path": "",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/1/Submodel"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "interface_mqtt",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Interface"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "http://www.w3.org/2011/mqtt"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "idShort": "title",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#title"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "EndpointMetadata",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "base",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/1/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#baseURI"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "contentType",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/1/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "security",
+        "modelType": "SubmodelElementList",
+        "path": "/submodelElements/0/value/1/value/2",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "securityDefinitions",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/1/value/3",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#definesSecurityScheme"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "InteractionMetadata",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#InteractionAffordance"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "idShort": "properties",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#PropertyAffordance"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "State",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/0/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/PropertyDefinition"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "idShort": "forms",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasForm"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "href",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "security",
+        "modelType": "SubmodelElementList",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "op",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/2",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasOperationType"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "mqv_retain",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/3"
+      },
+      {
+        "idShort": "mqv_qos",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/4"
+      },
+      {
+        "idShort": "mqv_control_packet",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/5"
+      },
+      {
+        "idShort": "actions",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#ActionAffordance"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "Move",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/1/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#ActionAffordance"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "synchronous",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/0"
+      },
+      {
+        "idShort": "input",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/1",
+        "qualifiers": [
+          {
+            "kind": "TemplateQualifier",
+            "semanticId": {
+              "keys": [
+                {
+                  "type": "GlobalReference",
+                  "value": "https://www.w3.org/2019/wot/json-schema#required"
+                }
+              ],
+              "type": "ExternalReference"
+            },
+            "type": "RequiredProperties",
+            "value": "[\"X\",\"Y\"]",
+            "valueType": "xs:string"
+          }
+        ],
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasInput"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "type",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/1/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "properties",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/1/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#properties"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "X",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/1/value/1/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "key",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/1/value/1/value/0/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "idShort": "type",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/1/value/1/value/0/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "Y",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/1/value/1/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "key",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/1/value/1/value/1/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "idShort": "type",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/1/value/1/value/1/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "forms",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasForm"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "href",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "security",
+        "modelType": "SubmodelElementList",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "op",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/2"
+      },
+      {
+        "idShort": "response",
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/3",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aid/MqttResponseForm/1/0"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "contentType",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/3/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "href",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/3/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "mqv_retain",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/3/value/2"
+      },
+      {
+        "idShort": "mqv_control_packet",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/3/value/3"
+      },
+      {
+        "idShort": "mqv_retain",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/4"
+      },
+      {
+        "idShort": "mqv_qos",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/5"
+      },
+      {
+        "idShort": "mqv_control_packet",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/6"
+      },
+      {
+        "idShort": "mqv_request_reply",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/7"
+      },
+      {
+        "idShort": "mqv_response_topic",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/8"
+      }
+    ],
+    "aimc": [
+      {
+        "idShort": "AIMC",
+        "modelType": "Submodel",
+        "path": "",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/Submodel"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "MappingConfigurations",
+        "modelType": "SubmodelElementList",
+        "path": "/submodelElements/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/1/0/MappingConfigurations"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/0"
+      },
+      {
+        "base64": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIHJldHVybiB7IFg9MSwgWT0yIH0gZW5k",
+        "byteLength": 51,
+        "contentType": "text/plain",
+        "idShort": "Transformation",
+        "modelType": "Blob",
+        "path": "/submodelElements/0/value/0/value/0",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Transformation"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "sha256": "eba3ba5966c386f0454682a10e7d5408696dd751116f7474fc268a7b9ce90438"
+      },
+      {
+        "idShort": "Sources",
+        "modelType": "SubmodelElementList",
+        "path": "/submodelElements/0/value/0/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sources"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/0/value/1/value/0"
+      },
+      {
+        "idShort": "Source",
+        "modelType": "ReferenceElement",
+        "path": "/submodelElements/0/value/0/value/1/value/0/value/0",
+        "reference": {
+          "keys": [
+            {
+              "type": "Submodel",
+              "value": "{aas_id}/submodels/ControlComponentInstance"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "Skills"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "Move"
+            },
+            {
+              "type": "Operation",
+              "value": "operation"
+            }
+          ],
+          "type": "ModelReference"
+        },
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/Source"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "authoredKey": "Invoke",
+        "idShort": "SourceId",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/0/value/1/value/0/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/SourceId"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "idShort": "Sinks",
+        "modelType": "SubmodelElementList",
+        "path": "/submodelElements/0/value/0/value/2",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sinks"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/0/value/2/value/0"
+      },
+      {
+        "idShort": "Sink",
+        "modelType": "ReferenceElement",
+        "path": "/submodelElements/0/value/0/value/2/value/0/value/0",
+        "reference": {
+          "keys": [
+            {
+              "type": "Submodel",
+              "value": "a/submodels/AID"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "interface_mqtt"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "InteractionMetadata"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "actions"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "Move"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "input"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "X"
+            }
+          ],
+          "type": "ModelReference"
+        },
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/Sink"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "authoredKey": "X",
+        "idShort": "SinkId",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/0/value/2/value/0/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/SinkId"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "modelType": "SubmodelElementCollection",
+        "path": "/submodelElements/0/value/0/value/2/value/1"
+      },
+      {
+        "idShort": "Sink",
+        "modelType": "ReferenceElement",
+        "path": "/submodelElements/0/value/0/value/2/value/1/value/0",
+        "reference": {
+          "keys": [
+            {
+              "type": "Submodel",
+              "value": "a/submodels/AID"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "interface_mqtt"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "InteractionMetadata"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "actions"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "Move"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "input"
+            },
+            {
+              "type": "SubmodelElementCollection",
+              "value": "Y"
+            }
+          ],
+          "type": "ModelReference"
+        },
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/Sink"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "authoredKey": "Y",
+        "idShort": "SinkId",
+        "modelType": "Property",
+        "path": "/submodelElements/0/value/0/value/2/value/1/value/1",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/SinkId"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      }
+    ]
+  },
+  "models": {
+    "aid": {
+      "id": "a/submodels/AID",
+      "idShort": "AID",
+      "modelType": "Submodel",
+      "semanticId": {
+        "keys": [
+          {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/1/Submodel"
+          }
+        ],
+        "type": "ExternalReference"
+      }
+    },
+    "aimc": {
+      "id": "contractAAS/submodels/AIMC",
+      "idShort": "AIMC",
+      "modelType": "Submodel",
+      "semanticId": {
+        "keys": [
+          {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/Submodel"
+          }
+        ],
+        "type": "ExternalReference"
+      }
+    }
+  }
+}

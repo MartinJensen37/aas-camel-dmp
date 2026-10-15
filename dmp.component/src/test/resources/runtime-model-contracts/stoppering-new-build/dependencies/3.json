@@ -1,0 +1,107 @@
+{
+  "description": [
+    {
+      "language": "en",
+      "text": "Asset variable definitions with semantic concepts and live-data interface references."
+    }
+  ],
+  "embeddedDataSpecifications": [
+    {
+      "dataSpecification": {
+        "keys": [
+          {
+            "type": "GlobalReference",
+            "value": "https://smartproductionlab.aau.dk/aas/syntegonStopperingCandidate/submodels/Variables"
+          }
+        ],
+        "type": "ExternalReference"
+      },
+      "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+          {
+            "language": "en",
+            "text": "class"
+          }
+        ],
+        "value": "Variables"
+      }
+    }
+  ],
+  "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingCandidate/submodels/Variables",
+  "idShort": "Variables",
+  "modelType": "Submodel",
+  "semanticId": {
+    "keys": [
+      {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/submodels/Variables/1/0"
+      }
+    ],
+    "type": "ExternalReference"
+  },
+  "submodelElements": [
+    {
+      "description": [
+        {
+          "language": "en",
+          "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+        }
+      ],
+      "idShort": "PackMLState",
+      "modelType": "Property",
+      "semanticId": {
+        "keys": [
+          {
+            "type": "GlobalReference",
+            "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+          }
+        ],
+        "type": "ExternalReference"
+      },
+      "supplementalSemanticIds": [
+        {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://w3id.org/2026/apex/semantic/state/operational"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      ],
+      "valueType": "xs:string"
+    },
+    {
+      "description": [
+        {
+          "language": "en",
+          "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+        }
+      ],
+      "idShort": "OccupationState",
+      "modelType": "Property",
+      "semanticId": {
+        "keys": [
+          {
+            "type": "GlobalReference",
+            "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+          }
+        ],
+        "type": "ExternalReference"
+      },
+      "supplementalSemanticIds": [
+        {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://w3id.org/2026/apex/semantic/state/occupied"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      ],
+      "valueType": "xs:string"
+    }
+  ]
+}

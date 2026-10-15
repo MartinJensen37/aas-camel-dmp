@@ -25,38 +25,44 @@
 package org.eclipse.digitaltwin.basyx.dmp.component;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpComponent;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 
 /**
- * Starts the stand-alone databridge component
+ * Starts the DMP. All routes are built at runtime from the AAS repository and
+ * kept current from AAS/submodel events; there is no file-based configuration.
  *
  * @author danish
  */
 public class DmpExecutable {
 
-	private static final String DEFAULT_CONFIG_PATH = "/usr/share/config";
 	private static DmpComponent dataBridgeComponent;
-	
+	private static ManagedDmpRuntime managedRuntime;
+	private static boolean shutdownHookRegistered;
+
 	public static void main(String[] args) throws IllegalArgumentException, SecurityException {
-		String configPath = getConfigPath(args);
-		
-		RoutesConfigurationLoader routesConfigurationLoader = new RoutesConfigurationLoader(configPath);
-
-		RoutesConfiguration config = routesConfigurationLoader.create();
-
-		dataBridgeComponent = new DmpComponent(config);
-		dataBridgeComponent.startComponent();
-	}
-
-	private static String getConfigPath(String[] args) {
-		if (args.length == 0) {
-			return DEFAULT_CONFIG_PATH;
-		} else {
-			return args[0];
-		}
+		if (args.length != 0) throw new IllegalArgumentException("the DMP takes no arguments; configure it through DMP_MANAGED_* environment variables");
+		ManagedDmpRuntime runtime = new ManagedDmpRuntime(ManagedRuntimeSettings.fromEnvironment(System.getenv()));
+		runtime.start();
+		managedRuntime = runtime;
+		dataBridgeComponent = runtime.component();
+		registerManagedShutdownHook();
 	}
 
 	public static DmpComponent getDmpComponent() {
 		return dataBridgeComponent;
+	}
+
+	public static synchronized void stopManagedRuntime() {
+		ManagedDmpRuntime runtime = managedRuntime;
+		managedRuntime = null;
+		if (runtime != null) runtime.close();
+		dataBridgeComponent = null;
+	}
+
+	private static synchronized void registerManagedShutdownHook() {
+		if (shutdownHookRegistered) return;
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			try { stopManagedRuntime(); } catch (RuntimeException ignored) { }
+		}, "dmp-managed-shutdown"));
+		shutdownHookRegistered = true;
 	}
 }

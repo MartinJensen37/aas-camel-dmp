@@ -1,7 +1,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.executable.regression;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteCreatorFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpRuntimeExtension;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class ConnectorRouteFactoryDiscoveryTest {
 	@Test

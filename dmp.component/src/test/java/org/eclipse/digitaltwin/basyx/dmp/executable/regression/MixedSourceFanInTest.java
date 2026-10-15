@@ -1,7 +1,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.executable.regression;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.awaitility.Awaitility.await;
 
 import java.net.InetSocketAddress;
@@ -24,9 +24,8 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConf
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteCreator;
 import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpPollingDataSourceConfiguration;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpServer;
 
 /** Exercises a simulated async feed with actual HTTP and AAS polling consumers. */
@@ -42,6 +41,7 @@ public class MixedSourceFanInTest {
 		server.createContext("/pressure", request -> {
 			httpReads.incrementAndGet();
 			byte[] response = ("{\"value\":" + httpValue.get() + "}").getBytes(StandardCharsets.UTF_8);
+			request.getResponseHeaders().set("Content-Type", "application/json");
 			request.sendResponseHeaders(200, response.length);
 			try (var body = request.getResponseBody()) {
 				body.write(response);
@@ -77,7 +77,7 @@ public class MixedSourceFanInTest {
 			http.setPollingIntervalMs(150);
 
 			AASPollingDataSourceConfiguration aas = new AASPollingDataSourceConfiguration(
-					"aasPoll", null, 0, "Temperature", base + "/submodels/demo", "DotAAS-V3");
+					"aasPoll", null, 0, "Temperature", base + "/submodels/demo");
 			aas.setSourceId("Temperature");
 			aas.setDelivery("sync");
 			aas.setValuePath("$.value");
@@ -108,8 +108,8 @@ public class MixedSourceFanInTest {
 						onException(IllegalArgumentException.class)
 								.process(exchange -> sourceErrors.incrementAndGet()).handled(true);
 						new ExecutionPolicyRouteCreator(this, routes).addRouteToRouteBuilder(route);
-						from("direct:capture").process(exchange -> captured.add(new Gson().fromJson(
-								exchange.getMessage().getBody(String.class), Map.class)));
+						from("direct:capture").process(exchange -> captured.add(
+								exchange.getMessage().getBody(Map.class)));
 					}
 				});
 				context.start();
@@ -121,22 +121,22 @@ public class MixedSourceFanInTest {
 				}
 				await().atMost(Duration.ofSeconds(4)).until(
 						() -> httpReads.get() > 0 && aasReads.get() > 1);
-				assertTrue("a failed sync read must not emit a partial sources map", captured.isEmpty());
-				assertEquals("failed reads must not disassemble the timer exchange", 0, sourceErrors.get());
+				assertTrue(captured.isEmpty(), "a failed sync read must not emit a partial sources map");
+				assertEquals(0, sourceErrors.get(), "failed reads must not disassemble the timer exchange");
 
 				aasReady.set(true);
 				await().atMost(Duration.ofSeconds(8)).untilAsserted(() -> {
-					assertTrue("waiting for all three sources", !captured.isEmpty());
+					assertTrue(!captured.isEmpty(), "waiting for all three sources");
 					Map<?, ?> sources = captured.get(0);
 					assertEquals(3, sources.size());
 					assertEquals("RUNNING", sources.get("StationState"));
-					assertEquals(7.0, sources.get("Pressure"));
-					assertEquals(19.0, sources.get("Temperature"));
+					assertEquals(7L, sources.get("Pressure"));
+					assertEquals(19L, sources.get("Temperature"));
 				});
 
 				httpValue.set(9);
 				await().atMost(Duration.ofSeconds(8)).until(() -> captured.stream().anyMatch(
-						sources -> Double.valueOf(9).equals(sources.get("Pressure"))));
+						sources -> Long.valueOf(9).equals(sources.get("Pressure"))));
 			}
 		} finally {
 			server.stop(0);

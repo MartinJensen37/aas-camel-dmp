@@ -25,52 +25,33 @@
 package org.eclipse.digitaltwin.basyx.dmp.component.health;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
-import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.health.HealthCheckRegistry;
-import org.apache.camel.impl.health.DefaultHealthCheckRegistry;
-import org.apache.camel.impl.health.RoutesHealthCheckRepository;
 import org.apache.camel.test.junit5.CamelTestSupport;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.ParseException;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
-import org.eclipse.digitaltwin.basyx.dmp.component.health.HealthCheckRouteBuilder;
-import org.eclipse.digitaltwin.basyx.dmp.component.health.HealthCheckUtils;
+import org.eclipse.digitaltwin.basyx.dmp.component.ManagedRuntimeStatus;
+import org.eclipse.digitaltwin.basyx.dmp.management.repository.MappingReconciliationService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.JsonSyntaxException;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.hasItem;
 
 /**
- * Test class for health check implementation behavior
+ * Health reflects the runtime status: ready only after the initial repository
+ * reconciliation and with the control route started, rendered from a fixed
+ * safe projection.
  *
  * @author danish
- *
  */
 class HealthCheckTest extends CamelTestSupport {
 
-	/**
-	 * The health port is resolved statically at {@code HealthCheckUtils} class
-	 * load. Reserve a free port up front so the test does not collide with a
-	 * running service on the default 8085.
-	 */
+	/** Reserve a free port so the test does not collide with a running DMP on 8080. */
 	static {
 		try (ServerSocket socket = new ServerSocket(0)) {
 			System.setProperty(HealthCheckUtils.HEALTH_PORT_SYSTEM_PROPERTY,
@@ -80,109 +61,58 @@ class HealthCheckTest extends CamelTestSupport {
 		}
 	}
 
-	CamelContext context;
-
-	@Override
-	public boolean isUseAdviceWith() {
-		return true;
-	}
-
-	@Override
-	protected CamelContext createCamelContext() throws Exception {
-		context = super.createCamelContext();
-
-		DefaultHealthCheckRegistry registry = configureHealthCheckRegistry();
-
-		// Camel 4.x: setExtension() was removed; use the context plugin API instead
-		context.getCamelContextExtension().addContextPlugin(HealthCheckRegistry.class, registry);
-
-		return context;
-	}
-
-	private DefaultHealthCheckRegistry configureHealthCheckRegistry() {
-		DefaultHealthCheckRegistry registry = new DefaultHealthCheckRegistry();
-		registry.register(new RoutesHealthCheckRepository());
-		return registry;
-	}
-
 	@Override
 	protected RouteBuilder createRouteBuilder() {
 		return new HealthCheckRouteBuilder();
 	}
 
-	@Test
-	void responseOkWhenServiceIsHealthy() throws InterruptedException, ClientProtocolException, IOException {
-		context.start();
-
-		HttpResponse response = getResponseFromHealthEndpoint(
-				HealthCheckUtils.getHealthCheckEndpointRequestURI());
-
-		assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
-
-		// The health route (camel-rest consumer) keeps the canonical route id.
-		assertRouteIds(response, HealthCheckUtils.ROUTE_ID);
+	@AfterEach
+	void resetStatus() {
+		ManagedRuntimeStatus.reset();
 	}
 
 	@Test
-	void responseServiceUnavailableWhenServiceIsUnhealthy() throws Exception {
-		addDummyRoute();
-
-		context.start();
-
-		stopDummyRoute();
-
-		HttpResponse response = getResponseFromHealthEndpoint(
-				HealthCheckUtils.getHealthCheckEndpointRequestURI());
-
-		assertEquals(HttpStatus.SC_SERVICE_UNAVAILABLE, response.getStatusLine().getStatusCode());
-
-		// The stopped route is reported as unhealthy.
-		assertRouteIds(response, "test.endpoint");
+	void unavailableBeforeTheInitialReconciliation() throws Exception {
+		ManagedRuntimeStatus.reset();
+		java.net.http.HttpResponse<String> response = health();
+		assertEquals(java.net.HttpURLConnection.HTTP_UNAVAILABLE, response.statusCode());
+		JsonObject value = JsonParser.parseString(response.body()).getAsJsonObject();
+		assertEquals("starting", value.get("state").getAsString());
+		assertFalse(value.get("ready").getAsBoolean());
 	}
 
-	private void stopDummyRoute() throws Exception {
-		context.getRouteController().stopRoute("test.endpoint");
+	@Test
+	void okOnceTheInitialScanCompletedAndTheControlRouteStarted() throws Exception {
+		ManagedRuntimeStatus.beginManaged();
+		ManagedRuntimeStatus.controlRouteStarted();
+		ManagedRuntimeStatus.publish(new MappingReconciliationService.Report(true, false, 0, 0, 0, List.of(), List.of()));
+		java.net.http.HttpResponse<String> response = health();
+		assertEquals(java.net.HttpURLConnection.HTTP_OK, response.statusCode());
+		JsonObject value = JsonParser.parseString(response.body()).getAsJsonObject();
+		assertEquals("ready", value.get("state").getAsString());
+		assertTrue(value.get("initialScanComplete").getAsBoolean());
 	}
 
-	private HttpResponse getResponseFromHealthEndpoint(String endpointUrl) throws IOException, ClientProtocolException {
-		HttpClient client = HttpClientBuilder.create().build();
-		HttpGet request = new HttpGet(endpointUrl);
-
-		return client.execute(request);
+	@Test
+	void healthUsesTheCachedSafeProjectionRatherThanNativeDetailObjects() throws Exception {
+		ManagedRuntimeStatus.beginManaged();
+		java.net.http.HttpResponse<String> response = health();
+		assertEquals(java.net.HttpURLConnection.HTTP_UNAVAILABLE, response.statusCode());
+		String body = response.body();
+		JsonObject value = JsonParser.parseString(body).getAsJsonObject();
+		assertEquals(java.util.Set.of("ready", "state", "initialScanComplete", "category"), value.keySet());
+		assertFalse(body.contains("route.id"));
+		assertFalse(body.contains("exception"));
 	}
 
-	private void addDummyRoute() throws Exception {
-		context.addRoutes(new RouteBuilder() {
-
-			@Override
-			public void configure() throws Exception {
-				from("direct:test").routeId("test.endpoint").log("mock endpoint");
-			}
-		});
-	}
-
-	private String getRouteIdFromResponse(HttpResponse response, int index)
-			throws JsonSyntaxException, ParseException, IOException {
-		JsonArray jsonArray = JsonParser.parseString(EntityUtils.toString(response.getEntity())).getAsJsonArray();
-		JsonObject jsonObject = jsonArray.get(index).getAsJsonObject();
-		String expectedValue = jsonObject.getAsJsonObject("details").get("route.id").getAsString();
-
-		return expectedValue;
-	}
-
-	private void assertRouteIds(HttpResponse response, String... expectedRouteIds)
-			throws JsonSyntaxException, ParseException, IOException {
-		JsonArray jsonArray = JsonParser.parseString(EntityUtils.toString(response.getEntity())).getAsJsonArray();
-
-		Set<String> reportedRouteIds = new HashSet<>();
-		for (int i = 0; i < jsonArray.size(); i++) {
-			JsonObject jsonObject = jsonArray.get(i).getAsJsonObject();
-			reportedRouteIds.add(jsonObject.getAsJsonObject("details").get("route.id").getAsString());
-		}
-
-		for (String expectedRouteId : expectedRouteIds) {
-			assertThat("reported route ids: " + reportedRouteIds, reportedRouteIds,
-					hasItem(expectedRouteId));
+	private static java.net.http.HttpResponse<String> health() throws IOException {
+		try {
+			return java.net.http.HttpClient.newHttpClient().send(java.net.http.HttpRequest.newBuilder(
+					java.net.URI.create(HealthCheckUtils.getHealthCheckEndpointRequestURI())).GET().build(),
+					java.net.http.HttpResponse.BodyHandlers.ofString());
+		} catch (InterruptedException interrupted) {
+			Thread.currentThread().interrupt();
+			throw new IOException(interrupted);
 		}
 	}
 }

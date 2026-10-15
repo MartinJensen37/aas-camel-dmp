@@ -24,7 +24,6 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.component.health;
 
-import org.springframework.http.HttpMethod;
 
 /**
  * Utility class for health check
@@ -34,7 +33,7 @@ import org.springframework.http.HttpMethod;
  */
 public class HealthCheckUtils {
 	public static final String ROUTE_ID = "app.health.context";
-	public static final String DEFAULT_PORT = "8085";
+	public static final String DEFAULT_PORT = "8080";
 
 	/** Env var / system property that overrides the health endpoint port (per-asset DMPs). */
 	public static final String HEALTH_PORT_ENV_VAR = "DATABRIDGE_HEALTH_PORT";
@@ -43,9 +42,8 @@ public class HealthCheckUtils {
 	private static final String COMPONENT = "jetty";
 	private static final String PROTOCOL = "http";
 	private static final String HOST = "0.0.0.0";
-	private static final String PORT = resolvePort();
 	private static final String PATH = "/health";
-	private static final String HTTP_METHOD_RESTRICT_PARAMETER = "httpMethodRestrict=" + HttpMethod.GET;
+	private static final String HTTP_METHOD_RESTRICT_PARAMETER = "httpMethodRestrict=GET";
 
 	private HealthCheckUtils() {
 		throw new IllegalStateException("Utility class");
@@ -67,14 +65,14 @@ public class HealthCheckUtils {
 	}
 
 	public static String getHealthCheckEndpoint() {
-		return COMPONENT + ":" + PROTOCOL + "://" + HOST + ":" + PORT + PATH + "?" + HTTP_METHOD_RESTRICT_PARAMETER;
+		return COMPONENT + ":" + PROTOCOL + "://" + HOST + ":" + resolvePort() + PATH + "?" + HTTP_METHOD_RESTRICT_PARAMETER;
 	}
 	
 	public static String getHealthCheckEndpointRequestURI() {
-		return PROTOCOL + "://" + HOST + ":" + PORT + PATH;
+		return PROTOCOL + "://" + HOST + ":" + resolvePort() + PATH;
 	}
 
 	public static String getHealthCheckPort() {
-		return PORT;
+		return resolvePort();
 	}
 }

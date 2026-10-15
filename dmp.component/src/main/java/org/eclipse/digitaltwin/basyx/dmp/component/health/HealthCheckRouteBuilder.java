@@ -24,14 +24,12 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.component.health;
 
-import javax.ws.rs.core.MediaType;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.rest.RestBindingMode;
 import org.apache.camel.model.dataformat.JsonLibrary;
-import org.eclipse.digitaltwin.basyx.dmp.component.health.HealthCheckProcessor;
-import org.eclipse.digitaltwin.basyx.dmp.component.health.HealthCheckUtils;
+import org.eclipse.digitaltwin.basyx.dmp.component.ManagedRuntimeStatus;
 
 /**
  * Builds the health check route via the consolidated camel-rest surface
@@ -50,18 +48,26 @@ public class HealthCheckRouteBuilder extends RouteBuilder {
 				.component("jetty")
 				.host("0.0.0.0")
 				.port(HealthCheckUtils.getHealthCheckPort())
+				.inlineRoutes(false)
 				.bindingMode(RestBindingMode.off);
 
 		rest("/health")
 				.get()
-				.produces(MediaType.APPLICATION_JSON)
+				.produces("application/json")
 				.to("direct:health");
+		rest("/management").get("/status")
+				.produces("application/json")
+				.to("direct:managed-status");
+		from("direct:managed-status")
+			.routeId("managed-runtime-status")
+			.process(exchange -> exchange.getMessage().setBody(ManagedRuntimeStatus.asMap()))
+			.marshal().json(JsonLibrary.Gson);
 
 		// Camel merges the rest consumer and the direct route it targets into a
 		// single route; the direct route's id (the canonical health route id) wins.
 		from("direct:health")
 				.routeId(HealthCheckUtils.ROUTE_ID)
-				.setHeader(Exchange.CONTENT_TYPE).constant(MediaType.APPLICATION_JSON)
+				.setHeader(Exchange.CONTENT_TYPE).constant("application/json")
 				.bean(HealthCheckProcessor.class)
 				.marshal().json(JsonLibrary.Gson);
 	}

@@ -24,16 +24,10 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.component.health;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.apache.camel.Exchange;
 import org.apache.camel.Handler;
-import org.apache.camel.health.HealthCheck;
-import org.apache.camel.health.HealthCheckHelper;
-import org.apache.http.HttpStatus;
-import org.eclipse.digitaltwin.basyx.dmp.component.health.HealthCheckResultDTO;
+import java.net.HttpURLConnection;
+import org.eclipse.digitaltwin.basyx.dmp.component.ManagedRuntimeStatus;
 
 /**
  * A processor class for processing the health status
@@ -45,22 +39,11 @@ public class HealthCheckProcessor {
 
 	@Handler
 	public void processHealthCheck(Exchange exchange) {
-		Collection<HealthCheck.Result> healthCheckResults = HealthCheckHelper.invoke(exchange.getContext());
-
-		if (!areAllServicesAndRoutesHealthy(healthCheckResults)) {
-			exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, HttpStatus.SC_SERVICE_UNAVAILABLE);
-		}
-
-		List<HealthCheckResultDTO> healthCheckResultDTOs = prepareHealthCheckResults(healthCheckResults);
-
-		exchange.getMessage().setBody(healthCheckResultDTOs);
-	}
-
-	private boolean areAllServicesAndRoutesHealthy(Collection<HealthCheck.Result> results) {
-		return results.stream().allMatch(healthCheckResult -> healthCheckResult.getState() == HealthCheck.State.UP);
-	}
-
-	private List<HealthCheckResultDTO> prepareHealthCheckResults(Collection<HealthCheck.Result> healthCheckResults) {
-		return healthCheckResults.stream().map(HealthCheckResultDTO::toDTO).collect(Collectors.toList());
+		var status = ManagedRuntimeStatus.snapshot();
+		exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE,
+				status.ready() ? HttpURLConnection.HTTP_OK : HttpURLConnection.HTTP_UNAVAILABLE);
+		exchange.getMessage().setBody(java.util.Map.of("ready", status.ready(),
+				"state", status.state().name().toLowerCase(java.util.Locale.ROOT),
+				"initialScanComplete", status.initialScanComplete(), "category", status.category()));
 	}
 }

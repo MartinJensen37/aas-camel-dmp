@@ -23,22 +23,6 @@
 		<argLine></argLine>
 	</properties>
 
-	<dependencyManagement>
-		<dependencies>
-			<!-- Keep BaSyx's spring-security off the 5.5.x line (→ spring-core
-			     5.3.11, which shadows camel-jms's spring 7.0.8 and breaks
-			     FixedBackOff etc.). 6.5.x is spring-6-based; camel 7.0.8
-			     supersedes its managed spring-core cleanly. -->
-			<dependency>
-				<groupId>org.springframework.security</groupId>
-				<artifactId>spring-security-bom</artifactId>
-				<version>6.5.5</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
-
 	<!-- Define additional plugins that are not included by default -->
 	<!-- Plugin configuration is done in parent project(s) -->
 	<build>
@@ -49,7 +33,7 @@
                                 <artifactId>maven-compiler-plugin</artifactId>
                                 <version>3.12.1</version>
                                 <configuration>
-                                        <release>17</release>
+                                        <release>${maven.compiler.release}</release>
 				</configuration>
 			</plugin>
 
@@ -100,13 +84,24 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
-			<version>2.0.11</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
 			<artifactId>dmp.core</artifactId>
 			<version>${revision}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<artifactId>dmp.management</artifactId>
+			<version>${revision}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<artifactId>dmp.management</artifactId>
+			<version>${revision}</version>
+			<type>test-jar</type>
+			<scope>test</scope>
 		</dependency>
 
 		<dependency>
@@ -181,176 +176,51 @@
 			<version>${revision}</version>
 		</dependency>
 		
-		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.examples.plc4x-lua-aas</artifactId>
-			<version>${revision}</version>
-			<scope>test</scope>
-		</dependency>
 
-		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.examples.aas-lua-mqtt</artifactId>
-			<version>${revision}</version>
-			<scope>test</scope>
-		</dependency>
 		
-		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.examples.sql-lua-aas</artifactId>
-			<version>${revision}</version>
-			<scope>test</scope>
-		</dependency>
 
-		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.examples.aas-lua-http</artifactId>
-			<version>${revision}</version>
-			<scope>test</scope>
-		</dependency>
 
-		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.examples.httpserver</artifactId>
-			<version>${revision}</version>
-		</dependency>
 
-		<dependency>
-			<groupId>com.fasterxml.jackson.datatype</groupId>
-			<artifactId>jackson-datatype-jsr310</artifactId>
-			<version>2.14.1</version>
-		</dependency>
 
-		<!-- BaSyx SDK. Keep its spring-security (the embedded AAS server wires
-		     spring-security-web's HttpFirewall at startup) but stop version
-		     drift: BaSyx 1.2.0 pins spring-security 5.5.3 → spring-core
-		     5.3.11, which shadows camel-jms's spring 7.0.8 and breaks
-		     FixedBackOff etc. — aligned via the spring-security-bom above. -->
-		<dependency>
-			<groupId>org.eclipse.basyx</groupId>
-			<artifactId>basyx.sdk</artifactId>
-			<version>1.2.0</version>
-			<exclusions>
-				<exclusion>
-					<groupId>org.eclipse.milo</groupId>
-					<artifactId>*</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
 
-		<!-- BaSyx SDK tests -->
-		<dependency>
-			<groupId>org.eclipse.basyx</groupId>
-			<artifactId>basyx.sdk</artifactId>
-			<version>1.4.0</version>
-			<classifier>tests</classifier>
-			<scope>test</scope>
-			<exclusions>
-				<exclusion>
-					<groupId>org.eclipse.milo</groupId>
-					<artifactId>*</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>org.springframework.security</groupId>
-					<artifactId>*</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-
-		<!-- Depends on the components library -->
-		<dependency>
-			<groupId>org.eclipse.basyx</groupId>
-			<artifactId>basyx.components.lib</artifactId>
-			<version>1.2.0</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.eclipse.basyx</groupId>
-			<artifactId>basyx.components.AASServer</artifactId>
-			<version>1.2.0</version>
-			<exclusions>
-				<!-- Tests use the InMemory backend only; the MongoDB persistence
-				     driver drags spring-data-mongodb (spring-core 5.3.11), which
-				     shadows camel's spring 7.0.8 (FixedBackOff NoSuchMethodError). -->
-				<exclusion>
-					<groupId>org.springframework.data</groupId>
-					<artifactId>spring-data-mongodb</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
 
 		<!-- JUnit 4 for running JUnit tests -->
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.13.2</version>
-			<scope>test</scope>
-		</dependency>
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-test-junit5</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<!-- Run the existing JUnit 4 regressions alongside the Jupiter contracts. -->
+
+
+
 		<dependency>
-			<groupId>org.junit.vintage</groupId>
-			<artifactId>junit-vintage-engine</artifactId>
-			<version>5.14.4</version>
+			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<artifactId>dmp.camel-paho</artifactId>
+			<version>${revision}</version>
+			<type>test-jar</type>
 			<scope>test</scope>
 		</dependency>
 
-		<!-- ActiveMQ classic broker is javax-compiled internally (its region
-		     broker wires javax.jms types); routes/tests use the jakarta client
-		     (activemq-client-jakarta via camel-activemq). The broker documents
-		     this dual-JMS-API setup: keep javax.jms-api test-scoped so the
-		     BrokerService starts. -->
+		<!-- kafka-clients comes from camel-kafka (Kafka 4.3.1). The embedded KRaft test broker uses the
+		     same Kafka line, so clients and broker share one version on the test classpath. -->
 		<dependency>
-			<groupId>org.apache.activemq</groupId>
-			<artifactId>activemq-broker</artifactId>
-			<version>5.19.9</version>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>kafka_2.13</artifactId>
+			<version>4.3.1</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>javax.jms</groupId>
-			<artifactId>javax.jms-api</artifactId>
-			<version>2.0.1</version>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>kafka-server</artifactId>
+			<version>4.3.1</version>
 			<scope>test</scope>
-		</dependency>
-		<!-- camel-jms's pooled connection-factory implementation (the routes
-		     configure pooled factories; without it PooledConnectionFactory
-		     fails to instantiate and every jms route errors at start). -->
-		<dependency>
-			<groupId>org.messaginghub</groupId>
-			<artifactId>pooled-jms</artifactId>
-			<version>3.1.7</version>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.reflections</groupId>
-			<artifactId>reflections</artifactId>
-			<version>0.10.2</version>
-		</dependency>
-
-		<!-- Moquette MQTT broker for testing MQTT events -->
-		<dependency>
-			<groupId>io.moquette</groupId>
-			<artifactId>moquette-broker</artifactId>
-			<version>0.16</version>
-			<scope>test</scope>
-			<exclusions>
-				<exclusion>
-					<groupId>org.slf4j</groupId>
-					<artifactId>slf4j-log4j12</artifactId>
-				</exclusion>
-			</exclusions>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.awaitility/awaitility -->
 		<dependency>
 			<groupId>org.awaitility</groupId>
 			<artifactId>awaitility</artifactId>
-			<version>4.2.0</version>
 			<scope>test</scope>
 		</dependency>
 		
@@ -413,61 +283,6 @@
 						</executions>
 					</plugin>
 
-					<!-- Create integration test environment -->
-					<plugin>
-						<groupId>com.dkanejs.maven.plugins</groupId>
-						<artifactId>docker-compose-maven-plugin</artifactId>
-						<version>4.0.0</version>
-						<configuration>
-							<composeFile>${project.basedir}/docker-compose.yml</composeFile>
-							<detachedMode>true</detachedMode>
-							<envFile>${project.basedir}/src/test/resources/.env</envFile>
-							<envVars>
-								<BASYX_IMAGE_TAG>${docker.image.tag}</BASYX_IMAGE_TAG>
-								<BASYX_IMAGE_NAME>${docker.namespace}/${docker.image.name}</BASYX_IMAGE_NAME>
-								<VOLUME_MAPPING>${project.basedir}/src/test/resources/mqtt</VOLUME_MAPPING>
-							</envVars>
-						</configuration>
-						<executions>
-							<execution>
-								<id>docker-compose-up</id>
-								<phase>pre-integration-test</phase>
-								<goals>
-									<goal>up</goal>
-								</goals>
-							</execution>
-							<execution>
-								<id>docker-compose-down</id>
-								<phase>post-integration-test</phase>
-								<goals>
-									<goal>down</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-
-					<!-- Run integration tests -->
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-failsafe-plugin</artifactId>
-						<version>3.1.0</version>
-						<configuration>
-							<systemPropertyVariables>
-								<VOLUME_MAPPING>${project.basedir}/src/test/resources/mqtt/databridge</VOLUME_MAPPING>
-							</systemPropertyVariables>
-							<includes>
-								<include>**/ITTestDMPMqtt.java</include>
-							</includes>
-						</configuration>
-						<executions>
-							<execution>
-								<goals>
-									<goal>integration-test</goal>
-									<goal>verify</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
 				</plugins>
 			</build>
 		</profile>

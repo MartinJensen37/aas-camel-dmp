@@ -1,0 +1,1035 @@
+{
+  "acceptanceScope": "captured structural vocabulary only; not a Java semantic validation allowlist",
+  "acceptedSemanticIds": [
+    "http://opcfoundation.org/UA/WoT-Binding/componentOf",
+    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata",
+    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata",
+    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Interface",
+    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/PropertyDefinition",
+    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key",
+    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/minMaxRange",
+    "https://admin-shell.io/idta/AssetInterfacesDescription/1/1/Submodel",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/1/0/MappingConfigurations",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/DefaultPollingInterval",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ExecutionSemantics",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ExecutionSemantics/TriggerSourceIds",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSink/Sink",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSink/SinkId",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSinks",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSource/Source",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSource/SourceId",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSources",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseTransformation",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/Sink",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/SinkId",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sinks",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/PollingInterval",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/Source",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/SourceId",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sources",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Transformation",
+    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/Submodel",
+    "https://smartproductionlab.aau.dk/aid/MqttControlPacket/1/0",
+    "https://smartproductionlab.aau.dk/aid/MqttQos/1/0",
+    "https://smartproductionlab.aau.dk/aid/MqttRequestReply/1/0",
+    "https://smartproductionlab.aau.dk/aid/MqttResponseForm/1/0",
+    "https://smartproductionlab.aau.dk/aid/MqttResponseTopic/1/0",
+    "https://smartproductionlab.aau.dk/aid/MqttRetain/1/0",
+    "https://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+    "https://www.w3.org/2011/http#methodName",
+    "https://www.w3.org/2019/wot/hypermedia#forContentType",
+    "https://www.w3.org/2019/wot/hypermedia#hasTarget",
+    "https://www.w3.org/2019/wot/json-schema#enum",
+    "https://www.w3.org/2019/wot/json-schema#items",
+    "https://www.w3.org/2019/wot/json-schema#properties",
+    "https://www.w3.org/2019/wot/json-schema#propertyName",
+    "https://www.w3.org/2019/wot/td#ActionAffordance",
+    "https://www.w3.org/2019/wot/td#PropertyAffordance",
+    "https://www.w3.org/2019/wot/td#baseURI",
+    "https://www.w3.org/2019/wot/td#definesSecurityScheme",
+    "https://www.w3.org/2019/wot/td#hasForm",
+    "https://www.w3.org/2019/wot/td#hasInput",
+    "https://www.w3.org/2019/wot/td#hasOperationType",
+    "https://www.w3.org/2019/wot/td#hasOutput",
+    "https://www.w3.org/2019/wot/td#hasSecurityConfiguration",
+    "https://www.w3.org/2019/wot/td#isObservable",
+    "https://www.w3.org/2019/wot/td#synchronous",
+    "https://www.w3.org/2019/wot/td#title"
+  ],
+  "acceptedSupplementalSemanticIds": [
+    "http://opcfoundation.org/UA/WoT-Binding/",
+    "http://www.w3.org/2011/http",
+    "http://www.w3.org/2011/modbus",
+    "http://www.w3.org/2011/mqtt",
+    "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/command.schema.json",
+    "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/commandResponse.schema.json",
+    "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/parameterCommand.schema.json",
+    "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/stationState.schema.json",
+    "https://www.w3.org/2019/wot/json-schema#maximum",
+    "https://www.w3.org/2019/wot/json-schema#minimum",
+    "https://www.w3.org/2019/wot/td",
+    "https://www.w3.org/2019/wot/td#InteractionAffordance",
+    "https://www.w3.org/2019/wot/td#name"
+  ],
+  "cases": [
+    {
+      "aid": "stoppering/aid.json",
+      "aimc": "stoppering/aimc.json",
+      "caseClass": "unsupported-contract",
+      "connectorCompileOutcome": "reject-retired-declaration",
+      "dependencies": [
+        {
+          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/ControlComponentInstance",
+          "path": "dependencies/0.json"
+        },
+        {
+          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/Nameplate",
+          "path": "dependencies/1.json"
+        },
+        {
+          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/Parameters",
+          "path": "dependencies/2.json"
+        },
+        {
+          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/Variables",
+          "path": "dependencies/3.json"
+        }
+      ],
+      "expected": "stoppering/expected.json",
+      "expectedOutcome": "reject-retired-declaration",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "stoppering",
+      "owner": "stoppering/owner.json",
+      "owners": [],
+      "ownership": "relevant serialized station submodels only; no owner shell is captured",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "opcua-method/aid.json",
+      "aimc": "opcua-method/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [
+        {
+          "id": "a/submodels/ControlComponentInstance",
+          "path": "dependencies/0.json"
+        }
+      ],
+      "expected": "opcua-method/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "opcua-method",
+      "owner": "opcua-method/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID",
+            "a/submodels/ControlComponentInstance"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "http-operation/aid.json",
+      "aimc": "http-operation/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [
+        {
+          "id": "a/submodels/ControlComponentInstance",
+          "path": "dependencies/0.json"
+        }
+      ],
+      "expected": "http-operation/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "http-operation",
+      "owner": "http-operation/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID",
+            "a/submodels/ControlComponentInstance"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "plc4x/aid.json",
+      "aimc": "plc4x/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [],
+      "expected": "plc4x/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "plc4x",
+      "owner": "plc4x/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "aas-property-event/aid.json",
+      "aimc": "aas-property-event/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [
+        {
+          "id": "a/submodels/Runtime",
+          "path": "dependencies/0.json"
+        },
+        {
+          "id": "contractAAS/submodels/KPI",
+          "path": "dependencies/1.json"
+        }
+      ],
+      "expected": "aas-property-event/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "aas-property-event",
+      "owner": "aas-property-event/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID",
+            "a/submodels/Runtime"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC",
+            "contractAAS/submodels/KPI"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "aas-property-poll/aid.json",
+      "aimc": "aas-property-poll/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [
+        {
+          "id": "a/submodels/Runtime",
+          "path": "dependencies/0.json"
+        },
+        {
+          "id": "contractAAS/submodels/KPI",
+          "path": "dependencies/1.json"
+        }
+      ],
+      "expected": "aas-property-poll/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "aas-property-poll",
+      "owner": "aas-property-poll/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID",
+            "a/submodels/Runtime"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC",
+            "contractAAS/submodels/KPI"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "aas-collection-poll/aid.json",
+      "aimc": "aas-collection-poll/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [
+        {
+          "id": "a/submodels/Runtime",
+          "path": "dependencies/0.json"
+        },
+        {
+          "id": "contractAAS/submodels/KPI",
+          "path": "dependencies/1.json"
+        }
+      ],
+      "expected": "aas-collection-poll/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "aas-collection-poll",
+      "owner": "aas-collection-poll/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID",
+            "a/submodels/Runtime"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC",
+            "contractAAS/submodels/KPI"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "opcua-read/aid.json",
+      "aimc": "opcua-read/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "reject-missing-opcua-node-information",
+      "dependencies": [
+        {
+          "id": "contractAAS/submodels/KPI",
+          "path": "dependencies/0.json"
+        }
+      ],
+      "expected": "opcua-read/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "opcua-read",
+      "owner": "opcua-read/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC",
+            "contractAAS/submodels/KPI"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "http-poll/aid.json",
+      "aimc": "http-poll/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [
+        {
+          "id": "contractAAS/submodels/KPI",
+          "path": "dependencies/0.json"
+        }
+      ],
+      "expected": "http-poll/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "http-poll",
+      "owner": "http-poll/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC",
+            "contractAAS/submodels/KPI"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "fine-path/aid.json",
+      "aimc": "fine-path/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [],
+      "expected": "fine-path/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "fine-path",
+      "owner": "fine-path/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "grouped-action/aid.json",
+      "aimc": "grouped-action/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [
+        {
+          "id": "contractAAS/submodels/ControlComponentInstance",
+          "path": "dependencies/0.json"
+        }
+      ],
+      "expected": "grouped-action/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "grouped-action",
+      "owner": "grouped-action/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC",
+            "contractAAS/submodels/ControlComponentInstance"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "fine-protocols/aid.json",
+      "aimc": "fine-protocols/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [],
+      "expected": "fine-protocols/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "fine-protocols",
+      "owner": "fine-protocols/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "fan-in-out/aid.json",
+      "aimc": "fan-in-out/aimc.json",
+      "caseClass": "descriptor-contract",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [
+        {
+          "id": "contractAAS/submodels/KPI",
+          "path": "dependencies/0.json"
+        }
+      ],
+      "expected": "fan-in-out/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "fan-in-out",
+      "owner": "fan-in-out/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC",
+            "contractAAS/submodels/KPI"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "projection-extensions/aid.json",
+      "aimc": "projection-extensions/aimc.json",
+      "caseClass": "projection-extension",
+      "connectorCompileOutcome": "unsupported-response-extension-contract",
+      "dependencies": [
+        {
+          "id": "a/submodels/ControlComponentInstance",
+          "path": "dependencies/0.json"
+        },
+        {
+          "id": "contractAAS/submodels/KPI",
+          "path": "dependencies/1.json"
+        },
+        {
+          "id": "contractAAS/submodels/Variables",
+          "path": "dependencies/2.json"
+        },
+        {
+          "id": "remoteAAS/submodels/Response",
+          "path": "dependencies/3.json"
+        }
+      ],
+      "expected": "projection-extensions/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "projection-extensions",
+      "owner": "projection-extensions/owner.json",
+      "owners": [
+        {
+          "id": "a",
+          "idShort": "a",
+          "ownedSubmodelIds": [
+            "a/submodels/AID",
+            "a/submodels/ControlComponentInstance"
+          ]
+        },
+        {
+          "id": "contractAAS",
+          "idShort": "contract",
+          "ownedSubmodelIds": [
+            "contractAAS/submodels/AIMC",
+            "contractAAS/submodels/KPI",
+            "contractAAS/submodels/Variables"
+          ]
+        },
+        {
+          "id": "remoteAAS",
+          "idShort": "remoteAAS",
+          "ownedSubmodelIds": [
+            "remoteAAS/submodels/Response"
+          ]
+        }
+      ],
+      "ownership": "fixture AAS owners authored from model references",
+      "runtimeComplete": true
+    },
+    {
+      "aid": "stoppering-new-build/aid.json",
+      "aimc": "stoppering-new-build/aimc.json",
+      "caseClass": "cci-uuid-inout-compatibility",
+      "connectorCompileOutcome": "route-configured",
+      "dependencies": [
+        {
+          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingCandidate/submodels/ControlComponentInstance",
+          "path": "dependencies/0.json"
+        },
+        {
+          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingCandidate/submodels/Nameplate",
+          "path": "dependencies/1.json"
+        },
+        {
+          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingCandidate/submodels/Parameters",
+          "path": "dependencies/2.json"
+        },
+        {
+          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingCandidate/submodels/Variables",
+          "path": "dependencies/3.json"
+        }
+      ],
+      "expected": "stoppering-new-build/expected.json",
+      "expectedOutcome": "resolve",
+      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
+      "missingStructure": [],
+      "name": "stoppering-new-build",
+      "owner": "stoppering-new-build/owner.json",
+      "owners": [],
+      "ownership": "relevant serialized station submodels only; no owner shell is captured",
+      "runtimeComplete": true
+    }
+  ],
+  "descriptorContractCaseCount": 12,
+  "formatVersion": 1,
+  "fullR1Validation": true,
+  "javaConsumedProjectionValidated": true,
+  "javaProjection": "WireProjection.aimc/aid for supported submodel cases; current Stoppering submodels reject retired declarations; station candidate and dependencies are parsed without synthesizing an owner shell",
+  "missingR1Coverage": [],
+  "projectionExtensionCaseCount": 1,
+  "provenance": {
+    "authoringPackage": {
+      "name": "aas-model",
+      "version": "0.2.0"
+    },
+    "generator": "management-node/tests/test_runtime_contract_fixtures.py --raw-models",
+    "modelSchemaSha256": {
+      "DmpAimc": "0eceb0510861ceb9b1f6734294ae08f0403fc7514ba3ce5aa18ecb26e8c0ed93",
+      "DmpAssetInterfacesDescription": "a5b39d4587af9c50d60c446c761ebad000cf1b81e5ff6d928418ada2a23c5130"
+    },
+    "pythonImplementation": "CPython",
+    "pythonVersion": "3.12.7",
+    "serializationPreparation": "authoring copy only: set DataSchema input/output element idShorts to their field names and unique temporary names for duplicate SML items; temporary list names removed before wire export",
+    "serializer": "convert_model_to_aas + strip_temp_id_short_attributes + object_store_to_json",
+    "serializerPackage": {
+      "name": "basyx-python-sdk",
+      "version": "2.1.0"
+    },
+    "sources": {
+      "AASDescriptions/Resource/configs/syntegonStoppering.main.json": "ee0b6513259c5322dcdc8c076870aad3e08df383fd119b74aac015f261679aa2",
+      "aas-camel-dmp/management-node/tests/data/syntegon_stoppering_aid.json": "2554530540b756f3b6aaed94f2bf8cbf0dd6a32c132972e0398712300480b41d",
+      "aas-camel-dmp/management-node/tests/data/syntegon_stoppering_aimc.json": "f0b0ed3d4be156f9315d565d67b43aad4cf746504b006eb4f87c0d77a504a1e7",
+      "aas-camel-dmp/management-node/tests/test_descriptor.py": "b6cb6e7cc24aad8b1939095f2fb64ef6755479c0bf2f86fc9b1eb50815914525",
+      "aas-camel-dmp/management-node/tests/test_fine_resolution.py": "bb6522a186cdc6d43739b8b8b6b8a8b35b21c513cf07683da68c29cd8eaf69fb",
+      "aas-camel-dmp/management-node/tests/test_runtime_contract_fixtures.py": "9e2aa8e1183237630788324edc327724410585675a7ae9242d03fba8930b6594",
+      "aas-camel-dmp/management-node/tests/test_usecase2.py": "c5a8d6288ee1df3744448790188a112e0b0340e675e5ab7c0c5d8c305bf42842",
+      "aas-model/src/aas_model/builder.py": "8980ed1e3a11146abf15d1359ebbd092173093695476318f86e70e3beb2d9e7a",
+      "aas-model/src/aas_model/id_injector.py": "023fa7925fffed9d5e5d1b719a3d684656a456703774b4e2394d379be9ab3012",
+      "aas-model/src/aas_model/json_schema_aid.py": "2f372e6ef5298decfd6a8ee90183a896c12a62872cde4e8d45343dd1e9b201e9",
+      "aas-model/src/aas_model/resource_template/asset.py": "07f32ef70ef38d384301c6baf87b1acdc0918ac1a7e5013bcb1ae3bf05428fde",
+      "aas-model/src/aas_model/resource_template/asset_interfaces_mapping_configuration.py": "ff9b25c5fc0ab2e743d71be07df5e13287f1f2eeaf23d3b5e75c9099e2037c53",
+      "aas-model/src/aas_model/testing.py": "e0709da519f632e5a441a78aea499d3bf627ef9af6d8ad48cacf9470a722dbae",
+      "aas-model/src/aas_pydantic/convert_pydantic_model.py": "002971ee79e9873b752229bb1ae459eaadf58bf952d629939ab860ada3f44e7d",
+      "aas-model/src/aas_pydantic/convert_util.py": "df96d456b2f2687f8e059b8b69e6773bf2127b3f74569b282c068b3494408767",
+      "external/python/basyx/aas/adapter/json/json_serialization.py": "a3fbf780a1b30014a547e595be09e33ef0ca4cef58623ab96c43649d03277c29"
+    },
+    "stationSubmodelsSourceOnly": "AASDescriptions/Resource/configs/syntegonStoppering.main.json; the raw contract contains submodels only, not a synthesized owner shell",
+    "uuidAllocation": "UUIDv5(NAMESPACE_URL, runtime-model-contracts/{case}/{allocation-index}) during converter execution only"
+  },
+  "resources": {
+    "aas-collection-poll/aid.json": {
+      "byteLength": 30720,
+      "sha256": "b447421e1a10c32b2b5da2cba3495be507664957453a2749a2d34947f286c66a"
+    },
+    "aas-collection-poll/aimc.json": {
+      "byteLength": 24175,
+      "sha256": "dd72b11603d60de0d46a6c36f235e9b898d2fa84a31b05988b32f1f0887d256a"
+    },
+    "aas-collection-poll/dependencies/0.json": {
+      "byteLength": 2400,
+      "sha256": "c45eaf6dee9cc57eb23b1f7625768e5d1a126882f369a6902348099ef3cda850"
+    },
+    "aas-collection-poll/dependencies/1.json": {
+      "byteLength": 2392,
+      "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
+    },
+    "aas-collection-poll/expected.json": {
+      "byteLength": 12361,
+      "sha256": "620be903f9ccf5ee5590ec3620af823fec60e1032c4951774a8317e0a6c980be"
+    },
+    "aas-collection-poll/owner.json": {
+      "byteLength": 4727,
+      "sha256": "548e031ee01f82b0cbecb20cee4b73dba430fa373ba2898742318be5391a1289"
+    },
+    "aas-property-event/aid.json": {
+      "byteLength": 30720,
+      "sha256": "53ac0227797d46fbec32b4d98cad9a9f7dcc70b05de79efab9afc903e878fb9f"
+    },
+    "aas-property-event/aimc.json": {
+      "byteLength": 23144,
+      "sha256": "4f09e1fde2a813febacc866fd119e089fe2cfaf1b965bbcc2a401708ec22a082"
+    },
+    "aas-property-event/dependencies/0.json": {
+      "byteLength": 1818,
+      "sha256": "6a4ceb2f7abb312ee2baee16b1af79106398b62dfe7a90ead859cc67d5b51ba4"
+    },
+    "aas-property-event/dependencies/1.json": {
+      "byteLength": 2392,
+      "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
+    },
+    "aas-property-event/expected.json": {
+      "byteLength": 11926,
+      "sha256": "97bfe2cabc6a1d75532880787ee6a06dd09c44ada5c3464a6ebde6e43ec72147"
+    },
+    "aas-property-event/owner.json": {
+      "byteLength": 4727,
+      "sha256": "548e031ee01f82b0cbecb20cee4b73dba430fa373ba2898742318be5391a1289"
+    },
+    "aas-property-poll/aid.json": {
+      "byteLength": 30720,
+      "sha256": "8c3090436288772d6a3f23681a3e8d76f501f00a0e70f86242168afa2a2b4667"
+    },
+    "aas-property-poll/aimc.json": {
+      "byteLength": 24141,
+      "sha256": "a33257635ba09cca8d393c8a9a73a85eaf6a9eb03f6e153f5da7b7e86bd800dc"
+    },
+    "aas-property-poll/dependencies/0.json": {
+      "byteLength": 1818,
+      "sha256": "6a4ceb2f7abb312ee2baee16b1af79106398b62dfe7a90ead859cc67d5b51ba4"
+    },
+    "aas-property-poll/dependencies/1.json": {
+      "byteLength": 2392,
+      "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
+    },
+    "aas-property-poll/expected.json": {
+      "byteLength": 12327,
+      "sha256": "676ba74adc4e16726790f6e5abdbb203a5c96d5f815eb9b730edf51b1886700d"
+    },
+    "aas-property-poll/owner.json": {
+      "byteLength": 4727,
+      "sha256": "548e031ee01f82b0cbecb20cee4b73dba430fa373ba2898742318be5391a1289"
+    },
+    "fan-in-out/aid.json": {
+      "byteLength": 105463,
+      "sha256": "cd49c141e351e935130af4255cfd9f087bd9fe9795d48b0ec1a5f1d424d4d74e"
+    },
+    "fan-in-out/aimc.json": {
+      "byteLength": 35797,
+      "sha256": "1cf89bc581e219d28fb13f84b21da53af7d3ca3cf7222df4eda17b0fda0d97af"
+    },
+    "fan-in-out/dependencies/0.json": {
+      "byteLength": 3981,
+      "sha256": "69b052f4ceed353445a0e012eb668620737420e89d08ebfc2e0dd49530d75c2b"
+    },
+    "fan-in-out/expected.json": {
+      "byteLength": 21152,
+      "sha256": "0a1fd25c251f0e13a578a7ac3db42caa2000cbd87a5623d32d9279d0e9c60216"
+    },
+    "fan-in-out/owner.json": {
+      "byteLength": 3989,
+      "sha256": "60fa191bfff1c9bb7e6cfb667269cc06312a1b6c80c2e0717e7f1b8f4d61592b"
+    },
+    "fine-path/aid.json": {
+      "byteLength": 91489,
+      "sha256": "f623b7d8422fce1eaeb3f6444b89aec144c06e6fc3409b9955176ed2166ccf43"
+    },
+    "fine-path/aimc.json": {
+      "byteLength": 24546,
+      "sha256": "516dce1a36b28958d3d1e54a4f8855ddae3a2bc59fc63ae7ffeffd7103eb48c8"
+    },
+    "fine-path/expected.json": {
+      "byteLength": 19229,
+      "sha256": "daed681f743445fec82dfc59f449177f5da44cd69405f568942787191966221b"
+    },
+    "fine-path/owner.json": {
+      "byteLength": 3249,
+      "sha256": "a7f9bb58e2ed75907eb23c8579acec534efed3dae859b4f3267d087c8d1a7e38"
+    },
+    "fine-protocols/aid.json": {
+      "byteLength": 193093,
+      "sha256": "faddbfc2d3172fe1394c2241a7e651c51a7c426ddffd1c057c25c2c743c53061"
+    },
+    "fine-protocols/aimc.json": {
+      "byteLength": 37560,
+      "sha256": "dc55e04103dfe244924d2bdd451bc7250cc298f665dd1262c526408061a71013"
+    },
+    "fine-protocols/expected.json": {
+      "byteLength": 38224,
+      "sha256": "4cbacf1b5387081b875f000d74d5aecd762263bc6222ae30eef307873ffc66c6"
+    },
+    "fine-protocols/owner.json": {
+      "byteLength": 3249,
+      "sha256": "a7f9bb58e2ed75907eb23c8579acec534efed3dae859b4f3267d087c8d1a7e38"
+    },
+    "grouped-action/aid.json": {
+      "byteLength": 172115,
+      "sha256": "ec858892a96fa4689e60f6ab16e218ae559addc36a792b893d5163485164153c"
+    },
+    "grouped-action/aimc.json": {
+      "byteLength": 30461,
+      "sha256": "4f8f8ab4154a6c298c19edd6e277a414c17d8988b1b246a2a839327a3278251e"
+    },
+    "grouped-action/dependencies/0.json": {
+      "byteLength": 5766,
+      "sha256": "af89ef71416aaf8527df76c6a1688e24b0461e0b4b6e055347f5600e333355ac"
+    },
+    "grouped-action/expected.json": {
+      "byteLength": 26717,
+      "sha256": "fb52cc7417e74a6c6a57d724cf21aa924ed51de556d7ae7ba3b7781f5a7b4991"
+    },
+    "grouped-action/owner.json": {
+      "byteLength": 4031,
+      "sha256": "1308676092d1a4cb006617c8173ec04cab8eed195903462acb592f118c9b734c"
+    },
+    "http-operation/aid.json": {
+      "byteLength": 85008,
+      "sha256": "b46ede967eddee775bf6c3d790b66d0ded36ea8406ee61310c6ee5137618bdf0"
+    },
+    "http-operation/aimc.json": {
+      "byteLength": 24030,
+      "sha256": "998788c772ca33beb2fa0f800ff5fb1ba5635499ac7d34aaba51c9920cd13cd4"
+    },
+    "http-operation/dependencies/0.json": {
+      "byteLength": 5764,
+      "sha256": "fbb94a43c69c5733ccc567ac72743d6c23b1acbfd9b1a78384a84c874d1a71fe"
+    },
+    "http-operation/expected.json": {
+      "byteLength": 20566,
+      "sha256": "a086881568cbb40e4694eb2c8b5b29d03268fb2dd31699946d6ecbaa60929cb1"
+    },
+    "http-operation/owner.json": {
+      "byteLength": 4021,
+      "sha256": "b02931035a3da2aa1bd303878fbb9055417e3292063c7a9e352735c8bb505e35"
+    },
+    "http-poll/aid.json": {
+      "byteLength": 83062,
+      "sha256": "d444159016b25cdea4cf6b23437f1c6c13d95106fc0b4237bee3aac25e993c14"
+    },
+    "http-poll/aimc.json": {
+      "byteLength": 24690,
+      "sha256": "5458bdcc4032164d1c8bc1957cc43da6141d4049443671d60484ef775e7de89c"
+    },
+    "http-poll/dependencies/0.json": {
+      "byteLength": 2392,
+      "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
+    },
+    "http-poll/expected.json": {
+      "byteLength": 19509,
+      "sha256": "f6c37922776000248a798674c2a460f4bd837d59d7b84c295f85544b05f5e46e"
+    },
+    "http-poll/owner.json": {
+      "byteLength": 3989,
+      "sha256": "60fa191bfff1c9bb7e6cfb667269cc06312a1b6c80c2e0717e7f1b8f4d61592b"
+    },
+    "opcua-method/aid.json": {
+      "byteLength": 91973,
+      "sha256": "3494529a59733df31759a929dcb67b14577982d2ed7a4982ce6bed6f400f5502"
+    },
+    "opcua-method/aimc.json": {
+      "byteLength": 24045,
+      "sha256": "7031dd349cfcef2128a02071cc794f69c51285dbdbd89cb97607ed210b5f452d"
+    },
+    "opcua-method/dependencies/0.json": {
+      "byteLength": 5776,
+      "sha256": "c4faae0e2b28d70551acf4d2b5525037be01261f4890f827e3d5d30faf48dfd8"
+    },
+    "opcua-method/expected.json": {
+      "byteLength": 21023,
+      "sha256": "4ed8bba94b76c2d6bf1c839483f623c2aac31c4a48a81794e8c95e00ec52f73f"
+    },
+    "opcua-method/owner.json": {
+      "byteLength": 4021,
+      "sha256": "b02931035a3da2aa1bd303878fbb9055417e3292063c7a9e352735c8bb505e35"
+    },
+    "opcua-read/aid.json": {
+      "byteLength": 94968,
+      "sha256": "2980d1ad4a215783df420841302291d892523841b67d83ca64587c264e9f9728"
+    },
+    "opcua-read/aimc.json": {
+      "byteLength": 24692,
+      "sha256": "456c7d6f3549075d7561bae346a43d7eae6fe7466b9fb61c097d1597d6b35807"
+    },
+    "opcua-read/dependencies/0.json": {
+      "byteLength": 2392,
+      "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
+    },
+    "opcua-read/expected.json": {
+      "byteLength": 20727,
+      "sha256": "7459c1e0ca18ba6eefaa8f02a6c2be7deb0ccf108f989cb253b8d2e9288fcf82"
+    },
+    "opcua-read/owner.json": {
+      "byteLength": 3989,
+      "sha256": "60fa191bfff1c9bb7e6cfb667269cc06312a1b6c80c2e0717e7f1b8f4d61592b"
+    },
+    "plc4x/aid.json": {
+      "byteLength": 97968,
+      "sha256": "e89c2543d7054c143a1cb96b9c6281b234b5f2327f833ebcd86878a43dd83fde"
+    },
+    "plc4x/aimc.json": {
+      "byteLength": 25205,
+      "sha256": "96d8f0ecca1f7d161b639b5079f07579e1ee2836b23bc8ec4c61159dce71aaf8"
+    },
+    "plc4x/expected.json": {
+      "byteLength": 21052,
+      "sha256": "dee091bb9cf7cacf94c5c4f3802dbb5fa077ba715202ae5544420210c5676783"
+    },
+    "plc4x/owner.json": {
+      "byteLength": 3249,
+      "sha256": "a7f9bb58e2ed75907eb23c8579acec534efed3dae859b4f3267d087c8d1a7e38"
+    },
+    "projection-extensions/aid.json": {
+      "byteLength": 116159,
+      "sha256": "b434f6ca7883ab761a73b57aa52fe04f40bf1f8dd49e4bcc914ab3fd3c765d69"
+    },
+    "projection-extensions/aimc.json": {
+      "byteLength": 40525,
+      "sha256": "dcf32d5a6c3473a23904062172e0bf14539152c8d274bd9ba7eb4907f23b9d96"
+    },
+    "projection-extensions/dependencies/0.json": {
+      "byteLength": 5746,
+      "sha256": "9a7183f9502429f2eabe5f1ab4116cbd1259209dee218bac7e999e0b7ec22c9a"
+    },
+    "projection-extensions/dependencies/1.json": {
+      "byteLength": 1812,
+      "sha256": "63d481b5cda3b453006ec7d5723c76a0078503d53c2bb191aee9d5ed081156d5"
+    },
+    "projection-extensions/dependencies/2.json": {
+      "byteLength": 1861,
+      "sha256": "874231dcbeae35eb3e95799e956148960cdc54a4f79ab4aca356df09d5c52648"
+    },
+    "projection-extensions/dependencies/3.json": {
+      "byteLength": 1868,
+      "sha256": "9c7e710a2ec0826cbcc971d9eaa33e348688746e44231d65a16ab00545fa9c4b"
+    },
+    "projection-extensions/expected.json": {
+      "byteLength": 27103,
+      "sha256": "152afdbd06f3c460cb356bab9ea4530d2584abc00a0f0c105f717668bd7d396b"
+    },
+    "projection-extensions/owner.json": {
+      "byteLength": 7143,
+      "sha256": "b8f93d15a36d9da047618a6e62505246323b7bfd0d64f732a1fb5ec3f49ad91a"
+    },
+    "stoppering-new-build/aid.json": {
+      "byteLength": 730949,
+      "sha256": "b6c56e47a5b34143eaa77adef92e68ab6caeafbb0364a50db5b34f3ea4b74152"
+    },
+    "stoppering-new-build/aimc.json": {
+      "byteLength": 95177,
+      "sha256": "066963b5ce46e21ea647dcd679e186cf779885f8fcd873aeac2bfff18ee4d70d"
+    },
+    "stoppering-new-build/dependencies/0.json": {
+      "byteLength": 74280,
+      "sha256": "00a1a7dc453a3ae2e5feb167aeac5851e17f5026b5d968f19d1e44fdc5466ecf"
+    },
+    "stoppering-new-build/dependencies/1.json": {
+      "byteLength": 21282,
+      "sha256": "0ab1a976d47522ebd1123ce604c66941936d58abeaecbdf7fe7225d5ce1e5bd8"
+    },
+    "stoppering-new-build/dependencies/2.json": {
+      "byteLength": 24591,
+      "sha256": "e2ffc5136829e9834ef05ec90dad5a93cff8c040c68d0615648979910d52ad71"
+    },
+    "stoppering-new-build/dependencies/3.json": {
+      "byteLength": 2769,
+      "sha256": "793fae1cadc7c245b54c054a40d42076c647c3028d01388a313887e3b95ec679"
+    },
+    "stoppering-new-build/expected.json": {
+      "byteLength": 113925,
+      "sha256": "414165781fbb931ac569f2ee3c739a28a2939c429b29a74f5fc44a7573b8bc2d"
+    },
+    "stoppering-new-build/owner.json": {
+      "byteLength": 38,
+      "sha256": "87c5c7374745e6857b4e95162ce6293c6422a01ef91552039ee4a882dd61eaa5"
+    },
+    "stoppering/aid.json": {
+      "byteLength": 1208350,
+      "sha256": "810d72810bd922f4eb2af32a2b97cc7a7dbbc4b824a2ddcb2f7e295a15eb8b57"
+    },
+    "stoppering/aimc.json": {
+      "byteLength": 169491,
+      "sha256": "18689683f0ce685f2b0824fc1eede41857cec44a709222ed054ffbf1eb7fe4a6"
+    },
+    "stoppering/dependencies/0.json": {
+      "byteLength": 97604,
+      "sha256": "a4bc764402ac948af9530d50104bb6c6dfdc20b50c568c5a8999d3a5bed52891"
+    },
+    "stoppering/dependencies/1.json": {
+      "byteLength": 24648,
+      "sha256": "1d731069f4c542ba0208446a745c112304569421520ddfff91df326d4026dc78"
+    },
+    "stoppering/dependencies/2.json": {
+      "byteLength": 24582,
+      "sha256": "123b666717592941ee454b6b68c3f2c2b17630372f1adf9ac0ee65da2c4c5ffa"
+    },
+    "stoppering/dependencies/3.json": {
+      "byteLength": 6317,
+      "sha256": "8df8e9671e70c650822a2a66b32f0794595d6e76cd553da43d57cdd398df87d3"
+    },
+    "stoppering/expected.json": {
+      "byteLength": 180734,
+      "sha256": "c9b0578798e9d5082c2a1bed947ceaf7e79119805c90ef019aa85368ae1870c4"
+    },
+    "stoppering/owner.json": {
+      "byteLength": 38,
+      "sha256": "87c5c7374745e6857b4e95162ce6293c6422a01ef91552039ee4a882dd61eaa5"
+    }
+  },
+  "scope": "r1-relevant-asset-submodels-validated",
+  "uncapturedExistingNegativeCases": [
+    {
+      "expectedError": "observation capability is not assumed",
+      "name": "aas-collection-event",
+      "status": "external Python descriptor option, not a serialized AIMC/AID submodel declaration; intentionally outside the relevant-asset-submodel contract"
+    }
+  ],
+  "unsupportedContractCaseCount": 1,
+  "cciUuidInoutCompatibilityCaseCount": 1
+}
