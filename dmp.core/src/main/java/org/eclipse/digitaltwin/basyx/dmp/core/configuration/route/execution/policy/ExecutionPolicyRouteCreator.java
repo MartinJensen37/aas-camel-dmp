@@ -24,14 +24,9 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.ProcessorDefinition;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
@@ -43,6 +38,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.FanOu
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SourceEventAdapter;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousSourceReadAdapter;
+import org.eclipse.digitaltwin.basyx.dmp.core.routebuilder.DmpRouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,12 +92,24 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 				routesConfiguration, routeConfig.getDatasinkMappingConfiguration(), routeId);
 
 		FanIn fanIn = new FanIn(routeConfig, routesConfiguration);
+		if (routeBuilder instanceof DmpRouteBuilder managed) managed.registerManagedResource(fanIn);
 		List<String> triggerSourceIds = routeConfig.getTriggerSourceIds();
 		if (triggerSourceIds != null && !fanIn.expectedSourceIds().containsAll(triggerSourceIds)) {
 			throw new IllegalArgumentException("route " + routeId
 					+ " triggerSourceIds must identify sources on this route");
 		}
 		String collectUri = "direct:policy-" + routeId;
+
+		// Install the collector before source/timer ingress routes so it is ready
+		// before any source can contribute during dynamic route startup.
+		registerRouteId(routeId);
+		if (routeConfig.getDatasources().isEmpty()) registerIngressRouteId(routeId);
+		ProcessorDefinition<?> cycle = routeBuilder.from(collectUri)
+				.routeId(routeId)
+				.filter(fanIn.gatePredicate())
+				.process(fanIn.merge());
+		FanOut.apply(cycle, routesConfiguration, routeConfig,
+				dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
 
 		for (int i = 0; i < routeConfig.getDatasources().size(); i++) {
 			String endpointId = routeConfig.getDatasources().get(i);
@@ -115,9 +123,12 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 					periodMs = DEFAULT_DEVICE_POLL_MS;
 				}
 				LOGGER.info("route {}: sync source {} polled every {} ms", routeId, sourceId, periodMs);
+				String pollRouteId = routeId + "-poll-" + endpointId;
+				registerRouteId(pollRouteId);
+				registerIngressRouteId(pollRouteId);
 				ProcessorDefinition<?> poll = routeBuilder
 						.from("timer:" + timerName(routeId, endpointId) + "?period=" + periodMs)
-						.routeId(routeId + "-poll-" + endpointId);
+						.routeId(pollRouteId);
 				SynchronousSourceReadAdapter readAdapter = synchronousReadAdapter(dataSourceEndpoints[i]);
 				if (readAdapter == null) {
 					poll.setBody(org.apache.camel.builder.Builder.constant(null))
@@ -134,9 +145,12 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 			} else {
 				// async source: the consumer feeds the cache and drives an
 				// evaluation on every arrival
+				String sourceRouteId = routeId + "-source-" + endpointId;
+				registerRouteId(sourceRouteId);
+				registerIngressRouteId(sourceRouteId);
 				ProcessorDefinition<?> sourceRoute = routeBuilder
 						.from(routesConfiguration.getDatasources().get(endpointId).getConnectionURI())
-						.routeId(routeId + "-source-" + endpointId)
+						.routeId(sourceRouteId)
 						;
 				if (config != null && config.getSourceKind() != null
 						&& !config.getSourceKind().isBlank()) {
@@ -158,13 +172,16 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 			}
 		}
 
-		ProcessorDefinition<?> cycle = routeBuilder.from(collectUri)
-				.routeId(routeId)
-				.filter(fanIn.gatePredicate())
-				.process(fanIn.merge());
+	}
 
-		FanOut.apply(cycle, routesConfiguration, routeConfig,
-				dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
+	private void registerRouteId(String routeId) {
+		if (routeBuilder instanceof DmpRouteBuilder dmpRouteBuilder) {
+			dmpRouteBuilder.registerRouteId(routeId);
+		}
+	}
+
+	private void registerIngressRouteId(String routeId) {
+		if (routeBuilder instanceof DmpRouteBuilder managed) managed.registerIngressRouteId(routeId);
 	}
 
 	/** Backward-compatible cadence for device Read sources lacking authored intervals. */

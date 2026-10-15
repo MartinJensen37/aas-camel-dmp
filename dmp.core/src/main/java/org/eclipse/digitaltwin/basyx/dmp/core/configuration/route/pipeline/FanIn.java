@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SourceEventAdapter;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
@@ -40,7 +41,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
  * but a contribution only drives evaluation when its SourceId is selected by
  * the route's execution semantics (or legacy any-source behavior applies).
  */
-public final class FanIn {
+public final class FanIn implements ManagedRouteResource {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FanIn.class);
 	public static final String SOURCE_ID_HEADER = "AIMC_SourceId";
@@ -53,6 +54,12 @@ public final class FanIn {
 	private final Map<String, String> sourceIdByEndpoint = new LinkedHashMap<>();
 	private final SourceCache cache = new SourceCache();
 	private final Map<String, AffordanceValidation> validators = new LinkedHashMap<>();
+
+	@Override
+	public void bind(org.apache.camel.CamelContext context) { }
+
+	@Override
+	public void close() { cache.clear(); }
 
 	public FanIn(RouteConfiguration routeConfig, RoutesConfiguration routesConfiguration) {
 		this(routeConfig, routesConfiguration, AffordanceValidation.configuredMode());
@@ -179,7 +186,9 @@ public final class FanIn {
 		}
 		// Connector POJOs have no JSON meaning — run them through registered
 		// Camel type converters, which yield the connector's canonical form.
-		if (!(body instanceof String || body instanceof byte[] || body instanceof java.io.InputStream
+		if (!Boolean.TRUE.equals(exchange.getProperty(SourceEventAdapter.NORMALIZED_VALUE_PROPERTY))
+				&& !(body instanceof String || body instanceof Number || body instanceof Boolean
+				|| body instanceof byte[] || body instanceof java.io.InputStream
 				|| body instanceof org.apache.camel.StreamCache
 				|| body instanceof java.util.Map || body instanceof java.util.List)) {
 			Object converted = exchange.getContext().getTypeConverter().tryConvertTo(String.class, exchange, body);
@@ -283,5 +292,7 @@ public final class FanIn {
 					cachedValue == JsonPointer.JSON_NULL ? null : cachedValue));
 			return KeyedSnapshot.of(values);
 		}
+
+		synchronized void clear() { latest.clear(); }
 	}
 }

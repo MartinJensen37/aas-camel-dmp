@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
@@ -89,8 +88,7 @@ public final class AffordanceValidation {
 		if (validator == null || mode == Mode.OFF) {
 			return true;
 		}
-		JsonNode node = MAPPER.valueToTree(value);
-		Set<ValidationMessage> violations = validator.validate(node);
+		Set<ValidationMessage> violations = messages(value);
 		if (violations.isEmpty()) {
 			return true;
 		}

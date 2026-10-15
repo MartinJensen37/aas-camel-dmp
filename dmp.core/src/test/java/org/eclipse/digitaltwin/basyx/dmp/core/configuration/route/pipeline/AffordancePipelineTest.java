@@ -18,10 +18,12 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataTransform
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteCreatorHelper;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class AffordancePipelineTest extends CamelTestSupport {
 	private static final AtomicReference<String> OBSERVED_BRANCH_STATE = new AtomicReference<>();
+	private FanIn triggerFanIn;
 	private static final Map<String, Object> NESTED = Map.of("type", "object",
 			"required", List.of("Part", "Count"), "properties", Map.of(
 				"Part", Map.of("type", "object", "required", List.of("Uuid", "Mode"),
@@ -89,6 +91,10 @@ class AffordancePipelineTest extends CamelTestSupport {
 								"mock:array"),
 						new Sink("arrayMember", "First", "$.values[0]", "device/array",
 								Map.of(), Map.of(), "mock:array"),
+						new Sink("arraySecond", "Last", "$.values[2]", "device/array",
+								Map.of(), Map.of(), "mock:array"),
+						new Sink("unrelatedGroup", "Other", "$.value", "device/unrelated",
+								Map.of(), Map.of(), "mock:unrelatedGroup"),
 						new Sink("numericString", "Text", null, null, Map.of("type", "string"),
 								null, "mock:numeric"),
 						new Sink("mutator", "First", null, null, null, null, "direct:mutatingSink"),
@@ -139,6 +145,19 @@ class AffordancePipelineTest extends CamelTestSupport {
 				FanOut.apply(from("direct:nullArrayOverlap"), configs, nullArrayOverlap, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, nullArrayOverlap.getDatasinks(), "nullArrayOverlap"),
 						null, "nullArrayOverlap", AffordanceValidation.Mode.ON);
+				RouteConfiguration arrayMembers = new RouteConfiguration("execution-policy", List.of(),
+						List.of(), List.of("arraySecond", "unrelatedGroup", "arrayMember"));
+				for (AffordanceValidation.Mode mode : AffordanceValidation.Mode.values()) {
+					String routeId = "arrayMembers" + mode;
+					FanOut.apply(from("direct:" + routeId), configs, arrayMembers, new String[0],
+							RouteCreatorHelper.getDataSinkEndpoints(configs, arrayMembers.getDatasinks(), routeId),
+							null, routeId, mode);
+				}
+				RouteConfiguration memberAndWhole = new RouteConfiguration("execution-policy", List.of(),
+						List.of(), List.of("uuid", "wholeGroup", "other"));
+				FanOut.apply(from("direct:memberAndWhole"), configs, memberAndWhole, new String[0],
+						RouteCreatorHelper.getDataSinkEndpoints(configs, memberAndWhole.getDatasinks(), "memberAndWhole"),
+						null, "memberAndWhole", AffordanceValidation.Mode.ON);
 				RouteConfiguration isolated = new RouteConfiguration("execution-policy", List.of(),
 						List.of(), List.of("mutator", "observer"));
 				var isolatedRoute = from("direct:isolated")
@@ -152,7 +171,9 @@ class AffordancePipelineTest extends CamelTestSupport {
 				from("direct:mutatingSink").process(exchange -> {
 					exchange.getMessage().setHeader("branch", "poison");
 					exchange.setProperty("branch", "poison");
-					exchange.getProperty("branchMeta", Map.class).put("value", "poison");
+					@SuppressWarnings("unchecked")
+					Map<String, Object> branchMeta = exchange.getProperty("branchMeta", Map.class);
+					branchMeta.put("value", "poison");
 					exchange.getMessage().setBody("poison");
 					throw new IllegalStateException("mutating sink failure");
 				});
@@ -173,7 +194,7 @@ class AffordancePipelineTest extends CamelTestSupport {
 				RouteConfiguration triggerRoute = new RouteConfiguration("execution-policy",
 						List.of("position", "invoke"), List.of(), List.of());
 				triggerRoute.setTriggerData(Map.of("triggerSourceIds", List.of("Invoke")));
-				FanIn triggerFanIn = new FanIn(triggerRoute, triggerConfigs, AffordanceValidation.Mode.OFF);
+				triggerFanIn = new FanIn(triggerRoute, triggerConfigs, AffordanceValidation.Mode.OFF);
 				for (String endpointId : triggerRoute.getDatasources()) {
 					String sourceId = FanIn.resolveSourceId(triggerConfigs, endpointId);
 					from("direct:" + endpointId)
@@ -190,6 +211,14 @@ class AffordancePipelineTest extends CamelTestSupport {
 					.to("mock:selected-trigger");
 			}
 		};
+	}
+
+	@AfterEach
+	void closeTriggerFanIn() {
+		if (triggerFanIn != null) {
+			triggerFanIn.close();
+			triggerFanIn = null;
+		}
 	}
 
 	@Test
@@ -248,6 +277,66 @@ class AffordancePipelineTest extends CamelTestSupport {
 	}
 
 	@Test
+	void disjointArrayMembersSendOnceAndRetainIntentionalNullAlongsidePadding() throws Exception {
+		MockEndpoint array = getMockEndpoint("mock:array");
+		array.expectedMessageCount(2);
+		template.sendBody("direct:arrayMembersON", Map.of("Last", "last", "First", "first", "Other", "ok"));
+		Map<String, Object> values = new java.util.LinkedHashMap<>();
+		values.put("Last", "last");
+		values.put("First", null);
+		values.put("Other", "ok");
+		template.sendBody("direct:arrayMembersON", values);
+		array.assertIsSatisfied();
+		assertEquals(Map.of("values", java.util.Arrays.asList("first", null, "last")),
+				array.getExchanges().get(0).getMessage().getBody());
+		assertEquals(Map.of("values", java.util.Arrays.asList(null, null, "last")),
+				org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec.toJsonCompatibleValue(
+						array.getExchanges().get(1).getMessage().getBody()));
+	}
+
+	@Test
+	void missingOrdinaryGroupNeverStopsUnrelatedDestinationRegardlessOfValidationMode() throws Exception {
+		MockEndpoint array = getMockEndpoint("mock:array");
+		MockEndpoint other = getMockEndpoint("mock:unrelatedGroup");
+		array.expectedMessageCount(0);
+		other.expectedMessageCount(AffordanceValidation.Mode.values().length * 2);
+		for (AffordanceValidation.Mode mode : AffordanceValidation.Mode.values()) {
+			assertThrows(CamelExecutionException.class, () -> template.requestBody("direct:arrayMembers" + mode,
+					Map.of("First", "first", "Other", "ok")));
+			assertThrows(CamelExecutionException.class, () -> template.requestBody("direct:arrayMembers" + mode,
+					Map.of("Last", "last", "Other", "ok")));
+		}
+		array.assertIsSatisfied();
+		other.assertIsSatisfied();
+		for (var exchange : other.getExchanges()) assertEquals(Map.of("value", "ok"), exchange.getMessage().getBody());
+	}
+
+	@Test
+	void invalidOrConflictingOrdinaryGroupDoesNotStopUnrelatedDestination() throws Exception {
+		MockEndpoint device = getMockEndpoint("mock:device");
+		MockEndpoint other = getMockEndpoint("mock:other");
+		device.expectedMessageCount(0);
+		other.expectedMessageCount(2);
+		assertThrows(CamelExecutionException.class, () -> template.requestBody("direct:complete",
+				Map.of("Uuid", 7, "Mode", "RUN", "Count", 2, "Other", "ok")));
+		assertThrows(CamelExecutionException.class, () -> template.requestBody("direct:memberAndWhole",
+				Map.of("Whole", Map.of("Part", Map.of("Uuid", "a", "Mode", "RUN"), "Count", 2),
+						"Uuid", "b", "Other", "ok")));
+		device.assertIsSatisfied();
+		other.assertIsSatisfied();
+	}
+
+	@Test
+	void wholeContributionAfterCompatibleMemberStillProducesExactlyOneGroupSend() throws Exception {
+		MockEndpoint device = getMockEndpoint("mock:device");
+		device.expectedMessageCount(1);
+		Map<String, Object> whole = Map.of("Part", Map.of("Uuid", "a", "Mode", "RUN"), "Count", 2);
+		template.sendBody("direct:memberAndWhole", Map.of("Whole", whole, "Uuid", "a", "Other", "ok"));
+		device.assertIsSatisfied();
+		assertEquals(whole, device.getExchanges().get(0).getMessage().getBody());
+	}
+
+	@Test
 	void mutatingSinkCannotLeakHeadersPropertiesOrBodyIntoSiblingOrCallerExchange() {
 		OBSERVED_BRANCH_STATE.set(null);
 		var exchange = new org.apache.camel.support.DefaultExchange(context);
@@ -301,43 +390,47 @@ class AffordancePipelineTest extends CamelTestSupport {
 	void invalidIncomingIsNotCachedButReportAllowsIt() throws Exception {
 		RoutesConfiguration configs = new RoutesConfiguration(List.of(new Source()), List.of(), List.of(), List.of());
 		RouteConfiguration route = new RouteConfiguration("execution-policy", List.of("source"), List.of(), List.of());
-		FanIn on = new FanIn(route, configs, AffordanceValidation.Mode.ON);
-		var invalid = new DefaultExchange(new DefaultCamelContext());
-		invalid.getMessage().setHeader(org.apache.camel.Exchange.CONTENT_TYPE, "application/json");
-		invalid.getMessage().setBody("{\"Reading\":\"wrong\"}");
-		on.disassemble("source").process(invalid);
-		assertFalse(on.contributed(invalid));
-		assertFalse(on.gatePredicate().matches(invalid));
-		var valid = new DefaultExchange(new DefaultCamelContext());
-		valid.getMessage().setHeader(org.apache.camel.Exchange.CONTENT_TYPE, "application/json");
-		valid.getMessage().setBody("{\"Reading\":2}");
-		on.disassemble("source").process(valid);
-		assertTrue(on.gatePredicate().matches(valid));
-		FanIn report = new FanIn(route, configs, AffordanceValidation.Mode.REPORT);
-		report.disassemble("source").process(invalid);
-		assertTrue(report.contributed(invalid));
+		try (var context = new DefaultCamelContext();
+				FanIn on = new FanIn(route, configs, AffordanceValidation.Mode.ON);
+				FanIn report = new FanIn(route, configs, AffordanceValidation.Mode.REPORT)) {
+			var invalid = new DefaultExchange(context);
+			invalid.getMessage().setHeader(org.apache.camel.Exchange.CONTENT_TYPE, "application/json");
+			invalid.getMessage().setBody("{\"Reading\":\"wrong\"}");
+			on.disassemble("source").process(invalid);
+			assertFalse(on.contributed(invalid));
+			assertFalse(on.gatePredicate().matches(invalid));
+			var valid = new DefaultExchange(context);
+			valid.getMessage().setHeader(org.apache.camel.Exchange.CONTENT_TYPE, "application/json");
+			valid.getMessage().setBody("{\"Reading\":2}");
+			on.disassemble("source").process(valid);
+			assertTrue(on.gatePredicate().matches(valid));
+			report.disassemble("source").process(invalid);
+			assertTrue(report.contributed(invalid));
+		}
 	}
 
 	@Test
 	void acceptedTriggerUsesItsAtomicSnapshotAfterLaterContributions() throws Exception {
 		RoutesConfiguration configs = new RoutesConfiguration(List.of(new Source()), List.of(), List.of(), List.of());
 		RouteConfiguration route = new RouteConfiguration("execution-policy", List.of("source"), List.of(), List.of());
-		FanIn fanIn = new FanIn(route, configs, AffordanceValidation.Mode.OFF);
-		var trigger = new DefaultExchange(new DefaultCamelContext());
-		trigger.getMessage().setHeader(org.apache.camel.Exchange.CONTENT_TYPE, "application/json");
-		trigger.getMessage().setBody("{\"Reading\":2}");
-		fanIn.disassemble("source").process(trigger);
+		try (var context = new DefaultCamelContext();
+				FanIn fanIn = new FanIn(route, configs, AffordanceValidation.Mode.OFF)) {
+			var trigger = new DefaultExchange(context);
+			trigger.getMessage().setHeader(org.apache.camel.Exchange.CONTENT_TYPE, "application/json");
+			trigger.getMessage().setBody("{\"Reading\":2}");
+			fanIn.disassemble("source").process(trigger);
 
-		var later = new DefaultExchange(new DefaultCamelContext());
-		later.getMessage().setHeader(org.apache.camel.Exchange.CONTENT_TYPE, "application/json");
-		later.getMessage().setBody("{\"Reading\":3}");
-		fanIn.disassemble("source").process(later);
+			var later = new DefaultExchange(context);
+			later.getMessage().setHeader(org.apache.camel.Exchange.CONTENT_TYPE, "application/json");
+			later.getMessage().setBody("{\"Reading\":3}");
+			fanIn.disassemble("source").process(later);
 
-		assertTrue(fanIn.gatePredicate().matches(trigger));
-		fanIn.merge().process(trigger);
-		assertEquals(Map.of("Reading", 2L), trigger.getMessage().getBody());
-		fanIn.merge().process(later);
-		assertEquals(Map.of("Reading", 3L), later.getMessage().getBody());
+			assertTrue(fanIn.gatePredicate().matches(trigger));
+			fanIn.merge().process(trigger);
+			assertEquals(Map.of("Reading", 2L), trigger.getMessage().getBody());
+			fanIn.merge().process(later);
+			assertEquals(Map.of("Reading", 3L), later.getMessage().getBody());
+		}
 	}
 
 	@Test
@@ -347,15 +440,18 @@ class AffordancePipelineTest extends CamelTestSupport {
 	}
 
 	@Test
-	void explicitTriggerSelectionIsIndependentOfContributionCaching() {
-		var exchange = new DefaultExchange(new DefaultCamelContext());
-		exchange.getMessage().setHeader(FanIn.SOURCE_ID_HEADER, "Position");
-		RoutesConfiguration configs = new RoutesConfiguration(List.of(new Source()), List.of(), List.of(), List.of());
-		RouteConfiguration route = new RouteConfiguration("execution-policy", List.of("source"), List.of(), List.of());
-		FanIn fanIn = new FanIn(route, configs, AffordanceValidation.Mode.ON);
-		assertFalse(fanIn.selectedTrigger(exchange, List.of("Invoke")));
-		assertTrue(fanIn.selectedTrigger(exchange, List.of("Position")));
-		assertTrue(fanIn.selectedTrigger(exchange, null)); // unauthored semantics retains legacy any-source triggering
+	void explicitTriggerSelectionIsIndependentOfContributionCaching() throws Exception {
+		try (var context = new DefaultCamelContext()) {
+			var exchange = new DefaultExchange(context);
+			exchange.getMessage().setHeader(FanIn.SOURCE_ID_HEADER, "Position");
+			RoutesConfiguration configs = new RoutesConfiguration(List.of(new Source()), List.of(), List.of(), List.of());
+			RouteConfiguration route = new RouteConfiguration("execution-policy", List.of("source"), List.of(), List.of());
+			try (FanIn fanIn = new FanIn(route, configs, AffordanceValidation.Mode.ON)) {
+				assertFalse(fanIn.selectedTrigger(exchange, List.of("Invoke")));
+				assertTrue(fanIn.selectedTrigger(exchange, List.of("Position")));
+				assertTrue(fanIn.selectedTrigger(exchange, null)); // unauthored semantics retains legacy any-source triggering
+			}
+		}
 	}
 
 	@Test

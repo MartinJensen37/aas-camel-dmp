@@ -1,5 +1,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.core.util;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,7 +10,10 @@ import java.util.Map;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.ToNumberPolicy;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 
 /**
  * JSON wire codec, and with it the single numeric contract.
@@ -44,7 +49,6 @@ public final class JsonCodec {
 	 * Only exactly-representable integral doubles are narrowed; genuine
 	 * fractions, and anything past 2^53-1, are left alone.
 	 */
-	@SuppressWarnings("unchecked")
 	public static Object normalizeNumbers(Object value) {
 		if (value instanceof Double d) {
 			if (Double.isFinite(d) && d == Math.rint(d) && Math.abs(d) <= MAX_EXACT_DOUBLE_INTEGER) {
@@ -73,7 +77,17 @@ public final class JsonCodec {
 	/** Parses a payload that its connector has identified as JSON. */
 	public static Object parseJson(String text) {
 		if (text == null) return null;
-		return normalizeNumbers(GSON.fromJson(text, Object.class));
+		try (JsonReader reader = new JsonReader(new StringReader(text))) {
+			reader.setLenient(false);
+			// Gson.fromJson temporarily enables leniency even on a strict reader.
+			Object value = GSON.getAdapter(Object.class).read(reader);
+			if (reader.peek() != JsonToken.END_DOCUMENT) {
+				throw new JsonSyntaxException("JSON payload has trailing content");
+			}
+			return normalizeNumbers(value);
+		} catch (IOException | IllegalStateException e) {
+			throw new JsonSyntaxException(e);
+		}
 	}
 
 	/** Converts an in-memory Gson tree to ordinary Java values without text serialization. */

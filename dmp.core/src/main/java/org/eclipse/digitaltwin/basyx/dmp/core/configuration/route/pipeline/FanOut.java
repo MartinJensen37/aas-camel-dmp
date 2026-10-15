@@ -87,7 +87,7 @@ public final class FanOut {
 	private static final String SINK_FAILURES_PROPERTY = "dmp.sinkFailures";
 	private static final String GROUP_PAYLOADS_PROPERTY = "dmp.groupPayloads";
 	private static final String GROUP_FAILURES_PROPERTY = "dmp.groupFailures";
-	private static final String MEMBER_VALUE_PROPERTY = "dmp.memberValue";
+	private static final String SINK_RESULT_PROPERTY = "dmp.sinkResult";
 	private static final String BRANCH_BASE_PROPERTIES = "dmp.branchBaseProperties";
 	private static final String BRANCH_BASE_HEADERS = "dmp.branchBaseHeaders";
 	private static final String DISPATCH_JOBS_PROPERTY = "dmp.dispatchJobs";
@@ -150,12 +150,15 @@ public final class FanOut {
 
 		String[] groupKeys = new String[sinkEndpoints.length];
 		Map<String, Integer> groupLast = new LinkedHashMap<>();
+		Map<String, List<String>> groupMembers = new LinkedHashMap<>();
+		Map<String, String> valuePaths = new LinkedHashMap<>();
 		Map<String, String> groupEndpoints = new LinkedHashMap<>();
 		Map<String, Object> groupSchemas = new LinkedHashMap<>();
 		Map<String, AffordanceValidation> payloadValidators = new LinkedHashMap<>();
 		Map<String, AffordanceValidation> memberValidators = new LinkedHashMap<>();
 		for (int i = 0; i < sinkEndpoints.length; i++) {
 			DataSinkConfiguration config = routesConfiguration.getDatasinks().get(configIds[i]);
+			valuePaths.put(configIds[i], config == null ? null : config.getValuePath());
 			memberValidators.put(configIds[i], new AffordanceValidation(
 					config == null ? null : config.getSchema(), "sink " + configIds[i], mode));
 			if (config != null && !config.handlesValuePathInternally()
@@ -172,6 +175,7 @@ public final class FanOut {
 				}
 				groupSchemas.put(group, config.getPayloadSchema());
 				groupLast.put(group, i);
+				groupMembers.computeIfAbsent(group, ignored -> new ArrayList<>()).add(configIds[i]);
 				payloadValidators.putIfAbsent(group, new AffordanceValidation(config.getPayloadSchema(),
 						"payloadGroup " + group, mode));
 			}
@@ -184,7 +188,7 @@ public final class FanOut {
 			exchange.setProperty(RESULT_PROPERTY, result);
 			exchange.setProperty(SINK_PAYLOADS_PROPERTY, JsonCodec.copyValue(result.root()));
 			exchange.setProperty(SINK_FAILURES_PROPERTY, new java.util.ArrayList<String>());
-			exchange.setProperty(GROUP_PAYLOADS_PROPERTY, new LinkedHashMap<String, Object>());
+			exchange.setProperty(GROUP_PAYLOADS_PROPERTY, new LinkedHashMap<String, Map<String, Object>>());
 			exchange.setProperty(GROUP_FAILURES_PROPERTY, new java.util.HashSet<String>());
 			exchange.setProperty(DISPATCH_JOBS_PROPERTY, new ArrayList<DispatchJob>());
 			exchange.setProperty(BRANCH_BASE_PROPERTIES,
@@ -206,14 +210,17 @@ public final class FanOut {
 			final String[] extra = sinkTransformers == null ? null
 					: sinkTransformers.containsKey(configId) ? sinkTransformers.get(configId)
 					: sinkTransformers.get(sinkEndpoints[i]);
+			final String endpoint = group == null ? sinkEndpoints[i] : groupEndpoints.get(group);
+			// Selection and transformation failures belong to this sink/group, not the mapping.
+			org.apache.camel.model.TryDefinition attempt = route.doTry();
 			// start every sink from the shared result; an unmapped sink is
 			// already final, a mapped one still needs its own transformer chain
-			route.process(exchange -> {
+			attempt.process(exchange -> {
 				restoreBranchState(exchange);
 				KeyedSnapshot result = snapshotOf(exchange);
+				exchange.setProperty(SINK_RESULT_PROPERTY, result);
 				if (extra == null || extra.length == 0) {
-					exchange.setProperty(MEMBER_VALUE_PROPERTY, selectedValue(result, configId, routesConfiguration));
-					exchange.getMessage().setBody(assemble(result, configId, routesConfiguration));
+					exchange.getMessage().setBody(selectedValue(result, configId, routesConfiguration));
 				} else {
 					exchange.getMessage().setBody(JsonCodec.copyValue(result.root()));
 				}
@@ -221,41 +228,34 @@ public final class FanOut {
 			if (extra != null && extra.length > 0) {
 				// per-sink override semantics: this chain runs on its sink's
 				// copy only, and its output is what gets assembled below
-				route.to(extra);
-				route.process(exchange -> {
+				attempt.to(extra);
+				attempt.process(exchange -> {
 					KeyedSnapshot transformed = KeyedSnapshot.parse(exchange.getMessage().getBody());
-					exchange.setProperty(MEMBER_VALUE_PROPERTY, selectedValue(transformed, configId, routesConfiguration));
-					exchange.getMessage().setBody(assemble(transformed, configId, routesConfiguration));
+					exchange.setProperty(SINK_RESULT_PROPERTY, transformed);
+					exchange.getMessage().setBody(selectedValue(transformed, configId, routesConfiguration));
 				});
 			}
 			// every sink is attempted; failures are collected and reported once
 			// at the end rather than aborting the remaining sinks
-			final String endpoint = group == null ? sinkEndpoints[i] : groupEndpoints.get(group);
-			org.apache.camel.model.TryDefinition attempt = route.doTry();
 			attempt.process(e -> {
-						Object payload = e.getMessage().getBody();
-						DataSinkConfiguration config = routesConfiguration.getDatasinks().get(configId);
-						if (config != null && !config.handlesValuePathInternally() && config.getValuePath() != null
-								&& !config.getValuePath().isBlank()) {
-							Object member = JsonPointer.extract(payload, config.getValuePath())
-									.orElseThrow(() -> new IllegalArgumentException("Sink " + configId
-											+ ": valuePath does not resolve in assembled body"));
-							memberValidators.get(configId).outgoing(member == JsonPointer.JSON_NULL ? null : member);
-						} else {
-							memberValidators.get(configId).outgoing(e.getProperty(MEMBER_VALUE_PROPERTY));
-						}
+						Object member = e.getMessage().getBody();
+						memberValidators.get(configId).outgoing(member == JsonPointer.JSON_NULL ? null : member);
 						if (group != null) {
 							if (sendGroup && groupFailures(e).contains(group)) {
 								throw new IllegalArgumentException("payloadGroup " + group + " has a failed member");
 							}
-							Map<String, Object> staged = groupPayloads(e);
-							staged.put(group, staged.containsKey(group)
-									? merge(staged.get(group), payload) : payload);
+							Map<String, Object> staged = groupPayloads(e)
+									.computeIfAbsent(group, ignored -> new LinkedHashMap<>());
+							staged.put(configId, JsonCodec.copyValue(member));
 							if (sendGroup) {
-								Object merged = staged.remove(group);
+								Object merged = PayloadAssembler.assemble(staged, groupMembers.get(group), valuePaths);
+								groupPayloads(e).remove(group);
 								payloadValidators.get(group).outgoing(merged);
 								e.getMessage().setBody(merged);
 							}
+						} else {
+							e.getMessage().setBody(assemble(member,
+									e.getProperty(SINK_RESULT_PROPERTY, KeyedSnapshot.class), configId, routesConfiguration));
 						}
 					});
 			if (group == null || sendGroup) {
@@ -352,9 +352,10 @@ public final class FanOut {
 	}
 
 	private static void collectDispatchOutcomes(Exchange exchange) {
-		List<DispatchOutcome> outcomes = exchange.getProperty(DISPATCH_OUTCOMES_PROPERTY, List.class);
+		List<?> outcomes = exchange.getProperty(DISPATCH_OUTCOMES_PROPERTY, List.class);
 		if (outcomes == null) return;
-		for (DispatchOutcome outcome : outcomes) {
+		for (Object value : outcomes) {
+			DispatchOutcome outcome = (DispatchOutcome) value;
 			if (outcome.failure() == null) continue;
 			sinkFailures(exchange).add(outcome.job().endpoint());
 			LOGGER.warn("route {}: sink {} ({}) failed",
@@ -362,7 +363,6 @@ public final class FanOut {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	private static void restoreBranchState(org.apache.camel.Exchange exchange) {
 		restoreBranchMetadata(exchange);
 		exchange.getMessage().setBody(JsonCodec.copyValue(snapshotOf(exchange).root()));
@@ -442,12 +442,15 @@ public final class FanOut {
 	private static Object selectedValue(KeyedSnapshot result, String configId,
 			RoutesConfiguration routesConfiguration) {
 		DataSinkConfiguration config = routesConfiguration.getDatasinks().get(configId);
-		if (config != null && !config.handlesValuePathInternally()
-				&& config.getSinkId() != null && !config.getSinkId().isBlank()
-				&& result.has(config.getSinkId())) {
-			return result.value(config.getSinkId());
+		if (config != null && config.getSinkId() != null && !config.getSinkId().isBlank()) {
+			if (!result.has(config.getSinkId())) {
+				throw new IllegalArgumentException("Sink '" + configId
+						+ "': SinkId '" + config.getSinkId() + "' not present in the transform result");
+			}
+			Object value = result.value(config.getSinkId());
+			return value == null ? JsonPointer.JSON_NULL : JsonCodec.copyValue(value);
 		}
-		return result.root();
+		return JsonCodec.copyValue(result.root());
 	}
 
 	static boolean sameDestination(String first, String second) {
@@ -470,41 +473,8 @@ public final class FanOut {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Map<String, Object> groupPayloads(org.apache.camel.Exchange exchange) {
-		return (Map<String, Object>) exchange.getProperty(GROUP_PAYLOADS_PROPERTY);
-	}
-
-	/** Merge disjoint nested paths, including array indices; conflicting leaves fail loudly. */
-	private static Object merge(Object left, Object right) {
-		if (left instanceof Map<?, ?> a && right instanceof Map<?, ?> b) {
-			Map<String, Object> result = new LinkedHashMap<>();
-			a.forEach((key, value) -> result.put(String.valueOf(key), value));
-			b.forEach((key, value) -> {
-				String name = String.valueOf(key);
-				result.put(name, result.containsKey(name) ? merge(result.get(name), value) : value);
-			});
-			return result;
-		}
-		if (left instanceof List<?> a && right instanceof List<?> b) {
-			List<Object> result = new ArrayList<>(a);
-			while (result.size() < b.size()) {
-				result.add(null);
-			}
-			for (int i = 0; i < b.size(); i++) {
-				Object rightValue = b.get(i);
-				if (i >= a.size()) result.set(i, rightValue);
-				else result.set(i, merge(a.get(i), rightValue));
-			}
-			return result;
-		}
-		if (!Objects.equals(left, right)) {
-			throw new IllegalArgumentException("Conflicting sink values in a payloadGroup: " + left + " vs " + right);
-		}
-		return left;
-	}
-
-	private static Object sharedValue(KeyedSnapshot result) {
-		return JsonCodec.copyValue(result.root());
+	private static Map<String, Map<String, Object>> groupPayloads(org.apache.camel.Exchange exchange) {
+		return (Map<String, Map<String, Object>>) exchange.getProperty(GROUP_PAYLOADS_PROPERTY);
 	}
 
 	private static KeyedSnapshot snapshotOf(org.apache.camel.Exchange exchange) {
@@ -531,30 +501,18 @@ public final class FanOut {
 	}
 
 	/** The same shaping step, over an arbitrary (possibly transformed) value. */
-	private static Object assemble(KeyedSnapshot result, String dataSinkId,
+	private static Object assemble(Object value, KeyedSnapshot result, String dataSinkId,
 			RoutesConfiguration routesConfiguration) {
 		DataSinkConfiguration config = dataSinkId == null
 				? null
 				: routesConfiguration.getDatasinks().get(dataSinkId);
-		if (config == null) return JsonCodec.copyValue(result.root());
-		String sinkId = config.getSinkId();
+		if (config == null) return JsonCodec.copyValue(value);
 		String valuePath = config.getValuePath();
-
-		Object value = result.root();
-		if (sinkId != null && !sinkId.isBlank()) {
-			if (!result.has(sinkId)) {
-				throw new IllegalArgumentException("Sink '" + dataSinkId
-						+ "': SinkId '" + sinkId + "' not present in the transform result");
-			}
-			value = result.value(sinkId);
-			if (value == null) value = JsonPointer.JSON_NULL;
+		if (config.handlesValuePathInternally()) {
+			return JsonCodec.copyValue(valuePath == null || valuePath.isBlank() ? value : result.root());
 		}
-		if (config.handlesValuePathInternally()) return JsonCodec.copyValue(value);
-
-		if (valuePath == null || valuePath.isBlank()) {
-			return JsonCodec.copyValue(value);
-		}
-		return assembleAt(JsonPointer.parse(valuePath).tokens(), value);
+		return PayloadAssembler.assemble(java.util.Collections.singletonMap(dataSinkId, value),
+				List.of(dataSinkId), java.util.Collections.singletonMap(dataSinkId, valuePath));
 	}
 
 	/**
@@ -574,32 +532,6 @@ public final class FanOut {
 		boolean identical = Arrays.stream(keys)
 				.allMatch(endpoint -> Arrays.equals(first, dataSinkMapping.get(endpoint)));
 		return identical ? (first == null ? new String[0] : first) : null;
-	}
-
-	private static Object assembleAt(List<String> tokens, Object value) {
-		return assembleAt(tokens, 0, value);
-	}
-
-	private static Object assembleAt(List<String> tokens, int offset, Object value) {
-		if (offset == tokens.size()) {
-			return value;
-		}
-		String token = tokens.get(offset);
-		if (token.startsWith("[") && token.endsWith("]")) {
-			int index = Integer.parseInt(token.substring(1, token.length() - 1));
-			if (index < 0) {
-				throw new IllegalArgumentException("negative JSON array index in sink path: " + token);
-			}
-			java.util.List<Object> array = new java.util.ArrayList<>();
-			while (array.size() <= index) {
-				array.add(null);
-			}
-			array.set(index, assembleAt(tokens, offset + 1, value));
-			return array;
-		}
-		java.util.Map<String, Object> object = new java.util.LinkedHashMap<>();
-		object.put(token, assembleAt(tokens, offset + 1, value));
-		return object;
 	}
 
 	/**

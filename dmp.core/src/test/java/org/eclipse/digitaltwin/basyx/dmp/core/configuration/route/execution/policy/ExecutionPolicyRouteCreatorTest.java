@@ -26,12 +26,14 @@ package org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.pol
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
@@ -40,8 +42,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfi
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteCreator;
+import org.eclipse.digitaltwin.basyx.dmp.core.routebuilder.DmpRouteBuilder;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -224,22 +225,74 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 	}
 
 	@Test
-	void authoredExecutionPolicyBlockIsALoadTimeError() {
-		String json = """
-				[{
-				  "routeId": "broken",
-				  "trigger": "execution-policy",
-				  "datasources": ["stateA"],
-				  "datasinks": ["outAny"],
-				  "executionPolicy": {"kind": "OnAll"}
-				}]""";
-		org.eclipse.digitaltwin.basyx.dmp.core.configuration.parser.JsonParser parser =
-				new org.eclipse.digitaltwin.basyx.dmp.core.configuration.parser.JsonParser(
-						org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration.class);
-		Exception error = assertThrows(Exception.class, () -> parser.getListConfiguration(
-				new java.io.StringReader(json)));
-		assertTrue(String.valueOf(error.getCause() == null ? error : error.getCause())
-				.contains("executionPolicy"),
-				"error must name the removed block: " + error);
+	void managedBuilderInventoriesAreExactAndIndependentForAsyncAndSyncSources() throws Exception {
+		DmpRouteBuilder first = managedBuilder("mapping-A", "async-A", "sync-A");
+		DmpRouteBuilder second = managedBuilder("mapping-B", "async-B", "sync-B");
+
+		first.prepareBundle(context);
+		second.prepareBundle(context);
+
+		Set<String> firstIds = Set.of("mapping-A-source-async-A", "mapping-A-poll-sync-A", "mapping-A");
+		Set<String> secondIds = Set.of("mapping-B-source-async-B", "mapping-B-poll-sync-B", "mapping-B");
+		assertEquals(firstIds, first.getRouteInventory());
+		assertEquals(secondIds, second.getRouteInventory());
+		assertTrue(java.util.Collections.disjoint(first.getRouteInventory(), second.getRouteInventory()));
+		assertThrows(UnsupportedOperationException.class,
+				() -> first.getRouteInventory().add("not-owned"));
+		assertEquals(List.of("mapping-A", "mapping-A-source-async-A", "mapping-A-poll-sync-A"),
+				first.getPreparedRouteDefinitions().stream().map(org.apache.camel.model.RouteDefinition::getRouteId).toList());
+		assertThrows(UnsupportedOperationException.class,
+				() -> first.getPreparedRouteDefinitions().clear());
+		assertThrows(IllegalStateException.class, () -> first.prepareBundle(context));
+	}
+
+	@Test
+	void managedBuilderRejectsMissingAndDuplicateAuthoredRouteIdsWithoutChangingLegacyIds() {
+		RouteConfiguration missingId = route(null, List.of("source"), List.of());
+		RoutesConfiguration missingBundle = ordinaryBundle(missingId, "source", "async-source", "unused-sync");
+		assertThrows(IllegalArgumentException.class,
+				() -> DmpRouteBuilder.forManagedBundle(missingBundle, policyFactories()));
+		assertNull(missingId.getRouteId());
+
+		RouteConfiguration firstRoute = route("duplicate", List.of("source"), List.of());
+		RouteConfiguration secondRoute = route("duplicate", List.of("source"), List.of());
+		RoutesConfiguration duplicateBundle = ordinaryBundle(List.of(firstRoute, secondRoute), "source",
+				"async-source", "unused-sync");
+		assertThrows(IllegalArgumentException.class,
+				() -> DmpRouteBuilder.forManagedBundle(duplicateBundle, policyFactories()));
+
+		RouteConfiguration operationRoute = route("operation", List.of(), List.of());
+		operationRoute.setRouteTrigger("unsupported-managed-trigger");
+		assertThrows(IllegalArgumentException.class, () -> DmpRouteBuilder.forManagedBundle(
+				ordinaryBundle(operationRoute, "source", "async-source", "unused-sync"), policyFactories()));
+
+		RouteConfiguration legacy = route(null, List.of(), List.of());
+		new DmpRouteBuilder(ordinaryBundle(legacy, "source", "async-source", "unused-sync"), policyFactories());
+		assertEquals("route1", legacy.getRouteId());
+	}
+
+	private static DmpRouteBuilder managedBuilder(String routeId, String asyncId, String syncId) {
+		RoutesConfiguration configuration = ordinaryBundle(route(routeId, List.of(asyncId, syncId), List.of()),
+				asyncId, asyncId, syncId);
+		return DmpRouteBuilder.forManagedBundle(configuration, policyFactories());
+	}
+
+	private static RoutesConfiguration ordinaryBundle(RouteConfiguration route, String asyncId,
+			String asyncEndpointId, String syncEndpointId) {
+		return ordinaryBundle(List.of(route), asyncId, asyncEndpointId, syncEndpointId);
+	}
+
+	private static RoutesConfiguration ordinaryBundle(List<RouteConfiguration> routes, String asyncId,
+			String asyncEndpointId, String syncEndpointId) {
+		return new RoutesConfiguration(
+				List.of(new FixedSource(asyncEndpointId, asyncId, "async", "direct:" + asyncEndpointId),
+						new FixedSource(syncEndpointId, "Sync", "sync", "direct:" + syncEndpointId)),
+				List.of(), List.of(), routes);
+	}
+
+	private static Map<String, org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteCreatorFactory>
+			policyFactories() {
+		ExecutionPolicyRouteCreatorFactory factory = new ExecutionPolicyRouteCreatorFactory();
+		return Map.of(factory.routeTrigger(), factory);
 	}
 }

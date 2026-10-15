@@ -22,21 +22,21 @@ public final class ResponseProjectionProcessor implements Processor {
 	}
 
 	public static Map<String, Object> project(Object parsed, List<Map<String, Object>> bindings) {
-		if (!(parsed instanceof Map<?, ?> deviceReply)) {
-			throw projectionError("device reply is not an object");
-		}
 		Map<String, Object> sources = new LinkedHashMap<>();
 		for (Map<String, Object> binding : bindings) {
 			String sourceId = String.valueOf(binding.get("sourceId"));
-			Object value = deviceReply;
-			Object path = binding.get("valuePath");
-			if (path != null && !String.valueOf(path).isBlank()) {
-				Object selected = JsonPointer.extract(deviceReply, String.valueOf(path)).orElse(null);
-				value = selected == JsonPointer.JSON_NULL ? null : selected;
-			}
-			if (sources.putIfAbsent(sourceId, value) != null) {
+			if (sources.containsKey(sourceId)) {
 				throw projectionError("duplicate ResponseSource id " + sourceId);
 			}
+			Object value = parsed == JsonPointer.JSON_NULL ? null : parsed;
+			Object path = binding.get("valuePath");
+			if (path != null && !String.valueOf(path).isBlank()) {
+				Object selected = JsonPointer.extract(parsed, String.valueOf(path))
+						.orElseThrow(() -> projectionError("missing ResponseSource valuePath " + path
+								+ " for " + sourceId));
+				value = selected == JsonPointer.JSON_NULL ? null : selected;
+			}
+			sources.put(sourceId, value);
 		}
 		return sources;
 	}

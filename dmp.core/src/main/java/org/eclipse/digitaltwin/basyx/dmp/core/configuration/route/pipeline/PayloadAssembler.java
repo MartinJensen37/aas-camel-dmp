@@ -1,77 +1,89 @@
 package org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
+import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
 
-/** Protocol-neutral assembly of SinkId values into one declared object payload. */
+/** Protocol-neutral assembly of required SinkId contributions into one payload. */
 public final class PayloadAssembler {
+	private static final Object ABSENT = new Object();
+
 	private PayloadAssembler() {}
 
 	public static Object assemble(Map<String, Object> sinkValues, List<String> sinkIds,
 			Map<String, String> valuePaths) {
-		if (sinkIds == null || sinkIds.isEmpty()) return sinkValues;
-		Map<String, Object> result = new LinkedHashMap<>();
+		if (sinkIds == null || sinkIds.isEmpty()) return JsonCodec.copyValue(sinkValues);
+		Object result = ABSENT;
 		for (String sinkId : sinkIds) {
 			if (!sinkValues.containsKey(sinkId)) {
 				throw new IllegalArgumentException("mapping result has no value for SinkId " + sinkId);
 			}
-			Object value = sinkValues.get(sinkId);
+			Object value = JsonCodec.copyValue(sinkValues.get(sinkId));
 			String path = valuePaths == null ? null : valuePaths.get(sinkId);
-			if (path == null || path.isBlank()) {
-				if (sinkIds.size() != 1) {
-					throw new IllegalArgumentException("multiple SinkIds require distinct member valuePaths");
-				}
-				return value;
-			}
-			putAt(result, JsonPointer.parse(path).tokens(), value);
+			result = merge(result, contribution(JsonPointer.parse(path).tokens(), 0, value));
 		}
-		return result;
+		return materialize(result);
 	}
 
-	@SuppressWarnings("unchecked")
-	private static void putAt(Map<String, Object> root, List<String> tokens, Object value) {
-		if (tokens.isEmpty()) {
-			if (!(value instanceof Map<?, ?> map)) {
-				throw new IllegalArgumentException("root contribution must be an object");
-			}
-			mergeInto(root, (Map<String, Object>) map);
-			return;
+	private static Object contribution(List<String> tokens, int offset, Object value) {
+		if (offset == tokens.size()) return value;
+		String token = tokens.get(offset);
+		Object child = contribution(tokens, offset + 1, value);
+		if (token.startsWith("[") && token.endsWith("]")) {
+			int index = Integer.parseInt(token.substring(1, token.length() - 1));
+			if (index < 0) throw new IllegalArgumentException("negative JSON array index: " + token);
+			List<Object> array = new ArrayList<>();
+			// Padding has no authored value and must not conflict with another contribution.
+			while (array.size() <= index) array.add(ABSENT);
+			array.set(index, child);
+			return array;
 		}
-		Map<String, Object> current = root;
-		for (int i = 0; i < tokens.size(); i++) {
-			String token = tokens.get(i);
-			if (token.startsWith("[") && token.endsWith("]")) {
-				throw new IllegalArgumentException("array-index grouped valuePaths are unsupported");
-			}
-			if (i == tokens.size() - 1) {
-				if (current.containsKey(token)) mergeValue(current.get(token), value, token);
-				else current.put(token, value);
-			} else {
-				Object child = current.computeIfAbsent(token, ignored -> new LinkedHashMap<String, Object>());
-				if (!(child instanceof Map<?, ?>)) {
-					throw new IllegalArgumentException("overlapping valuePaths at " + token);
-				}
-				current = (Map<String, Object>) child;
-			}
-		}
+		Map<String, Object> object = new LinkedHashMap<>();
+		object.put(token, child);
+		return object;
 	}
 
-	@SuppressWarnings("unchecked")
-	private static void mergeValue(Object existing, Object incoming, String key) {
+	private static Object merge(Object existing, Object incoming) {
+		if (existing == ABSENT) return incoming;
+		if (incoming == ABSENT) return existing;
 		if (existing instanceof Map<?, ?> left && incoming instanceof Map<?, ?> right) {
-			mergeInto((Map<String, Object>) left, (Map<String, Object>) right);
-		} else if (!java.util.Objects.equals(existing, incoming)) {
-			throw new IllegalArgumentException("conflicting values at " + key);
+			Map<String, Object> result = new LinkedHashMap<>();
+			left.forEach((key, value) -> result.put((String) key, value));
+			right.forEach((key, value) -> result.put((String) key,
+					result.containsKey(key) ? merge(result.get(key), value) : value));
+			return result;
 		}
+		if (existing instanceof List<?> left && incoming instanceof List<?> right) {
+			List<Object> result = new ArrayList<>();
+			for (int i = 0; i < Math.max(left.size(), right.size()); i++) {
+				result.add(merge(i < left.size() ? left.get(i) : ABSENT,
+						i < right.size() ? right.get(i) : ABSENT));
+			}
+			return result;
+		}
+		Object left = existing == JsonPointer.JSON_NULL ? null : existing;
+		Object right = incoming == JsonPointer.JSON_NULL ? null : incoming;
+		if (!Objects.deepEquals(left, right)) throw new IllegalArgumentException("conflicting payload contributions");
+		return existing;
 	}
 
-	private static void mergeInto(Map<String, Object> target, Map<String, Object> source) {
-		source.forEach((key, value) -> {
-			if (target.containsKey(key)) mergeValue(target.get(key), value, key);
-			else target.put(key, value);
-		});
+	private static Object materialize(Object value) {
+		if (value == ABSENT) return null;
+		if (value instanceof Map<?, ?> map) {
+			Map<String, Object> result = new LinkedHashMap<>();
+			map.forEach((key, member) -> result.put((String) key, materialize(member)));
+			return result;
+		}
+		if (value instanceof List<?> list) {
+			List<Object> result = new ArrayList<>(list.size());
+			list.forEach(member -> result.add(materialize(member)));
+			return result;
+		}
+		return value;
 	}
 }

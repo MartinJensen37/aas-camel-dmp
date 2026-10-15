@@ -12,6 +12,11 @@ public interface SynchronousInvocationAdapter {
 	Map<String, Object> invoke(CamelContext context, String endpointUri,
 			Map<String, Object> namedRequest, InvocationSchema schema);
 
+	/** Pure preflight inventory, including connector-derived invocation endpoints. */
+	default Set<String> ownedEndpointUris(String endpointUri, InvocationSchema schema) {
+		return Set.of(endpointUri);
+	}
+
 	record InvocationSchema(Map<String, String> inputTypes, Set<String> inputRequired,
 			Map<String, String> outputTypes, Set<String> outputRequired,
 			Map<String, Object> connectorOptions) {
