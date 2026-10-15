@@ -24,70 +24,123 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.lua.configuration;
 
-import java.io.File;
+import java.util.UUID;
 
+import org.apache.camel.CamelContext;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataTransformerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource;
+import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaCompiledSource;
 
 /**
- * An implementation of the Lua transformer configuration using the custom
- * {@code lua:} Camel component (databridge.camel-lua).
+ * A Lua transformation backed by a blob compiled in memory from the AIMC.
  *
  * <p>
- * The connection URI follows the AIMC transformation contract and transports
- * decoded Java values: {@code lua:file:<path>?sourceKeys=body&...}.
- * The Lua blob must expose {@code function aimc_main(sources)}.
+ * The compiled source is bound in the owning Camel registry and referenced as
+ * {@code lua:managed:<binding>?sourceKeys=body&...}; the connection URI
+ * transports decoded Java values. The blob must expose
+ * {@code function aimc_main(sources)}.
  *
  * @author aas-camel-dmp
  */
-public class LuaTransformerConfiguration extends DataTransformerConfiguration {
+public class LuaTransformerConfiguration extends DataTransformerConfiguration implements ManagedRouteResource {
 
 	public static final String DEFAULT_TIMEOUT_SECONDS = "2";
-	public static final String DEFAULT_CONTENT_CACHE = "true";
-	public static final String DEFAULT_MAX_SCRIPT_BYTES = "1048576";
 	public static final String DEFAULT_SOURCE_KEYS = "body";
 
-	private String queryPath;
-	private String timeoutSeconds;
-	private String contentCache;
-	private String maxScriptBytes;
-	private String sourceKeys;
+	private final String bindingName = "lua-source-" + UUID.randomUUID();
+	private String timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
+	private String sourceKeys = DEFAULT_SOURCE_KEYS;
+	private boolean keyedInput;
 	private String valuePath;
+	private volatile LuaCompiledSource managedSource;
+	private CamelContext boundContext;
+	private volatile int bindingOwners;
 
-	public LuaTransformerConfiguration() {
-		this.timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
-		this.contentCache = DEFAULT_CONTENT_CACHE;
-		this.maxScriptBytes = DEFAULT_MAX_SCRIPT_BYTES;
-		this.sourceKeys = DEFAULT_SOURCE_KEYS;
+	@Override public java.util.Map<String, Long> metrics() {
+		return java.util.Map.of("luaBindings", bindingOwners > 0 ? 1L : 0L);
 	}
 
-	public LuaTransformerConfiguration(String uniqueId, String queryPath) {
+	@Override public java.util.List<AccountingEntry> accounting() {
+		LuaCompiledSource source = managedSource;
+		AccountingEntry bindings = new AccountingEntry(this, metrics());
+		return source == null ? java.util.List.of(bindings) : java.util.List.of(bindings,
+				new AccountingEntry(source, java.util.Map.of("luaSourceRetainedBytes", source.retainedSourceBytes())));
+	}
+
+	/** Creates a transform configuration backed by eagerly compiled bytes. */
+	public LuaTransformerConfiguration(String uniqueId, LuaCompiledSource source) {
 		super(uniqueId);
-		this.queryPath = queryPath;
-		this.timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
-		this.contentCache = DEFAULT_CONTENT_CACHE;
-		this.maxScriptBytes = DEFAULT_MAX_SCRIPT_BYTES;
-		this.sourceKeys = DEFAULT_SOURCE_KEYS;
+		this.managedSource = java.util.Objects.requireNonNull(source, "source");
 	}
 
-	public String getQueryPath() {
-		return queryPath;
+	/** Binds the immutable source in the owning CamelContext before using its URI. */
+	@Override
+	public synchronized void bind(CamelContext context) {
+		if (managedSource == null) {
+			return;
+		}
+		if (boundContext != null) {
+			if (boundContext != context || context.getRegistry().lookupByName(bindingName) != managedSource) {
+				throw new IllegalStateException("Lua source binding is not owned by the expected CamelContext");
+			}
+			bindingOwners++;
+			return;
+		}
+		Object existing = context.getRegistry().lookupByName(bindingName);
+		if (existing != null && existing != managedSource) {
+			throw new IllegalStateException("Lua source binding already exists: " + bindingName);
+		}
+		if (existing == null) context.getRegistry().bind(bindingName, managedSource);
+		boundContext = context;
+		bindingOwners = 1;
 	}
 
-	public void setQueryPath(String queryPath) {
-		this.queryPath = queryPath;
+	/** Unbinds after all routes using this configuration have been removed. */
+	public synchronized void unbind(CamelContext context) {
+		if (managedSource == null) {
+			return;
+		}
+		if (boundContext != null && boundContext != context) {
+			throw new IllegalArgumentException("Lua source must be unbound by its owning CamelContext");
+		}
+		if (bindingOwners > 1) {
+			bindingOwners--;
+			return;
+		}
+		Object existing = context.getRegistry().lookupByName(bindingName);
+		if (existing == managedSource) {
+			context.getRegistry().unbind(bindingName);
+		}
+		if (boundContext == context) boundContext = null;
+		bindingOwners = 0;
+		managedSource = null;
+	}
+
+	@Override
+	public synchronized void close() {
+		if (boundContext != null) unbind(boundContext);
+	}
+
+	public String getContentIdentity() {
+		LuaCompiledSource source = managedSource;
+		return source == null ? null : source.contentIdentity();
+	}
+
+	public synchronized boolean isManagedSourceBound() {
+		return managedSource != null && boundContext != null
+				&& boundContext.getRegistry().lookupByName(bindingName) == managedSource;
 	}
 
 	@Override
 	public String getConnectionURI() {
-		String path = getQueryPath();
-		File luaFile = new File(path);
-		String resource = luaFile.exists() ? "file:" + path : path;
-
-		StringBuilder uri = new StringBuilder("lua:" + resource);
+		StringBuilder uri = new StringBuilder("lua:managed:" + bindingName);
 		uri.append("?timeoutSeconds=").append(getTimeoutSeconds());
-		uri.append("&contentCache=").append(getContentCache());
-		uri.append("&maxScriptBytes=").append(getMaxScriptBytes());
-		uri.append("&sourceKeys=").append(getSourceKeys());
+		if (keyedInput) {
+			uri.append("&keyedInput=true");
+			if (getValuePath() != null && !getValuePath().isBlank()) {
+				throw new IllegalArgumentException("Keyed Lua input must be projected before transformation");
+			}
+		} else uri.append("&sourceKeys=").append(getSourceKeys());
 		if (getValuePath() != null && !getValuePath().isBlank()) {
 			uri.append("&valuePath=").append(getValuePath());
 		}
@@ -102,28 +155,20 @@ public class LuaTransformerConfiguration extends DataTransformerConfiguration {
 		this.timeoutSeconds = timeoutSeconds;
 	}
 
-	public String getContentCache() {
-		return contentCache;
-	}
-
-	public void setContentCache(String contentCache) {
-		this.contentCache = contentCache;
-	}
-
-	public String getMaxScriptBytes() {
-		return maxScriptBytes;
-	}
-
-	public void setMaxScriptBytes(String maxScriptBytes) {
-		this.maxScriptBytes = maxScriptBytes;
-	}
-
 	public String getSourceKeys() {
 		return sourceKeys;
 	}
 
 	public void setSourceKeys(String sourceKeys) {
 		this.sourceKeys = sourceKeys;
+	}
+
+	public boolean isKeyedInput() {
+		return keyedInput;
+	}
+
+	public void setKeyedInput(boolean keyedInput) {
+		this.keyedInput = keyedInput;
 	}
 
 	/**

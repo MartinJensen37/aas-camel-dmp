@@ -33,10 +33,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.IntStream;
 
 import org.apache.camel.CamelExecutionException;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.test.junit5.CamelTestSupport;
+import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.LuaTransformerConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaCompiledSource;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -58,10 +62,18 @@ class LuaProducerCamelTest extends CamelTestSupport {
 		return file.toString();
 	}
 
+	/** Compiles the blob text in memory and binds it like the runtime does; Lua never loads from files. */
+	private String managedUri(Object blob) throws Exception {
+		String name = "test-lua-" + java.util.UUID.randomUUID();
+		byte[] bytes = Files.readAllBytes(Path.of(blob.toString()));
+		context.getRegistry().bind(name, LuaCompiledSource.fromBytes(bytes, Path.of(blob.toString()).getFileName().toString(), 1 << 20));
+		return "lua:managed:" + name;
+	}
+
 	@Test
 	void transformBodyWithLuaBlob() throws Exception {
 		String script = writeBlob("simple.lua");
-		String uri = "lua:file:" + script + "?sourceKeys=a,b&timeoutSeconds=2";
+		String uri = managedUri(script) + "?sourceKeys=a,b&timeoutSeconds=2";
 
 		context.getRouteDefinitions().clear();
 		context.addRoutes(new RouteBuilder() {
@@ -92,7 +104,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 				    return { State = st.State }
 				end
 				""", StandardCharsets.UTF_8);
-		String uri = "lua:file:" + blob + "?sourceKeys=StationState&timeoutSeconds=2";
+		String uri = managedUri(blob) + "?sourceKeys=StationState&timeoutSeconds=2";
 
 		context.getRouteDefinitions().clear();
 		context.addRoutes(new RouteBuilder() {
@@ -113,7 +125,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 	@Test
 	void malformedBlobFailsRouteWithClearError() throws Exception {
 		String script = writeBlob("nonTable.lua");
-		String uri = "lua:file:" + script;
+		String uri = managedUri(script);
 
 		context.getRouteDefinitions().clear();
 		context.addRoutes(new RouteBuilder() {
@@ -133,7 +145,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 	@Test
 	void retiredJsonStringEndpointOptionIsRejected() throws Exception {
 		String script = writeBlob("simple.lua");
-		String uri = "lua:file:" + script + "?inputType=JsonString";
+		String uri = managedUri(script) + "?inputType=JsonString";
 		context.getRouteDefinitions().clear();
 		assertThrows(Exception.class, () -> context.addRoutes(new RouteBuilder() {
 			@Override
@@ -159,7 +171,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 				    return { State = st }
 				end
 				""", StandardCharsets.UTF_8);
-		String uri = "lua:file:" + blob + "?sourceKeys=StationState&valuePath=$.State&timeoutSeconds=2";
+		String uri = managedUri(blob) + "?sourceKeys=StationState&valuePath=$.State&timeoutSeconds=2";
 
 		context.getRouteDefinitions().clear();
 		addRoute(uri);
@@ -186,7 +198,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 				    return { State = state, Mode = mode }
 				end
 				""", StandardCharsets.UTF_8);
-		String uri = "lua:file:" + blob + "?sourceKeys=StationState&timeoutSeconds=2";
+		String uri = managedUri(blob) + "?sourceKeys=StationState&timeoutSeconds=2";
 
 		context.getRouteDefinitions().clear();
 		addRoute(uri);
@@ -210,7 +222,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 				    return { State = sources.StationState or "none" }
 				end
 				""", StandardCharsets.UTF_8);
-		String uri = "lua:file:" + blob + "?sourceKeys=StationState&valuePath=$.Missing&timeoutSeconds=2";
+		String uri = managedUri(blob) + "?sourceKeys=StationState&valuePath=$.Missing&timeoutSeconds=2";
 
 		context.getRouteDefinitions().clear();
 		addRoute(uri);
@@ -230,7 +242,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 				end
 				""", StandardCharsets.UTF_8);
 		context.getRouteDefinitions().clear();
-		addRoute("lua:file:" + blob);
+		addRoute(managedUri(blob));
 		context.start();
 
 		String opaqueText = "{\"looks\":\"like JSON\"}";
@@ -259,7 +271,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 				end
 				""", StandardCharsets.UTF_8);
 		context.getRouteDefinitions().clear();
-		addRoute("lua:file:" + blob);
+		addRoute(managedUri(blob));
 		context.start();
 
 		Map<String, Object> value = new java.util.LinkedHashMap<>();
@@ -281,7 +293,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 				end
 				""", StandardCharsets.UTF_8);
 		context.getRouteDefinitions().clear();
-		addRoute("lua:file:" + blob);
+		addRoute(managedUri(blob));
 		context.start();
 		template.sendBody("direct:start", "103.5585973");
 		Map<?, ?> result = getMockEndpoint("mock:result").getExchanges().get(0)
@@ -289,6 +301,98 @@ class LuaProducerCamelTest extends CamelTestSupport {
 		assertEquals("103.5585973", result.get("text"));
 		assertTrue(result.get("text") instanceof String);
 		assertTrue(result.get("number") instanceof Number);
+	}
+
+	@Test
+	void managedSourceRunsFromMemoryWithoutCreatingFiles() throws Exception {
+		byte[] bytes = "function aimc_main(sources) return { answer = 42 } end".getBytes(StandardCharsets.UTF_8);
+		LuaCompiledSource source = LuaCompiledSource.fromBytes(bytes, "mapping:managed-memory", 128);
+		bytes[0] = 'x';
+		assertEquals("function aimc_main(sources) return { answer = 42 } end",
+				new String(source.bytes(), StandardCharsets.UTF_8));
+
+		LuaTransformerConfiguration configuration = new LuaTransformerConfiguration("managed", source);
+		configuration.bind(context);
+		try {
+			String uri = configuration.getConnectionURI();
+			assertTrue(uri.startsWith("lua:managed:lua-source-"));
+			assertTrue(!uri.contains("function aimc_main"));
+			context.getRouteDefinitions().clear();
+			addRoute(uri);
+			context.start();
+			for (int i = 0; i < 3; i++) {
+				template.sendBody("direct:start", Map.of("n", i));
+				Map<?, ?> result = getMockEndpoint("mock:result").getExchanges().get(i)
+						.getMessage().getBody(Map.class);
+				assertEquals(42, ((Number) result.get("answer")).intValue());
+			}
+			assertEquals(64, source.contentIdentity().length());
+			try (var files = Files.list(tempDir)) {
+				assertEquals(0, files.count(), "managed scripts must not be materialized as files");
+			}
+		} finally {
+			try {
+				context.stop();
+			} finally {
+				configuration.close();
+			}
+		}
+	}
+
+	@Test
+	void managedSourceEagerlyRejectsOversizeAndInvalidSyntax() {
+		assertThrows(IllegalArgumentException.class, () -> LuaCompiledSource.fromBytes(
+				"1234".getBytes(StandardCharsets.UTF_8), "mapping:too-large", 3));
+		assertThrows(RuntimeException.class, () -> LuaCompiledSource.fromBytes(
+				"function aimc_main( ".getBytes(StandardCharsets.UTF_8), "mapping:syntax-error", 128));
+	}
+
+	@Test
+	void concurrentManagedVersionsStayBoundToTheirOwnRoutes() throws Exception {
+		LuaTransformerConfiguration oldConfig = managedConfiguration("old", "old-generation");
+		LuaTransformerConfiguration newConfig = managedConfiguration("new", "new-generation");
+		try {
+			oldConfig.bind(context);
+			newConfig.bind(context);
+			context.getRouteDefinitions().clear();
+			context.addRoutes(new RouteBuilder() {
+				@Override
+				public void configure() {
+					from("direct:old").to(oldConfig.getConnectionURI());
+					from("direct:new").to(newConfig.getConnectionURI());
+				}
+			});
+			context.start();
+
+			var oldRuns = IntStream.range(0, 20).mapToObj(i -> CompletableFuture.supplyAsync(
+					() -> template.requestBody("direct:old", Map.of(), Map.class))).toList();
+			var newRuns = IntStream.range(0, 20).mapToObj(i -> CompletableFuture.supplyAsync(
+					() -> template.requestBody("direct:new", Map.of(), Map.class))).toList();
+			for (var result : oldRuns) {
+				assertEquals("old-generation", result.join().get("version"));
+			}
+			for (var result : newRuns) {
+				assertEquals("new-generation", result.join().get("version"));
+			}
+			assertTrue(!oldConfig.getContentIdentity().equals(newConfig.getContentIdentity()));
+		} finally {
+			try {
+				context.stop();
+			} finally {
+				try {
+					oldConfig.close();
+				} finally {
+					newConfig.close();
+				}
+			}
+		}
+	}
+
+	private LuaTransformerConfiguration managedConfiguration(String id, String version) {
+		String script = "function aimc_main(sources) return { version = '" + version + "' } end";
+		LuaCompiledSource source = LuaCompiledSource.fromBytes(script.getBytes(StandardCharsets.UTF_8),
+				"mapping:" + id, 256);
+		return new LuaTransformerConfiguration(id, source);
 	}
 
 	private void addRoute(String luaUri) throws Exception {

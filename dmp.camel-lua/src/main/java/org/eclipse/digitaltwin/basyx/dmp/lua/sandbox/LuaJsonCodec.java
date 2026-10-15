@@ -39,7 +39,6 @@ import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.TwoArgFunction;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
-import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
 
 
 /**
@@ -179,7 +178,8 @@ public final class LuaJsonCodec extends TwoArgFunction {
 				break;
 			}
 			key = n.arg1();
-			if (key.isnumber() && key.toint() > 0 && key.todouble() == key.toint()) {
+			if (!(table instanceof JsonObjectTable) && key.type() == LuaValue.TNUMBER
+					&& key.toint() > 0 && key.todouble() == key.toint()) {
 				hasNumeric = true;
 				maxIndex = Math.max(maxIndex, key.toint());
 				numericCount++;

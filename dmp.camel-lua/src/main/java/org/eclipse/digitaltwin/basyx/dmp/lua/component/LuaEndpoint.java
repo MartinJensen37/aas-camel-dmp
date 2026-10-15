@@ -33,38 +33,46 @@ import org.apache.camel.spi.UriEndpoint;
 import org.apache.camel.spi.UriParam;
 import org.apache.camel.spi.UriPath;
 import org.apache.camel.support.DefaultEndpoint;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource.AccountedEndpoint;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource.AccountingEntry;
+import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaCompiledSource;
 
 /**
  * Endpoint for the {@code lua:} scheme (producer-only transformation).
  *
  * <p>
- * URI syntax: {@code lua:file:<path>?timeoutSeconds=2&contentCache=true
- * &maxScriptBytes=1048576&sourceKeys=body}
+ * URI syntax: {@code lua:managed:<binding>?timeoutSeconds=2&sourceKeys=body},
+ * where {@code <binding>} names a {@link LuaCompiledSource} bound in the Camel
+ * registry by its {@code LuaTransformerConfiguration}. Lua is never read from files.
  *
  * @author aas-camel-dmp
  */
 @UriEndpoint(firstVersion = "1.0.0-SNAPSHOT", scheme = "lua", title = "Lua",
 		syntax = "lua:resourcePath", producerOnly = true, category = { Category.SCRIPT })
-public class LuaEndpoint extends DefaultEndpoint {
+public class LuaEndpoint extends DefaultEndpoint implements AccountedEndpoint {
 
-	@UriPath(description = "Path to the Lua blob, optionally prefixed with file:")
+	@UriPath(description = "Registry binding of the compiled Lua source, as managed:<binding>")
 	@Metadata(required = true)
 	private String resourcePath;
 
 	@UriParam(defaultValue = "2", description = "CPU budget per invocation in seconds")
 	private double timeoutSeconds = 2;
 
-	@UriParam(defaultValue = "true", description = "Cache the script and reload on mtime/sha change")
-	private boolean contentCache = true;
-
-	@UriParam(defaultValue = "1048576", description = "Max blob size in bytes")
-	private long maxScriptBytes = 1048576;
-
 	@UriParam(defaultValue = "body", description = "How to assemble the sources map: 'body' wraps the whole payload, or a comma-separated list of keys to extract from the payload object")
 	private String sourceKeys = "body";
 
+	@UriParam(description = "Internal runtime binding: the input is already an exact SourceId-keyed map")
+	private boolean keyedInput;
+
 	@UriParam(description = "Source-side fine resolution / disassembly (ADR-014 / SPEC §6.5): a JSON Pointer (RFC 6901, e.g. $.State) applied to the incoming canonical payload before it is placed under a SourceId. When set, only the extracted leaf is delivered under SourceId (fine); when absent, the whole payload is delivered (coarse). Applies alongside a single sourceKeys entry.")
 	private String valuePath;
+	private volatile LuaCompiledSource source;
+
+	@Override public java.util.List<AccountingEntry> accounting() {
+		LuaCompiledSource source = this.source;
+		return source == null ? java.util.List.of() : java.util.List.of(new AccountingEntry(source,
+				java.util.Map.of("luaSourceRetainedBytes", source.retainedSourceBytes())));
+	}
 
 	public LuaEndpoint() {
 	}
@@ -75,6 +83,15 @@ public class LuaEndpoint extends DefaultEndpoint {
 
 	@Override
 	public Producer createProducer() throws Exception {
+		if (getResourcePath() == null || !getResourcePath().startsWith("managed:")) {
+			throw new IllegalArgumentException("Lua endpoints reference a compiled source as lua:managed:<binding>");
+		}
+		String name = getResourcePath().substring("managed:".length());
+		Object binding = getCamelContext().getRegistry().lookupByName(name);
+		if (!(binding instanceof LuaCompiledSource compiled)) {
+			throw new IllegalArgumentException("No Lua source bound as '" + name + "'");
+		}
+		source = compiled;
 		return new LuaProducer(this);
 	}
 
@@ -83,13 +100,14 @@ public class LuaEndpoint extends DefaultEndpoint {
 		throw new UnsupportedOperationException("The lua component is producer-only (transformation step).");
 	}
 
-	/** Returns the script path (strips a leading {@code file:} prefix). */
-	public String getScriptPath() {
-		String path = getResourcePath();
-		if (path != null && path.startsWith("file:")) {
-			return path.substring("file:".length());
-		}
-		return path;
+	/** Human-readable identity of the bound source for diagnostics. */
+	public String getDiagnosticIdentity() {
+		LuaCompiledSource bound = source;
+		return bound == null ? getResourcePath() : bound.diagnosticIdentity();
+	}
+
+	public LuaCompiledSource getSource() {
+		return source;
 	}
 
 	public String getResourcePath() {
@@ -108,28 +126,20 @@ public class LuaEndpoint extends DefaultEndpoint {
 		this.timeoutSeconds = timeoutSeconds;
 	}
 
-	public boolean isContentCache() {
-		return contentCache;
-	}
-
-	public void setContentCache(boolean contentCache) {
-		this.contentCache = contentCache;
-	}
-
-	public long getMaxScriptBytes() {
-		return maxScriptBytes;
-	}
-
-	public void setMaxScriptBytes(long maxScriptBytes) {
-		this.maxScriptBytes = maxScriptBytes;
-	}
-
 	public String getSourceKeys() {
 		return sourceKeys;
 	}
 
 	public void setSourceKeys(String sourceKeys) {
 		this.sourceKeys = sourceKeys;
+	}
+
+	public boolean isKeyedInput() {
+		return keyedInput;
+	}
+
+	public void setKeyedInput(boolean keyedInput) {
+		this.keyedInput = keyedInput;
 	}
 
 	/**

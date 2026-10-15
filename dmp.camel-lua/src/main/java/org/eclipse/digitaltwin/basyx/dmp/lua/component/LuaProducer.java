@@ -28,10 +28,8 @@ import java.util.Map;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.support.DefaultProducer;
-import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.CompiledLuaScript;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaJsonCodec;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaSandbox;
-import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaScriptLoader;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaTimeoutHook;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
@@ -44,10 +42,10 @@ import org.slf4j.LoggerFactory;
  * Executes the AIMC-compliant Lua blob for each exchange.
  *
  * <p>
- * The blob is compiled ONCE per route ({@link CompiledLuaScript}); per
- * invocation (SPEC §7.5 — LuaJ {@code Globals} are not thread-safe):
+ * The blob arrives from the AIMC and is compiled once when the mapping is
+ * compiled ({@code LuaCompiledSource}); per invocation (SPEC §7.5 — LuaJ
+ * {@code Globals} are not thread-safe):
  * <ol>
- * <li>load the cached compiled prototype (recompiled only on change)</li>
  * <li>build a fresh sandboxed {@link Globals} with the whitelist</li>
  * <li>install the CPU timeout hook</li>
  * <li>bind the pre-compiled prototype to the fresh environment (defines
@@ -66,7 +64,6 @@ public class LuaProducer extends DefaultProducer {
 	private static final Logger LOGGER = LoggerFactory.getLogger(LuaProducer.class);
 
 	private final LuaEndpoint endpoint;
-	private volatile LuaScriptLoader scriptLoader;
 
 	public LuaProducer(LuaEndpoint endpoint) {
 		super(endpoint);
@@ -75,27 +72,18 @@ public class LuaProducer extends DefaultProducer {
 
 	@Override
 	public void process(Exchange exchange) throws Exception {
-		// The blob is compiled ONCE per route and reused; only the sandbox is
-		// rebuilt per invocation (SPEC §7.5: LuaJ Globals are not thread-safe,
-		// and blobs may mutate their environment — full isolation per message).
-		CompiledLuaScript compiled;
-		try {
-			compiled = getScriptLoader().loadCompiled(endpoint.getScriptPath());
-		} catch (java.io.IOException e) {
-			throw new IllegalStateException(
-					"Unable to load Lua blob '" + endpoint.getScriptPath() + "': " + e.getMessage(), e);
-		}
-
+		// Only the sandbox is rebuilt per invocation (SPEC §7.5: LuaJ Globals are
+		// not thread-safe, and blobs may mutate their environment).
 		Globals globals = LuaSandbox.createGlobals();
 		LuaTimeoutHook.install(globals, endpoint.getTimeoutSeconds());
 
 		// Bind the pre-compiled prototype to the fresh environment and run the
 		// top-level chunk (defines aimc_main) — no re-parsing/re-compiling.
-		CompiledLuaScript.runChunk(compiled.prototype(), globals);
+		endpoint.getSource().runChunk(globals);
 
 		LuaValue aimcMain = globals.get("aimc_main");
 		if (!aimcMain.isfunction()) {
-			throw new IllegalStateException("Lua blob '" + endpoint.getScriptPath()
+			throw new IllegalStateException("Lua blob '" + endpoint.getDiagnosticIdentity()
 					+ "' must define the AIMC entry point: function aimc_main(sources)");
 		}
 
@@ -106,12 +94,12 @@ public class LuaProducer extends DefaultProducer {
 		try {
 			result = aimcMain.invoke(sources).arg1();
 		} catch (LuaError e) {
-			throw new RuntimeException("Lua transformation '" + endpoint.getScriptPath() + "' failed: "
+			throw new RuntimeException("Lua transformation '" + endpoint.getDiagnosticIdentity() + "' failed: "
 					+ e.getMessage(), e);
 		}
 
 		if (!result.istable()) {
-			throw new IllegalStateException("Lua blob '" + endpoint.getScriptPath()
+			throw new IllegalStateException("Lua blob '" + endpoint.getDiagnosticIdentity()
 					+ "' must return a table (map keyed by SinkId), got: " + result.typename());
 		}
 
@@ -119,25 +107,11 @@ public class LuaProducer extends DefaultProducer {
 		setBody(exchange, javaResult);
 
 		LOGGER.debug("lua {}: input-keys={} sourceKeys={} result={}",
-				endpoint.getScriptPath(),
+				endpoint.getDiagnosticIdentity(),
 				body == null ? "null" : (body instanceof Map<?, ?> m ? m.keySet() : body.getClass().getSimpleName()),
 				endpoint.getSourceKeys(), javaResult);
 
-		LOGGER.debug("Lua transformation '{}' applied to exchange {}", endpoint.getScriptPath(), exchange.getExchangeId());
-	}
-
-	private LuaScriptLoader getScriptLoader() {
-		LuaScriptLoader current = scriptLoader;
-		if (current == null) {
-			synchronized (this) {
-				current = scriptLoader;
-				if (current == null) {
-					current = new LuaScriptLoader(endpoint.isContentCache(), endpoint.getMaxScriptBytes());
-					scriptLoader = current;
-				}
-			}
-		}
-		return current;
+		LOGGER.debug("Lua transformation '{}' applied to exchange {}", endpoint.getDiagnosticIdentity(), exchange.getExchangeId());
 	}
 
 	private Object getBody(Exchange exchange) {
@@ -145,6 +119,12 @@ public class LuaProducer extends DefaultProducer {
 	}
 
 	private LuaValue buildSources(Object body) {
+		if (endpoint.isKeyedInput()) {
+			if (!(body instanceof Map<?, ?> map) || map.keySet().stream().anyMatch(key -> !(key instanceof String))) {
+				throw new IllegalArgumentException("Keyed Lua input must be a SourceId-keyed map");
+			}
+			return LuaJsonCodec.toLua(body);
+		}
 		LuaValue sources = LuaValue.tableOf();
 		String keys = endpoint.getSourceKeys();
 		if (keys == null || keys.trim().isEmpty() || "body".equalsIgnoreCase(keys.trim())) {
@@ -195,7 +175,7 @@ public class LuaProducer extends DefaultProducer {
 		java.util.Optional<Object> leaf = org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.extract(body, pointer);
 		if (leaf.isEmpty()) {
 			throw new IllegalArgumentException("Lua source valuePath '" + pointer
-					+ "' does not resolve in the incoming payload for script '" + endpoint.getScriptPath() + "'");
+					+ "' does not resolve in the incoming payload for script '" + endpoint.getDiagnosticIdentity() + "'");
 		}
 		// a legit JSON-null leaf delivers a Java null under the SourceId;
 		// only a MISSING path is a route error (SPEC §8.4 #8, T1.12)

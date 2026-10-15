@@ -32,7 +32,7 @@ import org.apache.camel.support.DefaultComponent;
 
 /**
  * Camel {@code lua:} component. Producer-only: used as a transformation step in
- * a route ({@code .to("lua:file:<path>?...")}) that executes the AIMC-compliant
+ * a route ({@code .to("lua:managed:<binding>?...")}) that executes the AIMC-compliant
  * {@code aimc_main(sources)} Lua blob against the exchange body.
  *
  * @author aas-camel-dmp

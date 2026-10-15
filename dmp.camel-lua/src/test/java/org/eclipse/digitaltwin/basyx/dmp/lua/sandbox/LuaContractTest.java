@@ -22,30 +22,21 @@
  * 
  * SPDX-License-Identifier: MIT
  ******************************************************************************/
-package org.eclipse.digitaltwin.basyx.dmp.lua.harness;
+package org.eclipse.digitaltwin.basyx.dmp.lua.sandbox;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 
-import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.CompiledLuaScript;
-import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaJsonCodec;
-import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaSandbox;
-import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaScriptLoader;
-import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaTimeoutHook;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
@@ -57,9 +48,6 @@ import org.luaj.vm2.LuaValue;
 class LuaContractTest {
 
 	private static final double TEST_TIMEOUT_SECONDS = 1.0;
-
-	@TempDir
-	Path tempDir;
 
 	private String blob(String name) throws IOException {
 		return new String(
@@ -79,7 +67,7 @@ class LuaContractTest {
 
 	@Test
 	void test02CallAimcMainReturnsMappedResult() throws IOException {
-		Object result = LuaHarness.run(blob("simple.lua"), "@simple.lua",
+		Object result = run(blob("simple.lua"), "@simple.lua",
 				java.util.Map.of("a", 3.0, "b", 4.0), TEST_TIMEOUT_SECONDS);
 
 		assertTrue(result instanceof java.util.Map, "result must be a map");
@@ -92,7 +80,7 @@ class LuaContractTest {
 
 	@Test
 	void test02bMathLibraryWorks() throws IOException {
-		Object result = LuaHarness.run(blob("math.lua"), "@math.lua",
+		Object result = run(blob("math.lua"), "@math.lua",
 				java.util.Map.of("source1", 3.0, "source2", 4.0), TEST_TIMEOUT_SECONDS);
 
 		@SuppressWarnings("unchecked")
@@ -104,7 +92,7 @@ class LuaContractTest {
 
 	@Test
 	void test02cJsonLibWorks() throws IOException {
-		Object result = LuaHarness.run(blob("usesJson.lua"), "@usesJson.lua",
+		Object result = run(blob("usesJson.lua"), "@usesJson.lua",
 				java.util.Map.of("body", "{\"a\": 2, \"b\": 3}"), TEST_TIMEOUT_SECONDS);
 
 		@SuppressWarnings("unchecked")
@@ -117,7 +105,7 @@ class LuaContractTest {
 
 	@Test
 	void jsonCodecPreservesNullAndEmptyContainerShapes() throws IOException {
-		Object result = LuaHarness.run(
+		Object result = run(
 				"function aimc_main(sources)\n"
 						+ " local v = json.decode('{\"n\":null,\"a\":[],\"o\":{}}')\n"
 						+ " return { n = v.n, a = v.a, o = v.o }\n"
@@ -134,11 +122,113 @@ class LuaContractTest {
 
 	@Test
 	void codecRejectsMixedKeyTables() {
-		assertThrows(LuaError.class, () -> LuaHarness.run(
+		assertThrows(LuaError.class, () -> run(
 				"function aimc_main(sources)\n"
 						+ " return { out = { [1] = 'x', name = 'y' } }\n"
 						+ "end\n",
 				"@mixed.lua", java.util.Map.of(), TEST_TIMEOUT_SECONDS));
+	}
+
+	@Test
+	void numericLookingStringKeysStayObjectsThroughLua() {
+		for (String key : new String[] { "1", "01", "1.5", "-1" }) {
+			java.util.Map<String, Object> input = java.util.Map.of(key, "value");
+			Object result = run("""
+					function aimc_main(sources)
+					 return { native = sources, decoded = json.decode(json.encode(sources)) }
+					end
+					""", "@numeric-key.lua", input, TEST_TIMEOUT_SECONDS);
+			assertEquals(java.util.Map.of("native", input, "decoded", input), result, key);
+		}
+		java.util.Map<String, Object> expected = java.util.Map.of(
+				"1", "one", "01", "leading", "1.5", "fraction", "-1", "negative", "name", "ordinary");
+		Object result = run("""
+				function aimc_main(sources)
+				 local authored = { ["1"] = "one", ["01"] = "leading", ["1.5"] = "fraction",
+				                    ["-1"] = "negative", name = "ordinary" }
+				 return { native = sources, authored = authored, decoded = json.decode(json.encode(authored)) }
+				end
+				""", "@mixed-string-keys.lua", expected, TEST_TIMEOUT_SECONDS);
+		assertEquals(java.util.Map.of("native", expected, "authored", expected, "decoded", expected), result);
+	}
+
+	@Test
+	void explicitObjectAndArrayShapesOverrideTableInference() {
+		Object result = run("""
+				function aimc_main(sources)
+				 local object = json.object()
+				 object[1] = "one"
+				 object[3] = "three"
+				 object.name = "ordinary"
+				 local array = json.array()
+				 array[1] = "01"
+				 array[2] = json.null
+				 return { object = object, encoded = json.encode(object), array = array,
+				          emptyObject = json.encode(json.object()), emptyArray = json.encode(json.array()) }
+				end
+				""", "@explicit-shapes.lua", java.util.Map.of(), TEST_TIMEOUT_SECONDS);
+		java.util.Map<?, ?> map = assertInstanceOf(java.util.Map.class, result);
+		java.util.Map<String, Object> expected = java.util.Map.of("1", "one", "3", "three", "name", "ordinary");
+		assertEquals(expected, map.get("object"));
+		assertEquals(expected, org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec.parseJson((String) map.get("encoded")));
+		assertEquals(java.util.Arrays.asList("01", null), map.get("array"));
+		assertEquals("{}", map.get("emptyObject"));
+		assertEquals("[]", map.get("emptyArray"));
+		assertEquals(java.util.Map.of("out", java.util.Map.of("1", "one")), run("""
+				function aimc_main(sources)
+				 local object = json.object()
+				 object[1] = "one"
+				 return { out = object }
+				end
+				""", "@numeric-object.lua", java.util.Map.of(), TEST_TIMEOUT_SECONDS));
+	}
+
+	@Test
+	void arraysRejectStringKeysAndSparseIndices() {
+		for (String assignment : new String[] { "a['1'] = 'x'", "a['01'] = 'x'", "a['1.5'] = 'x'",
+				"a['-1'] = 'x'", "a.name = 'x'", "a[2] = 'x'", "a[-1] = 'x'", "a[1.5] = 'x'" }) {
+			assertThrows(LuaError.class, () -> run(
+					"function aimc_main(sources) local a = json.array(); " + assignment + "; return { out = a } end",
+					"@invalid-array.lua", java.util.Map.of(), TEST_TIMEOUT_SECONDS), assignment);
+		}
+	}
+
+	@Test
+	void explicitDecodeRejectsMalformedBareAndTrailingJson() {
+		for (String text : new String[] { "", " \n", "bare", "bare text", "01", "NaN", "Infinity",
+				"/* comment */ {}", "{} // comment", "{unquoted:1}", "{'single':1}",
+				"{\"a\":}", "{\"a\":1", "[1,]", "[1", "{} {}", "null false",
+				"\"valid\" trailing", "{} trailing", "null trailing" }) {
+			LuaError error = assertThrows(LuaError.class, () -> run(
+					"function aimc_main(sources) return { out = json.decode(sources.text) } end",
+					"@invalid-json.lua", java.util.Map.of("text", text), TEST_TIMEOUT_SECONDS), text);
+			assertTrue(error.getMessage().contains("json.decode failed"), error.getMessage());
+		}
+		assertEquals(java.util.Map.of("out", "01"), run(
+				"function aimc_main(sources) return { out = json.decode(sources.text) } end",
+				"@valid-scalar-json.lua", java.util.Map.of("text", " \"01\" \n"), TEST_TIMEOUT_SECONDS));
+	}
+
+	@Test
+	void actualLuaPreservesNativeTextBinaryNumbersAndNullMarkers() {
+		java.util.Map<String, Object> input = new java.util.LinkedHashMap<>();
+		input.put("text", "{\"looks\":\"json\"}");
+		input.put("numericText", "01");
+		input.put("quotedText", "\"quoted\"");
+		input.put("bytes", new byte[] { 0, 1, -1 });
+		input.put("large", new BigInteger("9007199254740993"));
+		input.put("decimal", new java.math.BigDecimal("0.123456789012345678901"));
+		input.put("integer", 1L);
+		input.put("fraction", 0.5);
+		input.put("null", null);
+		java.util.Map<?, ?> result = assertInstanceOf(java.util.Map.class, run(
+				"function aimc_main(sources) return sources end", "@native-values.lua", input, TEST_TIMEOUT_SECONDS));
+		assertTrue(result.containsKey("null"));
+		for (String key : input.keySet()) {
+			if (!key.equals("bytes")) assertEquals(input.get(key), result.get(key), key);
+		}
+		assertArrayEquals((byte[]) input.get("bytes"), (byte[]) result.get("bytes"));
+		assertNotSame(input.get("bytes"), result.get("bytes"));
 	}
 
 	@Test
@@ -171,7 +261,7 @@ class LuaContractTest {
 	@Test
 	void test03InfiniteLoopTimesOut() throws IOException {
 		long start = System.nanoTime();
-		LuaError error = assertThrows(LuaError.class, () -> LuaHarness.run(
+		LuaError error = assertThrows(LuaError.class, () -> run(
 				blob("infinite.lua"), "@infinite.lua", java.util.Map.of(), 0.5));
 		long elapsedMs = Duration.ofNanos(System.nanoTime() - start).toMillis();
 
@@ -181,121 +271,49 @@ class LuaContractTest {
 
 	@Test
 	void test04BlobCallingOsExecuteFails() throws IOException {
-		assertThrows(LuaError.class, () -> LuaHarness.run(
+		assertThrows(LuaError.class, () -> run(
 				blob("usesOsExecute.lua"), "@usesOsExecute.lua", java.util.Map.of(), TEST_TIMEOUT_SECONDS));
 	}
 
 	@Test
 	void test04bBlobCallingRequireFails() throws IOException {
-		assertThrows(LuaError.class, () -> LuaHarness.run(
+		assertThrows(LuaError.class, () -> run(
 				blob("usesRequire.lua"), "@usesRequire.lua", java.util.Map.of(), TEST_TIMEOUT_SECONDS));
 	}
 
 	@Test
 	void test04cBlobCallingIoFails() throws IOException {
-		assertThrows(LuaError.class, () -> LuaHarness.run(
+		assertThrows(LuaError.class, () -> run(
 				blob("usesIo.lua"), "@usesIo.lua", java.util.Map.of(), TEST_TIMEOUT_SECONDS));
 	}
 
 	@Test
 	void test04dBlobCallingLuajavaFails() throws IOException {
-		assertThrows(LuaError.class, () -> LuaHarness.run(
+		assertThrows(LuaError.class, () -> run(
 				blob("usesLuajava.lua"), "@usesLuajava.lua", java.util.Map.of(), TEST_TIMEOUT_SECONDS));
 	}
 
 	@Test
 	void test05NonTableReturnFailsWithClearError() throws IOException {
 		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-				() -> LuaHarness.run(blob("nonTable.lua"), "@nonTable.lua",
+				() -> run(blob("nonTable.lua"), "@nonTable.lua",
 						java.util.Map.of(), TEST_TIMEOUT_SECONDS));
 		assertTrue(ex.getMessage().contains("must return a table"), "unexpected message: " + ex.getMessage());
 	}
 
-	@Test
-	void test06ReloadUsesNewCodeOnFileChange() throws IOException {
-		Path scriptFile = tempDir.resolve("reload.lua");
-		Files.writeString(scriptFile, blob("simple.lua"));
-
-		LuaScriptLoader loader = new LuaScriptLoader(true, 1048576);
-
-		Object first = runThroughLoader(loader, scriptFile, java.util.Map.of("a", 3.0, "b", 4.0));
-		@SuppressWarnings("unchecked")
-		java.util.Map<String, Object> firstMap = (java.util.Map<String, Object>) first;
-		assertEquals(7L, firstMap.get("sum"));
-
-		// drop in a replacement blob (updated AIMC transformation)
-		Files.writeString(scriptFile,
-				"function aimc_main(sources)\n"
-						+ "    return { [\"sum\"] = (sources[\"a\"] or 0) - (sources[\"b\"] or 0) }\n"
-						+ "end\n");
-
-		Object second = runThroughLoader(loader, scriptFile, java.util.Map.of("a", 3.0, "b", 4.0));
-		@SuppressWarnings("unchecked")
-		java.util.Map<String, Object> secondMap = (java.util.Map<String, Object>) second;
-		assertEquals(-1L, secondMap.get("sum"), "reloaded blob must use the new code");
-	}
-
-	private Object runThroughLoader(LuaScriptLoader loader, Path scriptFile, Object sources) throws IOException {
-		String script = loader.load(scriptFile.toString());
-		assertNotNull(script);
-		return LuaHarness.run(script, scriptFile.toString(), sources, TEST_TIMEOUT_SECONDS);
-	}
-
-	@Test
-	void test07CompiledPrototypeIsReusedAcrossInvocations() throws IOException {
-		Path scriptFile = tempDir.resolve("reuse.lua");
-		Files.writeString(scriptFile, blob("simple.lua"));
-
-		LuaScriptLoader loader = new LuaScriptLoader(true, 1048576);
-
-		// Two "incoming messages": the loader returns the SAME compiled
-		// prototype (no re-parsing/re-compiling on the hot path).
-		CompiledLuaScript first = loader.loadCompiled(scriptFile.toString());
-		CompiledLuaScript second = loader.loadCompiled(scriptFile.toString());
-		assertSame(first, second);
-		assertSame(first.prototype(), second.prototype());
-
-		// Both invocations still run in fresh, isolated environments.
-		java.util.Map<String, Object> r1 = runCompiled(loader, scriptFile, java.util.Map.of("a", 3.0, "b", 4.0));
-		java.util.Map<String, Object> r2 = runCompiled(loader, scriptFile, java.util.Map.of("a", 10.0, "b", 5.0));
-		assertEquals(7L, r1.get("sum"));
-		assertEquals(15L, r2.get("sum"));
-	}
-
-	@Test
-	void test08CompiledReloadRecompilesOnBlobChange() throws IOException {
-		Path scriptFile = tempDir.resolve("reload-compiled.lua");
-		Files.writeString(scriptFile, blob("simple.lua"));
-
-		LuaScriptLoader loader = new LuaScriptLoader(true, 1048576);
-
-		CompiledLuaScript first = loader.loadCompiled(scriptFile.toString());
-
-		// drop in a replacement blob (updated AIMC transformation)
-		Files.writeString(scriptFile,
-				"function aimc_main(sources)\n"
-						+ "    return { [\"sum\"] = (sources[\"a\"] or 0) - (sources[\"b\"] or 0) }\n"
-						+ "end\n");
-
-		CompiledLuaScript second = loader.loadCompiled(scriptFile.toString());
-		assertNotSame(first.prototype(), second.prototype(), "blob change must recompile");
-
-		java.util.Map<String, Object> result = runCompiled(loader, scriptFile, java.util.Map.of("a", 3.0, "b", 4.0));
-		assertEquals(-1L, result.get("sum"), "recompiled blob must use the new code");
-	}
-
-	private java.util.Map<String, Object> runCompiled(
-			LuaScriptLoader loader, Path scriptFile, Object sources) throws IOException {
-		CompiledLuaScript compiled = loader.loadCompiled(scriptFile.toString());
+	/** Evaluates a blob exactly as the lua: producer does, from in-memory source text. */
+	private static Object run(String script, String chunkName, Object sources, double timeoutSeconds) {
 		Globals globals = LuaSandbox.createGlobals();
-		LuaTimeoutHook.install(globals, TEST_TIMEOUT_SECONDS);
-		CompiledLuaScript.runChunk(compiled.prototype(), globals);
-
+		LuaTimeoutHook.install(globals, timeoutSeconds);
+		globals.load(script, chunkName.startsWith("@") ? chunkName : "@" + chunkName).call();
 		LuaValue aimcMain = globals.get("aimc_main");
 		if (!aimcMain.isfunction()) {
-			throw new IllegalArgumentException("Blob must define aimc_main");
+			throw new IllegalArgumentException("Blob must define the AIMC entry point: function aimc_main(sources)");
 		}
 		LuaValue result = aimcMain.invoke(LuaJsonCodec.toLua(sources)).arg1();
-		return (java.util.Map<String, Object>) LuaJsonCodec.fromLua(result);
+		if (!result.istable()) {
+			throw new IllegalArgumentException("Blob must return a table (map keyed by SinkId), got: " + result.typename());
+		}
+		return LuaJsonCodec.fromLua(result);
 	}
 }
