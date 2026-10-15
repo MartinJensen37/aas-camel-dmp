@@ -31,11 +31,10 @@
 			<version>${revision}</version>
 		</dependency>
 
-		<!-- logging -->
+		<!-- Logging backend for tests only; dmp.component chooses the runtime backend. -->
 		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-slf4j-impl</artifactId>
-			<version>2.23.0</version>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
 			<scope>test</scope>
 		</dependency>
 
@@ -90,15 +89,6 @@
 	<build>
 		<defaultGoal>install</defaultGoal>
 			<plugins>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.12.1</version>
-					<configuration>
-						<release>${maven.compiler.release}</release>
-					</configuration>
-				</plugin>
-
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-resources-plugin</artifactId>

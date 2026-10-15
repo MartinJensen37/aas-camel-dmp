@@ -27,16 +27,6 @@
 	<!-- Plugin configuration is done in parent project(s) -->
 	<build>
 		<plugins>
-<!-- Compile Java sources using Java 17 -->
-                        <plugin>
-                                <groupId>org.apache.maven.plugins</groupId>
-                                <artifactId>maven-compiler-plugin</artifactId>
-                                <version>3.12.1</version>
-                                <configuration>
-                                        <release>${maven.compiler.release}</release>
-				</configuration>
-			</plugin>
-
 			<!-- Attach sources to jar file -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -63,16 +53,13 @@
 				</configuration>
 			</plugin>
 
-			<!-- JUnit tests: regression helpers mutate System.getenv() via reflection,
-			     which the Java 17 module system blocks without add-opens flags -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.2.5</version>
 				<configuration>
-					<!-- @{argLine} forwards a caller-provided -DargLine (e.g. test
-					     health-port offsets); the add-opens flags keep the Java 17
-					     module system from blocking the broker/AAS server libs -->
+					<!-- ${argLine} forwards a caller-provided -DargLine (e.g. test
+					     health-port offsets). -->
 					<argLine>${argLine} --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED</argLine>
 				</configuration>
 			</plugin>
@@ -80,7 +67,7 @@
 	</build>
 
 	<dependencies>
-		<!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-simple -->
+		<!-- The executable's logging backend; library modules use it only in tests. -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
@@ -121,7 +108,6 @@
 			<version>${revision}</version>
 		</dependency>
 
-
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
 			<artifactId>dmp.camel-lua</artifactId>
@@ -157,13 +143,13 @@
 			<artifactId>dmp.camel-opcua</artifactId>
 			<version>${revision}</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
 			<artifactId>dmp.camel-sql</artifactId>
 			<version>${revision}</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
 			<artifactId>dmp.camel-jsonjackson</artifactId>
@@ -175,25 +161,12 @@
 			<artifactId>dmp.camel-plc4x</artifactId>
 			<version>${revision}</version>
 		</dependency>
-		
 
-		
-
-
-
-
-
-
-		<!-- JUnit 4 for running JUnit tests -->
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-test-junit5</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<!-- Run the existing JUnit 4 regressions alongside the Jupiter contracts. -->
-
-
-
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
 			<artifactId>dmp.camel-paho</artifactId>
@@ -223,7 +196,7 @@
 			<artifactId>awaitility</artifactId>
 			<scope>test</scope>
 		</dependency>
-		
+
 		<!-- https://mvnrepository.com/artifact/org.mock-server/mockserver-netty -->
 		<dependency>
 			<groupId>org.mock-server</groupId>
