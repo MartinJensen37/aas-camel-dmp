@@ -60,7 +60,10 @@ public final class WireProjection {
 	public static final String AIMC = "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/Submodel";
 	private static final String AIMC_MAPPING_LIST = "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/1/0/MappingConfigurations";
 	private static final String AIMC_EXECUTION = "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ExecutionSemantics";
-	private static final String AID = "https://admin-shell.io/idta/AssetInterfacesDescription/1/1/Submodel";
+	/** AID 1.1 and 1.2 share the interface structure the DMP reads (1.2 adds protocols and optional fields). */
+	private static final java.util.List<String> AID = java.util.List.of(
+			"https://admin-shell.io/idta/AssetInterfacesDescription/1/1/Submodel",
+			"https://admin-shell.io/idta/AssetInterfacesDescription/1/2/Submodel");
 	private static final String AID_INTERFACE = "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Interface";
 	private static final Map<String,ProtocolFamily> PROTOCOL_BINDINGS=Map.of(
 			"http://www.w3.org/2011/mqtt",ProtocolFamily.MQTT,
@@ -99,7 +102,7 @@ public final class WireProjection {
 	public static void validate(SubmodelElement element, String path) {
 		validateElement(element, path);
 	}
-	public static boolean isAid(Submodel submodel) { return hasExactSemantic(submodel, AID); }
+	public static boolean isAid(Submodel submodel) { return AID.stream().anyMatch(semantic -> hasExactSemantic(submodel, semantic)); }
 
 	/** Projects every mapping; the first invalid mapping fails the whole AIMC. */
 	public static Aimc aimc(Submodel submodel) {
@@ -233,7 +236,7 @@ public final class WireProjection {
 
 	/** Projects an AID submodel into its interfaces, forms, schemas and affordances. */
 	public static Aid aid(Submodel sm) {
-		if (!hasExactSemantic(sm, AID)) throw error("/semanticId", "expected AID semantic identity");
+		if (!isAid(sm)) throw error("/semanticId", "expected AID 1.1 or 1.2 semantic identity");
 		validate(sm);
 		List<Interface> interfaces = new ArrayList<>();
 		for (SubmodelElement e : nonNull(sm.getSubmodelElements())) if (hasSemantic(e, AID_INTERFACE)) {

@@ -173,6 +173,26 @@ class WireProjectionTest {
 		assertEquals(java.util.List.of("state"),projected.schemas().get(0).required().value());
 	}
 
+	@Test void acceptsAid12AndRejectsAid10() {
+		String elements="""
+				[{"modelType":"SubmodelElementCollection","idShort":"http","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"%s"}]},"supplementalSemanticIds":[{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"http://www.w3.org/2011/http"},{"type":"GlobalReference","value":"https://www.w3.org/2019/wot/td"}]}],"value":[
+				 {"modelType":"SubmodelElementCollection","idShort":"EndpointMetadata","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata"}]},"value":[{"modelType":"Property","idShort":"base","valueType":"xs:anyURI","value":"https://example.test"},{"modelType":"Property","idShort":"protocolVersion","valueType":"xs:string","value":"1.1"}]},
+				 {"modelType":"SubmodelElementCollection","idShort":"InteractionMetadata","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata"}]},"value":[
+				  {"modelType":"SubmodelElementCollection","idShort":"forms","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"https://www.w3.org/2019/wot/td#hasForm"}]},"value":[{"modelType":"SubmodelElementCollection","value":[{"modelType":"Property","idShort":"href","valueType":"xs:string","value":"/status"}]}]},
+				  {"modelType":"SubmodelElementCollection","idShort":"DataSchema","value":[{"modelType":"Property","idShort":"type","valueType":"xs:string","value":"object"},{"modelType":"SubmodelElementCollection","idShort":"properties","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"https://www.w3.org/2019/wot/json-schema#properties"}]},"value":[{"modelType":"SubmodelElementCollection","idShort":"state","value":[{"modelType":"Property","idShort":"type","valueType":"xs:string","value":"string"}]}]}]}
+				 ]}]}]
+				 """.formatted(AID_INTERFACE_SEMANTIC);
+		Submodel aid12=sm(submodel("https://admin-shell.io/idta/AssetInterfacesDescription/1/2/Submodel",elements));
+		assertTrue(WireProjection.isAid(aid12));
+		var projected=WireProjection.aid(aid12).interfaces().get(0);
+		assertEquals(java.util.List.of(WireModel.ProtocolFamily.HTTP),projected.protocolFamilies());
+		assertEquals("/status",projected.forms().get(0).href().value());
+		assertEquals("string",projected.schemas().get(0).properties().get("state").type().value());
+		Submodel aid10=sm(submodel("https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Submodel",elements));
+		assertFalse(WireProjection.isAid(aid10));
+		assertThrows(WireProjectionException.class,()->WireProjection.aid(aid10));
+	}
+
 	@Test void preservesDualBindingsAndRejectsUnknownInterfaceFamilies() {
 		String valid=submodel(AID_SEMANTIC,"[{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"dual\",\"semanticId\":{\"type\":\"ExternalReference\",\"keys\":[{\"type\":\"GlobalReference\",\"value\":\""+AID_INTERFACE_SEMANTIC+"\"}]},\"supplementalSemanticIds\":[{\"type\":\"ExternalReference\",\"keys\":[{\"type\":\"GlobalReference\",\"value\":\"http://www.w3.org/2011/http\"}]},{\"type\":\"ExternalReference\",\"keys\":[{\"type\":\"GlobalReference\",\"value\":\"http://www.w3.org/2011/mqtt\"}]}],\"value\":[]}]");
 		assertEquals(java.util.List.of(WireModel.ProtocolFamily.HTTP,WireModel.ProtocolFamily.MQTT),WireProjection.aid(sm(valid)).interfaces().get(0).protocolFamilies());
