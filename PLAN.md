@@ -152,6 +152,8 @@ Decide per item: keep (and schedule), or drop (and delete it from SPEC).
 | A6 | **PLC4X/Modbus action invocation** | Planned as P1 (trigger write plus completion polling). |
 | A7 | **OPC UA events and HTTP Observe** acquisition | Rejected at compile time. |
 | A8 | **AID bindings for Kafka, ActiveMQ, SQL**; finishing the **Hono** consumer | Components exist but the compiler never selects them; Hono only logs messages. Alternative: delete these modules. |
+| A9 | **SNMP binding** (AID 1.2 `…/AssetInterfacesDescription/1/2/SNMP`) via Camel's `camel-snmp` component: Read (GET/poll), Observe (traps), Write (SET) | Not recognised: an SNMP interface is rejected with "no supported protocol binding". |
+| A10 | **CAN binding** (AID 1.2 `…/AssetInterfacesDescription/1/2/CAN`) via PLC4X's CAN drivers (e.g. CANopen), alongside Modbus and BACnet | Not recognised: a CAN interface is rejected with "no supported protocol binding". |
 
 ### B. Runtime and operations
 
