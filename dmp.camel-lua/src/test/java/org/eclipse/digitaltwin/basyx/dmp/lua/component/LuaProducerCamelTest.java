@@ -143,19 +143,6 @@ class LuaProducerCamelTest extends CamelTestSupport {
 	}
 
 	@Test
-	void retiredJsonStringEndpointOptionIsRejected() throws Exception {
-		String script = writeBlob("simple.lua");
-		String uri = managedUri(script) + "?inputType=JsonString";
-		context.getRouteDefinitions().clear();
-		assertThrows(Exception.class, () -> context.addRoutes(new RouteBuilder() {
-			@Override
-			public void configure() {
-				from("direct:start").to(uri);
-			}
-		}));
-	}
-
-	@Test
 	void fineSourceValuePathDisassemblesPayloadToLeaf() throws Exception {
 		// SPEC §8.4 #8 (fine source): valuePath=$.State auto-extracts the nested
 		// property into sources[SourceId] at the DMP boundary — the blob sees

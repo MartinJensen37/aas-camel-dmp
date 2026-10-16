@@ -12,12 +12,6 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.Paylo
 public final class OpcUaMethodArguments {
 	private OpcUaMethodArguments() {}
 
-	public static boolean isLegacyJsonString(OpcUaMethodMetadataProvider.MethodSignature signature) {
-		return signature.inputs().size() == 1
-				&& signature.inputs().get(0).valueRank() == -1
-				&& isUaString(signature.inputs().get(0).dataType());
-	}
-
 	public static List<Object> toPositional(Map<String, Object> namedValues,
 			OpcUaMethodMetadataProvider.MethodSignature signature) {
 		return toPositional(namedValues, signature, namedValues.keySet(), java.util.Set.of());
@@ -63,9 +57,8 @@ public final class OpcUaMethodArguments {
 
 	public static void validateSchemaSignature(OpcUaMethodMetadataProvider.MethodSignature signature,
 			Map<String, String> inputTypes, java.util.Set<String> inputRequired,
-			Map<String, String> outputTypes, java.util.Set<String> outputRequired,
-			boolean legacyJsonString) {
-		if (!legacyJsonString) validateDirection(signature.inputs(), inputTypes, inputRequired, "input");
+			Map<String, String> outputTypes, java.util.Set<String> outputRequired) {
+		validateDirection(signature.inputs(), inputTypes, inputRequired, "input");
 		validateDirection(signature.outputs(), outputTypes, outputRequired, "output");
 	}
 
@@ -191,10 +184,6 @@ public final class OpcUaMethodArguments {
 			default -> true;
 		};
 		if (!valid) throw mismatch("UA OutputArgument " + name + " value does not match its declared type");
-	}
-
-	private static boolean isUaString(String dataType) {
-		return "String".equalsIgnoreCase(dataType) || Integer.valueOf(12).equals(builtinTypeId(dataType));
 	}
 
 	private static Integer builtinTypeId(String dataType) {

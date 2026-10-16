@@ -14,7 +14,6 @@ import org.apache.camel.component.milo.client.MiloClientEndpoint;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousInvocationAdapter;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.PayloadValidationException;
-import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.structured.CallMethodRequest;
@@ -51,30 +50,25 @@ public final class OpcUaSynchronousInvocationAdapter implements SynchronousInvoc
 					"METHOD_METADATA_UNAVAILABLE", "Unable to read the configured OPC UA Method signature", error);
 		}
 
-		boolean legacyJson = OpcUaMethodArguments.isLegacyJsonString(signature);
 		try {
 			OpcUaMethodArguments.validateSchemaSignature(signature,
 					schema.inputTypes(), schema.inputRequired(),
-					schema.outputTypes(), schema.outputRequired(), legacyJson);
+					schema.outputTypes(), schema.outputRequired());
 		} catch (PayloadValidationException mismatch) {
 			throw new ConnectorInvocationException(ConnectorInvocationException.Category.CONFIGURATION,
 					"METHOD_SIGNATURE_MISMATCH", mismatch.getMessage(),
 					Map.of("violations", mismatch.getViolations()));
 		}
 
-		Object requestBody;
-		if (legacyJson) {
-			requestBody = JsonCodec.toJson(namedRequest);
-		} else {
-			try {
-				List<Object> values = OpcUaMethodArguments.toPositional(namedRequest, signature,
-						schema.inputTypes().keySet(), schema.inputRequired());
-				requestBody = metadata.toVariantArray(values, signature.inputs());
-			} catch (PayloadValidationException mismatch) {
-				throw new ConnectorInvocationException(ConnectorInvocationException.Category.CONFIGURATION,
-						"METHOD_ARGUMENT_MISMATCH", mismatch.getMessage(),
-						Map.of("violations", mismatch.getViolations()));
-			}
+		final Object arguments;
+		try {
+			List<Object> values = OpcUaMethodArguments.toPositional(namedRequest, signature,
+					schema.inputTypes().keySet(), schema.inputRequired());
+			arguments = metadata.toVariantArray(values, signature.inputs());
+		} catch (PayloadValidationException mismatch) {
+			throw new ConnectorInvocationException(ConnectorInvocationException.Category.CONFIGURATION,
+					"METHOD_ARGUMENT_MISMATCH", mismatch.getMessage(),
+					Map.of("violations", mismatch.getViolations()));
 		}
 
 		try {
@@ -86,11 +80,10 @@ public final class OpcUaSynchronousInvocationAdapter implements SynchronousInvoc
 					if (client == null) throw new IllegalStateException("OPC UA client is not connected");
 					var node = ExpandedNodeId.parse(endpoint.getNode()).toNodeIdOrThrow(client.getNamespaceTable());
 					var method = ExpandedNodeId.parse(endpoint.getMethod()).toNodeIdOrThrow(client.getNamespaceTable());
-					Variant[] arguments = requestBody instanceof Variant[] variants ? variants
-							: new Variant[] { new Variant(requestBody) };
+					Variant[] variants = (Variant[]) arguments;
 					// Camel 4.22's SubscriptionManager.call discards the result. Use the same owned client, once.
 					var response = (org.eclipse.milo.opcua.stack.core.types.structured.CallResponse) await(
-							client.callAsync(List.of(new CallMethodRequest(node, method, arguments))), timeoutSeconds);
+							client.callAsync(List.of(new CallMethodRequest(node, method, variants))), timeoutSeconds);
 					if (response == null || response.getResults() == null || response.getResults().length != 1) {
 						throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
 								"METHOD_RESULT_INVALID", "OPC UA Method returned an unreadable result", Map.of());
@@ -102,7 +95,7 @@ public final class OpcUaSynchronousInvocationAdapter implements SynchronousInvoc
 			}
 			ProducerTemplate template = context.createProducerTemplate();
 			try {
-				return decode(context, await(template.asyncRequestBodyAndHeader(endpointUri, requestBody,
+				return decode(context, await(template.asyncRequestBodyAndHeader(endpointUri, arguments,
 						MiloConstants.HEADER_AWAIT, true), timeoutSeconds), signature);
 			} finally { template.stop(); }
 		} catch (ConnectorInvocationException error) {

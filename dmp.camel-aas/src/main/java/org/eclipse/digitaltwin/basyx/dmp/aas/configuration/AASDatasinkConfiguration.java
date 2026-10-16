@@ -39,9 +39,6 @@ public class AASDatasinkConfiguration extends DataSinkConfiguration {
 	private String type;
 	private String submodelEndpoint;
 	private String idShortPath;
-	/** Legacy descriptor field; only the DotAAS-V3 API is supported. */
-	private String api;
-
 	public AASDatasinkConfiguration() {}
 	
 	public AASDatasinkConfiguration(String submodelEndpoint, String idShortPath, String uniqueId) {
@@ -89,7 +86,6 @@ public class AASDatasinkConfiguration extends DataSinkConfiguration {
 
 	@Override
 	public String getConnectionURI() {
-		AASEndpoint.requireSupportedApi(api);
 		String endpointDefinition = "aas:";
 		endpointDefinition += this.submodelEndpoint;
 		endpointDefinition += "?propertyPath=" + this.idShortPath;

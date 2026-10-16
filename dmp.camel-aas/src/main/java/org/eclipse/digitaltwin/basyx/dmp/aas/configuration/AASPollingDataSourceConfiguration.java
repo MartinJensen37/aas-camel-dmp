@@ -37,8 +37,6 @@ public class AASPollingDataSourceConfiguration extends DataSourceConfiguration {
 	
 	private String idShortPath;
 	private String submodelEndpoint;
-	/** Legacy descriptor field; only the DotAAS-V3 API is supported. */
-	private String api;
 	private String elementType;
 	
 	public AASPollingDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String idShortPath, String submodelEndpoint) {
@@ -73,7 +71,6 @@ public class AASPollingDataSourceConfiguration extends DataSourceConfiguration {
 	
 	@Override
 	public String getConnectionURI() {
-		AASEndpoint.requireSupportedApi(api);
 		StringBuilder endpointDefinition = new StringBuilder();
 		endpointDefinition.append("aas:");
 		endpointDefinition.append(this.submodelEndpoint);

@@ -52,7 +52,6 @@ public class AASEndpoint extends DefaultEndpoint {
 	private static final Logger logger = LoggerFactory.getLogger(AASEndpoint.class);
 
 	/** The only supported AAS API: AAS Part 2 HTTP/REST API v3. */
-	public static final String DOT_AAS_V3 = "DotAAS-V3";
 	private static final String API_V3_SUFFIX = "/$value";
 
 	@UriPath
@@ -61,10 +60,6 @@ public class AASEndpoint extends DefaultEndpoint {
 
 	@UriParam(defaultValue = "")
 	private String propertyPath;
-
-	/** Legacy selector; only the DotAAS-V3 API remains, so it is validated and otherwise ignored. */
-	@UriParam(defaultValue = DOT_AAS_V3)
-	private String api = DOT_AAS_V3;
 
 	/**
 	 * Optional JSON field to extract from the message body before writing
@@ -127,25 +122,6 @@ public class AASEndpoint extends DefaultEndpoint {
 
 	public void setElementType(String elementType) {
 		this.elementType = elementType;
-	}
-
-	public String getApi() {
-		return api;
-	}
-
-	public void setApi(String api) {
-		requireSupportedApi(api);
-		this.api = api;
-	}
-
-	/**
-	 * Rejects descriptors that still select the removed BaSyx v1 API. Every
-	 * historical spelling of the v3 API (DotAAS-V3, DotAasV3, DOT_AAS_V3) is accepted.
-	 */
-	public static void requireSupportedApi(String api) {
-		if (api != null && !"DOTAASV3".equals(api.replaceAll("[^A-Za-z0-9]", "").toUpperCase(java.util.Locale.ROOT)))
-			throw new IllegalArgumentException("AAS api '" + api + "' is not supported; only " + DOT_AAS_V3
-					+ " (BaSyx v2 / AAS Part 2 API v3) remains. Remove the api field or set it to " + DOT_AAS_V3 + ".");
 	}
 
 	public void setPropertyValue(Object content) throws IOException {

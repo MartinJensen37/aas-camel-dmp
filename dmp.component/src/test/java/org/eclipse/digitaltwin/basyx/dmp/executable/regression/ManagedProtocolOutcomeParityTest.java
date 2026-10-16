@@ -95,68 +95,6 @@ class ManagedProtocolOutcomeParityTest {
     private record Reply(int status, JsonElement body) { }
 
     @Test
-    void opcUaMethodJsonStringValuesOrderAndBadStatusSendCountsMatchWithSequentialOwners() throws Exception {
-        int devicePort = freePort();
-        var endpoint = EndpointConfig.newBuilder().setBindAddress("127.0.0.1").setBindPort(devicePort)
-                .setHostname("127.0.0.1").setPath("").setSecurityPolicy(SecurityPolicy.None)
-                .setSecurityMode(MessageSecurityMode.None).addTokenPolicy(OpcUaServerConfig.USER_TOKEN_POLICY_ANONYMOUS).build();
-        var server = new OpcUaServer(OpcUaServerConfig.builder().setEndpoints(Set.of(endpoint))
-                .setApplicationName(LocalizedText.english("isolated parity simulator"))
-                .setApplicationUri("urn:dmp:parity:server").setProductUri("urn:dmp:parity")
-                .setCertificateManager(new DefaultCertificateManager(new MemoryCertificateQuarantine())).build(),
-                profile -> new OpcTcpServerTransport(OpcTcpServerTransportConfig.newBuilder().build()));
-        var device = new MethodDevice(server);
-        Runtime runtime = new Runtime();
-        try (Repository repository = new Repository("opcua-method", "opc.tcp://127.0.0.1:" + devicePort)) {
-            device.startup();
-            server.startup().get(10, TimeUnit.SECONDS);
-            RoutesConfiguration javaPlan = repository.compile();
-            runtime.startComponent();
-            int port = freePort();
-            runtime.listener(port);
-            int baselineRoutes = runtime.routes();
-            int baselineEndpoints = runtime.endpoints();
-            HttpClient caller = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
-            List<String> payloads = List.of("{\"Calibrate\":{\"text\":\"001\",\"flag\":true,\"nil\":null}}",
-                    "{\"samples\":[1,false,\"002\",null]}", "{\"badStatus\":true}");
-            for (RoutesConfiguration configuration : List.of(javaPlan)) {
-                int before = device.sends.get();
-                var owner = runtime.installBundle("exclusive-opcua-parity", configuration);
-                List<JsonElement> calls = new ArrayList<>();
-                List<Reply> replies = new ArrayList<>();
-                try {
-                    assertEquals(before, device.sends.get(), "metadata reads/activation cannot invoke a Method");
-                    for (int scenario = 0; scenario < payloads.size(); scenario++) {
-                        var response = caller.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port
-                                + "/operations/contract/Calibrate")).timeout(Duration.ofSeconds(10))
-                                .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(payloads.get(scenario))).build(),
-                                HttpResponse.BodyHandlers.ofString());
-                        assertEquals(before + scenario + 1, device.sends.get(), "exactly one real OPC UA Call, including bad status");
-                        JsonElement call = device.calls.poll(2, TimeUnit.SECONDS);
-                        assertEquals(json(payloads.get(scenario)), call, "legacy JSON-String Method receives the whole typed command");
-                        assertEquals(scenario == 2 ? 502 : 200, response.statusCode(), response.body());
-                        JsonElement reply = json(response.body());
-                        if (scenario < 2) assertEquals(json("{}"), reply, "fixture declares no output schema/arguments");
-                        calls.add(call);
-                        replies.add(new Reply(response.statusCode(), reply));
-                    }
-                } finally { runtime.removeBundle(owner); }
-                assertFalse(owner.active());
-                assertNull(runtime.managedBundle("exclusive-opcua-parity"));
-                assertEquals(baselineRoutes, runtime.routes());
-                assertEquals(baselineEndpoints, runtime.endpoints(), "old Method producer retires before new owner");
-                assertNull(device.calls.poll(150, TimeUnit.MILLISECONDS), "no Method replay after removal");
-            }
-            assertEquals(3, device.sends.get());
-            assertEquals(0, repository.nonGetRequests());
-        } finally {
-            try { runtime.stopComponent(); } finally {
-                try { device.shutdown(); } finally { server.shutdown().get(10, TimeUnit.SECONDS); }
-            }
-        }
-    }
-
-    @Test
     void opcUaTypedOutputsReachDirectAndBaSyxCallersWithoutUnwrappingOrReplay() throws Exception {
         Map<String, String> models = typedOutputModels();
         int devicePort = freePort();
@@ -168,7 +106,7 @@ class ManagedProtocolOutcomeParityTest {
                 .setApplicationUri("urn:dmp:typed-output:server").setProductUri("urn:dmp:typed-output")
                 .setCertificateManager(new DefaultCertificateManager(new MemoryCertificateQuarantine())).build(),
                 profile -> new OpcTcpServerTransport(OpcTcpServerTransportConfig.newBuilder().build()));
-        var device = new MethodDevice(server, true);
+        var device = new MethodDevice(server);
         Runtime runtime = new Runtime();
         try (Repository repository = new Repository("opcua-method", "opc.tcp://127.0.0.1:" + devicePort,
                 models)) {
@@ -229,18 +167,20 @@ class ManagedProtocolOutcomeParityTest {
                         + "{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Count\",\"valueType\":\"xs:integer\",\"value\":\"7\"}}]"),
                         json(basyx.body()));
 
+                device.failNext.set("status");
                 var badStatus = caller.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port
                         + "/operations/contract/Calibrate")).timeout(Duration.ofSeconds(10))
                         .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString("{\"fail\":\"status\"}" )).build(), HttpResponse.BodyHandlers.ofString());
+                        .POST(HttpRequest.BodyPublishers.ofString("{}" )).build(), HttpResponse.BodyHandlers.ofString());
                 assertEquals(502, badStatus.statusCode(), badStatus.body());
                 assertEquals(4, device.sends.get(), "bad native status is not replayed");
                 assertNotNull(device.calls.poll(2, TimeUnit.SECONDS));
 
+                device.failNext.set("type");
                 var incompatible = caller.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port
                         + "/operations/contract/Calibrate")).timeout(Duration.ofSeconds(10))
                         .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString("{\"fail\":\"type\"}" )).build(), HttpResponse.BodyHandlers.ofString());
+                        .POST(HttpRequest.BodyPublishers.ofString("{}" )).build(), HttpResponse.BodyHandlers.ofString());
                 assertEquals(502, incompatible.statusCode(), incompatible.body());
                 assertEquals(5, device.sends.get(), "incompatible native output is not retried");
                 assertNotNull(device.calls.poll(2, TimeUnit.SECONDS));
@@ -332,8 +272,9 @@ class ManagedProtocolOutcomeParityTest {
     private static final class MethodDevice extends ManagedAddressSpaceFragmentWithLifecycle {
         final BlockingQueue<JsonElement> calls = new LinkedBlockingQueue<>();
         final AtomicInteger sends = new AtomicInteger();
-        MethodDevice(OpcUaServer server) { this(server, false); }
-        MethodDevice(OpcUaServer server, boolean typedOutputs) {
+        /** The next Call fails: "status" with a bad UA status, "type" with an output of the wrong type. */
+        final AtomicReference<String> failNext = new AtomicReference<>();
+        MethodDevice(OpcUaServer server) {
             super(server);
             server.getNamespaceTable().add("urn:dmp:parity:object");
             server.getNamespaceTable().add("urn:dmp:parity:method");
@@ -345,39 +286,31 @@ class ManagedProtocolOutcomeParityTest {
             UaMethodNode method = UaMethodNode.builder(getNodeContext()).setNodeId(new NodeId(2, "RunCalibration"))
                     .setBrowseName(new QualifiedName(2, "RunCalibration")).setDisplayName(LocalizedText.english("RunCalibration"))
                     .setExecutable(true).setUserExecutable(true).buildAndAdd();
-            Argument[] inputs = { new Argument("json", NodeIds.String, -1, null, LocalizedText.english("legacy JSON command")) };
-            Argument[] outputs = typedOutputs ? new Argument[] {
+            Argument[] inputs = new Argument[0];
+            Argument[] outputs = {
                     new Argument("State", NodeIds.String, -1, null, LocalizedText.english("state")),
                     new Argument("Samples", NodeIds.Int32, 1, null, LocalizedText.english("samples")),
                     new Argument("Label", NodeIds.String, -1, null, LocalizedText.english("label")),
                     new Argument("Nullable", NodeIds.BaseDataType, -1, null, LocalizedText.english("nullable")),
                     new Argument("Calibrate", NodeIds.Boolean, -1, null, LocalizedText.english("action-named output")),
                     new Argument("Count", NodeIds.Int32, -1, null, LocalizedText.english("count"))
-            } : new Argument[0];
+            };
             method.setInputArguments(inputs);
             method.setOutputArguments(outputs);
             method.setInvocationHandler(new AbstractMethodInvocationHandler(method) {
                 @Override public Argument[] getInputArguments() { return inputs; }
                 @Override public Argument[] getOutputArguments() { return outputs; }
                 @Override protected Variant[] invoke(InvocationContext context, Variant[] input) throws UaException {
-                    assertEquals(1, input.length);
-                    assertInstanceOf(String.class, input[0].getValue());
-                    JsonElement command = json((String) input[0].getValue());
-                    calls.add(command);
+                    assertEquals(0, input.length);
+                    calls.add(new JsonObject());
                     sends.incrementAndGet();
-                    if (command.getAsJsonObject().has("badStatus")) throw new UaException(StatusCodes.Bad_InternalError);
-                    if (typedOutputs) {
-                        if (command.getAsJsonObject().has("fail")) {
-                            String failure = command.getAsJsonObject().get("fail").getAsString();
-                            if ("status".equals(failure)) throw new UaException(StatusCodes.Bad_InternalError);
-                            if ("type".equals(failure)) return new Variant[] { new Variant("001"),
-                                    new Variant(new int[] { 3, 5 }), new Variant("007"), new Variant(null),
-                                    new Variant(true), new Variant("not-an-integer") };
-                        }
-                        return new Variant[] { new Variant("001"), new Variant(new int[] { 2, 4 }),
-                                new Variant("007"), new Variant(null), new Variant(true), new Variant(7) };
-                    }
-                    return new Variant[0];
+                    String failure = failNext.getAndSet(null);
+                    if ("status".equals(failure)) throw new UaException(StatusCodes.Bad_InternalError);
+                    if ("type".equals(failure)) return new Variant[] { new Variant("001"),
+                            new Variant(new int[] { 3, 5 }), new Variant("007"), new Variant(null),
+                            new Variant(true), new Variant("not-an-integer") };
+                    return new Variant[] { new Variant("001"), new Variant(new int[] { 2, 4 }),
+                            new Variant("007"), new Variant(null), new Variant(true), new Variant(7) };
                 }
             });
             object.addComponent(method);

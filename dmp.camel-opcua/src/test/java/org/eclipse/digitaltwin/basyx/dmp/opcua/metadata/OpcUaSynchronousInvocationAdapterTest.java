@@ -22,43 +22,34 @@ import org.junit.jupiter.api.Test;
 
 class OpcUaSynchronousInvocationAdapterTest {
 	@Test
-	void legacyJsonStringRequestPreservesRequiredNullAndExactNumbers() throws Exception {
+	void aSingleStringArgumentIsMappedByNameLikeAnyOtherArgument() throws Exception {
 		var signature = new OpcUaMethodMetadataProvider.MethodSignature(List.of(
 				new OpcUaMethodMetadataProvider.Argument("Command", "i=12", -1, List.of())), List.of());
 		var adapter = new OpcUaSynchronousInvocationAdapter(
 				new CamelOpcUaMethodMetadataProvider((context, uri) -> signature));
-		Map<String, Object> request = new LinkedHashMap<>();
-		request.put("RequiredNullable", null);
-		request.put("count", 9007199254740993L);
-		request.put("fraction", new java.math.BigDecimal("1.25"));
-		new AffordanceValidation(Map.of("type", "object", "required", List.of("RequiredNullable"),
-				"properties", Map.of("RequiredNullable", Map.of("type", List.of("string", "null")))),
-				"legacy command", AffordanceValidation.Mode.ON).outgoing(request);
-		request.put("marker", JsonPointer.JSON_NULL);
-		AtomicReference<String> wireRequest = new AtomicReference<>();
+		AtomicReference<Object> wireRequest = new AtomicReference<>();
 		try (var context = new DefaultCamelContext()) {
 			context.addRoutes(new RouteBuilder() {
 				@Override
 				public void configure() {
-					from("direct:legacyMethod").process(exchange -> {
-						wireRequest.set(exchange.getMessage().getBody(String.class));
+					from("direct:method").process(exchange -> {
+						wireRequest.set(exchange.getMessage().getBody());
 						exchange.getMessage().setBody(Map.of("statusCode", Map.of("good", true),
 								"outputArguments", List.of()));
 					});
 				}
 			});
 			context.start();
-			adapter.invoke(context, "direct:legacyMethod", request,
-					new SynchronousInvocationAdapter.InvocationSchema(Map.of(), Set.of("RequiredNullable"),
-							Map.of(), Set.of(), Map.of()));
+			var schema = new SynchronousInvocationAdapter.InvocationSchema(Map.of("Command", "string"),
+					Set.of("Command"), Map.of(), Set.of(), Map.of());
+			adapter.invoke(context, "direct:method", Map.of("Command", "start"), schema);
+			var variants = (org.eclipse.milo.opcua.stack.core.types.builtin.Variant[]) wireRequest.get();
+			assertEquals(1, variants.length);
+			assertEquals("start", variants[0].getValue(), "the value itself is sent, not a JSON document");
+			var mismatch = org.junit.jupiter.api.Assertions.assertThrows(ConnectorInvocationException.class,
+					() -> adapter.invoke(context, "direct:method", Map.of("command", "start"), schema));
+			assertEquals("METHOD_ARGUMENT_MISMATCH", mismatch.getConnectorCode());
 		}
-		Map<?, ?> decoded = (Map<?, ?>) JsonCodec.parseJson(wireRequest.get());
-		assertTrue(decoded.containsKey("RequiredNullable"));
-		assertNull(decoded.get("RequiredNullable"));
-		assertTrue(decoded.containsKey("marker"));
-		assertNull(decoded.get("marker"));
-		assertEquals(9007199254740993L, decoded.get("count"));
-		assertEquals(1.25, decoded.get("fraction"));
 	}
 
 	@Test

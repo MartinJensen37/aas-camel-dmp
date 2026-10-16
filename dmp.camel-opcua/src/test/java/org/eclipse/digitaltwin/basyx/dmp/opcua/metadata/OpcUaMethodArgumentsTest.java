@@ -25,16 +25,6 @@ class OpcUaMethodArgumentsTest {
 	}
 
 	@Test
-	void retainsLegacySingleJsonStringMethodMode() {
-		assertTrue(OpcUaMethodArguments.isLegacyJsonString(signature(
-				List.of(argument("Command", "i=12", -1)), List.of())));
-		assertFalse(OpcUaMethodArguments.isLegacyJsonString(signature(
-				List.of(argument("Command", "ns=2;i=12", -1), argument("Count", "i=6", -1)), List.of())));
-		assertFalse(OpcUaMethodArguments.isLegacyJsonString(signature(
-				List.of(argument("Command", "i=12", 1)), List.of())));
-	}
-
-	@Test
 	void oneArrayValuedArgumentIsDistinctFromMultipleArguments() {
 		var signature = signature(List.of(argument("Positions", "i=11", 1)), List.of());
 		assertEquals(List.of(List.of(1.0, 2.0)), OpcUaMethodArguments.toPositional(
@@ -87,20 +77,20 @@ class OpcUaMethodArgumentsTest {
 				List.of(argument("State", "i=12", -1)));
 		OpcUaMethodArguments.validateSchemaSignature(signature,
 				Map.of("Speed", "integer", "Optional", "string"), java.util.Set.of("Speed"),
-				Map.of("State", "string", "OptionalReply", "integer"), java.util.Set.of("State"), false);
+				Map.of("State", "string", "OptionalReply", "integer"), java.util.Set.of("State"));
 		assertThrows(PayloadValidationException.class, () -> OpcUaMethodArguments.validateSchemaSignature(
 				signature, Map.of("Count", "integer"), java.util.Set.of("Count"),
-					Map.of("State", "string"), java.util.Set.of("State"), false));
+					Map.of("State", "string"), java.util.Set.of("State")));
 		var arraySignature = signature(List.of(argument("Samples", "i=6", 1)), List.of());
 		OpcUaMethodArguments.validateSchemaSignature(arraySignature,
-				Map.of("Samples", "array<integer>"), java.util.Set.of(), Map.of(), java.util.Set.of(), false);
+				Map.of("Samples", "array<integer>"), java.util.Set.of(), Map.of(), java.util.Set.of());
 		assertThrows(PayloadValidationException.class, () -> OpcUaMethodArguments.validateSchemaSignature(
 				arraySignature, Map.of("Samples", "array<string>"), java.util.Set.of(),
-					Map.of(), java.util.Set.of(), false));
+					Map.of(), java.util.Set.of()));
 		assertThrows(PayloadValidationException.class, () -> OpcUaMethodArguments.validateSchemaSignature(
 				signature(List.of(argument("Samples", "i=6", 2)), List.of()),
 					Map.of("Samples", "array<integer>"), java.util.Set.of(),
-					Map.of(), java.util.Set.of(), false));
+					Map.of(), java.util.Set.of()));
 	}
 
 	private static OpcUaMethodMetadataProvider.MethodSignature signature(

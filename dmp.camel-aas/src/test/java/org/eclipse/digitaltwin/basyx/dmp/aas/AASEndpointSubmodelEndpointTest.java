@@ -1,7 +1,6 @@
 package org.eclipse.digitaltwin.basyx.dmp.aas;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.apache.camel.impl.DefaultCamelContext;
 import org.junit.jupiter.api.Test;
@@ -33,14 +32,7 @@ class AASEndpointSubmodelEndpointTest {
 	@Test
 	public void aNormalisedPathDoesNotYieldASlashPrefixedHost() throws Exception {
 		assertEquals("http://localhost:4001/submodels/abc",
-				captured("aas:http://localhost:4001/submodels/abc?api=DotAAS-V3"),
+				captured("aas:http://localhost:4001/submodels/abc?propertyPath=State"),
 				"a leading slash makes the HTTP client fail with 'Target host is not specified'");
-	}
-
-	@Test
-	public void everyV3ApiSpellingIsAcceptedAndBaSyxV1IsRejected() {
-		for (String api : new String[] { null, "DotAAS-V3", "DotAasV3", "DOT_AAS_V3" })
-			AASEndpoint.requireSupportedApi(api);
-		assertThrows(IllegalArgumentException.class, () -> AASEndpoint.requireSupportedApi("BaSyx"));
 	}
 }
