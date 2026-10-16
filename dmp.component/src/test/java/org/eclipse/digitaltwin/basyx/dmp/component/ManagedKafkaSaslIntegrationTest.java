@@ -55,6 +55,7 @@ import com.sun.net.httpserver.HttpServer;
 
 
 /** Real loopback authentication/authorization, not an exception-classification stub. */
+@org.junit.jupiter.api.Tag("integration")
 public class ManagedKafkaSaslIntegrationTest {
 	private final String oldHealthPort = System.getProperty("databridge.health.port");
 	private final HttpClient caller = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build();

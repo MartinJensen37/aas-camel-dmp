@@ -25,6 +25,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 
 /** Loopback SCRAM and TLS interoperability using only temporary test credentials and certificates. */
+@org.junit.jupiter.api.Tag("integration")
 class ManagedKafkaScramTlsIntegrationTest {
 	private static final String TRUST_STORE = "javax.net.ssl.trustStore";
 	private static final String TRUST_STORE_PASSWORD = "javax.net.ssl.trustStorePassword";

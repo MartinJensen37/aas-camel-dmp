@@ -20,4 +20,4 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Install BaSyx DataBridge
-      run: mvn clean install
+      run: mvn clean install -Pintegration

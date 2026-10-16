@@ -50,6 +50,9 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<revision>1.0.0-SNAPSHOT</revision>
+		<!-- JUnit tags skipped by a plain "mvn test": real Kafka/process tests (-Pintegration) and the
+		     stress test (-Pcapacity). -->
+		<dmp.test.excludedGroups>integration,capacity</dmp.test.excludedGroups>
 		<docker.provenance />
 		<docker.namespace>eclipsebasyx</docker.namespace>
 		<docker.image.name>NOT_DEFINED_IN_MODULE</docker.image.name>
@@ -87,6 +90,20 @@
 		</plugins>
 		<pluginManagement>
 			<plugins>
+				<!-- camel-component-maven-plugin writes src/generated after compiling, but those files are
+				     also compiled as sources: a stale copy breaks the next build, so clean removes it. -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-clean-plugin</artifactId>
+					<version>3.4.1</version>
+					<configuration>
+						<filesets>
+							<fileset>
+								<directory>${project.basedir}/src/generated</directory>
+							</fileset>
+						</filesets>
+					</configuration>
+				</plugin>
 				<!-- The release level comes from maven.compiler.release above. -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
@@ -97,6 +114,9 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>3.2.5</version>
+					<configuration>
+						<excludedGroups>${dmp.test.excludedGroups}</excludedGroups>
+					</configuration>
 				</plugin>
 				<plugin>
 					<groupId>io.fabric8</groupId>
@@ -266,6 +286,22 @@
 			<build>
 				<directory>${project.basedir}/target-ide</directory>
 			</build>
+		</profile>
+		<!-- Also runs the real Kafka broker, SASL/TLS and packaged-process tests (several minutes). -->
+		<profile>
+			<id>integration</id>
+			<properties>
+				<dmp.test.excludedGroups>capacity</dmp.test.excludedGroups>
+			</properties>
+		</profile>
+		<!-- Runs only the stress test; size it with -Ddmp.stress.capacity. -->
+		<profile>
+			<id>capacity</id>
+			<properties>
+				<dmp.test.excludedGroups>integration</dmp.test.excludedGroups>
+				<groups>capacity</groups>
+				<surefire.failIfNoSpecifiedTests>false</surefire.failIfNoSpecifiedTests>
+			</properties>
 		</profile>
 		<profile>
 			<id>docker-push</id>

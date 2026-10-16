@@ -242,7 +242,10 @@ class ManagedBridgeLifecycleTest {
 				assertEquals(registrations, org.apache.camel.support.PluginHelper.getRestRegistry(runtime.context()).listAllRestServices().size());
 				assertEquals(templates, runtime.context().hasServices(org.apache.camel.ProducerTemplate.class).size());
 				assertEquals(executors, executorCount(runtime));
-				assertEquals(1 + (i + 1) * 3, writes.get());
+				// Response-sink writes run asynchronously on the bounded Wire Tap executor.
+				int expectedWrites = 1 + (i + 1) * 3;
+				org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(5)).until(() -> writes.get() >= expectedWrites);
+				assertEquals(expectedWrites, writes.get());
 			}
 		} finally { if (template != null) template.stop(); runtime.stopComponent(); }
 	}

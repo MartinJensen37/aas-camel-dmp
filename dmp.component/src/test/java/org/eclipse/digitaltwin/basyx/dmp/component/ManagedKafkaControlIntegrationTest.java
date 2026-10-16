@@ -33,6 +33,7 @@ import org.awaitility.Awaitility;
 
 
 /** Broker-backed check that a control event is committed only after invalidation acceptance. */
+@org.junit.jupiter.api.Tag("integration")
 class ManagedKafkaControlIntegrationTest {
 	private String previousHealthPort;
 	private EmbeddedBroker broker;

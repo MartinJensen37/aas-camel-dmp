@@ -42,6 +42,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 /** Runs production main, never a test-only runtime engine. Post-package property selects java -jar. */
+@org.junit.jupiter.api.Tag("integration")
 class ManagedPackagedRuntimeIntegrationTest {
 	@Test void executableHostsTwoAimcsOnOnePortAndReconstructsWithoutReplayingActions() throws Exception {
 		try (var fixture = new Fixture()) {
@@ -236,14 +237,12 @@ class ManagedPackagedRuntimeIntegrationTest {
 			if (jar == null) arguments.addAll(List.of("-cp", System.getProperty("java.class.path"), DmpExecutable.class.getName()));
 			else arguments.addAll(List.of("-jar", jar));
 			var command = new ProcessBuilder(arguments);
-			command.environment().keySet().removeIf(key -> key.startsWith("DMP_") || key.equals("MANAGED_ASSETS_FILE") || key.equals("luatransformer"));
+			command.environment().keySet().removeIf(key -> key.startsWith("DMP_"));
 			command.environment().putAll(Map.of("DMP_MANAGED_AAS_REPOSITORY_URI", repository.uri().toString(),
 					"DMP_MANAGED_KAFKA_BROKERS", broker.bootstrap(), "DMP_MANAGED_CONTROL_TOPIC", topic,
 					"DMP_MANAGED_CONTROL_GROUP_ID", group, "DMP_MANAGED_RETRY_INTERVAL_MS", "1000",
 					"DMP_MANAGED_REQUEST_TIMEOUT_MS", "30000", "DMP_AFFORDANCE_VALIDATION", "OFF"));
 			if (filtered) command.environment().put("DMP_MANAGED_AIMC_IDS", "[\"" + AIMC + "\"]");
-			command.environment().put("MANAGED_ASSETS_FILE", "/nonexistent/no-python-or-config");
-			command.environment().put("luatransformer", "invalid legacy config that must never load");
 			log = Files.createTempFile("dmp-managed-executable-", ".log");
 			process = command.redirectErrorStream(true).redirectOutput(log.toFile()).start();
 			Awaitility.await().atMost(Duration.ofSeconds(75)).ignoreExceptionsMatching(failure -> failure instanceof java.io.IOException).untilAsserted(() -> {

@@ -18,6 +18,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 /** Bounded local stress, not maximum-fleet or heap-isolation certification. */
+@org.junit.jupiter.api.Tag("capacity")
 class ManagedRuntimeCapacityTest {
 	static java.util.stream.Stream<Arguments> capacities() {
 		String configured = System.getProperty("dmp.stress.capacity");

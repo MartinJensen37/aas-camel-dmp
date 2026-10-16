@@ -22,11 +22,14 @@ R0–R8 and their verification logs) is in the git history before `8fe9c46`.
 ### Verification
 
 ```bash
-mvn -o clean test            # full offline reactor
+mvn -o clean test                  # unit and route tests (about 2.5 min)
+mvn -o clean test -Pintegration    # plus real Kafka, SASL/TLS and packaged-process tests (CI)
+mvn -o test -pl dmp.component -Pcapacity   # stress test only; size with -Ddmp.stress.capacity
 ```
 
-Last full run (2026-10-15): 520 tests, no failures, errors or skips. Integration tests
-start embedded brokers (KRaft Kafka, MQTT 5) and need no external services.
+Tests tagged `integration` or `capacity` are skipped by a plain `mvn test`,
+also when selected with `-Dtest`; use the profile. All tests start embedded
+brokers (KRaft Kafka, MQTT 5) and need no external services.
 Do not run Maven while the IDE re-imports POMs: the IDE can rewrite
 `target/classes` underneath a running build.
 
