@@ -248,11 +248,16 @@ public final class ConnectorConfigurationFactory {
 		String root="MappingConfigurations/value/"+mapping.listIndex();
 		List<EndpointPlan> operations=mapping.sources().stream().filter(endpoint -> endpoint.target() instanceof DirectTarget direct
 				&& direct.resolved().element() instanceof Operation).toList();
-		if(operations.size()!=1 || mapping.sources().size()!=1) {
+		if(operations.size()!=1) {
 			issue(issues,mapping,root+"/Sources","bridge mappings require exactly one declared CCI Operation source");
 			return;
 		}
 		EndpointPlan operation=operations.get(0);
+		// Fan-in: further AAS elements, read at invocation and passed to the request Lua with the Operation's variables.
+		List<EndpointPlan> fanIn=mapping.sources().stream().filter(endpoint -> endpoint!=operation).toList();
+		for(EndpointPlan extra:fanIn)
+			if(!(extra.target() instanceof DirectTarget direct) || direct.resolved().element() instanceof Operation)
+				issue(issues,mapping,root+"/Sources/"+extra.id(),"an operation mapping fans in AAS elements only; the device is reached through its Sinks");
 		String action=operationAction(operation.reference());
 		if(action==null || action.isBlank()) { issue(issues,mapping,root+"/Sources","Operation reference does not identify an exact parent skill/action");return; }
 		if(mapping.sinks().isEmpty()) { issue(issues,mapping,root+"/Sinks","bridge Operation requires at least one declared command binding");return; }
@@ -260,8 +265,15 @@ public final class ConnectorConfigurationFactory {
 		if(mapping.triggerSourceIds().present() && (mapping.triggerSourceIds().value()==null
 				|| !mapping.triggerSourceIds().value().equals(List.of(operation.id()))))
 			issue(issues,mapping,root+"/ExecutionSemantics/TriggerSourceIds","operation trigger selection must include the exact Operation SourceId");
-		AidTarget actionTarget=null;
+		// The Operation is bound 1:1 to the AID action of its skill, or to one property affordance it writes.
+		AidTarget actionTarget=null,propertyTarget=null;
 		for(EndpointPlan sink:mapping.sinks()) {
+			if(sink.target() instanceof AidTarget target && "property".equalsIgnoreCase(target.resolved().affordance().kind())) {
+				if(mapping.sinks().size()!=1 || !target.resolved().schemaPath().isEmpty())
+					issue(issues,mapping,root+"/Sinks/"+sink.id(),"an Operation bound to a property writes exactly one whole property affordance");
+				else propertyTarget=target;
+				continue;
+			}
 			if(!(sink.target() instanceof AidTarget target) || !"action".equalsIgnoreCase(target.resolved().affordance().kind())
 					|| !action.equals(target.resolved().affordance().idShort().value())) {
 				issue(issues,mapping,root+"/Sinks/"+sink.id(),"command binding must address the same exact AID action as the CCI Operation");
@@ -271,18 +283,30 @@ public final class ConnectorConfigurationFactory {
 			else if(!sameAction(actionTarget,target)) issue(issues,mapping,root+"/Sinks/"+sink.id(),
 					"grouped command members must share one AID action endpoint");
 		}
-		if(actionTarget==null || issues.size()!=issueStart) return;
+		if(actionTarget==null && propertyTarget==null || issues.size()!=issueStart) return;
+		boolean write=propertyTarget!=null;
+		AidTarget commandTarget=write?propertyTarget:actionTarget;
 		if(mapping.responseTransformation().present() && mapping.responseTransformation().value()==null) {
 			issue(issues,mapping,root+"/ResponseTransformation","response transformation Blob is explicitly null");return;
 		}
 		String commandId=entityId(mapping,"command",0);
 		Map<String,Object> targetOptions=new LinkedHashMap<>();
-		DataSinkConfiguration commandSink=bridgeCommandSink(mapping,action,actionTarget,plan,routeId,commandId,
-				targetOptions,issues,root+"/Sinks");
+		DataSinkConfiguration commandSink=write
+				?propertyWriteSink(mapping.sinks().get(0),mapping,plan,routeId,runtime,targetOptions,issues)
+				:bridgeCommandSink(mapping,action,actionTarget,plan,routeId,commandId,targetOptions,issues,root+"/Sinks");
 		if(commandSink==null || issues.size()!=issueStart) return;
-		DataSchema input=actionTarget.resolved().affordance().input().present()
+		List<DataSourceConfiguration> fanInReads=new ArrayList<>();
+		List<Map<String,Object>> fanInBindings=new ArrayList<>();
+		for(int i=0;i<fanIn.size();i++) {
+			DataSourceConfiguration read=aasReadSource(fanIn.get(i),mapping,500000+i,(DirectTarget)fanIn.get(i).target(),runtime,issues);
+			if(read==null)continue;
+			fanInReads.add(read);
+			fanInBindings.add(Map.of("sourceId",fanIn.get(i).id(),"dataSourceId",read.getUniqueId()));
+		}
+		if(issues.size()!=issueStart) return;
+		DataSchema input=write?null:actionTarget.resolved().affordance().input().present()
 				?actionTarget.resolved().affordance().input().value():null;
-		DataSchema response=actionTarget.resolved().affordance().output().present()
+		DataSchema response=write?null:actionTarget.resolved().affordance().output().present()
 				?actionTarget.resolved().affordance().output().value():null;
 		Map<String,String> parameterTypes=schemaTypes(input);
 		Map<String,String> responseTypes=schemaTypes(response);
@@ -302,7 +326,10 @@ public final class ConnectorConfigurationFactory {
 					operationKeys.subList(1,operationKeys.size()).stream().map(Key::getValue).toList()));
 		}
 		trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_SOURCE_ID,operation.id());
-		trigger.put("requestSourceIds",List.of(operation.id()));
+		List<String> requestSourceIds=new ArrayList<>(List.of(operation.id()));
+		fanIn.forEach(extra -> requestSourceIds.add(extra.id()));
+		trigger.put("requestSourceIds",List.copyOf(requestSourceIds));
+		trigger.put(ProtocolBridgeRouteConfiguration.FAN_IN_SOURCES,List.copyOf(fanInBindings));
 		trigger.put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_ID,mapping.sinks().get(0).id());
 		trigger.put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_IDS,List.of(commandSink.getUniqueId()));
 		List<Map<String,Object>> bindings=new ArrayList<>();
@@ -363,7 +390,7 @@ public final class ConnectorConfigurationFactory {
 		boolean explicit=mapping.responseSources().present() || mapping.responseSinks().present();
 		trigger.put(ProtocolBridgeRouteConfiguration.EXPLICIT_RESPONSE_MAPPING,explicit);
 		List<DataSinkConfiguration> responseDestinations=new ArrayList<>();
-		if(explicit)compileResponseBindings(mapping,operation,actionTarget,plan,routeId,runtime,trigger,responseDestinations,issues);
+		if(explicit)compileResponseBindings(mapping,operation,commandTarget,write,plan,routeId,runtime,trigger,responseDestinations,issues);
 		else if(mapping.responseTransformation().present())trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_SOURCE_BINDINGS,
 				List.of(Map.of("sourceId",action)));
 		trigger.put("targetOptions",Map.copyOf(targetOptions));
@@ -377,7 +404,7 @@ public final class ConnectorConfigurationFactory {
 		addLua(transformers,requestTransformerId,requestBytes,mapping.identity()+":request",mapping,root+"/Transformation",issues);
 		if(!transformers.isEmpty()) {
 			LuaTransformerConfiguration requestLua=(LuaTransformerConfiguration)transformers.get(0);
-			requestLua.setSourceKeys(operation.id());requestLua.setKeyedInput(true);
+			requestLua.setSourceKeys(String.join(",",requestSourceIds));requestLua.setKeyedInput(true);
 		}
 		List<String> transformerIds=new ArrayList<>();
 		if(!transformers.isEmpty()) transformerIds.add(requestTransformerId);
@@ -394,6 +421,7 @@ public final class ConnectorConfigurationFactory {
 			}
 		}
 		if(issues.size()!=issueStart) return;
+		output.addDatasources(fanInReads);
 		output.addDatasink(commandSink);
 		output.addDatasinks(responseDestinations);
 		output.addTransformers(transformers);
@@ -404,6 +432,39 @@ public final class ConnectorConfigurationFactory {
 		bridge.setRouteId(routeId+":"+mapping.listIndex());
 		bridge.setTriggerData(trigger);
 		output.addRoute(bridge);
+	}
+
+	/**
+	 * The command of an Operation bound to a property: an ordinary write of that property,
+	 * acknowledged by its connector (PLC4X write response, OPC UA Write status, HTTP response;
+	 * MQTT reaches the broker only).
+	 */
+	private static DataSinkConfiguration propertyWriteSink(EndpointPlan endpoint,MappingPlan mapping,Plan plan,String routeId,
+			RuntimeSettings runtime,Map<String,Object> targetOptions,List<Issue> issues) {
+		DataSinkConfiguration sink=sink(endpoint,mapping,0,plan,routeId,runtime,issues);
+		if(sink==null)return null;
+		targetOptions.put("write",true);
+		targetOptions.put("jsonPayload",sink.requiresJsonWireEncoding());
+		return sink;
+	}
+
+	/** An AAS element read once per invocation (fan-in), whatever the source's authored interval. */
+	private static DataSourceConfiguration aasReadSource(EndpointPlan endpoint,MappingPlan mapping,int position,
+			DirectTarget target,RuntimeSettings runtime,List<Issue> issues) {
+		String path=endpointPath(mapping,"Sources",position);
+		if(runtime==null) { issue(issues,mapping,path,"AAS source compilation requires explicit repository runtime settings");return null; }
+		String elementPath=aasElementPath(endpoint,mapping,path,issues);
+		if(elementPath==null)return null;
+		String submodelEndpoint=submodelEndpoint(target.resolved().submodel().getId(),runtime,mapping,path,issues);
+		if(submodelEndpoint==null)return null;
+		URI base=runtime.aasRepositoryBaseUri();
+		AASPollingDataSourceConfiguration source=new AASPollingDataSourceConfiguration(entityId(mapping,"source",position),
+				base.getHost(),effectivePort(base),elementPath,submodelEndpoint);
+		source.setSourceId(endpoint.id());
+		source.setElementType(Aas.modelType(target.resolved().element()));
+		source.setSchema(schemaFromAasElement(target.resolved().element(),mapping,path,issues));
+		source.setDelivery("sync");
+		return hasIssue(issues,mapping)?null:source;
 	}
 
 	private DataSinkConfiguration bridgeCommandSink(MappingPlan mapping,String action,AidTarget target,Plan plan,
@@ -495,7 +556,7 @@ public final class ConnectorConfigurationFactory {
 				&& left.resolved().affordance().equals(right.resolved().affordance());
 	}
 
-	private void compileResponseBindings(MappingPlan mapping,EndpointPlan operation,AidTarget command,
+	private void compileResponseBindings(MappingPlan mapping,EndpointPlan operation,AidTarget command,boolean write,
 			Plan plan,String routeId,RuntimeSettings runtime,Map<String,Object> trigger,
 			List<DataSinkConfiguration> destinations,List<Issue> issues) {
 		String path="MappingConfigurations/value/"+mapping.listIndex()+"/response";
@@ -506,9 +567,11 @@ public final class ConnectorConfigurationFactory {
 		if(mapping.responseSources().present()) {
 			if(mapping.responseSources().value()==null)issue(issues,mapping,path,"ResponseSources must not be null");
 			else for(EndpointPlan endpoint:mapping.responseSources().value()) {
+				// The reply of an action is its output; the reply of a property write is the written value.
 				if(!(endpoint.target() instanceof AidTarget target) || !sameAction(command,target)
-						|| Aas.keys(endpoint.reference()).stream().noneMatch(key -> "output".equals(key.getValue()))) {
-					issue(issues,mapping,path,"ResponseSource must select output of the exact command ACTION anchor");continue;
+						|| !write && Aas.keys(endpoint.reference()).stream().noneMatch(key -> "output".equals(key.getValue()))) {
+					issue(issues,mapping,path,write?"ResponseSource must select the written property or a member of it"
+							:"ResponseSource must select output of the exact command ACTION anchor");continue;
 				}
 				String pointer=jsonPointer(target.resolved().schemaPath());
 				if(!sourcePaths.add(pointer==null?"":pointer))issue(issues,mapping,path,"duplicate response member path");
@@ -561,6 +624,11 @@ public final class ConnectorConfigurationFactory {
 		if(mapping.responseSources().value()!=null)endpoints.addAll(mapping.responseSources().value());
 		if(mapping.responseSinks().value()!=null)endpoints.addAll(mapping.responseSinks().value());
 		for(EndpointPlan endpoint:endpoints)if(endpoint.target() instanceof AidTarget target) {
+			// A ResponseSource naming the command's own affordance projects its reply (an action's
+			// output, a written value); it is no device read, and the affordance is checked as the Sink.
+			if(mapping.responseSources().value()!=null && mapping.responseSources().value().contains(endpoint)
+					&& mapping.sinks().stream().anyMatch(sink -> sink.target() instanceof AidTarget command && sameAction(command,target)))
+				continue;
 			String path="MappingConfigurations/value/"+mapping.listIndex()+"/endpoint/"+endpoint.id();
 			List<WireModel.ProtocolFamily> families=target.resolved().owner().protocolFamilies();
 			if(families.size()!=1) { issue(issues,mapping,path,"ambiguous protocol bindings require an exact single binding");continue; }

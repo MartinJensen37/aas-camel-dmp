@@ -274,8 +274,10 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    qualifier. The DMP serves `POST` on that URL's path (by convention
    `/operations/{aasIdShort}/{skill}`). An Operation without exactly one
    absolute delegation URL blocks its mapping.
-2. The mapping has exactly one source (the Operation). Its sinks address the
-   AID action affordance of the same skill (§7.1). Operation input, output and InOut
+2. The mapping's sources are the Operation and, optionally, further AAS
+   elements (fan-in, §7.1). Its sinks bind the Operation 1:1 to one affordance
+   of the device's AID: the action of the same skill, or one whole property
+   (§7.1). Operation input, output and InOut
    variables have unique idShorts and are one of:
    - a **Property** with a supported `valueType` → a typed scalar;
    - a **SubmodelElementCollection** of such variables (members uniquely
@@ -290,8 +292,9 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    members get no idShort (AASd-120), list metadata and semantic IDs are
    copied, members the declaration lacks are dropped, and a value whose shape
    contradicts the declaration fails with `DMP_RESPONSE_MAPPING_FAILED`.
-3. The request Lua is mandatory and turns the caller's input variables into the
-   device command.
+3. The request Lua is mandatory and turns the caller's input variables (and
+   the fanned-in AAS values, keyed by their SourceIds) into the device command
+   or the value to write.
 4. The command leg is synchronous per protocol:
    - **HTTP**: the HTTP response is the reply;
    - **OPC UA**: Method call; arguments are matched by name to the server's
@@ -316,10 +319,32 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    `DMP_RESPONSE_MAPPING_FAILED`, `DMP_OPERATION_VALIDATION_FAILED`,
    `DMP_CONNECTOR_CONFIGURATION_ERROR` (500). Nothing is retried.
 
-### 7.1 Scope: one action, one terminal reply
+### 7.1 Scope: one affordance, one terminal answer
 
-A bridge mapping invokes one action affordance whose terminal reply is its
-result: an OPC UA Method, an MQTT 5 request/reply, an HTTP request. The DMP
+A bridge mapping binds the Operation 1:1 to one affordance:
+
+- an **action**, whose terminal reply is its result: an OPC UA Method, an
+  MQTT 5 request/reply, an HTTP request;
+- a **property**, which the call writes. The call returns once the connector
+  acknowledges the write: the PLC4X write response, the OPC UA Write status
+  (`dmp-milo-client:` waits for it and converts a scalar to the variable's
+  DataType), the HTTP response; MQTT only confirms that the broker accepted
+  the publish (QoS 1/2). The reply is the written value: ResponseSources
+  select it (or members of it). Without a ResponseTransformation the call
+  answers with no outputs. A rejected write answers 502
+  `DMP_DEVICE_ERROR`; nothing is fanned out.
+
+On the AAS side the mapping fans in and out:
+
+- **Fan-in.** Further Sources that address AAS elements are read once per
+  invocation, before the request Lua, and passed to it under their SourceIds
+  next to the Operation's variables. A failed read answers
+  `DMP_DEVICE_TRANSPORT_ERROR`. A read returns the element as the repository
+  serves it (a Property's value as lexical text).
+- **Fan-out.** ResponseSinks receive the response Lua's values for their
+  SinkIds (§7 item 6).
+
+The DMP
 does not model multi-step device sequences (write parameters, trigger, poll a
 status, read a result, reset, e.g. Modbus coils or OPC UA Programs); the
 higher-level control orchestrates them through ordinary mappings.
@@ -335,10 +360,10 @@ higher-level control orchestrates them through ordinary mappings.
   may still carry out the action; a later reply is dropped. Idempotency and
   compensation are the higher-level control's concern.
 
-**Route.** A Content Enricher sends the command through a command route that
-clears the caller's headers and runs the connector's invocation steps
-(`SynchronousInvocationAdapter.configureInvoke`); a Wire Tap makes the AAS
-response writes.
+**Route.** Content Enrichers make the fan-in reads; a Content Enricher sends
+the command through a command route that clears the caller's headers and runs
+the connector's invocation steps (`SynchronousInvocationAdapter.configureInvoke`)
+or the property write; a Wire Tap makes the AAS response writes.
 
 ## 8. Lua contract
 

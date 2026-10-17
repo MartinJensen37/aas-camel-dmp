@@ -37,6 +37,8 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConf
  */
 public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 
+	/** Fan-in: AAS elements read at invocation, each {@code sourceId} and {@code dataSourceId}. */
+	public static final String FAN_IN_SOURCES = "fanInSources";
 	public static final String ROUTE_TRIGGER = "bridge";
 	public static final String REST_PATH = "restPath";
 	public static final String REST_METHOD = "restMethod";
@@ -256,5 +258,10 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 			}
 		}
 		return out;
+	}
+
+	/** AAS elements read at invocation and passed to the request transformation (fan-in). */
+	public java.util.List<java.util.Map<String, Object>> getFanInSources() {
+		return mapList(FAN_IN_SOURCES);
 	}
 }

@@ -34,6 +34,8 @@ import org.eclipse.digitaltwin.basyx.dmp.core.routebuilder.DmpRouteBuilder;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.AffordanceValidation;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.FanIn;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -176,6 +178,12 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 				commandValidation, new AffordanceValidation(bridgeConfig.getResponseSchema(),
 						"bridge output " + action), responseSourceBindings, responseSinkTargets, routeId);
 		operation.setAuditTags(bridgeConfig.getAuditTags());
+		// Fan-in: AAS elements read at invocation, decoded like ordinary sources (SPEC §5.4).
+		java.util.List<java.util.Map<String, Object>> fanIn = bridgeConfig.getFanInSources();
+		FanIn decoder = fanIn.isEmpty() ? null : new FanIn(new RouteConfiguration(ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER,
+				fanIn.stream().map(binding -> String.valueOf(binding.get("dataSourceId"))).toList(),
+				java.util.List.of(), java.util.List.of()), routesConfiguration);
+		if (decoder != null && routeBuilder instanceof DmpRouteBuilder managed) managed.registerManagedResource(decoder);
 		registerManagedResource(operation);
 		String responseWriteRouteId = routeId + "-response-write";
 		String responseWriteUri = "direct:" + responseWriteRouteId;
@@ -196,8 +204,18 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		if (routeBuilder instanceof DmpRouteBuilder managed) managed.registerIngressRouteId(routeId);
 		var operationRoute = routeBuilder.from("direct:" + routeId).routeId(routeId);
 		var flow = operationRoute.doTry();
-		flow.process(operation::prepareRequest)
-				.to(requestTransformers)
+		flow.process(operation::prepareRequest);
+		for (int i = 0; i < fanIn.size(); i++) {
+			String sourceId = String.valueOf(fanIn.get(i).get("sourceId"));
+			flow.enrich(readRoute(routeId, "fan-in", i, String.valueOf(fanIn.get(i).get("dataSourceId")), decoder),
+					(original, read) -> {
+						@SuppressWarnings("unchecked")
+						java.util.Map<String, Object> sources = (java.util.Map<String, Object>) original.getMessage().getBody();
+						sources.put(sourceId, read.getMessage().getBody());
+						return original;
+					});
+		}
+		flow.to(requestTransformers)
 				.process(operation::keepRequestResult);
 		// The device call: the connector's steps run in the command route on a copy of the
 		// exchange (Content Enricher), so caller headers never reach the device. The
@@ -232,6 +250,42 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		LOGGER.info("bridge route {}: {} {} (callerOutputOrder {})",
 				routeId, method, restPath,
 				operationContext.callerOutputOrder);
+	}
+
+	/** A route making one fresh Read of a source and decoding it; a failed read is a transport error. */
+	private String readRoute(String routeId, String label, int index, String dataSourceId, FanIn decoder) {
+		String readRouteId = (routeId + "-" + label + "-read-" + index).replaceAll("[^A-Za-z0-9_.:-]", "-");
+		registerRouteId(readRouteId);
+		var route = routeBuilder.from("direct:" + readRouteId).routeId(readRouteId).doTry();
+		RouteCreatorHelper.configureSyncRead(route, RouteCreatorHelper.getDataSourceEndpoint(routesConfiguration, dataSourceId,
+				routeId), org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteCreator.SYNC_POLL_TIMEOUT_MS);
+		route.process(exchange -> {
+				if (!decodeQuietly(decoder, dataSourceId, exchange)) throw new IllegalStateException("undecodable value");
+			})
+			.doCatch(Exception.class)
+				.process(exchange -> {
+					throw new ConnectorInvocationException(ConnectorInvocationException.Category.TRANSPORT,
+							"DMP_SOURCE_READ_FAILED", "a fan-in source could not be read",
+							java.util.Map.of("source", FanIn.resolveSourceId(routesConfiguration, dataSourceId)));
+				})
+			.end();
+		return "direct:" + readRouteId;
+	}
+
+	/** Decodes a source message in place (body = its value); false when it carries no valid value. */
+	private boolean decodeQuietly(FanIn decoder, String dataSourceId, org.apache.camel.Exchange exchange) {
+		try {
+			if (exchange.getMessage().getBody() == null) return false;
+			decoder.disassemble(dataSourceId).process(exchange);
+			if (!decoder.contributed(exchange)) return false;
+			decoder.merge().process(exchange);
+			Object value = ((java.util.Map<?, ?>) exchange.getMessage().getBody())
+					.get(FanIn.resolveSourceId(routesConfiguration, dataSourceId));
+			exchange.getMessage().setBody(value == org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL ? null : value);
+			return true;
+		} catch (Exception undecodable) {
+			return false;
+		}
 	}
 
 	private static void encodeRestResponse(org.apache.camel.Exchange exchange) {

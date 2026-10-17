@@ -67,6 +67,8 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	/** The request transformation's result keyed by SinkId. */
 	private static final String REQUEST_RESULT = "dmp.operation.requestResult";
 	private static final String COMMAND_REPLY = "dmp.operation.commandReply";
+	/** A property write: the value written, which is also the call's reply. */
+	private static final String WRITTEN_VALUE = "dmp.operation.writtenValue";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SyncOperationProcessor.class);
 
@@ -186,6 +188,10 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	 * declared input schema and validated. The connector's invocation steps send it.
 	 */
 	public void prepareCommand(Exchange exchange) {
+		if (writesProperty()) {
+			prepareWrite(exchange);
+			return;
+		}
 		// parse every DECLARED parameter per its AID DataSchema type —
 		// the wire representation is data-driven, never name-based
 		Map<String, Object> command = OperationPayloads.assembleCommand(applySinkTransformers(exchange.getProperty(REQUEST_RESULT)),
@@ -201,6 +207,36 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		exchange.getMessage().setBody(command);
 	}
 
+	/** An Operation bound to a property affordance writes it (instead of invoking an action). */
+	private boolean writesProperty() {
+		return Boolean.TRUE.equals(context.targetOptions.get("write"));
+	}
+
+	/**
+	 * A property write: the request transformation's value for the property's SinkId,
+	 * validated against the property's schema and encoded for its connector (JSON text
+	 * for HTTP and MQTT, the value itself otherwise).
+	 */
+	private void prepareWrite(Exchange exchange) {
+		Object value = org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.PayloadAssembler.assemble(
+				OperationPayloads.keyedValues(applySinkTransformers(exchange.getProperty(REQUEST_RESULT))),
+				context.commandSinkIds, context.commandSinkValuePaths);
+		Object written = value == org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL ? null : value;
+		try {
+			validation.outgoing(written);
+		} catch (IllegalArgumentException invalid) {
+			throw new OperationValidationException("DMP_COMMAND_VALIDATION_FAILED", 500,
+					"Mapped command violates the declared input schema",
+				java.util.List.of(invalid.getMessage()));
+		}
+		exchange.setProperty(WRITTEN_VALUE, written);
+		boolean json = Boolean.TRUE.equals(context.targetOptions.get("jsonPayload"));
+		Object body = written == null ? org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL : written;
+		if (json && written instanceof String) body = new org.eclipse.digitaltwin.basyx.dmp.core.util.ConnectorJsonPayload(written);
+		if (json) exchange.getMessage().setHeader(Exchange.CONTENT_TYPE, "application/json");
+		exchange.getMessage().setBody(body);
+	}
+
 	/** After the trigger: keeps the connector's reply, validated against the declared output schema. */
 	public void acceptReply(Exchange exchange) {
 		exchange.setProperty(COMMAND_REPLY, normalizeReply(exchange, exchange.getMessage().getBody()));
@@ -208,15 +244,46 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 
 	/** The connector's invocation steps for the action endpoint, or a plain InOut send. */
 	void configureInvoke(org.apache.camel.model.ProcessorDefinition<?> route) {
+		if (writesProperty()) {
+			// The connector's producer acknowledges the write (PLC4X, OPC UA, HTTP) or the broker
+			// does (MQTT QoS 1/2); any failure is a device or transport error. The reply is the value.
+			route.doTry()
+					.to(context.commandSinkUri)
+					.process(exchange -> exchange.getMessage().setBody(exchange.getProperty(WRITTEN_VALUE)))
+				.doCatch(Exception.class)
+					.process(SyncOperationProcessor::writeFailed)
+				.end();
+			return;
+		}
 		SynchronousInvocationAdapter connector = invocationAdapters.stream()
 				.filter(candidate -> candidate.supports(context.commandSinkUri)).findFirst().orElse(null);
 		if (connector == null) route.to(org.apache.camel.ExchangePattern.InOut, context.commandSinkUri);
 		else connector.configureInvoke(route, context.commandSinkUri, invocationSchema);
 	}
 
-	/** The response transformation's input: the reply, projected by the ResponseSource bindings. */
+	private static void writeFailed(Exchange exchange) {
+		Exception caught = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
+		for (Throwable cause = caught; cause != null; cause = cause.getCause() == cause ? null : cause.getCause())
+			if (cause instanceof org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException typed) throw typed;
+		// A device that answered with an error (HTTP non-2xx) is a remote failure; anything else is transport.
+		boolean answered = caught != null && "org.apache.camel.http.base.HttpOperationFailedException".equals(caught.getClass().getName());
+		throw new org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException(
+				answered ? org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException.Category.REMOTE
+						: org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException.Category.TRANSPORT,
+				"DMP_WRITE_FAILED", "the property write was not acknowledged", Map.of());
+	}
+
+	/**
+	 * The response transformation's input: the reply (an action's output, or the value a
+	 * property write wrote), projected by the ResponseSource bindings. A property write
+	 * without a response transformation answers with no outputs.
+	 */
 	public void collectResponseSources(Exchange exchange) {
 		Object reply = exchange.getProperty(COMMAND_REPLY);
+		if (writesProperty() && context.responseLuaUri == null) {
+			exchange.getMessage().setBody(new java.util.LinkedHashMap<String, Object>());
+			return;
+		}
 		exchange.getMessage().setBody(responseSourceBindings.isEmpty() ? reply
 				: ResponseProjectionProcessor.project(reply, responseSourceBindings));
 	}
