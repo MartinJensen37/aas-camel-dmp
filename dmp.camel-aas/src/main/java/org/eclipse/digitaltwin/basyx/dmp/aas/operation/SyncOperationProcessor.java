@@ -145,6 +145,8 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 
 	@Override
 	public java.util.Set<String> endpointUris() {
+		// A property write uses the sink endpoint itself, not a connector's invocation endpoints.
+		if (writesProperty()) return java.util.Set.of(context.commandSinkUri);
 		return invocationAdapters.stream().filter(adapter -> adapter.supports(context.commandSinkUri)).findFirst()
 				.map(adapter -> adapter.ownedEndpointUris(context.commandSinkUri, invocationSchema))
 				.orElseGet(() -> java.util.Set.of(context.commandSinkUri));
