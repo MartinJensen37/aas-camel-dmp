@@ -9,8 +9,9 @@ import org.apache.camel.component.milo.client.MiloClientEndpoint;
 /**
  * A camel-milo client endpoint whose Method producer returns the Call's
  * {@code CallMethodResult} (status and output arguments) — camel-milo 4.22's
- * producer completes a Method call without its result — and whose consumer
- * observes a variable with a subscription of its own.
+ * producer completes a Method call without its result —, whose Write producer
+ * waits for the server and fails on a Bad status, and whose consumer observes
+ * a variable or a notifier's events with a subscription of its own.
  */
 public class DmpMiloClientEndpoint extends MiloClientEndpoint {
 	DmpMiloClientEndpoint(String uri, DmpMiloClientComponent component, String endpointUri,
@@ -20,7 +21,7 @@ public class DmpMiloClientEndpoint extends MiloClientEndpoint {
 
 	@Override
 	public Producer createProducer() throws Exception {
-		return getMethod() == null ? super.createProducer() : new DmpMiloMethodProducer(this);
+		return getMethod() == null ? new DmpMiloWriteProducer(this) : new DmpMiloMethodProducer(this);
 	}
 
 	private EventSelection eventSelection;
