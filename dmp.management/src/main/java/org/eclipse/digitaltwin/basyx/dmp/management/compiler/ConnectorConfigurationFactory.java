@@ -745,6 +745,10 @@ public final class ConnectorConfigurationFactory {
 								.anyMatch(form -> "true".equalsIgnoreCase(mqttTerm(form,"mqv_request_reply")))))
 					issue(issues,mapping,path+"/"+name,"non-synchronous actions are not supported by the request/reply bridge");
 			}
+			if("event".equals(target.resolved().affordance().kind()))
+				for(SubmodelElement child:Aas.children(target.resolved().affordance().element()))
+					if(List.of("subscription","dataResponse","cancellation").contains(child.getIdShort()==null?"":child.getIdShort()))
+						issue(issues,mapping,path+"/"+child.getIdShort(),"event subscription, response and cancellation payloads are not sent by the DMP");
 			Set<String> terms=switch(family) {
 				case MQTT -> Set.of("mqv_qos","mqv_retain","mqv_control_packet","mqv_request_reply","mqv_response_topic","mqv_reply_timeout","mqtt_responseTopic");
 				case OPCUA -> Set.of("uav_browsePath");
@@ -791,9 +795,10 @@ public final class ConnectorConfigurationFactory {
 						issue(issues,mapping,path,"native connector supports decoded JSON values, not the authored content type");
 					if(form.responseTopic().present())issue(issues,mapping,path,"reply topic is MQTT-only");
 					String op=form.operation().value();
-					// OPC 10101 §6.5.3: observeproperty is the UA Monitor service (a monitored item).
+					// OPC 10101 §6.5.3: observeproperty is the UA Monitor service (a monitored item);
+					// subscribeevent (DMP extension) an event monitored item.
 					List<String> supportedOps=family==WireModel.ProtocolFamily.OPCUA
-							? List.of("readproperty","writeproperty","observeproperty","invokeaction")
+							? List.of("readproperty","writeproperty","observeproperty","subscribeevent","invokeaction")
 							: List.of("readproperty","writeproperty","invokeaction");
 					if(op!=null && !supportedOps.contains(op.toLowerCase(java.util.Locale.ROOT)))
 						issue(issues,mapping,path,"unsupported protocol operation");
@@ -807,7 +812,8 @@ public final class ConnectorConfigurationFactory {
 					issue(issues,mapping,path,"form operation contradicts mapping read/write role");
 				if(read) {
 					boolean managedObserve=family==WireModel.ProtocolFamily.MQTT
-							|| family==WireModel.ProtocolFamily.OPCUA && op!=null && op.equalsIgnoreCase("observeproperty");
+							|| family==WireModel.ProtocolFamily.OPCUA && op!=null
+									&& (op.equalsIgnoreCase("observeproperty") || op.equalsIgnoreCase("subscribeevent"));
 					if(op!=null && (op.equalsIgnoreCase("observeproperty") || op.equalsIgnoreCase("subscribeevent")) && !managedObserve)
 						issue(issues,mapping,path,"declared Observe/event acquisition has no supported managed consumer");
 				}
@@ -1472,8 +1478,9 @@ public final class ConnectorConfigurationFactory {
 	private static DataSourceConfiguration opcuaSource(EndpointPlan endpoint,MappingPlan mapping,int position,
 			AidTarget target,List<Issue> issues) {
 		String path=endpointPath(mapping,"Sources",position);
+		if("event".equalsIgnoreCase(target.resolved().affordance().kind()))return opcuaEventSource(endpoint,mapping,position,target,issues);
 		if(!"property".equalsIgnoreCase(target.resolved().affordance().kind())) {
-			issue(issues,mapping,path,"OPC UA events/actions require a route-specific subscription or Method bridge");return null;
+			issue(issues,mapping,path,"OPC UA actions require a Method bridge");return null;
 		}
 		Form form=protocolForm(target,mapping,path,issues);if(form==null)return null;
 		ProtocolBase base=protocolBase(target,"opc.tcp",mapping,path,issues);if(base==null)return null;
@@ -1491,6 +1498,58 @@ public final class ConnectorConfigurationFactory {
 		source.setSchema(schemaForAidTarget(target,mapping,path,issues));
 		setValuePath(source,target);
 		if(interval.isPresent() && !observed) source.setPollingIntervalMs(interval.getAsLong());
+		return hasIssue(issues,mapping)?null:source;
+	}
+
+	/** A field name of an event notification, and one qualified name of a browse path ({@code 2:Name}). */
+	private static final java.util.regex.Pattern EVENT_FIELD_NAME=java.util.regex.Pattern.compile("[A-Za-z][A-Za-z0-9_-]*");
+	private static final java.util.regex.Pattern EVENT_PATH_SEGMENT=java.util.regex.Pattern.compile("(?:\\d+:)?[^/:,=()]+");
+
+	/**
+	 * The events of an OPC UA notifier (DMP extension; OPC 10101 v1.00 has no event vocabulary):
+	 * the form {@code href} names the notifier, each property of the {@code data} schema is one
+	 * select clause (its {@code uav_eventField} browse path, or its own name in namespace 0), and
+	 * the affordance-level {@code uav_eventType} is the where clause (OfType). PollingInterval sets
+	 * the publishing interval. Delivered like an MQTT event: one field map per notification.
+	 */
+	private static DataSourceConfiguration opcuaEventSource(EndpointPlan endpoint,MappingPlan mapping,int position,
+			AidTarget target,List<Issue> issues) {
+		String path=endpointPath(mapping,"Sources",position);
+		Form form=protocolForm(target,mapping,path,issues);if(form==null)return null;
+		String op=form.operation().value();
+		if(op!=null && !"subscribeevent".equalsIgnoreCase(op)) { issue(issues,mapping,path+"/forms/op","an OPC UA event is subscribed (op subscribeevent)");return null; }
+		ProtocolBase base=protocolBase(target,"opc.tcp",mapping,path,issues);if(base==null)return null;
+		String notifier=opcuaNode(form,mapping,path,issues);if(notifier==null)return null;
+		Presence<WireModel.DataSchema> data=target.resolved().affordance().schema();
+		if(!data.present() || data.value().properties().isEmpty()
+				|| data.value().type().present() && !"object".equals(data.value().type().value())) {
+			issue(issues,mapping,path+"/data","an OPC UA event needs an object data schema whose properties select the event fields");return null;
+		}
+		List<String> fields=new ArrayList<>();
+		for(Map.Entry<String,WireModel.DataSchema> field:data.value().properties().entrySet()) {
+			String name=field.getKey();
+			String browsePath=Aas.children(field.getValue().element()).stream()
+					.filter(child -> "uav_eventField".equals(child.getIdShort())).map(Aas::value).findFirst().orElse(name);
+			boolean valid=EVENT_FIELD_NAME.matcher(name).matches() && browsePath!=null && !browsePath.isBlank()
+					&& java.util.Arrays.stream(browsePath.replaceFirst("^/","").split("/",-1)).allMatch(segment -> EVENT_PATH_SEGMENT.matcher(segment).matches());
+			if(!valid) { issue(issues,mapping,path+"/data/properties/"+name,"an event field needs a browse path of qualified names, e.g. 0:ToState/0:Id");return null; }
+			fields.add(name+"="+browsePath.replaceFirst("^/",""));
+		}
+		String eventType=Aas.children(target.resolved().affordance().element()).stream()
+				.filter(child -> "uav_eventType".equals(child.getIdShort())).map(Aas::value).findFirst().orElse(null);
+		if(eventType!=null && (eventType.isBlank() || eventType.contains(")"))) {
+			issue(issues,mapping,path+"/uav_eventType","uav_eventType must be an EventType NodeId");return null;
+		}
+		Map<String,String> configuration=new LinkedHashMap<>();
+		configuration.put("eventFields","RAW("+String.join(",",fields)+")");
+		if(eventType!=null)configuration.put("eventType","RAW("+eventType.trim()+")");
+		OptionalLong interval=endpoint.pollingInterval().present()?endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues):OptionalLong.empty();
+		if(interval.isPresent())configuration.put("requestedPublishingInterval",Long.toString(interval.getAsLong()));
+		OpcuaDataSourceConfiguration source=new OpcuaDataSourceConfiguration(entityId(mapping,"source",position),
+				base.host(),base.port(),base.servicePath(),notifier,base.username(),base.password(),configuration);
+		source.setSourceId(endpoint.id()); source.setDelivery("async");
+		source.setSchema(schemaForAidTarget(target,mapping,path,issues));
+		setValuePath(source,target);
 		return hasIssue(issues,mapping)?null:source;
 	}
 

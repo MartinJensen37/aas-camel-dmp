@@ -30,10 +30,17 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
+import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
+import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.QualifiedName;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.ULong;
+import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UNumber;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -115,11 +122,52 @@ public final class OpcUaCanonical {
 	 * Keeps JSON-friendly values as-is; binary payloads become base64 strings.
 	 */
 	static Object sanitize(Object raw) {
+		return jsonValue(raw);
+	}
+
+	/**
+	 * The JSON value of an OPC UA built-in value: unsigned integers become
+	 * numbers, LocalizedText its text, NodeIds and QualifiedNames their
+	 * parseable string, DateTime an ISO-8601 instant, ByteString and byte
+	 * arrays base64, StatusCode its numeric code; arrays and collections map
+	 * member by member. Other values (structures) fall back to their string.
+	 */
+	public static Object jsonValue(Object raw) {
 		if (raw == null) {
 			return null;
 		}
+		if (raw instanceof Variant variant) {
+			return jsonValue(variant.getValue());
+		}
+		if (raw instanceof ULong unsigned) {
+			return unsigned.toBigInteger();
+		}
+		if (raw instanceof UNumber unsigned) {
+			return unsigned.longValue();
+		}
 		if (raw instanceof Number || raw instanceof Boolean || raw instanceof String) {
 			return raw;
+		}
+		if (raw instanceof LocalizedText text) {
+			return text.getText();
+		}
+		if (raw instanceof QualifiedName name) {
+			return name.toParseableString();
+		}
+		if (raw instanceof NodeId id) {
+			return id.toParseableString();
+		}
+		if (raw instanceof ExpandedNodeId id) {
+			return id.toParseableString();
+		}
+		if (raw instanceof DateTime time) {
+			return time.isNull() ? null : time.getJavaInstant().toString();
+		}
+		if (raw instanceof ByteString bytes) {
+			return bytes.isNull() ? null : Base64.getEncoder().encodeToString(bytes.bytesOrEmpty());
+		}
+		if (raw instanceof StatusCode status) {
+			return status.getValue();
 		}
 		if (raw instanceof byte[]) {
 			return Base64.getEncoder().encodeToString((byte[]) raw);
@@ -127,14 +175,14 @@ public final class OpcUaCanonical {
 		if (raw instanceof Map<?, ?> map) {
 			Map<String, Object> copy = new LinkedHashMap<>();
 			for (Map.Entry<?, ?> entry : map.entrySet()) {
-				copy.put(String.valueOf(entry.getKey()), sanitize(entry.getValue()));
+				copy.put(String.valueOf(entry.getKey()), jsonValue(entry.getValue()));
 			}
 			return copy;
 		}
 		if (raw instanceof Collection<?> collection) {
 			java.util.List<Object> copy = new java.util.ArrayList<>(collection.size());
 			for (Object value : collection) {
-				copy.add(sanitize(value));
+				copy.add(jsonValue(value));
 			}
 			return copy;
 		}
@@ -142,7 +190,7 @@ public final class OpcUaCanonical {
 			int length = Array.getLength(raw);
 			java.util.List<Object> copy = new java.util.ArrayList<>(length);
 			for (int i = 0; i < length; i++) {
-				copy.add(sanitize(Array.get(raw, i)));
+				copy.add(jsonValue(Array.get(raw, i)));
 			}
 			return copy;
 		}

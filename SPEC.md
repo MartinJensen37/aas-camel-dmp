@@ -204,7 +204,27 @@ OPC UA follows OPC 10101 (the OPC UA binding for WoT):
   action affordance (a NodeId, or a list holding one), not in the form.
 - Forms may declare `application/octet-stream` (the binding's default UA
   serialization); values are decoded from the UA types either way.
-- OPC 10101 defines no events; OPC UA event affordances are rejected.
+- Events (a DMP extension; OPC 10101 v1.00 defines no event vocabulary) are
+  event affordances (WoT EventAffordance, `aas-model` `OpcuaEvent`), consumed
+  like MQTT events: the form `href` (or `uav_browsePath`) names the event
+  notifier (e.g. the Server object `i=2253`), `op` is `subscribeevent`. Each
+  property of the event's `data` schema (an object) is one selected field:
+  its `uav_eventField` browse path relative to the event (`0:ToState/0:Id`,
+  `/`-separated qualified names, namespace 0 without a prefix), or its own
+  name as a namespace-0 BrowseName (`Message`, `Severity`, `Time`, …). The
+  affordance-level `uav_eventType` (an EventType NodeId) is the where clause,
+  `OfType`, so subtypes pass. Both terms carry DMP semantic ids
+  (`…/aid/OpcuaEventType/1/0`, `…/aid/OpcuaEventField/1/0`). The DMP
+  subscribes with an event monitored item (select clauses relative to
+  BaseEventType); each event arrives as an object of its fields (UA built-in
+  values as JSON: LocalizedText → text, NodeId → string, DateTime → ISO-8601)
+  and a field the event lacks is `null`. `PollingInterval` sets the
+  publishing interval.
+
+Event affordances of every binding carry the WoT EventAffordance terms
+(`subscription`, `data`, `dataResponse`, `cancellation`); the DMP consumes
+`data` and rejects the other three, since MQTT and OPC UA subscriptions carry
+no such payloads.
 
 ### 5.3 AAS element bindings
 
@@ -394,7 +414,7 @@ end
 | Binding | Implemented | Not implemented |
 | --- | --- | --- |
 | AAS | Read, Observe (events), Write, Accept invocation | Operation sinks |
-| OPC UA (Milo) | Read (Read service), Observe (monitored items), Write, Invoke (Method) | Events (not defined by OPC 10101), custom/structured datatypes |
+| OPC UA (Milo) | Read (Read service), Observe (monitored items), Events (event monitored items, DMP extension), Write, Invoke (Method) | Custom/structured datatypes, condition refresh and acknowledgement |
 | MQTT 5 | Observe (subscribe), Write (publish), Invoke (request/reply) | Read; MQTT 3.1.1 |
 | HTTP | Read (poll), Write, Invoke | Observe, inbound requests other than Operations |
 | PLC4X (Modbus, BACnet) | Read, acknowledged Write of one tag per affordance; Invoke with a status phase (§7.1) | Request/reply invoke |
@@ -411,7 +431,7 @@ any component, and the upstream component stays usable unchanged:
 | Scheme | Extends | Adds |
 | --- | --- | --- |
 | `dmp-plc4x:` | camel-plc4x | acknowledged writes and checked reads (failures raise instead of being logged or read as `{}`); the body is the tag value |
-| `dmp-milo-client:` | camel-milo client | a Method producer that answers with the Call's result (camel-milo 4.22 drops it); a consumer whose monitored item has its own subscription and a sample queue (camel-milo shares one subscription per server, created with the first endpoint's publishing interval, and keeps only the latest sample) |
+| `dmp-milo-client:` | camel-milo client | a Method producer that answers with the Call's result (camel-milo 4.22 drops it); a consumer whose monitored item has its own subscription and a sample queue (camel-milo shares one subscription per server, created with the first endpoint's publishing interval, and keeps only the latest sample); event monitored items with an EventFilter (options `eventFields`, `eventType`; camel-milo has only data-change filters) |
 | `paho-mqtt5-inout:` | camel-paho-mqtt5 | MQTT 5 request/reply with correlation; owns its reply consumer and publish producer |
 
 Connector invocation steps (`SynchronousInvocationAdapter.configureInvoke`)

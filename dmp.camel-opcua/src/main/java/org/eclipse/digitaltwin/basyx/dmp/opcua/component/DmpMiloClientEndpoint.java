@@ -23,7 +23,17 @@ public class DmpMiloClientEndpoint extends MiloClientEndpoint {
 		return getMethod() == null ? super.createProducer() : new DmpMiloMethodProducer(this);
 	}
 
-	/** An observed variable gets a subscription of its own (see {@link DmpMiloSubscriptionConsumer}). */
+	private EventSelection eventSelection;
+
+	/** The selected fields and EventType when the endpoint's node is an event notifier; otherwise {@code null}. */
+	EventSelection getEventSelection() { return eventSelection; }
+
+	void setEventSelection(EventSelection eventSelection) { this.eventSelection = eventSelection; }
+
+	/**
+	 * An observed variable or an event notifier gets a subscription of its own
+	 * (see {@link DmpMiloSubscriptionConsumer}).
+	 */
 	@Override
 	public org.apache.camel.Consumer createConsumer(org.apache.camel.Processor processor) throws Exception {
 		DmpMiloSubscriptionConsumer consumer = new DmpMiloSubscriptionConsumer(this, processor);

@@ -33,6 +33,18 @@ class OpcUaSourceEventAdapterTest {
 	}
 
 	@Test
+	void anEventNotificationIsAlreadyItsSelectedFields() throws Exception {
+		var exchange = new DefaultExchange(new DefaultCamelContext());
+		exchange.getMessage().setBody(Map.of("ToState", "Halted", "Message", "calibration done"));
+
+		new OpcUaSourceEventAdapter().normalizer(new OpcuaDataSourceConfiguration()).process(exchange);
+
+		assertEquals(Map.of("ToState", "Halted", "Message", "calibration done"), exchange.getMessage().getBody());
+		assertTrue(Boolean.TRUE.equals(exchange.getProperty(SourceEventAdapter.NORMALIZED_VALUE_PROPERTY)));
+		assertTrue(Boolean.TRUE.equals(exchange.getProperty(SourceEventAdapter.CONTRIBUTION_PROPERTY)));
+	}
+
+	@Test
 	void badStatusDoesNotContributeToLatestSourceState() throws Exception {
 		var configuration = new OpcuaDataSourceConfiguration();
 		var exchange = new DefaultExchange(new DefaultCamelContext());

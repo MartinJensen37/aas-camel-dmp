@@ -14,6 +14,12 @@ public final class OpcUaSourceEventAdapter implements SourceEventAdapter {
 	public Processor normalizer(DataSourceConfiguration raw) {
 		return exchange -> {
 			Object body = exchange.getMessage().getBody();
+			// An event notification is already its selected fields as JSON values (EventSelection).
+			if (body instanceof java.util.Map<?, ?>) {
+				exchange.setProperty(NORMALIZED_VALUE_PROPERTY, true);
+				exchange.setProperty(CONTRIBUTION_PROPERTY, true);
+				return;
+			}
 			if (!(body instanceof DataValue dataValue)
 					|| dataValue.getStatusCode() == null || !dataValue.getStatusCode().isGood()
 					|| dataValue.getValue() == null) {

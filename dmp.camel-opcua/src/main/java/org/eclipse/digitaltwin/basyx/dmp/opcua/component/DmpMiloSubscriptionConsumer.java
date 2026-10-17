@@ -14,17 +14,20 @@ import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.client.subscriptions.OpcUaMonitoredItem;
 import org.eclipse.milo.opcua.sdk.client.subscriptions.OpcUaSubscription;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Observes one variable (OPC 10101 {@code observeproperty}) with a subscription of its own: the
+ * Observes one variable (OPC 10101 {@code observeproperty}), or the events of one notifier
+ * ({@code subscribeevent}, each delivered as a map of its selected fields, see
+ * {@link EventSelection}), with a subscription of its own: the
  * endpoint's {@code requestedPublishingInterval} and {@code samplingInterval} apply to this
  * variable, and the monitored item keeps a queue of samples so a short state between two
  * publishes (e.g. a program's Running) is still delivered. camel-milo shares one subscription
  * per server connection, created with the first endpoint's publishing interval, and keeps only
- * the latest sample. Each message body is the sampled {@code DataValue}.
+ * the latest sample. Each message body is the sampled {@code DataValue}, or an event's field map.
  *
  * <p>The subscription is made on the endpoint's shared connection and made again whenever that
  * connection's client changes (first connect, reconnect).
@@ -76,13 +79,21 @@ final class DmpMiloSubscriptionConsumer extends DefaultConsumer {
 			OpcUaSubscription created = new OpcUaSubscription(client,
 					publishing == null ? DEFAULT_PUBLISHING_INTERVAL_MS : publishing);
 			created.create();
-			OpcUaMonitoredItem item = OpcUaMonitoredItem.newDataItem(
-					ExpandedNodeId.parse(endpoint.getNode()).toNodeIdOrThrow(client.getNamespaceTable()));
-			Double sampling = endpoint.getSamplingInterval();
-			if (sampling != null) item.setSamplingInterval(sampling);
+			NodeId node = ExpandedNodeId.parse(endpoint.getNode()).toNodeIdOrThrow(client.getNamespaceTable());
+			EventSelection events = endpoint.getEventSelection();
+			OpcUaMonitoredItem item;
+			if (events == null) {
+				item = OpcUaMonitoredItem.newDataItem(node);
+				Double sampling = endpoint.getSamplingInterval();
+				if (sampling != null) item.setSamplingInterval(sampling);
+				item.setDataValueListener((monitored, value) -> deliver(value));
+			} else {
+				// An event item (OPC 10000-4 §5.12.1.4): the server queues each event the filter passes.
+				item = OpcUaMonitoredItem.newEventItem(node, events.filter(client));
+				item.setEventValueListener((monitored, values) -> deliver(events.notification(values)));
+			}
 			item.setQueueSize(QUEUE_SIZE);
 			item.setDiscardOldest(true);
-			item.setDataValueListener((monitored, value) -> deliver(value));
 			created.addMonitoredItem(item);
 			created.synchronizeMonitoredItems();
 			subscription = created;
