@@ -70,7 +70,6 @@ flowchart LR
 | `dmp.camel-lua` | `lua:` component and sandbox |
 | `dmp.camel-aas` | AAS element read/write, `aas-event:` source, Operation bridge |
 | `dmp.camel-paho`, `-opcua`, `-httppolling`, `-plc4x` | Connectors reachable from AID bindings, including the DMP Camel components (§9) |
-| `dmp.camel-kafka`, `-activemq`, `-hono`, `-sql`, `-jsonjackson` | Connector components without an AID binding (kept, unreachable from the compiler) |
 | `dmp.component` | Executable, settings, `/health`, `/management/status`, image |
 
 ## 4. Discovery and lifecycle
@@ -421,7 +420,6 @@ end
 | MQTT 5 | Observe (subscribe), Write (publish), Invoke (request/reply) | Read; MQTT 3.1.1 |
 | HTTP | Read (poll), Write, Invoke | Observe, inbound requests other than Operations |
 | PLC4X (Modbus, BACnet) | Read, acknowledged Write of one tag per affordance | Invoke (a tag write reports no result) |
-| Kafka, ActiveMQ, SQL, Hono, JsonJackson | Camel components only | No AID binding; Hono consumer is an incomplete prototype |
 
 Data-plane MQTT clients are one per endpoint; their credentials are bound in
 the Camel registry per bundle and referenced by name in URIs.

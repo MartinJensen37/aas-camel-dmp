@@ -31,10 +31,10 @@
 			<artifactId>dmp.camel-paho</artifactId>
 			<version>${revision}</version>
 		</dependency>
+		<!-- The Kafka transport for repository events (KafkaControlEventRouteBuilder). -->
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.camel-kafka</artifactId>
-			<version>${revision}</version>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-kafka</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>

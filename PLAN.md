@@ -264,7 +264,7 @@ Decide per item: keep (and schedule), or drop (and delete it from SPEC).
 | A6 | **PLC4X/Modbus action invocation** | Out of scope (P3 rescoping): a tag write reports no result; the higher-level control sequences writes and reads. |
 | A11 | **Ordinary PLC4X sinks** sent the bare Lua value, which camel-plc4x rejects (it needs `{tag: {address: value}}`). | Fixed by the `dmp-plc4x:` component (SPEC §9), whose producer takes the tag value and acknowledges the write. |
 | A7 | **HTTP Observe** acquisition | Rejected at compile time. OPC UA events are implemented (P3). |
-| A8 | **AID bindings for Kafka, ActiveMQ, SQL**; finishing the **Hono** consumer | Components exist but the compiler never selects them; Hono only logs messages. Alternative: delete these modules. |
+| A8 | **AID bindings for Kafka, ActiveMQ, SQL**; finishing the **Hono** consumer | Dropped 2026-10-17: the DataBridge-era modules (`dmp.camel-activemq`, `-hono`, `-sql`, `-jsonjackson`, `-kafka`) are deleted; the compiler never selected them and they had no tests. Kafka stays as the repository-event transport (`camel-kafka` in `dmp.management`). A protocol needed later returns as an AID binding with tests. |
 | A9 | **SNMP binding** (AID 1.2 `…/AssetInterfacesDescription/1/2/SNMP`) via Camel's `camel-snmp` component: Read (GET/poll), Observe (traps), Write (SET) | Not recognised: an SNMP interface is rejected with "no supported protocol binding". |
 | A10 | **CAN binding** (AID 1.2 `…/AssetInterfacesDescription/1/2/CAN`) via PLC4X's CAN drivers (e.g. CANopen), alongside Modbus and BACnet | Not recognised: a CAN interface is rejected with "no supported protocol binding". |
 
@@ -306,8 +306,8 @@ Decide per item: keep (and schedule), or drop (and delete it from SPEC).
 | # | Item |
 | --- | --- |
 | E1 | `luaj-jse` 3.0.1 (2015) is unmaintained and no LuaJ fork is actively maintained. Its process-wide string metatable let one blob change string methods for all others; fixed in `6167ad5`. Cobalt is ruled out: its README promises no API stability and advises against general use. The only maintained alternative found is **luajava** (real Lua 5.1–5.4/LuaJIT via JNI), where a native crash takes down the whole DMP. Decision for now: stay on LuaJ, work around its defects in `LuaSandbox`, and revisit if a defect cannot be worked around. |
-| E2 | `dmp.camel-hono` mixes Hono 1.x and 2.x clients and old test dependencies (only relevant if A8 keeps it). |
-| E3 | Minor version lags needing a networked build: mariadb, postgresql, sqlite-jdbc, mysql-connector-j. |
+| E2 | ~~`dmp.camel-hono` mixed Hono 1.x and 2.x clients~~ — module deleted (A8). |
+| E3 | ~~Minor version lags of the SQL drivers (mariadb, postgresql, sqlite-jdbc, mysql-connector-j)~~ — module deleted (A8). |
 | E4 | Java 25: blocked until Milo, PLC4X, LuaJ and the `linux/arm/v7` image are verified on it. |
 
 ## Accepted limitations

@@ -177,7 +177,6 @@ it is full or InfluxDB is unreachable they are dropped and counted under
 | `dmp.camel-lua` | `lua:` component and sandbox |
 | `dmp.camel-aas` | AAS element source/sink, `aas-event:` event source and the operation bridge |
 | `dmp.camel-paho`, `-opcua`, `-httppolling`, `-plc4x` | Connectors reachable from AID bindings |
-| `dmp.camel-kafka`, `-activemq`, `-hono`, `-sql`, `-jsonjackson` | Connector components without an AID binding |
 
 See [SPEC.md](SPEC.md) for the design specification and decision records.
 
