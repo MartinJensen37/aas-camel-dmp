@@ -544,7 +544,11 @@ class ConnectorConfigurationFactoryTest {
 				assertEquals(Map.of("Count","42"),transformed.get("Reply"));
 				var exchange=new org.apache.camel.support.DefaultExchange(context);exchange.getMessage().setBody(transformed);
 				var jobs=fanout.prepareJobs(exchange);assertEquals(1,jobs.size());
-				exchange.getMessage().setBody(jobs.get(0));fanout.sendJob(exchange);
+				String writeRoute="direct:compiled-response-write";
+				context.addRoutes(new org.apache.camel.builder.RouteBuilder() {
+					@Override public void configure() { fanout.configureWrite(from(writeRoute)); }
+				});
+				template.sendBody(writeRoute,jobs.get(0));
 				assertEquals(1,writes.get());assertEquals(Map.of("x",1L,"y",2L),payload.get());
 				exchange.getMessage().setBody(Map.of("X",1));assertTrue(fanout.prepareJobs(exchange).isEmpty());
 				assertEquals(1,writes.get(),"missing group members must not emit a partial payload");

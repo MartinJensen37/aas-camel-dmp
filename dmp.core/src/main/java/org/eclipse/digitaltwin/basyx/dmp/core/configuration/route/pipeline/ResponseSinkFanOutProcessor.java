@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -14,8 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
-import org.apache.camel.ProducerTemplate;
+import org.apache.camel.model.ProcessorDefinition;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.ConnectorJsonPayload;
@@ -26,12 +24,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-/** Queues Lua-selected response values, grouping device-affordance members once per payload. */
-public final class ResponseSinkFanOutProcessor implements Processor, ManagedRouteResource {
+/**
+ * Best-effort response writes: prepares a job per Lua-selected response value (device-affordance
+ * members grouped into one payload) and contributes the route steps that write them detached
+ * (a bounded Wire Tap into a write route), so the caller's reply never waits for them.
+ */
+public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
+	/** Header naming the endpoint of one detached response write. */
+	public static final String WRITE_ENDPOINT_HEADER = "DmpResponseWriteEndpoint";
+	private static final String ADMITTED = "dmp.response.admitted";
 	public static final int DEFAULT_WORKERS = 2;
 	public static final int DEFAULT_QUEUE_CAPACITY = 128;
 	private static final Logger LOGGER = LoggerFactory.getLogger(ResponseSinkFanOutProcessor.class);
-	private final ProducerTemplate producerTemplate;
 	private final CamelContext camelContext;
 	private final ExecutorService responseExecutor;
 	private final AtomicLong rejectedWrites = new AtomicLong();
@@ -93,12 +97,70 @@ public final class ResponseSinkFanOutProcessor implements Processor, ManagedRout
 		this.bindings = List.copyOf(resolvedBindings);
 		this.responseExecutor = context.getExecutorServiceManager().newThreadPool(
 				this, "response-sink-writes-" + correlationId, profile);
-		this.producerTemplate = context.createProducerTemplate();
 	}
 
-	@Override
-	public void process(Exchange exchange) {
-		for (DispatchJob job : prepareJobs(exchange)) enqueueJob(job);
+	/**
+	 * Steps that hand every job of the body (the {@link #prepareJobs} list) to a bounded Wire
+	 * Tap into {@code writeUri}. A full queue or a drained processor rejects the job, counted,
+	 * without blocking or failing the caller.
+	 */
+	public void configureDispatch(ProcessorDefinition<?> route, String writeUri) {
+		var jobs = route.split(org.apache.camel.builder.Builder.body());
+		var enqueue = jobs.doTry();
+		enqueue.process(this::admit)
+				.wireTap(writeUri)
+				.onPrepare(ResponseSinkFanOutProcessor::prepareDetachedExchange)
+				.executorService(responseExecutor);
+		enqueue.doCatch(Exception.class)
+				.process(this::recordRejection)
+				.end();
+		jobs.end();
+	}
+
+	/** Steps of the write route: send the job's payload to its endpoint; a failure is counted and logged. */
+	public void configureWrite(ProcessorDefinition<?> route) {
+		route.process(ResponseSinkFanOutProcessor::toWriteMessage)
+				.doTry()
+					.toD("${header." + WRITE_ENDPOINT_HEADER + "}")
+				.doCatch(Exception.class)
+					.process(this::recordFailure)
+				.doFinally()
+					.process(exchange -> pendingWrites.decrementAndGet())
+				.end();
+	}
+
+	/** Admits one detached write, unless the processor is draining. */
+	private void admit(Exchange exchange) {
+		synchronized (lifecycleLock) {
+			if (!acceptingWrites) throw new RejectedExecutionException("response writes are draining");
+			pendingWrites.incrementAndGet();
+			exchange.setProperty(ADMITTED, true);
+		}
+	}
+
+	/** The job as a message: its payload (JSON text for HTTP and MQTT) addressed to its endpoint. */
+	private static void toWriteMessage(Exchange exchange) {
+		DispatchJob job = (DispatchJob) exchange.getMessage().getBody();
+		Object body = job.body();
+		if (job.jsonPayload() && (body instanceof String || body == null)) {
+			body = new ConnectorJsonPayload(body);
+		} else if (body == null) {
+			// Preserve an intentional wire null, not an absent transport body.
+			body = JsonPointer.JSON_NULL;
+		}
+		exchange.getMessage().setHeaders(new LinkedHashMap<>());
+		if (job.jsonPayload()) exchange.getMessage().setHeader(Exchange.CONTENT_TYPE, "application/json");
+		exchange.getMessage().setHeader(WRITE_ENDPOINT_HEADER, job.endpoint());
+		exchange.setProperty(SINK_LABEL, job.sinkLabel());
+		exchange.getMessage().setBody(body);
+	}
+
+	private static final String SINK_LABEL = "dmp.response.sinkLabel";
+
+	private void recordFailure(Exchange exchange) {
+		long failures = failedWrites.incrementAndGet();
+		LOGGER.warn("mapping {} response sink group {} failed; caller reply is unchanged (failed={})",
+				correlationId, exchange.getProperty(SINK_LABEL), failures);
 	}
 
 	public List<DispatchJob> prepareJobs(Exchange exchange) {
@@ -191,41 +253,9 @@ public final class ResponseSinkFanOutProcessor implements Processor, ManagedRout
 				job.sinkLabel(), job.jsonPayload());
 	}
 
-	public void sendJob(Exchange exchange) {
-		write((DispatchJob) exchange.getMessage().getBody());
-	}
-
 	public void recordRejection(Exchange exchange) {
+		if (Boolean.TRUE.equals(exchange.getProperty(ADMITTED))) pendingWrites.decrementAndGet();
 		DispatchJob job = (DispatchJob) exchange.getMessage().getBody();
-		long rejected = rejectedWrites.incrementAndGet();
-		LOGGER.warn("mapping {} response sink group {} rejected by bounded executor; caller reply continues (rejected={})",
-				correlationId, job.sinkLabel(), rejected);
-	}
-
-	public void enqueueJob(DispatchJob job) {
-		DispatchJob detached = copyJob(job);
-		FutureTask<Void> task = new FutureTask<>(() -> {
-			write(detached);
-			return null;
-		}) {
-			@Override protected void done() { pendingWrites.decrementAndGet(); }
-		};
-		synchronized (lifecycleLock) {
-			if (!acceptingWrites) {
-				reject(job);
-				return;
-			}
-			pendingWrites.incrementAndGet();
-			try {
-				responseExecutor.execute(task);
-			} catch (RejectedExecutionException e) {
-				task.cancel(false);
-				reject(job);
-			}
-		}
-	}
-
-	private void reject(DispatchJob job) {
 		long rejected = rejectedWrites.incrementAndGet();
 		LOGGER.warn("mapping {} response sink group {} rejected by bounded executor; caller reply continues (rejected={})",
 				correlationId, job.sinkLabel(), rejected);
@@ -241,7 +271,6 @@ public final class ResponseSinkFanOutProcessor implements Processor, ManagedRout
 	@Override
 	public void close() throws Exception {
 		drain(java.time.Duration.ofSeconds(6));
-		producerTemplate.stop();
 		camelContext.getExecutorServiceManager().shutdown(responseExecutor);
 		closed = true;
 	}
@@ -258,6 +287,8 @@ public final class ResponseSinkFanOutProcessor implements Processor, ManagedRout
 		if (!responseExecutor.awaitTermination(Math.max(0, nanos * 5 / 6), TimeUnit.NANOSECONDS)) {
 			for (Runnable queued : responseExecutor.shutdownNow()) {
 				if (queued instanceof Future<?> future) future.cancel(false);
+				// A queued write never reaches its write route: release its admission here.
+				pendingWrites.decrementAndGet();
 				rejectedWrites.incrementAndGet();
 			}
 			if (!responseExecutor.awaitTermination(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS)) {
@@ -275,27 +306,6 @@ public final class ResponseSinkFanOutProcessor implements Processor, ManagedRout
 
 	public java.util.concurrent.ExecutorService responseExecutor() {
 		return responseExecutor;
-	}
-
-	private void write(DispatchJob job) {
-		try {
-			Object body = job.body();
-			if (job.jsonPayload() && (body instanceof String || body == null)) {
-				body = new ConnectorJsonPayload(body);
-			} else if (body == null) {
-				// Preserve an intentional wire null, not an absent transport body.
-				body = JsonPointer.JSON_NULL;
-			}
-			if (job.jsonPayload()) {
-				producerTemplate.sendBodyAndHeader(job.endpoint(), body, Exchange.CONTENT_TYPE, "application/json");
-			} else {
-				producerTemplate.sendBody(job.endpoint(), body);
-			}
-		} catch (RuntimeException e) {
-			long failures = failedWrites.incrementAndGet();
-			LOGGER.warn("mapping {} response sink group {} failed; caller reply is unchanged (failed={})",
-					correlationId, job.sinkLabel(), failures);
-		}
 	}
 
 	private static boolean isJsonSchema(Map<String, Object> schema) {

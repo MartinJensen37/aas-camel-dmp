@@ -33,9 +33,9 @@ class ResponseSinkFanOutProcessorTest {
 		var stderr = System.err;
 		try (var captured = new java.io.PrintStream(logs, true, java.nio.charset.StandardCharsets.UTF_8)) {
 			System.setErr(captured);
-			processor.enqueueJob(new ResponseSinkFanOutProcessor.DispatchJob(
+			dispatch(context, processor, List.of(new ResponseSinkFanOutProcessor.DispatchJob(
 					"direct:credential-failure?password=raw-write-secret&unused=encoded%20write%20secret",
-					1, "safe-target", false));
+					1, "safe-target", false)));
 			processor.close();
 			assertEquals(1, processor.failedWriteCount());
 			assertEquals(1L, processor.metrics().get("failedExtraWrites"));
@@ -76,9 +76,9 @@ class ResponseSinkFanOutProcessorTest {
 		var processor = new ResponseSinkFanOutProcessor(context, "deadline", List.of(), 1, 2);
 		try {
 			var job = new ResponseSinkFanOutProcessor.DispatchJob("direct:uninterruptible-write", 1, "old-target", false);
-			processor.enqueueJob(job);
+			dispatch(context, processor, List.of(job));
 			assertTrue(entered.await(2, TimeUnit.SECONDS));
-			processor.enqueueJob(job);
+			dispatch(context, processor, List.of(job));
 			long started = System.nanoTime();
 			org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
 					() -> processor.drain(java.time.Duration.ofMillis(120)));
@@ -87,7 +87,7 @@ class ResponseSinkFanOutProcessorTest {
 			assertEquals(1, processor.rejectedWriteCount(), "queued cancellation must have an outcome");
 			assertEquals(1L, processor.metrics().get("pendingExtraWrites"));
 			assertEquals(1L, processor.metrics().get("rejectedExtraWrites"));
-			processor.enqueueJob(job);
+			dispatch(context, processor, List.of(job));
 			assertEquals(2, processor.rejectedWriteCount());
 			assertEquals(2L, processor.metrics().get("rejectedExtraWrites"));
 			release.countDown();
@@ -136,7 +136,7 @@ class ResponseSinkFanOutProcessorTest {
 				var jobs = processor.prepareJobs(exchange);
 				assertNotSame(jobs.get(0).body(), jobs.get(1).body());
 				assertNotSame(shared, jobs.get(0).body());
-				jobs.forEach(processor::enqueueJob);
+				dispatch(context, processor, jobs);
 				assertTrue(completed.await(2, TimeUnit.SECONDS));
 				Map<?, ?> second = (Map<?, ?>) sibling.get();
 				assertEquals(List.of("original"), shared.get("values"));
@@ -177,7 +177,7 @@ class ResponseSinkFanOutProcessorTest {
 					}
 				});
 				Map<String, Object> body = new LinkedHashMap<>(Map.of("values", new ArrayList<>(List.of("original"))));
-				processor.enqueueJob(new ResponseSinkFanOutProcessor.DispatchJob("direct:queued", body, "Queued", false));
+				dispatch(context, processor, List.of(new ResponseSinkFanOutProcessor.DispatchJob("direct:queued", body, "Queued", false)));
 				((List<?>) body.get("values")).clear();
 				release.countDown();
 				assertTrue(completed.await(2, TimeUnit.SECONDS));
@@ -231,7 +231,7 @@ class ResponseSinkFanOutProcessorTest {
 				var exchange = new DefaultExchange(context);
 				exchange.getMessage().setBody(Map.of("Optional", JsonPointer.JSON_NULL));
 				assertNull(processor.prepareJobs(exchange).get(0).body());
-				processor.process(exchange);
+				dispatch(context, processor, processor.prepareJobs(exchange));
 				assertTrue(completed.await(2, TimeUnit.SECONDS));
 				assertNull(((ConnectorJsonPayload) delivered.get()).value());
 				assertEquals("null", JsonCodec.toJson(((ConnectorJsonPayload) delivered.get()).value()));
@@ -268,7 +268,7 @@ class ResponseSinkFanOutProcessorTest {
 				var exchange = new DefaultExchange(context);
 				exchange.getMessage().setBody(Map.of("First", 1, "Second", 2));
 
-				processor.process(exchange);
+				dispatch(context, processor, processor.prepareJobs(exchange));
 				assertTrue(entered.await(2, TimeUnit.SECONDS));
 				assertEquals(1, processor.rejectedWriteCount());
 				assertEquals(0, processor.failedWriteCount());
@@ -280,7 +280,7 @@ class ResponseSinkFanOutProcessorTest {
 	}
 
 	@Test
-	void closeStopsAdmissionDrainsAcceptedJobsAndReleasesProducerTemplate() throws Exception {
+	void closeStopsAdmissionAndDrainsAcceptedJobs() throws Exception {
 		var context = new DefaultCamelContext();
 		var written = new CountDownLatch(1);
 		context.addRoutes(new RouteBuilder() {
@@ -292,18 +292,33 @@ class ResponseSinkFanOutProcessorTest {
 		try {
 			try (var processor = new ResponseSinkFanOutProcessor(context, "drain", List.of(), 1, 2)) {
 				var job = new ResponseSinkFanOutProcessor.DispatchJob("direct:drain", Map.of("v", 1), "drain", false);
-				processor.enqueueJob(job);
+				dispatch(context, processor, List.of(job));
 				processor.close();
 				assertTrue(written.await(100, TimeUnit.MILLISECONDS));
 				assertEquals(0, processor.pendingWriteCount());
 				assertTrue(processor.responseExecutor().isTerminated());
 				assertEquals(0, processor.rejectedWriteCount());
-				processor.enqueueJob(job);
+				dispatch(context, processor, List.of(job));
 				assertEquals(1, processor.rejectedWriteCount());
 				assertEquals(0, processor.pendingWriteCount());
 			}
 		} finally {
 			context.stop();
+		}
+	}
+
+	/** Sends the jobs through the processor's detached response-write route steps (Wire Tap, write route). */
+	private static void dispatch(org.apache.camel.CamelContext context, ResponseSinkFanOutProcessor processor,
+			java.util.List<ResponseSinkFanOutProcessor.DispatchJob> jobs) throws Exception {
+		String id = "response-writes-" + System.identityHashCode(processor);
+		if (context.getRoute(id + "-dispatch") == null) context.addRoutes(new RouteBuilder() {
+			@Override public void configure() {
+				processor.configureDispatch(from("direct:" + id + "-dispatch").routeId(id + "-dispatch"), "direct:" + id + "-write");
+				processor.configureWrite(from("direct:" + id + "-write").routeId(id + "-write"));
+			}
+		});
+		try (var template = context.createProducerTemplate()) {
+			template.sendBody("direct:" + id + "-dispatch", jobs);
 		}
 	}
 }

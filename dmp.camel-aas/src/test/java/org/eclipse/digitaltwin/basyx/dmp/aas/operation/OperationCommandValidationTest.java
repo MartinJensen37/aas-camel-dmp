@@ -204,7 +204,11 @@ class OperationCommandValidationTest {
 			@Override public void configure() {
 				var route = from("direct:operation").process(processor::prepareRequest);
 				for (String transformer : requestTransformers) route.to(transformer);
-				route.process(processor::keepRequestResult).process(processor::prepareCommand);
+				route.process(processor::keepRequestResult);
+				processor.sinkTransformerChains().forEach((sinkId, chain) -> {
+					if (!chain.isEmpty()) route.enrich(chain.get(0), processor.keepSinkResult(sinkId));
+				});
+				route.process(processor::prepareCommand);
 				processor.configureInvoke(route);
 				route.process(processor::acceptReply)
 						.process(processor::collectResponseSources)

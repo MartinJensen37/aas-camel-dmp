@@ -189,9 +189,7 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		String responseWriteUri = "direct:" + responseWriteRouteId;
 		if (!responseSinkTargets.isEmpty()) {
 			registerRouteId(responseWriteRouteId);
-			routeBuilder.from(responseWriteUri)
-					.routeId(responseWriteRouteId)
-					.process(operation::dispatchResponseWriteJob);
+			operation.configureResponseWrite(routeBuilder.from(responseWriteUri).routeId(responseWriteRouteId));
 		}
 
 		// The device call: the connector's invocation steps (SynchronousInvocationAdapter).
@@ -217,6 +215,10 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		}
 		flow.to(requestTransformers)
 				.process(operation::keepRequestResult);
+		// Per-sink transformer chains run on a copy of the request result (Content Enricher).
+		operation.sinkTransformerChains().forEach((sinkId, chain) -> {
+			if (!chain.isEmpty()) flow.enrich(chain.get(0), operation.keepSinkResult(sinkId));
+		});
 		// The device call: the connector's steps run in the command route on a copy of the
 		// exchange (Content Enricher), so caller headers never reach the device. The
 		// connector correlates the terminal reply (OPC UA Call, MQTT 5 correlation data, HTTP).
@@ -230,17 +232,7 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		flow.process(operation::collectResponseSources);
 		if (responseLuaUri != null) flow.to(responseLuaUri);
 		flow.process(operation::prepareResponseWrites);
-		if (!responseSinkTargets.isEmpty()) {
-			var responseJobs = flow.split(org.apache.camel.builder.Builder.body());
-			var enqueue = responseJobs.doTry();
-			enqueue.wireTap(responseWriteUri)
-					.onPrepare(org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.ResponseSinkFanOutProcessor::prepareDetachedExchange)
-					.executorService(operation.responseWriteExecutor());
-			enqueue.doCatch(Exception.class)
-				.process(operation::recordResponseWriteRejection)
-				.end();
-			responseJobs.end();
-		}
+		if (!responseSinkTargets.isEmpty()) operation.configureResponseDispatch(flow, responseWriteUri);
 		flow.process(operation::completeReply)
 			.doCatch(Exception.class)
 				.process(operation::handleFailure)

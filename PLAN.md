@@ -80,10 +80,13 @@ complete; live-cutover readiness is not established by this audit.**
 
 ### P3. Action invocation (rescoped 2026-10-17)
 
-**Scope (SPEC §7.1):** a bridge mapping invokes one action affordance whose
-terminal reply is its result — OPC UA Method, MQTT 5 request/reply (the first
-reply carrying the request's correlation data; no `State: RUNNING` skip), HTTP.
-Invocations are correlated by their protocol and run concurrently.
+**Scope (SPEC §7.1):** an operation mapping binds its Operation 1:1 to one
+affordance: an action whose terminal reply is its result — OPC UA Method,
+MQTT 5 request/reply (the first reply carrying the request's correlation
+data; no `State: RUNNING` skip), HTTP — or a property it writes, answering
+once the connector acknowledged the write. On the AAS side it fans in further
+AAS elements and fans the result out through ResponseSinks. Invocations are
+correlated by their protocol and run concurrently.
 
 **Rescoped out (2026-10-17):** the status phase (`StatusSources`,
 `StatusTransformation`, `StatusTimeout`), parameter sinks, read-once
@@ -102,24 +105,25 @@ affordances and their builders in `aas-model`, the MQTT reply consumer owned
 by its endpoint, connector invocation steps (B6) and the command route behind
 a Content Enricher.
 
+**Done (2026-10-17):**
+
+- Operations bound to a property, AAS fan-in and fan-out
+  (`OperationPropertyWriteTest` with Milo; `OperationConnectorsTest` for
+  Modbus via PLC4X, HTTP including a rejected write, and MQTT). OPC UA writes
+  wait for the Write status and convert scalars to the variable's DataType.
+- Concurrency: eight parallel calls of one MQTT 5 action, answered in reverse
+  order, each get their own reply (`OperationConnectorsTest`).
+- No `ProducerTemplate` dispatch is left in operation mappings: per-sink
+  transformer chains run as Content Enrichers, and the AAS response writes run
+  in a write route behind the bounded Wire Tap
+  (`ResponseSinkFanOutProcessor.configureDispatch`/`configureWrite`).
+- Found on the way: PLC4X tag addresses kept the href's leading `/`
+  (`/coil:1`), which PLC4X silently dropped from the request; superseded by
+  the WoT Modbus translation (P5). A failed PLC4X request is still reported as "the device could not
+  be reached" without its cause.
+
 **Open:**
 
-- **Operations bound to a property** (implemented 2026-10-17, SPEC §7.1;
-  `OperationPropertyWriteTest` with Milo; PLC4X, HTTP and MQTT writes are not
-  tested end to end yet): an Operation
-  maps 1:1 to one action or one property affordance. Bound to a property, the
-  call writes it and returns once the connector acknowledges the write (AAS
-  has no write feedback other than Operations): PLC4X write response, OPC UA
-  Write status (needs a `dmp-milo-client:` write producer; camel-milo ignores
-  a Bad status), HTTP response; MQTT only reaches the broker (QoS 1/2). On the
-  AAS side an operation mapping may fan in further AAS elements as Sources
-  (read at invocation, passed to the request Lua with the Operation's
-  variables; supersedes A1) and fans out the result through ResponseSinks.
-- **Concurrency test:** N parallel calls to one MQTT action with replies out
-  of order (deferred until after the rescoping).
-- **Remaining `ProducerTemplate` dispatch:** per-sink transformer chains of an
-  operation mapping (`SyncOperationProcessor`) and the best-effort AAS
-  response writes (`ResponseSinkFanOutProcessor`, behind the Wire Tap).
 - **Future:** AAS asynchronous invocation (`invoke-async` with a handle;
   BaSyx does not implement it yet) for actions longer than a caller's HTTP
   timeout.

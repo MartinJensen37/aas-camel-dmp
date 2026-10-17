@@ -217,8 +217,6 @@ class ManagedBridgeLifecycleTest {
 			for (int i = 0; i < 6; i++) {
 				var first = runtime.installBundle(runtime.stageBundle("A", runtime.nextBundleGeneration("A"), () -> operationWithReply("operation-A", "/churn/A", "direct:churn-reply")));
 				var second = runtime.installBundle(runtime.stageBundle("B", runtime.nextBundleGeneration("B"), () -> operationWithReply("operation-B", "/churn/B", "direct:churn-reply")));
-				var firstTemplates = ownedTemplates(first);
-				var secondTemplates = ownedTemplates(second);
 				template.requestBody("direct:operation-A", Map.of("value", 1));
 				template.requestBody("direct:operation-B", Map.of("value", 1));
 				try (var conflict = runtime.stageBundle("A", runtime.nextBundleGeneration("A"), () -> operation("operation-A", "/churn/B"))) {
@@ -228,18 +226,15 @@ class ManagedBridgeLifecycleTest {
 					assertSame(second, runtime.managedBundle("B"));
 				}
 				var replaced = runtime.replaceBundle(first, runtime.stageBundle("A", runtime.nextBundleGeneration("A"), () -> operationWithReply("operation-A", "/churn/A", "direct:churn-reply")));
-				assertStoppedTemplates(firstTemplates);
-				var replacementTemplates = ownedTemplates(replaced);
 				template.requestBody("direct:operation-A", Map.of("value", 1));
 				runtime.removeBundle(replaced);
 				assertTrue(second.active());
 				runtime.removeBundle(second);
-				assertStoppedTemplates(secondTemplates);
-				assertStoppedTemplates(replacementTemplates);
 				assertEquals(routes, runtime.context().getRoutesSize());
 				assertEquals(endpoints, runtime.context().getEndpoints().size());
 				assertEquals(restModels, runtime.context().getCamelContextExtension().getContextPlugin(org.apache.camel.model.Model.class).getRestDefinitions().size());
 				assertEquals(registrations, org.apache.camel.support.PluginHelper.getRestRegistry(runtime.context()).listAllRestServices().size());
+				// Operation mappings own no ProducerTemplate: per-sink chains and response writes are route steps.
 				assertEquals(templates, runtime.context().hasServices(org.apache.camel.ProducerTemplate.class).size());
 				assertEquals(executors, executorCount(runtime));
 				// Response-sink writes run asynchronously on the bounded Wire Tap executor.
@@ -255,30 +250,6 @@ class ManagedBridgeLifecycleTest {
 		var field = org.apache.camel.impl.engine.BaseExecutorServiceManager.class.getDeclaredField("executorServices");
 		field.setAccessible(true);
 		return ((List<?>) field.get(runtime.context().getExecutorServiceManager())).size();
-	}
-
-	private static List<org.apache.camel.ProducerTemplate> ownedTemplates(DmpComponent.ManagedBundle bundle) throws Exception {
-		var resources = DmpComponent.ManagedBundle.class.getDeclaredField("remainingResources");
-		resources.setAccessible(true);
-		var operation = ((Set<?>) resources.get(bundle)).stream()
-				.filter(org.eclipse.digitaltwin.basyx.dmp.aas.operation.SyncOperationProcessor.class::isInstance).findFirst().orElseThrow();
-		var template = operation.getClass().getDeclaredField("producerTemplate");
-		template.setAccessible(true);
-		var fanOut = operation.getClass().getDeclaredField("responseFanOut");
-		fanOut.setAccessible(true);
-		Object response = fanOut.get(operation);
-		var responseTemplate = response.getClass().getDeclaredField("producerTemplate");
-		responseTemplate.setAccessible(true);
-		return List.of((org.apache.camel.ProducerTemplate) template.get(operation),
-				(org.apache.camel.ProducerTemplate) responseTemplate.get(response));
-	}
-
-	private static void assertStoppedTemplates(List<org.apache.camel.ProducerTemplate> templates) {
-		assertEquals(2, templates.size());
-		for (var template : templates) {
-			assertTrue(((org.apache.camel.StatefulService) template).isStopped());
-			assertEquals(0, template.getCurrentCacheSize());
-		}
 	}
 
 	@Test

@@ -33,7 +33,6 @@ import java.util.Map;
 
 import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
-import org.apache.camel.ProducerTemplate;
 import java.net.HttpURLConnection;
 import org.eclipse.digitaltwin.basyx.dmp.core.audit.AuditLog;
 import org.eclipse.digitaltwin.basyx.dmp.core.audit.AuditPoint;
@@ -67,6 +66,8 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	/** The request transformation's result keyed by SinkId. */
 	private static final String REQUEST_RESULT = "dmp.operation.requestResult";
 	private static final String COMMAND_REPLY = "dmp.operation.commandReply";
+	/** Per-sink transformer chains' results, keyed by SinkId. */
+	private static final String SINK_RESULTS = "dmp.operation.sinkResults";
 	/** A property write: the value written, which is also the call's reply. */
 	private static final String WRITTEN_VALUE = "dmp.operation.writtenValue";
 
@@ -74,7 +75,6 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 
 	private final OperationContext context;
 	private final CamelContext camelContext;
-	private final ProducerTemplate producerTemplate;
 	private final AffordanceValidation validation;
 	private final OperationReplyValidationProcessor replyValidationProcessor;
 	private final java.util.List<java.util.Map<String, Object>> responseSourceBindings;
@@ -135,7 +135,6 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 				.stream().map(java.util.ServiceLoader.Provider::get).toList() : java.util.List.copyOf(adapters);
 		this.responseFanOut = new ResponseSinkFanOutProcessor(camelContext,
 				resourceIdentity, this.responseSinkTargets);
-		this.producerTemplate = camelContext.createProducerTemplate();
 	}
 
 	@Override
@@ -155,7 +154,6 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	@Override
 	public void close() throws Exception {
 		responseFanOut.close();
-		producerTemplate.stop();
 	}
 
 	@Override
@@ -196,7 +194,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		}
 		// parse every DECLARED parameter per its AID DataSchema type —
 		// the wire representation is data-driven, never name-based
-		Map<String, Object> command = OperationPayloads.assembleCommand(applySinkTransformers(exchange.getProperty(REQUEST_RESULT)),
+		Map<String, Object> command = OperationPayloads.assembleCommand(applySinkTransformers(exchange),
 				context.commandSinkIds, context.commandSinkValuePaths, context.commandSinkId);
 		OperationPayloads.coerceFields(command, context.parameterTypes);
 		try {
@@ -221,7 +219,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	 */
 	private void prepareWrite(Exchange exchange) {
 		Object value = org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.PayloadAssembler.assemble(
-				OperationPayloads.keyedValues(applySinkTransformers(exchange.getProperty(REQUEST_RESULT))),
+				OperationPayloads.keyedValues(applySinkTransformers(exchange)),
 				context.commandSinkIds, context.commandSinkValuePaths);
 		Object written = value == org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL ? null : value;
 		try {
@@ -315,16 +313,14 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 					: responseFanOut.prepareJobs(exchange));
 	}
 
-	public void dispatchResponseWriteJob(Exchange exchange) {
-		responseFanOut.sendJob(exchange);
+	/** The detached AAS response writes: a bounded Wire Tap per job into {@code writeUri}. */
+	void configureResponseDispatch(org.apache.camel.model.ProcessorDefinition<?> route, String writeUri) {
+		responseFanOut.configureDispatch(route, writeUri);
 	}
 
-	public void recordResponseWriteRejection(Exchange exchange) {
-		responseFanOut.recordRejection(exchange);
-	}
-
-	public java.util.concurrent.ExecutorService responseWriteExecutor() {
-		return responseFanOut.responseExecutor();
+	/** The response write route's steps. */
+	void configureResponseWrite(org.apache.camel.model.ProcessorDefinition<?> route) {
+		responseFanOut.configureWrite(route);
 	}
 
 	public void completeReply(Exchange exchange) throws Exception {
@@ -374,23 +370,36 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		return point.field("invocation", invocation);
 	}
 
-	private Object applySinkTransformers(Object transformed) {
+	/** The authored per-sink transformer chains (a direct route for a multi-step chain), by SinkId. */
+	java.util.Map<String, java.util.List<String>> sinkTransformerChains() {
+		return context.sinkTransformerUris;
+	}
+
+	/** Enricher strategy: keeps a per-sink chain's result for {@code sinkId}; the exchange body is unchanged. */
+	org.apache.camel.AggregationStrategy keepSinkResult(String sinkId) {
+		return (original, transformed) -> {
+			@SuppressWarnings("unchecked")
+			Map<String, Object> results = original.getProperty(SINK_RESULTS, Map.class);
+			if (results == null) {
+				results = new java.util.LinkedHashMap<>();
+				original.setProperty(SINK_RESULTS, results);
+			}
+			results.put(sinkId, OperationPayloads.requireCommandSinkValue(transformed.getMessage().getBody(), sinkId));
+			return original;
+		};
+	}
+
+	/** The request result per SinkId, a sink with its own transformer chain taking that chain's result. */
+	private Object applySinkTransformers(Exchange exchange) {
+		Object transformed = exchange.getProperty(REQUEST_RESULT);
 		if (context.sinkTransformerUris.isEmpty()) return transformed;
 		Map<String, Object> values = OperationPayloads.keyedValues(transformed);
+		@SuppressWarnings("unchecked")
+		Map<String, Object> chained = exchange.getProperty(SINK_RESULTS, Map.class);
 		Map<String, Object> result = new java.util.LinkedHashMap<>();
 		for (String sinkId : context.commandSinkIds) {
-			Object sinkValue;
-			java.util.List<String> chain = context.sinkTransformerUris.get(sinkId);
-			if (chain != null) {
-				sinkValue = values;
-				for (String transformerUri : chain) {
-					sinkValue = producerTemplate.requestBody(transformerUri, sinkValue);
-				}
-				sinkValue = OperationPayloads.requireCommandSinkValue(sinkValue, sinkId);
-			} else {
-				sinkValue = OperationPayloads.requireCommandSinkValue(values, sinkId);
-			}
-			result.put(sinkId, sinkValue);
+			result.put(sinkId, chained != null && chained.containsKey(sinkId) ? chained.get(sinkId)
+					: OperationPayloads.requireCommandSinkValue(values, sinkId));
 		}
 		return result;
 	}

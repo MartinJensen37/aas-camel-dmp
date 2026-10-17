@@ -137,7 +137,7 @@ class OperationResponseMappingTest {
 			try (var processor = new ResponseSinkFanOutProcessor(context, "invocation-1", List.of(
 					Map.of("sinkId", "CurrentState", "endpoint", "direct:state"),
 					Map.of("sinkId", "Audit", "endpoint", "direct:audit")))) {
-				processor.process(exchange);
+				dispatch(context, processor, processor.prepareJobs(exchange));
 				MockEndpoint.assertIsSatisfied(2_000, java.util.concurrent.TimeUnit.MILLISECONDS,
 						state, audit);
 				assertEquals(Map.of("state", "READY", "code", 7L),
@@ -187,7 +187,7 @@ class OperationResponseMappingTest {
 					Map.of("sinkId", "YResult", "endpoint", "direct:device", "payloadGroup", "move",
 							"valuePath", "$.Y", "payloadSchema", schema, "schema", Map.of("type", "number"),
 							"aas", false)))) {
-				processor.process(exchange);
+				dispatch(context, processor, processor.prepareJobs(exchange));
 				MockEndpoint.assertIsSatisfied(2_000, java.util.concurrent.TimeUnit.MILLISECONDS, device);
 				assertEquals(Map.of("X", 1, "Y", 2), device.getExchanges().get(0).getMessage().getBody());
 			}
@@ -216,7 +216,7 @@ class OperationResponseMappingTest {
 							"valuePath", "$.X", "aas", false),
 					Map.of("sinkId", "YResult", "endpoint", "direct:device", "payloadGroup", "move",
 							"valuePath", "$.Y", "aas", false)))) {
-				processor.process(exchange);
+				dispatch(context, processor, processor.prepareJobs(exchange));
 				MockEndpoint.assertIsSatisfied(2_000, java.util.concurrent.TimeUnit.MILLISECONDS, device);
 			}
 		} finally {
@@ -242,7 +242,7 @@ class OperationResponseMappingTest {
 					"count", 2147483648L, "optional", JsonPointer.JSON_NULL)));
 			try (var processor = new ResponseSinkFanOutProcessor(context, "invocation-4", List.of(
 					Map.of("sinkId", "Payload", "endpoint", "direct:device")))) {
-				processor.process(exchange);
+				dispatch(context, processor, processor.prepareJobs(exchange));
 				MockEndpoint.assertIsSatisfied(2_000, java.util.concurrent.TimeUnit.MILLISECONDS, device);
 				assertEquals(org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec.parseJson(
 						"{\"count\":2147483648,\"optional\":null}"),
@@ -250,6 +250,21 @@ class OperationResponseMappingTest {
 			}
 		} finally {
 			context.stop();
+		}
+	}
+
+	/** Sends the jobs through the processor's detached response-write route steps (Wire Tap, write route). */
+	private static void dispatch(org.apache.camel.CamelContext context, ResponseSinkFanOutProcessor processor,
+			java.util.List<ResponseSinkFanOutProcessor.DispatchJob> jobs) throws Exception {
+		String id = "response-writes-" + System.identityHashCode(processor);
+		if (context.getRoute(id + "-dispatch") == null) context.addRoutes(new RouteBuilder() {
+			@Override public void configure() {
+				processor.configureDispatch(from("direct:" + id + "-dispatch").routeId(id + "-dispatch"), "direct:" + id + "-write");
+				processor.configureWrite(from("direct:" + id + "-write").routeId(id + "-write"));
+			}
+		});
+		try (var template = context.createProducerTemplate()) {
+			template.sendBody("direct:" + id + "-dispatch", jobs);
 		}
 	}
 }
