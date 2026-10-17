@@ -33,53 +33,159 @@ brokers (KRaft Kafka, MQTT 5) and need no external services.
 Do not run Maven while the IDE re-imports POMs: the IDE can rewrite
 `target/classes` underneath a running build.
 
+### Retirement revalidation (2026-10-16, repository-only)
+
+The October 14 retirement-readiness prompt and parent audit are historical, not
+instructions to repeat the removal. At audited HEAD `34bba25`, commit `8fe9c46`
+already removed all 51 tracked Python management-node files. Later commits removed
+file-configured examples/deploy samples (`3cc40c0`), file configuration factories
+and loaders, standalone startup and `--compare`. Do not restore those interfaces,
+the removed SQL example or legacy compiled Lua trees to satisfy an older checklist.
+
+Current parent main/E2E source definitions select one Java `dmp` service; the chosen
+AAS-reachable origin is `http://dmp:8080`. This is source-level configuration, not
+evidence of running ownership or migrated persisted qualifiers. Retained Python
+authoring, registration, simulations and independent services are not the removed
+DMP management plane.
+
+The origin is implemented through authored Operation qualifiers, not a verified
+global BaSyx delegator setting. `aas-model/src/aas_model/invocation_authoring.py` finalizes encoded
+owner/skill segments; generic ID injection skips invocation qualifiers. All four
+current parent station profiles already use the shared origin. Registration rejects
+the retired `delegation_base` field but deliberately preserves explicit URL strings;
+it does not enforce the shared origin or reject every remaining invocation macro.
+Decide that validation policy (D5) before treating registration as an origin guard.
+
+Bounded remaining retirement work:
+
+- Classify `labServer-compose.yml:260-272`, which still defines the old standalone
+  DataBridge image and config mount. It is not included by the current root Compose
+  entry point; decide whether to migrate or explicitly retire that deployment file
+  before using it. Its existence does not establish a running legacy owner.
+- Correct stale cross-repository prose in `Registration_Service/Dockerfile:3-9`
+  and `aas-model/tests/test_schema_lockstep.py:36-40` in a separately scoped change;
+  these references are comments/assertion text, not runnable manager dependencies.
+- Resolve fixture maintenance (C4). The manifest explicitly records the deleted
+  generator as capture provenance; keep those historical hashes. Decide a forward
+  maintenance workflow without regenerating expected outcomes to hide differences.
+- Complete separately authorized deployed-state inventory and exclusive cutover
+  where necessary (D1); resolve stale/unscoped authoring paths (D2/D3).
+
+No builds, imports, live probes, asset writes or performance evaluations were run
+for this revalidation. Existing uncommitted action-phase work is preserved; earlier
+green logs do not certify those current edits. **Repository manager removal is
+complete; live-cutover readiness is not established by this audit.**
+
 ## Planned work (designs agreed 2026-10-15, not implemented)
 
-### P1. Two-phase actions: trigger, then wait for completion
+### P1. Two-phase actions — superseded by P3
 
-**Goal:** Operations on devices whose actions are not request/reply: a
-Modbus/PLC4X tag write that starts an action, or an OPC UA Method that returns
-at once while the action keeps running. The DMP sends the trigger, then watches
-a status signal until the action has finished.
+The P1 model (status sources as ResponseSources, `CompletionTimeout`, response
+Lua returning `nil` until done) was replaced by P3 before release. Its
+remaining open points are tracked under P3.
 
-**AIMC contract (bridge mappings only)**
+### P3. Invocation pattern: command, status, response (design agreed 2026-10-16)
 
-- Source: the Operation (unchanged). Sink: the AID action affordance that
-  triggers it. For PLC4X/Modbus this is now allowed when completion is declared.
-- `ResponseSources` may reference **property affordances of the same AID**
-  (status tags/variables), not only the action output. Each is acquired by Read
-  at its `PollingInterval` (Modbus, PLC4X, OPC UA Read) or by Observe when the
-  affordance supports it (OPC UA monitored item, MQTT).
-- `ResponseTransformation` is mandatory. It is called as
-  `aimc_main(sources, invocation)`: `sources` holds the current status values
-  by SourceId; `invocation` holds `baseline` (the same values read once just
-  before the trigger), `elapsed` (seconds) and `inputs` (the caller's
-  variables). It returns `nil` while the action runs, a SinkId table when it
-  has finished (the caller SinkId becomes the reply), or raises `error()` when
-  it failed (502 `DMP_DEVICE_ERROR`). The baseline lets Lua require a change,
-  so a "done" bit left over from the previous run does not end a new call.
-  Existing one-argument scripts are unaffected.
-- New DMP extension property on the mapping, `CompletionTimeout`
-  (`xs:double`, seconds), required when completion sources are declared.
-  Expiry answers 504 `DMP_DEVICE_TIMEOUT`. Needs the `aas-model`
-  `DmpMappingConfiguration` extension and acceptance in `WireProjection`.
-- One invocation in flight per action affordance, since tags carry no
-  correlation. A concurrent call answers 409 `DMP_ACTION_BUSY`. MQTT
-  request/reply keeps its correlation and is unaffected.
-- A trigger that fails (write error, Method bad status) fails immediately; no
-  completion wait, no retry.
+**Progress (2026-10-16):** steps 1–4 implemented as in SPEC §7.1 — `aas-model`
+fields and ids, compiler, the bridge route built from EIPs (connector
+invocation steps included, B6) and the MQTT ack rule; tested end to end in
+`ActionInvocationPhasesTest` (Modbus test server, MQTT 5 test broker,
+including an MQTT action acked `RUNNING` that finishes on an event) and
+`OpcUaProgramActionTest` (Milo). Open:
 
-**BaSyx limits (checked in `basyx-java-server-sdk` main, 2026-10-06):** the
-repository invoke endpoint is always synchronous; the `async` flag is ignored
-(`TODO #566` in `SubmodelRepositoryApiHTTPController`). Delegation is a
-blocking `WebClient` POST with no timeout configured, so BaSyx waits as long as
-the DMP does; the invoking client's HTTP timeout (e.g. BT_Controller) is the
-practical limit and must exceed `CompletionTimeout`.
+- **OPC UA events** (2026-10-17): OPC 10101 defines none. To be modelled like
+  MQTT events (same consumption; an event has no current value): the form
+  `href` names the notifier, the event's `data` schema properties are the
+  select clauses (browse paths on the event type), and an event-type term for
+  the where clause lives in the project namespace, not `uav:`. Milo's client
+  has `OpcUaMonitoredItem.newEventItem(node, EventFilter)`; it would be a
+  second consumer kind of `dmp-milo-client:`. Observed variables (monitored
+  items, done 2026-10-17) already cover Part 10 programs through `CurrentState`
+  (`OpcUaProgramActionTest`).
+- **Remaining `ProducerTemplate` dispatch:** per-sink transformer chains of an
+  operation mapping (`SyncOperationProcessor`) and the best-effort AAS
+  response writes (`ResponseSinkFanOutProcessor`, behind the Wire Tap).
+- The busy guard is per mapping (Throttle per route), not per action across
+  mappings.
 
-**Work:** compiler (completion sources, timeout, PLC4X invoke), a completion
-loop in `SyncOperationProcessor` (baseline read, poll/observe, Lua per sample,
-timeout, busy guard), Lua two-argument call, `aas-model` extension. Tests: a
-fake Modbus/PLC4X endpoint and a Milo test server with a long-running Method.
+Supersedes the P1 model where status sources are ResponseSources and the
+response Lua returns `nil` until done. P1's runtime pieces (subscriptions,
+polling, baseline, busy guard) carry over.
+
+**Phases of a bridge mapping** (only the first is required):
+
+1. **Command**: request Lua; IDTA `Sinks` written in authored order, parameter
+   properties of the same AID first, the action affordance last. Every write
+   is acknowledged; a failed write stops the phase, nothing is rolled back.
+2. **Status** (with `StatusSources`): status sources are sampled until the
+   status Lua returns `done` or `failed`, or `StatusTimeout` expires.
+3. **Response**: `ResponseSources` are taken once, the response Lua builds
+   the reply, `ResponseSinks` are written. The response phase also runs when
+   the status is `failed`, so device error codes can reach the caller.
+
+**AIMC** (IDTA fields keep their meaning; every DMP addition gets a DMP
+semantic id, not one under the IDTA namespace):
+
+| Field | Origin | Meaning |
+| --- | --- | --- |
+| `Sources`, `Transformation`, `Sinks`, `DefaultPollingInterval` | IDTA | as today; bridge Sinks may add parameter properties |
+| `StatusSources[]` (Source, SourceId, PollingInterval) | DMP | status properties (read or subscribed) and event affordances of the action's AID |
+| `StatusTransformation` | DMP | `aimc_main(sources, invocation)` → `"running"`, `"done"`, `"failed"` or `{ state, reason }`; `invocation` = `baseline`, `elapsed`, `inputs`, `reply` (command reply or ack, e.g. an OPC UA job id) |
+| `StatusTimeout` | DMP | seconds; required with `StatusSources` (replaces `CompletionTimeout`) |
+| `ResponseSources[]`, `ResponseTransformation`, `ResponseSinks[]` | DMP | as today; see rules below |
+
+- The status Lua runs once right after the trigger, with only the ack in
+  `invocation.reply`, so a rejecting ack fails at once.
+- A ResponseSource naming the same element as a StatusSource gets the value
+  that ended the wait (required for events); other properties are read once.
+- **Cleanup** (e.g. reset the start coil, PLCopen Execute/Done handshake) is a
+  ResponseSink addressing the device's AID. ResponseSinks that address an AID
+  affordance are written synchronously before the reply and before the busy
+  guard is released; AAS ResponseSinks stay best effort.
+- **MQTT**: with `StatusSources` the first correlated reply is the ack;
+  without them the current `RUNNING`-skipping request/reply stays.
+- **Events** are modelled as AID EventAffordances (`aas-model` `DmpEvent`)
+  and referenced from `StatusSources`, not as WoT `additionalResponses`.
+
+**Protocol coverage:** OPC UA terminal Methods (no status), OPC UA Programs
+(Start Method, `CurrentState` subscription first, transition events later),
+MQTT 5 req/resp (no status) and ack-then-event, Modbus/BACnet (parameters,
+start coil, polled status, result registers, reset), HTTP (no status).
+Not covered: HTTP 202 with a run-time `Location` (needs href templating).
+
+**Camel-native implementation** (replaces the hand-written wait):
+the bridge route is composed from EIPs instead of one processor, e.g.
+Throttle (concurrent requests, max 1, keyed by action, `rejectExecution` → 409)
+as the busy guard; Content Enricher for baseline and result reads; ordered
+command sends as a sequential route; Loop (`doWhile` running, `breakOnShutdown`)
+with `pollEnrich` from a per-mapping SEDA queue fed by the subscription
+routes (timeout = next poll) for the status phase; Wire Tap only for AAS
+ResponseSinks. Connector adapters stop dispatching through `ProducerTemplate`
+(B6).
+
+**Open:** wire format of a failed call's reply (BaSyx delegation receives only
+OperationVariables; check how it treats a non-2xx body); OPC UA event field
+selection (no OPC UA WoT binding term).
+
+**Future:** AAS asynchronous invocation (`invoke-async` with a handle; BaSyx
+does not implement it yet) for actions longer than a caller's HTTP timeout;
+keeping an action blocked after a timeout until its status says it stopped
+(today the busy guard is released at the timeout).
+
+### P4. WoT asynchronous actions in the AID (proposed 2026-10-16, not started)
+
+Follow the WoT TD 2.0 draft (terms already in TD 1.1): `synchronous`, form
+operations `queryaction` / `cancelaction`. TD 2.0 does not define the
+`queryaction` payload or action instances (w3c/wot-thing-description#2157,
+open); the WoT Profile (Working Draft) defines an HTTP ActionStatus object
+(`status` pending/running/completed/failed, `output`, `error`, `href`).
+
+- `aas-model`: `additionalForms` on actions (the IDTA AID allows one `forms`
+  per affordance), each with its own `op` and `href`; an optional `schema` on a
+  form's `response` (inline DataSchema; the AID has no `schemaDefinitions`).
+- DMP: `queryaction` forms supply the status sources; Profile ActionStatus is
+  interpreted without a status Lua; `cancelaction` on StatusTimeout.
+  `StatusSources` remain for events and status the action does not point to.
 
 ### P2. AAS interaction log and TimeSeries sinks (InfluxDB)
 
@@ -149,7 +255,8 @@ Decide per item: keep (and schedule), or drop (and delete it from SPEC).
 | A3 | **Operation variables of other element types** (Range, MultiLanguageProperty, File, Blob, ReferenceElement) | Properties, collections and lists (nested) are supported (SPEC §7); other types block the mapping. |
 | A4 | **Custom/structured OPC UA datatypes** in Method arguments and reads | Basic types and arrays of them only. |
 | A5 | **Per-element array fan-out** via `valuePath` (apply a mapping to every array element) | Not expressible; Lua must loop. |
-| A6 | **PLC4X/Modbus action invocation** | Planned as P1 (trigger write plus completion polling). |
+| A6 | **PLC4X/Modbus action invocation** | Implemented as P3 (parameters, start write, status phase, reset). |
+| A11 | **Ordinary PLC4X sinks** sent the bare Lua value, which camel-plc4x rejects (it needs `{tag: {address: value}}`). | Fixed by the `dmp-plc4x:` component (SPEC §9), whose producer takes the tag value and acknowledges the write. |
 | A7 | **OPC UA events and HTTP Observe** acquisition | Rejected at compile time. |
 | A8 | **AID bindings for Kafka, ActiveMQ, SQL**; finishing the **Hono** consumer | Components exist but the compiler never selects them; Hono only logs messages. Alternative: delete these modules. |
 | A9 | **SNMP binding** (AID 1.2 `…/AssetInterfacesDescription/1/2/SNMP`) via Camel's `camel-snmp` component: Read (GET/poll), Observe (traps), Write (SET) | Not recognised: an SNMP interface is rejected with "no supported protocol binding". |
@@ -164,7 +271,7 @@ Decide per item: keep (and schedule), or drop (and delete it from SPEC).
 | B3 | **Shared MQTT client per broker** for data-plane sources (one subscription union, async fan-out) | One MQTT client per endpoint. |
 | B4 | **Per-mapping memory isolation** for Lua | Heap shared by all mappings. |
 | B5 | **Lua blob provenance** (signing or trusted-author checks) | Any Lua in a readable AIMC runs. |
-| B6 | **Remove the residual `ProducerTemplate` device dispatch** in the invocation adapters (HTTP, OPC UA, MQTT) in favour of plain route steps | Still dispatched from processors. |
+| B6 | **Remove the residual `ProducerTemplate` device dispatch** in the invocation adapters (HTTP, OPC UA, MQTT) in favour of plain route steps | Done (P3): adapters contribute route steps (`configureInvoke`), run in a command route behind a Content Enricher. Per-sink transformer chains still use a `ProducerTemplate`. |
 | B7 | **Credential redaction audit** of data-plane log lines and caller error details (connector URIs can carry credentials) | Redaction exists for status, fingerprints and settings; data-plane paths are not audited. |
 
 ### C. Verification gaps
@@ -183,7 +290,9 @@ Decide per item: keep (and schedule), or drop (and delete it from SPEC).
 | --- | --- |
 | D1 | Cut over any deployed stack still running the Python manager and per-asset DMPs: stop old owners, migrate persisted `invocationDelegation` qualifiers to `http://dmp:8080/...`, start one Java DMP, with a rollback path. |
 | D2 | `AASDescriptions/Resource/configs/syntegonStoppering.json` still carries a pre-ADR-022 AID block; stations pin `syntegonStoppering.main.json` instead. Fix or delete the stale file. |
-| D3 | ARSO and `OperationDelegation` author delegation URLs separately; decide whether their assets are in scope. |
+| D3 | ARSO still defaults delegation to `http://registration-service:8087`; the independent Python `OperationDelegation` service has its own routes. Decide whether their assets are in scope; do not delete unrelated Python or rewrite their fixtures merely to remove old host strings. |
+| D4 | `labServer-compose.yml:260-272` still defines the legacy standalone DataBridge/config mount. Decide whether this separate deployment file is supported, then migrate or retire it; do not infer it is active from its presence. |
+| D5 | Registration preserves explicit authored invocation URLs (including other origins) and does not reject every unresolved qualifier macro. Decide whether intended shared-DMP operations must enforce origin/path/macro constraints; current fixed-origin authoring is not a global registration invariant. |
 
 ### E. Library audit
 
