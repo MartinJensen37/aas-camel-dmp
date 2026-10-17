@@ -69,7 +69,7 @@ flowchart LR
 | `dmp.core` | Route model, execution-policy route creator, fan-in/fan-out, payload assembly, affordance validation, bundle lifecycle |
 | `dmp.camel-lua` | `lua:` component and sandbox |
 | `dmp.camel-aas` | AAS element read/write, `aas-event:` source, Operation bridge |
-| `dmp.camel-paho`, `-opcua`, `-httppolling`, `-plc4x` | Connectors reachable from AID bindings, including the DMP Camel components (§9) |
+| `dmp.camel-paho`, `-opcua`, `-http`, `-plc4x` | Connectors reachable from AID bindings, including the DMP Camel components (§9) |
 | `dmp.component` | Executable, settings, `/health`, `/management/status`, image |
 
 ## 4. Discovery and lifecycle

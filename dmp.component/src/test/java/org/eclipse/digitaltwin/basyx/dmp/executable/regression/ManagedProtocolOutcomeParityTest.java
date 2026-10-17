@@ -29,7 +29,7 @@ import org.apache.camel.builder.RouteBuilder;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASDatasinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpComponent;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpDataSinkConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpDataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.LuaTransformerConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.management.compiler.ConnectorConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.dmp.management.compiler.MappingPlanCompiler;

@@ -23,7 +23,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceCon
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteCreator;
-import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpPollingDataSourceConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpPollingDataSourceConfiguration;
 import org.junit.jupiter.api.Test;
 
 import com.sun.net.httpserver.HttpServer;

@@ -30,8 +30,8 @@ import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASPollingDataSourceC
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AasEventDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.OperationVariableValues;
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.ProtocolBridgeRouteConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpDataSinkConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration.HttpPollingDataSourceConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpDataSinkConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.LuaTransformerConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaCompiledSource;
 import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.MqttDataSinkConfiguration;

@@ -1,0 +1,132 @@
+/*******************************************************************************
+ * Copyright (C) 2023 the Eclipse BaSyx Authors
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * 
+ * SPDX-License-Identifier: MIT
+ ******************************************************************************/
+package org.eclipse.digitaltwin.basyx.dmp.http.configuration;
+
+import java.net.URISyntaxException;
+
+import org.apache.hc.core5.net.URIBuilder;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfiguration;
+
+/**
+ * An implementation of HTTP producer configuration
+ * 
+ * @author rana
+ *
+ */
+public class HttpDataSinkConfiguration extends DataSinkConfiguration{
+	
+	private String scheme;
+	private String serverUrl;
+	private String path;
+	private String query;
+	private int port;
+	
+	public HttpDataSinkConfiguration() {}
+	
+	public HttpDataSinkConfiguration(String uniqueId, String scheme,  String serverUrl, String path, int port) {
+		super(uniqueId);
+		this.scheme = scheme;
+		this.serverUrl = serverUrl;
+		this.path = path;
+		this.port = port;
+	}
+	
+	public String getScheme() {
+		return scheme;
+	}
+
+	public void setScheme(String scheme) {
+		this.scheme = scheme;
+	}
+
+	public String getServerUrl() {
+		return serverUrl;
+	}
+
+	public void setServerUrl(String hostUrl) {
+		this.serverUrl = hostUrl;
+	}
+
+	public String getPath() {
+		return path;
+	}
+
+	public void setPath(String path) {
+		this.path = path;
+	}
+
+	public String getQuery() {
+		return query;
+	}
+
+	public void setQuery(String query) {
+		this.query = query;
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	@Override
+	public String getConnectionURI() {
+	
+		URIBuilder uriBuilder = new URIBuilder();
+		uriBuilder.setScheme(getScheme());
+		uriBuilder.setHost(getServerUrl());
+		uriBuilder.setPort(getPort());
+		uriBuilder.setPath(getPath());
+		if (query != null && !query.isBlank()) {
+			uriBuilder.setCustomQuery(query);
+		}
+		
+		return buildConnectionUri(uriBuilder);
+	}
+
+	@Override
+	public boolean requiresJsonWireEncoding() {
+		return hasJsonSchema(getPayloadSchema()) || hasJsonSchema(getSchema());
+	}
+
+	private static boolean hasJsonSchema(Object value) {
+		if (!(value instanceof java.util.Map<?, ?> schema) || schema.isEmpty()) return false;
+		return schema.containsKey("type") || schema.containsKey("properties") || schema.containsKey("items")
+				|| schema.containsKey("const") || schema.containsKey("enum") || schema.containsKey("oneOf")
+				|| schema.containsKey("anyOf") || schema.containsKey("allOf");
+	}
+	
+	private String buildConnectionUri(URIBuilder uriBuilder) {
+		
+		try {
+			return uriBuilder.build().toString();
+		} catch (URISyntaxException e) {
+			throw new IllegalStateException("Exception occurred while creating HttpProducerEndPoint", e);
+		}
+	}
+
+}
