@@ -2,14 +2,11 @@ package org.eclipse.digitaltwin.basyx.dmp.httppolling.configuration;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
-import org.apache.camel.ProducerTemplate;
+import org.apache.camel.model.ProcessorDefinition;
+import static org.apache.camel.builder.Builder.constant;
 import org.apache.camel.component.http.HttpClientConfigurer;
 import org.apache.camel.http.base.HttpOperationFailedException;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
@@ -28,53 +25,61 @@ public final class HttpSynchronousInvocationAdapter implements SynchronousInvoca
 
 	@Override
 	public java.util.Set<String> ownedEndpointUris(String endpointUri, InvocationSchema schema) {
-		return java.util.Set.of(invocationUri(endpointUri));
+		return java.util.Set.of(invocationUri(endpointUri, timeoutMillis(schema)));
 	}
 
 	@Override
-	public Map<String, Object> invoke(CamelContext context, String endpointUri,
-			Map<String, Object> namedRequest, InvocationSchema schema) {
-		Map<String, Object> headers = new LinkedHashMap<>();
+	public void configureInvoke(ProcessorDefinition<?> route, String endpointUri, InvocationSchema schema) {
 		Object method = schema.connectorOptions().get("httpMethod");
-		headers.put(Exchange.HTTP_METHOD, method == null ? "POST" : String.valueOf(method));
-		headers.put(Exchange.CONTENT_TYPE, "application/json");
-		headers.put("Accept", "application/json");
-		ProducerTemplate template = context.createProducerTemplate();
-		try {
-			long timeoutSeconds = number(schema.connectorOptions().get("timeoutSeconds"), 30);
-			// Isolate the action client's no-retry policy from ordinary HTTP endpoints.
-			Future<Object> future = template.asyncRequestBodyAndHeaders(
-					invocationUri(endpointUri), JsonCodec.toJson(namedRequest), headers);
-			Object reply = await(future, timeoutSeconds);
-			if (reply instanceof Map<?, ?> map) return stringMap(map);
-			String text = reply == null ? null : context.getTypeConverter().convertTo(String.class, reply);
-			if (text == null || text.isBlank()) return Map.of();
-			Object decoded = JsonCodec.parseJson(text);
-			if (!(decoded instanceof Map<?, ?> resultMap)) {
-				throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
-						"HTTP_REPLY_INVALID", "HTTP action reply is not a JSON object", Map.of());
-			}
-			return stringMap(resultMap);
-		} catch (ConnectorInvocationException e) {
-			throw e;
-		} catch (RuntimeException e) {
-			HttpOperationFailedException failedResponse = findHttpFailure(e);
-			if (failedResponse != null) {
-				Map<String, Object> details = new LinkedHashMap<>();
-				details.put("status", failedResponse.getStatusCode());
-				details.put("statusText", String.valueOf(failedResponse.getStatusText()));
-				Object deviceError = safeErrorBody(failedResponse.getResponseBody());
-				if (deviceError != null) details.put("deviceError", deviceError);
-				throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
-						"HTTP_" + failedResponse.getStatusCode(),
-						"HTTP action endpoint returned an error", details);
-			}
-			throw new ConnectorInvocationException(ConnectorInvocationException.Category.TRANSPORT,
-					"HTTP_INVOKE_FAILED", "HTTP action invocation failed: " + causalMessage(e),
-					Map.of("cause", causalMessage(e)));
-		} finally {
-			template.stop();
+		long timeoutMillis = timeoutMillis(schema);
+		route.setHeader(Exchange.HTTP_METHOD, constant(method == null ? "POST" : String.valueOf(method)))
+				.setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
+				.setHeader("Accept", constant("application/json"))
+				.process(exchange -> exchange.getMessage().setBody(JsonCodec.toJson(exchange.getMessage().getBody())))
+				.doTry()
+					.to(invocationUri(endpointUri, timeoutMillis))
+					.process(exchange -> exchange.getMessage().setBody(reply(exchange.getContext(), exchange.getMessage().getBody())))
+				.doCatch(Exception.class)
+					.process(exchange -> {
+						throw failure(exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class), timeoutMillis);
+					})
+				.end();
+	}
+
+	/** The device's reply: a JSON object, or nothing. */
+	static Map<String, Object> reply(CamelContext context, Object reply) {
+		if (reply instanceof Map<?, ?> map) return stringMap(map);
+		String text = reply == null ? null : context.getTypeConverter().convertTo(String.class, reply);
+		if (text == null || text.isBlank()) return Map.of();
+		Object decoded = JsonCodec.parseJson(text);
+		if (!(decoded instanceof Map<?, ?> resultMap)) {
+			throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
+					"HTTP_REPLY_INVALID", "HTTP action reply is not a JSON object", Map.of());
 		}
+		return stringMap(resultMap);
+	}
+
+	static ConnectorInvocationException failure(Exception error, long timeoutMillis) {
+		for (Throwable current = error; current != null; current = current.getCause()) {
+			if (current instanceof ConnectorInvocationException typed) return typed;
+			if (current instanceof java.net.SocketTimeoutException
+					|| current instanceof org.apache.hc.core5.util.TimeoutValueException)
+				return new ConnectorInvocationException(ConnectorInvocationException.Category.TIMEOUT,
+						"HTTP_INVOKE_TIMEOUT", "HTTP action endpoint timed out", Map.of("timeoutSeconds", timeoutMillis / 1000));
+		}
+		HttpOperationFailedException failedResponse = findHttpFailure(error);
+		if (failedResponse != null) {
+			Map<String, Object> details = new LinkedHashMap<>();
+			details.put("status", failedResponse.getStatusCode());
+			details.put("statusText", String.valueOf(failedResponse.getStatusText()));
+			Object deviceError = safeErrorBody(failedResponse.getResponseBody());
+			if (deviceError != null) details.put("deviceError", deviceError);
+			return new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
+					"HTTP_" + failedResponse.getStatusCode(), "HTTP action endpoint returned an error", details);
+		}
+		return new ConnectorInvocationException(ConnectorInvocationException.Category.TRANSPORT,
+				"HTTP_INVOKE_FAILED", "HTTP action invocation failed: " + causalMessage(error),
+				Map.of("cause", causalMessage(error)));
 	}
 
 	public static final class NoRetryHttpClientConfigurer implements HttpClientConfigurer {
@@ -84,30 +89,18 @@ public final class HttpSynchronousInvocationAdapter implements SynchronousInvoca
 		}
 	}
 
-	private static String invocationUri(String endpointUri) {
+	/** The action client never retries and gives up after the action's timeout. */
+	private static String invocationUri(String endpointUri, long timeoutMillis) {
 		return endpointUri + (endpointUri.contains("?") ? "&" : "?")
-				+ "httpClientConfigurer=#class:" + NoRetryHttpClientConfigurer.class.getName();
+				+ "httpClientConfigurer=#class:" + NoRetryHttpClientConfigurer.class.getName()
+				+ "&responseTimeout=" + timeoutMillis + "&connectTimeout=" + timeoutMillis;
 	}
 
-	private static Object await(Future<Object> future, long timeoutSeconds) {
-		try {
-			return future.get(timeoutSeconds, TimeUnit.SECONDS);
-		} catch (TimeoutException timeout) {
-			future.cancel(true);
-			throw new ConnectorInvocationException(ConnectorInvocationException.Category.TIMEOUT,
-					"HTTP_INVOKE_TIMEOUT", "HTTP action endpoint timed out", Map.of("timeoutSeconds", timeoutSeconds));
-		} catch (InterruptedException interrupted) {
-			Thread.currentThread().interrupt();
-			throw new ConnectorInvocationException(ConnectorInvocationException.Category.TRANSPORT,
-					"HTTP_INVOKE_INTERRUPTED", "HTTP action invocation was interrupted", Map.of());
-		} catch (ExecutionException execution) {
-			Throwable cause = execution.getCause();
-			if (cause instanceof RuntimeException runtime) throw runtime;
-			throw new IllegalStateException(cause);
-		}
+	private static long timeoutMillis(InvocationSchema schema) {
+		return number(schema.connectorOptions().get("timeoutSeconds"), 30) * 1000;
 	}
 
-private static long number(Object value, long fallback) {
+	private static long number(Object value, long fallback) {
 		if (value instanceof Number number) return number.longValue();
 		try { return value == null ? fallback : Long.parseLong(String.valueOf(value)); }
 		catch (NumberFormatException ignored) { return fallback; }

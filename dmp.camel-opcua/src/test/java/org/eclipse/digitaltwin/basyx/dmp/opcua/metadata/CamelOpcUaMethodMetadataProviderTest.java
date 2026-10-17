@@ -22,7 +22,7 @@ class CamelOpcUaMethodMetadataProviderTest {
 	void serviceLoaderFindsProtocolNeutralInvocationAdapter() {
 		assertInstanceOf(OpcUaSynchronousInvocationAdapter.class,
 				ServiceLoader.load(SynchronousInvocationAdapter.class).stream()
-						.filter(provider -> provider.get().supports("milo-client:test"))
+						.filter(provider -> provider.get().supports("dmp-milo-client:test"))
 						.findFirst().orElseThrow().get());
 	}
 

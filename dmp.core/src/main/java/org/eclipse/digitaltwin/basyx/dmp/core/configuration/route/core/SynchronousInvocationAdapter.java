@@ -3,14 +3,23 @@ package org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.camel.CamelContext;
+import org.apache.camel.model.ProcessorDefinition;
 
-/** Connector-neutral adapter for synchronous named request/reply endpoints. */
+/**
+ * A connector's action invocation as route steps. The bridge runs them in a
+ * command route on a copy of the operation exchange (Content Enricher), so
+ * caller headers never reach the device and only the reply comes back.
+ */
 public interface SynchronousInvocationAdapter {
 	boolean supports(String endpointUri);
 
-	Map<String, Object> invoke(CamelContext context, String endpointUri,
-			Map<String, Object> namedRequest, InvocationSchema schema);
+	/**
+	 * Appends the invocation to {@code route}: the body enters as the named
+	 * request ({@code Map<String, Object>}) and leaves as the named reply
+	 * ({@code Map<String, Object>}). A device, transport or timeout failure is
+	 * raised as {@link ConnectorInvocationException}.
+	 */
+	void configureInvoke(ProcessorDefinition<?> route, String endpointUri, InvocationSchema schema);
 
 	/** Pure preflight inventory, including connector-derived invocation endpoints. */
 	default Set<String> ownedEndpointUris(String endpointUri, InvocationSchema schema) {

@@ -151,4 +151,39 @@ public class RouteCreatorHelper {
 		}
 		return new String[0];
 	}
+
+	/**
+	 * One fresh Read of a sync source: its connector's {@link SynchronousSourceReadAdapter}
+	 * when one is registered, otherwise a bounded {@code pollEnrich} of the consumer endpoint.
+	 */
+	public static void configureSyncRead(org.apache.camel.model.ProcessorDefinition<?> route, String endpointUri,
+			long timeoutMs) {
+		SynchronousSourceReadAdapter adapter = java.util.ServiceLoader.load(SynchronousSourceReadAdapter.class).stream()
+				.map(java.util.ServiceLoader.Provider::get)
+				.filter(candidate -> candidate.supports(endpointUri))
+				.findFirst().orElse(null);
+		if (adapter == null) {
+			route.setBody(org.apache.camel.builder.Builder.constant(null)).pollEnrich(endpointUri, timeoutMs);
+		} else {
+			adapter.configureRead(route, endpointUri);
+		}
+	}
+
+	/**
+	 * Normalizes a subscribed source's connector messages (e.g. OPC UA DataValues)
+	 * when the source declares a {@code sourceKind}; messages that carry no value
+	 * are filtered out.
+	 */
+	public static org.apache.camel.model.ProcessorDefinition<?> normalizeSourceEvents(
+			org.apache.camel.model.ProcessorDefinition<?> route, DataSourceConfiguration config, String routeLabel) {
+		if (config == null || config.getSourceKind() == null || config.getSourceKind().isBlank()) return route;
+		SourceEventAdapter adapter = java.util.ServiceLoader.load(SourceEventAdapter.class).stream()
+				.map(java.util.ServiceLoader.Provider::get)
+				.filter(candidate -> config.getSourceKind().equals(candidate.sourceKind()))
+				.findFirst().orElseThrow(() -> new IllegalArgumentException("route " + routeLabel
+						+ " has no connector for event sourceKind " + config.getSourceKind()));
+		return route.process(adapter.normalizer(config))
+				.filter(exchange -> Boolean.TRUE.equals(exchange.getProperty(SourceEventAdapter.CONTRIBUTION_PROPERTY)));
+	}
+
 }

@@ -67,11 +67,23 @@ public final class WireModel {
 			Presence<String> defaultPollingInterval, Presence<Blob> transformation,
 			Presence<List<Endpoint>> responseSources, Presence<List<Endpoint>> responseSinks,
 			Presence<Blob> responseTransformation, Presence<SubmodelElementCollection> executionSemantics,
-			Presence<List<String>> triggerSourceIds, SubmodelElementCollection element) {
+			Presence<List<String>> triggerSourceIds, SubmodelElementCollection element,
+			Presence<List<Endpoint>> statusSources, Presence<Blob> statusTransformation,
+			Presence<String> statusTimeout) {
+		public Mapping(Optional<String> authoredId, int listIndex, List<Endpoint> sources, List<Endpoint> sinks,
+				Presence<String> defaultPollingInterval, Presence<Blob> transformation,
+				Presence<List<Endpoint>> responseSources, Presence<List<Endpoint>> responseSinks,
+				Presence<Blob> responseTransformation, Presence<SubmodelElementCollection> executionSemantics,
+				Presence<List<String>> triggerSourceIds, SubmodelElementCollection element) {
+			this(authoredId, listIndex, sources, sinks, defaultPollingInterval, transformation, responseSources,
+					responseSinks, responseTransformation, executionSemantics, triggerSourceIds, element,
+					Presence.absent(), Presence.absent(), Presence.absent());
+		}
 		public Mapping { authoredId = authoredId == null ? Optional.empty() : authoredId;
 			sources = List.copyOf(sources); sinks = List.copyOf(sinks);
 			if (responseSources.present() && responseSources.value() != null) responseSources = Presence.of(List.copyOf(responseSources.value()));
 			if (responseSinks.present() && responseSinks.value() != null) responseSinks = Presence.of(List.copyOf(responseSinks.value()));
+			if (statusSources.present() && statusSources.value() != null) statusSources = Presence.of(List.copyOf(statusSources.value()));
 			if (triggerSourceIds.present() && triggerSourceIds.value() != null) triggerSourceIds = Presence.of(List.copyOf(triggerSourceIds.value())); }
 	}
 	public record RejectedReference(String role, Reference reference) { }

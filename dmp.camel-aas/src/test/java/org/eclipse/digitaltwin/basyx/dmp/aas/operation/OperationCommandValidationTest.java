@@ -101,14 +101,14 @@ class OperationCommandValidationTest {
 			try (SyncOperationProcessor processor = new SyncOperationProcessor(camel, context,
 					new AffordanceValidation(null, "command"), new AffordanceValidation(null, "reply"),
 					List.of(), List.of())) {
-				var exchange = new DefaultExchange(camel);
-				exchange.getMessage().setBody(Map.of("Whole", Map.of("member", "a")));
-				assertThrows(IllegalArgumentException.class, () -> processor.invokeAndPrepareReply(exchange));
-				exchange.getMessage().setBody(Map.of("Whole", Map.of("member", "a"), "Member", "b"));
-				assertThrows(IllegalArgumentException.class, () -> processor.invokeAndPrepareReply(exchange));
+				commandRoute(camel, processor, List.of());
+				var template = camel.createProducerTemplate();
+				assertThrows(Exception.class, () -> template.requestBody("direct:command",
+						Map.of("Whole", Map.of("member", "a"))));
+				assertThrows(Exception.class, () -> template.requestBody("direct:command",
+						Map.of("Whole", Map.of("member", "a"), "Member", "b")));
 				assertEquals(0, invocations.get());
-				exchange.getMessage().setBody(Map.of("Whole", Map.of("member", "a"), "Member", "a"));
-				processor.invokeAndPrepareReply(exchange);
+				template.requestBody("direct:command", Map.of("Whole", Map.of("member", "a"), "Member", "a"));
 				assertEquals(1, invocations.get());
 				assertEquals(Map.of("member", "a"), command.get());
 			}
@@ -171,7 +171,8 @@ class OperationCommandValidationTest {
 			try (var processor = new SyncOperationProcessor(camel, context,
 					new AffordanceValidation(null, "command"),
 					new AffordanceValidation(null, "reply"), List.of(), List.of())) {
-				processor.process(exchange);
+				operationRoute(camel, processor, context.requestTransformerUris);
+				camel.createProducerTemplate().send("direct:operation", exchange);
 			}
 
 			assertEquals(Map.of("X", Map.of("x", 10), "Y", Map.of("y", 20)), command.get());
@@ -182,5 +183,34 @@ class OperationCommandValidationTest {
 		} finally {
 			camel.stop();
 		}
+	}
+
+	/** The bridge's command steps: request result → command → device → accepted reply. */
+	private static void commandRoute(DefaultCamelContext camel, SyncOperationProcessor processor,
+			List<String> requestTransformers) throws Exception {
+		camel.addRoutes(new RouteBuilder() {
+			@Override public void configure() {
+				var route = from("direct:command").process(processor::keepRequestResult).process(processor::prepareCommand);
+				processor.configureInvoke(route);
+				route.process(processor::acceptReply);
+			}
+		});
+	}
+
+	/** The bridge's one-shot operation flow, as ProtocolBridgeRouteCreator wires it. */
+	private static void operationRoute(DefaultCamelContext camel, SyncOperationProcessor processor,
+			List<String> requestTransformers) throws Exception {
+		camel.addRoutes(new RouteBuilder() {
+			@Override public void configure() {
+				var route = from("direct:operation").process(processor::prepareRequest);
+				for (String transformer : requestTransformers) route.to(transformer);
+				route.process(processor::keepRequestResult).process(processor::prepareCommand);
+				processor.configureInvoke(route);
+				route.process(processor::acceptReply)
+						.process(processor::collectResponseSources)
+						.process(processor::prepareResponseWrites)
+						.process(processor::completeReply);
+			}
+		});
 	}
 }

@@ -184,7 +184,7 @@ class ManagedModelBehaviorTest {
 		response.addProperty("idShort", "ResponseTransformation");
 		response.remove("embeddedDataSpecifications");
 		response.getAsJsonObject("semanticId").getAsJsonArray("keys").get(0).getAsJsonObject().addProperty("value",
-				"https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseTransformation");
+				"https://smartproductionlab.aau.dk/aimc/ResponseTransformation/1/0");
 		response.addProperty("value", Base64.getEncoder().encodeToString(script.getBytes(StandardCharsets.UTF_8)));
 		mapping.getAsJsonArray("value").add(response);
 	}

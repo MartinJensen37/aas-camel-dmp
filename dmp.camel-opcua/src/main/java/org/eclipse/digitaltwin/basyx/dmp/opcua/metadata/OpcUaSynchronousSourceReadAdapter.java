@@ -19,7 +19,7 @@ public final class OpcUaSynchronousSourceReadAdapter implements SynchronousSourc
 
 	@Override
 	public boolean supports(String endpointUri) {
-		return endpointUri != null && endpointUri.startsWith("milo-client:");
+		return endpointUri != null && (endpointUri.startsWith("dmp-milo-client:") || endpointUri.startsWith("milo-client:"));
 	}
 
 	@Override

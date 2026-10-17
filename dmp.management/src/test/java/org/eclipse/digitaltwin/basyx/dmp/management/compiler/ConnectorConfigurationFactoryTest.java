@@ -380,7 +380,7 @@ class ConnectorConfigurationFactoryTest {
 		var bridge=assertInstanceOf(ProtocolBridgeRouteConfiguration.class,result.configuration().getRoutes().get(0));
 		assertTrue(bridge.isExplicitResponseMapping());
 		assertEquals("Reply",bridge.getCallerReplySinkId());
-		assertEquals(List.of(Map.of("sourceId","Body,&#","valuePath","$.Count")),bridge.getResponseSourceBindings());
+		assertEquals(List.of(Map.of("sourceId","Body,&#","kind","reply","valuePath","$.Count")),bridge.getResponseSourceBindings());
 		assertEquals(1,bridge.getTransformers().size(),"response Lua must not execute in the request chain");
 		assertEquals(2,result.configuration().getTransformers().size());
 		assertFalse(bridge.getTransformers().contains(bridge.getResponseTransformer()));
@@ -453,7 +453,7 @@ class ConnectorConfigurationFactoryTest {
 	@Test void identicalRemoteActionShapeCannotSubstituteForExactResponseAnchor() {
 		var result=factory.create(explicitResponsePlan("aid-remote"),"bridge");
 		assertTrue(result.configuration().getRoutes().isEmpty());
-		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("exact command ACTION anchor")));
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("must select the action output")));
 	}
 
 	@Test void methodArgumentTypesPreserveArrayRankAndTypedPropertySchemas() {

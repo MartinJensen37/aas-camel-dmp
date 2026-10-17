@@ -27,7 +27,7 @@ public class MqttSynchronousInvocationAdapterTest {
 	void requiresDeclaredRequestReplyBeforePublishing() {
 		var adapter = new MqttSynchronousInvocationAdapter();
 		ConnectorInvocationException failure = assertThrows(ConnectorInvocationException.class,
-				() -> adapter.invoke(new DefaultCamelContext(), "paho-mqtt5:command", Map.of("value", 1),
+				() -> invoke(adapter, new DefaultCamelContext(), "paho-mqtt5:command", Map.of("value", 1),
 					new SynchronousInvocationAdapter.InvocationSchema(
 							Map.of(), Set.of(), Map.of(), Set.of(), Map.of())));
 		assertEquals(ConnectorInvocationException.Category.CONFIGURATION, failure.getCategory());
@@ -62,4 +62,22 @@ public class MqttSynchronousInvocationAdapterTest {
 		assertEquals(Map.of(), failure.getDetails());
 	}
 
+
+	/** Runs the adapter's invocation steps once, as the bridge's command route does. */
+	static Map<String, Object> invoke(SynchronousInvocationAdapter adapter, org.apache.camel.CamelContext camel,
+			String uri, Map<String, Object> request, SynchronousInvocationAdapter.InvocationSchema schema) throws Exception {
+		String route = "direct:invoke-" + java.util.UUID.randomUUID();
+		camel.addRoutes(new org.apache.camel.builder.RouteBuilder() {
+			@Override public void configure() { adapter.configureInvoke(from(route), uri, schema); }
+		});
+		if (!camel.isStarted()) camel.start();
+		try {
+			@SuppressWarnings("unchecked")
+			Map<String, Object> reply = camel.createProducerTemplate().requestBody(route, request, Map.class);
+			return reply;
+		} catch (org.apache.camel.CamelExecutionException failure) {
+			if (failure.getCause() instanceof RuntimeException cause) throw cause;
+			throw failure;
+		}
+	}
 }

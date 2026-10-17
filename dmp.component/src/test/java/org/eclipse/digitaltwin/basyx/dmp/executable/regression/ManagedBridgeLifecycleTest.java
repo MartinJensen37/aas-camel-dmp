@@ -288,8 +288,8 @@ class ManagedBridgeLifecycleTest {
 			dmp.startComponent();
 			var first = dmp.installBundle("operation-A", operation("operation-A", "/managed/A"));
 			var second = dmp.installBundle("operation-B", operation("operation-B", "/managed/B"));
-		assertEquals(Set.of("operation-A", "operation-A-rest-consumer", "operation-A-response-write"), first.routeIds());
-		assertEquals(Set.of("operation-B", "operation-B-rest-consumer", "operation-B-response-write"), second.routeIds());
+		assertEquals(Set.of("operation-A", "operation-A-rest-consumer", "operation-A-response-write", "operation-A-command"), first.routeIds());
+		assertEquals(Set.of("operation-B", "operation-B-rest-consumer", "operation-B-response-write", "operation-B-command"), second.routeIds());
 			assertEquals(Set.of(new DmpRouteBuilder.RestReservation("POST", "/managed/A")), first.restReservations());
 			assertSame(second, dmp.managedBundle("operation-B"));
 

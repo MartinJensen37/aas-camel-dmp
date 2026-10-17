@@ -128,7 +128,7 @@ public class MqttV5Producer extends DefaultProducer {
 			lockTransport(deadline);
 			try {
 				synchronized (this) { assertAdmitted(invocationGeneration); }
-				endpoint.acquireReplyRoute(this, upstreamReplyUri(), deadline);
+				endpoint.acquireReplySubscription(this, upstreamReplyUri(), deadline);
 				synchronized (this) {
 					assertAdmitted(invocationGeneration);
 					future = endpoint.replies.register(this, endpoint.getBrokerUrl(), replyTopic, correlation);
@@ -192,9 +192,13 @@ public class MqttV5Producer extends DefaultProducer {
 	private void publish(byte[] payload, String header, Object value, long deadline) throws Exception {
 		try {
 			String uri = upstreamPublishUri();
-			var publisher = endpoint.acquirePublisher(this);
-			endpoint.preparePublisher(uri, deadline);
-			publisher.sendBodyAndHeader(uri, payload, header, value);
+			endpoint.acquirePublisher(this);
+			org.apache.camel.Producer publisher = endpoint.preparePublisher(uri, deadline);
+			Exchange message = publisher.getEndpoint().createExchange();
+			message.getMessage().setBody(payload);
+			message.getMessage().setHeader(header, value);
+			publisher.process(message);
+			if (message.getException() != null) throw message.getException();
 		} catch (Exception failure) {
 			// Paho leaves timed-out QoS tokens alive. Retire the connection rather
 			// than allow a reconnect or another invocation to resend that command.
@@ -299,7 +303,7 @@ public class MqttV5Producer extends DefaultProducer {
 
 	private void releaseOwnedResources() throws Exception {
 		Exception failure = null;
-		try { endpoint.releaseReplyRoute(this); }
+		try { endpoint.releaseReplySubscription(this); }
 		catch (Exception e) { failure = e; }
 		try { endpoint.releasePublisher(this); }
 		catch (Exception e) {

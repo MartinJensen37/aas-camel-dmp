@@ -59,7 +59,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 public final class WireProjection {
 	public static final String AIMC = "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/Submodel";
 	private static final String AIMC_MAPPING_LIST = "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/1/0/MappingConfigurations";
-	private static final String AIMC_EXECUTION = "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ExecutionSemantics";
+	private static final String AIMC_EXECUTION = "https://smartproductionlab.aau.dk/aimc/ExecutionSemantics/1/0";
 	/** AID 1.1 and 1.2 share the interface structure the DMP reads (1.2 adds protocols and optional fields). */
 	private static final java.util.List<String> AID = java.util.List.of(
 			"https://admin-shell.io/idta/AssetInterfacesDescription/1/1/Submodel",
@@ -80,8 +80,11 @@ public final class WireProjection {
 	private static final String WOT_EVENT = "https://www.w3.org/2019/wot/td#EventAffordance";
 	private static final String WOT_INPUT = "https://www.w3.org/2019/wot/td#hasInput";
 	private static final String WOT_OUTPUT = "https://www.w3.org/2019/wot/td#hasOutput";
+	/** An event's {@code data}: the schema of each notification (WoT TD 1.1 §5.3.1.5). */
+	private static final String WOT_NOTIFICATION = "https://www.w3.org/2019/wot/td#hasNotificationSchema";
 	private static final Set<String> MAPPING_FIELDS = Set.of("Sources","Sinks","DefaultPollingInterval","Transformation",
-			"ResponseSources","ResponseSinks","ResponseTransformation","ExecutionSemantics");
+			"ResponseSources","ResponseSinks","ResponseTransformation","ExecutionSemantics",
+			"StatusSources","StatusTransformation","StatusTimeout");
 	private static final Set<String> RETIRED_ID_SHORTS = Set.of("executionpolicy","writedelegation","luamode","transformengine","jsonata","querylanguage");
 	private static final List<String> BINDING_PREFIXES = List.of("mqtt_","mqv_","uav_","modv_","bacnet_","bacv_","iol_");
 	private WireProjection() { }
@@ -190,8 +193,11 @@ public final class WireProjection {
 			for (String trigger : triggers.value()) if (trigger.isBlank() || !selected.add(trigger) || !sourceIds.contains(trigger))
 				throw error(path + "/ExecutionSemantics", "trigger IDs must be unique known SourceIds");
 		}
+		Presence<List<Endpoint>> statusSources = optionalEndpoints(mapping, "StatusSources", "Source", i);
+		Presence<Blob> statusTransformation = blobField(mapping, "StatusTransformation", i);
+		Presence<String> statusTimeout = scalarField(mapping, "StatusTimeout", i);
 		return new Mapping(id, i, sources, sinks, polling, transformation, responseSources, responseSinks,
-				responseTransformation, execution, triggers, mapping);
+				responseTransformation, execution, triggers, mapping, statusSources, statusTransformation, statusTimeout);
 	}
 
 	private static List<RejectedReference> rejectedReferences(SubmodelElement mapping) {
@@ -251,7 +257,7 @@ public final class WireProjection {
 			List<Form> forms = new ArrayList<>();
 			for (SubmodelElement node : nodes) if (hasSemantic(node, WOT_FORM)) forms.addAll(forms(node, basePath + "/forms"));
 			List<DataSchema> schemas = nodes.stream().filter(x -> "DataSchema".equals(x.getIdShort()) || "dataSchema".equals(x.getIdShort())
-					|| hasSemantic(x, WOT_INPUT) || hasSemantic(x, WOT_OUTPUT))
+					|| hasSemantic(x, WOT_INPUT) || hasSemantic(x, WOT_OUTPUT) || hasSemantic(x, WOT_NOTIFICATION))
 					.map(x -> dataSchema(x, basePath + "/" + x.getIdShort())).toList();
 			List<Affordance> properties = affordances(nodes, WOT_PROPERTY, "property", basePath);
 			List<Affordance> actions = affordances(nodes, WOT_ACTION, "action", basePath);
@@ -298,6 +304,9 @@ public final class WireProjection {
 		for (SubmodelElement node : nodes) if (hasSemantic(node, WOT_FORM)) forms.addAll(forms(node, path + "/" + kind + "/forms"));
 		Presence<DataSchema> schema = nodes.stream().filter(x -> "DataSchema".equals(x.getIdShort()) || "dataSchema".equals(x.getIdShort()))
 				.findFirst().map(x -> Presence.of(dataSchema(x, path + "/" + kind + "/schema"))).orElseGet(Presence::absent);
+		if (!schema.present() && "event".equals(kind))
+			schema = nodes.stream().filter(x -> hasSemantic(x, WOT_NOTIFICATION)).findFirst()
+					.map(x -> Presence.of(dataSchema(x, path + "/" + kind + "/data"))).orElseGet(Presence::absent);
 		if (!schema.present() && "property".equals(kind)
 				&& (hasSemantic(element, "https://www.w3.org/2019/wot/json-schema#propertyName") || element instanceof SubmodelElementCollection))
 			schema = Presence.of(dataSchema(element, path + "/" + kind + "/schema"));

@@ -11,15 +11,6 @@
     "https://admin-shell.io/idta/AssetInterfacesDescription/1/1/Submodel",
     "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/1/0/MappingConfigurations",
     "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/DefaultPollingInterval",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ExecutionSemantics",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ExecutionSemantics/TriggerSourceIds",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSink/Sink",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSink/SinkId",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSinks",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSource/Source",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSource/SourceId",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseSources",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/ResponseTransformation",
     "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/Sink",
     "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/SinkId",
     "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sinks",
@@ -35,6 +26,15 @@
     "https://smartproductionlab.aau.dk/aid/MqttResponseForm/1/0",
     "https://smartproductionlab.aau.dk/aid/MqttResponseTopic/1/0",
     "https://smartproductionlab.aau.dk/aid/MqttRetain/1/0",
+    "https://smartproductionlab.aau.dk/aimc/ExecutionSemantics/1/0",
+    "https://smartproductionlab.aau.dk/aimc/ExecutionSemantics/TriggerSourceIds/1/0",
+    "https://smartproductionlab.aau.dk/aimc/ResponseSink/Sink/1/0",
+    "https://smartproductionlab.aau.dk/aimc/ResponseSink/SinkId/1/0",
+    "https://smartproductionlab.aau.dk/aimc/ResponseSinks/1/0",
+    "https://smartproductionlab.aau.dk/aimc/ResponseSource/Source/1/0",
+    "https://smartproductionlab.aau.dk/aimc/ResponseSource/SourceId/1/0",
+    "https://smartproductionlab.aau.dk/aimc/ResponseSources/1/0",
+    "https://smartproductionlab.aau.dk/aimc/ResponseTransformation/1/0",
     "https://www.w3.org/1999/02/22-rdf-syntax-ns#type",
     "https://www.w3.org/2011/http#methodName",
     "https://www.w3.org/2019/wot/hypermedia#forContentType",
@@ -871,8 +871,8 @@
       "sha256": "60fa191bfff1c9bb7e6cfb667269cc06312a1b6c80c2e0717e7f1b8f4d61592b"
     },
     "opcua-method/aid.json": {
-      "byteLength": 91973,
-      "sha256": "3494529a59733df31759a929dcb67b14577982d2ed7a4982ce6bed6f400f5502"
+      "byteLength": 91889,
+      "sha256": "cfc527662f5fad2721c0ab861d92604985f497c32205e617e4f62e9335afe0e8"
     },
     "opcua-method/aimc.json": {
       "byteLength": 24045,
@@ -883,8 +883,8 @@
       "sha256": "c4faae0e2b28d70551acf4d2b5525037be01261f4890f827e3d5d30faf48dfd8"
     },
     "opcua-method/expected.json": {
-      "byteLength": 21023,
-      "sha256": "4ed8bba94b76c2d6bf1c839483f623c2aac31c4a48a81794e8c95e00ec52f73f"
+      "byteLength": 21015,
+      "sha256": "3df640aac10657618239f28171cf8683c0cd097a4b0b8bf4d6b61bdcd2370777"
     },
     "opcua-method/owner.json": {
       "byteLength": 4021,
@@ -931,8 +931,8 @@
       "sha256": "b434f6ca7883ab761a73b57aa52fe04f40bf1f8dd49e4bcc914ab3fd3c765d69"
     },
     "projection-extensions/aimc.json": {
-      "byteLength": 40525,
-      "sha256": "dcf32d5a6c3473a23904062172e0bf14539152c8d274bd9ba7eb4907f23b9d96"
+      "byteLength": 40111,
+      "sha256": "415c47bede726e4733fac0079cc0df08b78724c4befbc8e88d1797acf5ef51c6"
     },
     "projection-extensions/dependencies/0.json": {
       "byteLength": 5746,
@@ -951,8 +951,8 @@
       "sha256": "9c7e710a2ec0826cbcc971d9eaa33e348688746e44231d65a16ab00545fa9c4b"
     },
     "projection-extensions/expected.json": {
-      "byteLength": 27103,
-      "sha256": "152afdbd06f3c460cb356bab9ea4530d2584abc00a0f0c105f717668bd7d396b"
+      "byteLength": 26689,
+      "sha256": "775dd30fae5ddf41fb5263197799ed59638acdcfde2ff3e3d93433454417ba4a"
     },
     "projection-extensions/owner.json": {
       "byteLength": 7143,
@@ -991,12 +991,12 @@
       "sha256": "87c5c7374745e6857b4e95162ce6293c6422a01ef91552039ee4a882dd61eaa5"
     },
     "stoppering/aid.json": {
-      "byteLength": 1208350,
-      "sha256": "810d72810bd922f4eb2af32a2b97cc7a7dbbc4b824a2ddcb2f7e295a15eb8b57"
+      "byteLength": 1208014,
+      "sha256": "b91eda1d062d85d6f7a94247e41a16ba72d8f63e8ce9aa2644a34b12968d266b"
     },
     "stoppering/aimc.json": {
-      "byteLength": 169491,
-      "sha256": "18689683f0ce685f2b0824fc1eede41857cec44a709222ed054ffbf1eb7fe4a6"
+      "byteLength": 169445,
+      "sha256": "414dea6b7795f1dc7cc158e5e31c5a2440acad77cbc9d433ffe0db3e537a89cf"
     },
     "stoppering/dependencies/0.json": {
       "byteLength": 97604,
@@ -1015,8 +1015,8 @@
       "sha256": "8df8e9671e70c650822a2a66b32f0794595d6e76cd553da43d57cdd398df87d3"
     },
     "stoppering/expected.json": {
-      "byteLength": 180734,
-      "sha256": "c9b0578798e9d5082c2a1bed947ceaf7e79119805c90ef019aa85368ae1870c4"
+      "byteLength": 180702,
+      "sha256": "ab83d1802485ae7e8c8477c2feedb86c7474a635dca3cae41da7aaad6ec8cf21"
     },
     "stoppering/owner.json": {
       "byteLength": 38,

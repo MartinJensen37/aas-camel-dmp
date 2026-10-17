@@ -16,7 +16,7 @@ public class ConnectorInvocationAdapterDiscoveryTest {
 		List<SynchronousInvocationAdapter> adapters = ServiceLoader
 				.load(SynchronousInvocationAdapter.class).stream()
 				.map(ServiceLoader.Provider::get).toList();
-		assertTrue(adapters.stream().anyMatch(a -> a.supports("milo-client:test")));
+		assertTrue(adapters.stream().anyMatch(a -> a.supports("dmp-milo-client:test")));
 		assertTrue(adapters.stream().anyMatch(a -> a.supports("paho-mqtt5:command")));
 		assertTrue(adapters.stream().anyMatch(a -> a.supports("http://device/action")));
 		assertFalse(adapters.stream().anyMatch(a -> a.supports("dmp-plc4x:modbus-tcp://device")),
@@ -28,6 +28,6 @@ public class ConnectorInvocationAdapterDiscoveryTest {
 		List<SynchronousSourceReadAdapter> adapters = ServiceLoader
 				.load(SynchronousSourceReadAdapter.class).stream()
 				.map(ServiceLoader.Provider::get).toList();
-		assertTrue(adapters.stream().anyMatch(a -> a.supports("milo-client:test")));
+		assertTrue(adapters.stream().anyMatch(a -> a.supports("dmp-milo-client:test")));
 	}
 }

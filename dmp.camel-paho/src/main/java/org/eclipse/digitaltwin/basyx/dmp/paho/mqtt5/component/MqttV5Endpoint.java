@@ -104,8 +104,12 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 	static final long STOP_TIMEOUT_MILLIS = 5_000L;
 	private final Set<Object> replyOwners = Collections.newSetFromMap(new IdentityHashMap<>());
 	private final Set<Object> publishOwners = Collections.newSetFromMap(new IdentityHashMap<>());
-	private org.apache.camel.ProducerTemplate publisher;
-	private String replyRouteId;
+	/** The upstream endpoint's producer that publishes commands; owned by this endpoint. */
+	private org.apache.camel.Producer publisher;
+	/** Identity of the current reply subscription (survives a failed cleanup until it is retried). */
+	private String replySubscriptionId;
+	/** The reply listener: a consumer this endpoint owns, never a route, so stopping a producer never stops routes. */
+	private org.apache.camel.Consumer replyConsumer;
 	private String replyClientId;
 	private org.apache.camel.Endpoint replyEndpoint;
 	private volatile org.eclipse.paho.mqttv5.client.MqttClient replyClient;
@@ -252,14 +256,12 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 		return new MqttV5Producer(this);
 	}
 
-	synchronized org.apache.camel.ProducerTemplate acquirePublisher(Object owner) throws Exception {
-		if (publisher != null && publishOwners.isEmpty()) {
+	synchronized void acquirePublisher(Object owner) throws Exception {
+		if ((publisher != null || publishClient != null) && publishOwners.isEmpty()) {
 			// A failed last-owner stop must finish before the transport is reused.
 			discardPublisher();
 		}
-		if (publisher == null) publisher = getCamelContext().createProducerTemplate();
 		publishOwners.add(owner);
-		return publisher;
 	}
 
 	synchronized void releasePublisher(Object owner) throws Exception {
@@ -286,9 +288,10 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 		return Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remaining));
 	}
 
-	synchronized void preparePublisher(String uri, long deadline) throws Exception {
-		if (getCamelContext().getEndpoint(uri)
-				instanceof org.apache.camel.component.paho.mqtt5.PahoMqtt5Endpoint paho) {
+	/** The started producer of the upstream publish endpoint, with a connected transport. */
+	synchronized org.apache.camel.Producer preparePublisher(String uri, long deadline) throws Exception {
+		org.apache.camel.Endpoint target = getCamelContext().getEndpoint(uri);
+		if (target instanceof org.apache.camel.component.paho.mqtt5.PahoMqtt5Endpoint paho) {
 			publishEndpoint = paho;
 			if (publishClient == null) {
 				publishClient = newTransportClient(paho, deadline);
@@ -303,6 +306,11 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 			}
 			publishClient.setTimeToWait(remainingMillis(deadline));
 		}
+		if (publisher == null) {
+			publisher = target.createProducer();
+			org.apache.camel.support.service.ServiceHelper.startService(publisher);
+		}
+		return publisher;
 	}
 
 	synchronized void discardPublisher() throws Exception {
@@ -312,7 +320,7 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 		}
 		if (publishEndpoint != null) publishEndpoint.setClient(null);
 		if (publisher != null) {
-			publisher.stop();
+			org.apache.camel.support.service.ServiceHelper.stopAndShutdownService(publisher);
 			publisher = null;
 		}
 	}
@@ -499,18 +507,17 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 		return replyClientId;
 	}
 
-	synchronized void acquireReplyRoute(Object owner, String replyUri) throws Exception {
-		acquireReplyRoute(owner, replyUri, invocationDeadline());
+	synchronized void acquireReplySubscription(Object owner, String replyUri) throws Exception {
+		acquireReplySubscription(owner, replyUri, invocationDeadline());
 	}
 
-	synchronized void acquireReplyRoute(Object owner, String replyUri, long deadline) throws Exception {
+	synchronized void acquireReplySubscription(Object owner, String replyUri, long deadline) throws Exception {
 		if (replyOwners.contains(owner)) {
 			assertReplyReady(deadline);
 			return;
 		}
-		if (replyRouteId == null) {
-			replyRouteId = "dmp-mqtt-reply-" + UUID.randomUUID();
-			String routeId = replyRouteId;
+		if (replySubscriptionId == null) {
+			replySubscriptionId = "dmp-mqtt-reply-" + UUID.randomUUID();
 			try {
 				replyEndpoint = getCamelContext().getEndpoint(replyUri);
 				if (replyEndpoint instanceof org.apache.camel.component.paho.mqtt5.PahoMqtt5Endpoint paho) {
@@ -518,21 +525,13 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 					connectTransport(paho, replyClient, deadline, true);
 					paho.setClient(replyClient);
 				}
-				getCamelContext().addRoutes(new org.apache.camel.builder.RouteBuilder() {
-					@Override
-					public void configure() {
-						errorHandler(noErrorHandler());
-						from(replyUri).routeId(routeId).autoStartup(false)
-								.process(new MqttV5ReplyMatcher(replies, getCamelContext(),
-										brokerUrl, replyTopic, skipReplyStates));
-					}
-				});
-				replyEndpoint = getCamelContext().getRoute(routeId).getEndpoint();
-				getCamelContext().getRouteController().startRoute(routeId);
+				replyConsumer = replyEndpoint.createConsumer(new MqttV5ReplyMatcher(replies, getCamelContext(),
+						brokerUrl, replyTopic, skipReplyStates));
+				org.apache.camel.support.service.ServiceHelper.startService(replyConsumer);
 				assertReplyReady(deadline);
 			} catch (Exception failure) {
 				try {
-					removeReplyRoute();
+					removeReplySubscription();
 				} catch (Exception cleanup) {
 					failure.addSuppressed(cleanup);
 				}
@@ -541,8 +540,8 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 		} else {
 			// A failed cleanup must not turn into a successful registration.
 			if (replyOwners.isEmpty()) {
-				removeReplyRoute();
-				acquireReplyRoute(owner, replyUri, deadline);
+				removeReplySubscription();
+				acquireReplySubscription(owner, replyUri, deadline);
 				return;
 			}
 			assertReplyReady(deadline);
@@ -551,13 +550,11 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 	}
 
 	private void assertReplyReady(long deadline) throws Exception {
-		org.apache.camel.Route route = getCamelContext().getRoute(replyRouteId);
-		org.apache.camel.ServiceStatus status = getCamelContext().getRouteController().getRouteStatus(replyRouteId);
-		if (route == null || status == null || !status.isStarted()) {
-			throw new IllegalStateException("MQTT reply route is not started");
+		if (!(replyConsumer instanceof org.apache.camel.support.service.ServiceSupport service) || !service.isStarted()) {
+			throw new IllegalStateException("MQTT reply subscription is not started");
 		}
 		// Paho's synchronous consumer start waits for SUBACK before returning.
-		if (route.getConsumer() instanceof org.apache.camel.component.paho.mqtt5.PahoMqtt5Consumer consumer) {
+		if (replyConsumer instanceof org.apache.camel.component.paho.mqtt5.PahoMqtt5Consumer consumer) {
 			replyClient = consumer.getClient();
 			if (replyClient == null || !replyClient.isConnected()) {
 				throw new IllegalStateException("MQTT reply subscription is not connected");
@@ -572,47 +569,42 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 		}
 	}
 
-	synchronized void releaseReplyRoute(Object owner) throws Exception {
+	synchronized void releaseReplySubscription(Object owner) throws Exception {
 		try {
 			if (replyOwners.isEmpty() || replyOwners.size() == 1 && replyOwners.contains(owner)) {
-				removeReplyRoute();
+				removeReplySubscription();
 			}
 		} finally {
 			replyOwners.remove(owner);
 		}
 	}
 
-	private void removeReplyRoute() throws Exception {
-		if (replyRouteId == null) return;
+	private void removeReplySubscription() throws Exception {
+		if (replySubscriptionId == null) return;
 		if (replyClient != null) {
 			closeTransport(replyClient);
 			replyClient = null;
 		}
-		org.apache.camel.Route route = getCamelContext().getRoute(replyRouteId);
-		if (route != null) {
-			replyEndpoint = route.getEndpoint();
-			getCamelContext().getRouteController().stopRoute(replyRouteId,
-					STOP_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS, true);
-		}
-		getCamelContext().removeRoute(replyRouteId);
-		if (getCamelContext().getRoute(replyRouteId) != null) {
-			throw new IllegalStateException("MQTT reply route could not be removed: " + replyRouteId);
-		}
-		// Endpoint removal can fail after Camel removes the runtime service, leaving
-		// an orphan definition that removeRoute(id) no longer knows how to remove.
-		org.apache.camel.model.Model model = getCamelContext().getCamelContextExtension()
-				.getContextPlugin(org.apache.camel.model.Model.class);
-		org.apache.camel.model.RouteDefinition definition = model.getRouteDefinition(replyRouteId);
-		if (definition != null) model.removeRouteDefinition(definition);
-		if (getCamelContext().getNamedRouteDefinitions().stream()
-				.anyMatch(named -> replyRouteId.equals(named.getRouteId()))) {
-			throw new IllegalStateException("MQTT reply route could not be removed: " + replyRouteId);
+		if (replyConsumer != null) {
+			org.apache.camel.support.service.ServiceHelper.stopAndShutdownService(replyConsumer);
+			replyConsumer = null;
 		}
 		if (replyEndpoint != null) {
 			getCamelContext().removeEndpoint(replyEndpoint);
 			replyEndpoint = null;
 		}
-		replyRouteId = null;
+		replySubscriptionId = null;
 		replyClientId = null;
 	}
+
+	/** The current reply subscription's identity, or null (for lifecycle checks). */
+	synchronized String replySubscriptionId() { return replySubscriptionId; }
+
+	/** True while the reply consumer is started. */
+	synchronized boolean replySubscribed() {
+		return replyConsumer instanceof org.apache.camel.support.service.ServiceSupport service && service.isStarted();
+	}
+
+	/** The reply endpoint in use or awaiting cleanup, or null. */
+	synchronized org.apache.camel.Endpoint replyEndpoint() { return replyEndpoint; }
 }

@@ -9,9 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousInvocationAdapter;
@@ -27,27 +25,15 @@ class OpcUaSynchronousInvocationAdapterTest {
 				new OpcUaMethodMetadataProvider.Argument("Command", "i=12", -1, List.of())), List.of());
 		var adapter = new OpcUaSynchronousInvocationAdapter(
 				new CamelOpcUaMethodMetadataProvider((context, uri) -> signature));
-		AtomicReference<Object> wireRequest = new AtomicReference<>();
 		try (var context = new DefaultCamelContext()) {
-			context.addRoutes(new RouteBuilder() {
-				@Override
-				public void configure() {
-					from("direct:method").process(exchange -> {
-						wireRequest.set(exchange.getMessage().getBody());
-						exchange.getMessage().setBody(Map.of("statusCode", Map.of("good", true),
-								"outputArguments", List.of()));
-					});
-				}
-			});
-			context.start();
 			var schema = new SynchronousInvocationAdapter.InvocationSchema(Map.of("Command", "string"),
 					Set.of("Command"), Map.of(), Set.of(), Map.of());
-			adapter.invoke(context, "direct:method", Map.of("Command", "start"), schema);
-			var variants = (org.eclipse.milo.opcua.stack.core.types.builtin.Variant[]) wireRequest.get();
+			var variants = adapter.prepare(context, "milo-client:opc.tcp://unused:4840?node=RAW(ns=1;s=Object)&method=RAW(ns=1;s=Start)",
+					Map.of("Command", "start"), schema).arguments();
 			assertEquals(1, variants.length);
 			assertEquals("start", variants[0].getValue(), "the value itself is sent, not a JSON document");
 			var mismatch = org.junit.jupiter.api.Assertions.assertThrows(ConnectorInvocationException.class,
-					() -> adapter.invoke(context, "direct:method", Map.of("command", "start"), schema));
+					() -> adapter.prepare(context, "milo-client:opc.tcp://unused:4840", Map.of("command", "start"), schema));
 			assertEquals("METHOD_ARGUMENT_MISMATCH", mismatch.getConnectorCode());
 		}
 	}

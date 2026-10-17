@@ -58,11 +58,26 @@ public final class MappingPlanCompiler {
 			WireModel.Presence<List<EndpointPlan>> responseSources,
 			WireModel.Presence<List<EndpointPlan>> responseSinks,
 			WireModel.Presence<WireModel.Blob> responseTransformation,
-			WireModel.Presence<List<String>> triggerSourceIds, List<Qualifier> qualifiers) {
+			WireModel.Presence<List<String>> triggerSourceIds, List<Qualifier> qualifiers,
+			WireModel.Presence<List<EndpointPlan>> statusSources,
+			WireModel.Presence<WireModel.Blob> statusTransformation,
+			WireModel.Presence<String> statusTimeout) {
+		public MappingPlan(String identity, int listIndex, List<EndpointPlan> sources,
+				List<EndpointPlan> sinks, WireModel.Presence<String> defaultPollingInterval,
+				WireModel.Presence<WireModel.Blob> transformation,
+				WireModel.Presence<List<EndpointPlan>> responseSources,
+				WireModel.Presence<List<EndpointPlan>> responseSinks,
+				WireModel.Presence<WireModel.Blob> responseTransformation,
+				WireModel.Presence<List<String>> triggerSourceIds, List<Qualifier> qualifiers) {
+			this(identity, listIndex, sources, sinks, defaultPollingInterval, transformation, responseSources,
+					responseSinks, responseTransformation, triggerSourceIds, qualifiers,
+					WireModel.Presence.absent(), WireModel.Presence.absent(), WireModel.Presence.absent());
+		}
 		public MappingPlan {
 			sources=List.copyOf(sources); sinks=List.copyOf(sinks); qualifiers=List.copyOf(qualifiers);
 			if(responseSources.present() && responseSources.value()!=null) responseSources=WireModel.Presence.of(List.copyOf(responseSources.value()));
 			if(responseSinks.present() && responseSinks.value()!=null) responseSinks=WireModel.Presence.of(List.copyOf(responseSinks.value()));
+			if(statusSources.present() && statusSources.value()!=null) statusSources=WireModel.Presence.of(List.copyOf(statusSources.value()));
 			if(triggerSourceIds.present() && triggerSourceIds.value()!=null) triggerSourceIds=WireModel.Presence.of(List.copyOf(triggerSourceIds.value()));
 		}
 		@Override public String toString() { return "MappingPlan[identity="+identity+", listIndex="+listIndex+"]"; }
@@ -130,14 +145,18 @@ public final class MappingPlanCompiler {
 			if(!responseSourcesResult.found())failures.add(responseSourcesResult);
 			var responseSinksResult=compileOptional(mapping.responseSinks());
 			if(!responseSinksResult.found())failures.add(responseSinksResult);
+			var statusSourcesResult=compileOptional(mapping.statusSources());
+			if(!statusSourcesResult.found())failures.add(statusSourcesResult);
 			List<EndpointPlan> resolved=new ArrayList<>(sources);resolved.addAll(sinks);
 			if(responseSourcesResult.found() && responseSourcesResult.value().value()!=null)resolved.addAll(responseSourcesResult.value().value());
 			if(responseSinksResult.found() && responseSinksResult.value().value()!=null)resolved.addAll(responseSinksResult.value().value());
+			if(statusSourcesResult.found() && statusSourcesResult.value().value()!=null)resolved.addAll(statusSourcesResult.value().value());
 			for(EndpointPlan endpoint:resolved)if(endpoint.target() instanceof DirectTarget target)
 				metadataDependencies(target.resolved().element(),dependencies);
 			MappingPlan plan=failures.isEmpty()?new MappingPlan(identity,mapping.listIndex(),sources,sinks,mapping.defaultPollingInterval(),
 					mapping.transformation(),responseSourcesResult.value(),responseSinksResult.value(),mapping.responseTransformation(),
-					mapping.triggerSourceIds(),Aas.nonNull(mapping.element().getQualifiers())):null;
+					mapping.triggerSourceIds(),Aas.nonNull(mapping.element().getQualifiers()),statusSourcesResult.value(),
+					mapping.statusTransformation(),mapping.statusTimeout()):null;
 			outcomes.add(new DesiredMapping(identity,mapping.listIndex(),plan,failures,dependencies,mapping,null));
 		}
 		for (WireModel.MappingFailure failure : aimc.mappingFailures()) {
@@ -155,6 +174,7 @@ public final class MappingPlanCompiler {
 		List<WireModel.Endpoint> all=new ArrayList<>(mapping.sources());all.addAll(mapping.sinks());
 		if(mapping.responseSources().value()!=null)all.addAll(mapping.responseSources().value());
 		if(mapping.responseSinks().value()!=null)all.addAll(mapping.responseSinks().value());
+		if(mapping.statusSources().value()!=null)all.addAll(mapping.statusSources().value());
 		return all;
 	}
 

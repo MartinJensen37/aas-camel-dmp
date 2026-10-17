@@ -2,8 +2,9 @@ package org.eclipse.digitaltwin.basyx.dmp.paho.mqtt5.component;
 
 import java.util.Map;
 
-import org.apache.camel.CamelContext;
-import org.apache.camel.ProducerTemplate;
+import org.apache.camel.Exchange;
+import org.apache.camel.ExchangePattern;
+import org.apache.camel.model.ProcessorDefinition;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousInvocationAdapter;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
@@ -26,27 +27,28 @@ public final class MqttSynchronousInvocationAdapter implements SynchronousInvoca
 	}
 
 	@Override
-	public Map<String, Object> invoke(CamelContext context, String endpointUri,
-			Map<String, Object> namedRequest, InvocationSchema schema) {
-		String uri = invocationUri(endpointUri, schema);
-		ProducerTemplate template = context.createProducerTemplate();
-		try {
-			Object body = template.requestBody(uri, namedRequest);
-			if (body instanceof Map<?, ?> map) return stringMap(map);
-			if (body == null) return Map.of();
-			Object decoded = body instanceof String text ? JsonCodec.parseJson(text) : body;
-			if (!(decoded instanceof Map<?, ?> map)) {
-				throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
-						"MQTT_REPLY_INVALID", "MQTT response is not a JSON object", Map.of());
-			}
-			return stringMap(map);
-		} catch (ConnectorInvocationException e) {
-			throw e;
-		} catch (RuntimeException e) {
-			throw translateFailure(e);
-		} finally {
-			template.stop();
+	public void configureInvoke(ProcessorDefinition<?> route, String endpointUri, InvocationSchema schema) {
+		route.doTry()
+				.to(ExchangePattern.InOut, invocationUri(endpointUri, schema))
+				.process(exchange -> exchange.getMessage().setBody(reply(exchange.getMessage().getBody())))
+			.doCatch(Exception.class)
+				.process(exchange -> {
+					throw translateFailure(exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class));
+				})
+			.end();
+	}
+
+	/** The correlated reply: a JSON object, or nothing. */
+	static Map<String, Object> reply(Object body) {
+		if (body instanceof Map<?, ?> map) return stringMap(map);
+		if (body == null) return Map.of();
+		Object decoded = body instanceof String text ? JsonCodec.parseJson(text)
+				: body instanceof byte[] bytes ? JsonCodec.parseJson(new String(bytes, java.nio.charset.StandardCharsets.UTF_8)) : body;
+		if (!(decoded instanceof Map<?, ?> map)) {
+			throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
+					"MQTT_REPLY_INVALID", "MQTT response is not a JSON object", Map.of());
 		}
+		return stringMap(map);
 	}
 
 	private static String invocationUri(String endpointUri, InvocationSchema schema) {
@@ -59,7 +61,10 @@ public final class MqttSynchronousInvocationAdapter implements SynchronousInvoca
 		}
 		long timeout = number(schema.connectorOptions().get("timeoutSeconds"), 30);
 		String options = CREDENTIALS.matcher(endpointUri.substring(SINK_SCHEME.length())).replaceAll("credentials=$1");
-		return "paho-mqtt5-inout:" + options + "&replyTopic=" + topic + "&replyTimeout=" + timeout + "&skipReplyStates=RUNNING";
+		// With a status phase the first correlated reply is the ack; the status sources report completion.
+		boolean firstReplyIsAck = Boolean.TRUE.equals(schema.connectorOptions().get("firstReplyIsAck"));
+		return "paho-mqtt5-inout:" + options + "&replyTopic=" + topic + "&replyTimeout=" + timeout
+				+ (firstReplyIsAck ? "" : "&skipReplyStates=RUNNING");
 	}
 
 	static ConnectorInvocationException connectorFailure(Throwable failure) {
@@ -70,7 +75,8 @@ public final class MqttSynchronousInvocationAdapter implements SynchronousInvoca
 		return null;
 	}
 
-	static ConnectorInvocationException translateFailure(RuntimeException failure) {
+	static ConnectorInvocationException translateFailure(Throwable failure) {
+		if (failure == null) failure = new IllegalStateException("MQTT request/reply failed without a cause");
 		ConnectorInvocationException typed = connectorFailure(failure);
 		if (typed != null) return typed;
 		if (hasTimeoutCause(failure)) {

@@ -49,6 +49,33 @@ public final class Mqtt5TestBroker implements AutoCloseable {
 	public final List<String> published = new CopyOnWriteArrayList<>();
 	public volatile boolean sessionPresent;
 	private volatile boolean closing;
+	private volatile java.util.function.Consumer<Publication> onPublish = publication -> { };
+
+	/** A client's PUBLISH: topic, raw MQTT 5 properties and payload. */
+	public record Publication(String topic, byte[] properties, byte[] payload) {
+		/** The request's Correlation Data property (0x09), or null. */
+		public byte[] correlationData() {
+			try {
+				var input = new DataInputStream(new ByteArrayInputStream(properties));
+				while (input.available() > 0) {
+					int id = variableInt(input);
+					switch (id) {
+					case 0x01 -> input.readUnsignedByte();
+					case 0x02 -> input.readInt();
+					case 0x23 -> input.readUnsignedShort();
+					case 0x0B -> variableInt(input);
+					case 0x03, 0x08 -> input.readUTF();
+					case 0x26 -> { input.readUTF(); input.readUTF(); }
+					case 0x09 -> { return input.readNBytes(input.readUnsignedShort()); }
+					default -> { return null; }
+					}
+				}
+			} catch (IOException malformed) { }
+			return null;
+		}
+
+		public String text() { return new String(payload, StandardCharsets.UTF_8); }
+	}
 
 	public Mqtt5TestBroker() throws IOException {
 		workers.submit(() -> {
@@ -68,6 +95,18 @@ public final class Mqtt5TestBroker implements AutoCloseable {
 	/** Publishes as the broker itself; returns how many subscriptions received it. */
 	public int publish(String topic, String payload) throws IOException {
 		return route(topic, new byte[0], payload.getBytes(StandardCharsets.UTF_8), false);
+	}
+
+	/** Called for every PUBLISH a client sends, after it was routed (on the broker's thread). */
+	public void onPublish(java.util.function.Consumer<Publication> listener) { onPublish = listener; }
+
+	/** Publishes a correlated MQTT 5 reply: the request's Correlation Data echoed as a property. */
+	public int reply(String topic, byte[] correlationData, String payload) throws IOException {
+		var properties = new ByteArrayOutputStream();
+		properties.write(0x09);
+		properties.write(correlationData.length >> 8); properties.write(correlationData.length & 255);
+		properties.write(correlationData);
+		return route(topic, properties.toByteArray(), payload.getBytes(StandardCharsets.UTF_8), false);
 	}
 
 	/** Drops every client connection, as a broker restart would. */
@@ -124,6 +163,7 @@ public final class Mqtt5TestBroker implements AutoCloseable {
 					if (qos == 1) send(socket, 0x40, new byte[] { (byte) (id >> 8), (byte) id, 0 });
 					if (qos == 2) send(socket, 0x50, new byte[] { (byte) (id >> 8), (byte) id, 0 });
 					route(topic, properties, payload, retain);
+					onPublish.accept(new Publication(topic, properties, payload));
 				}
 				case 6 -> send(socket, 0x70, new byte[] { packet[0], packet[1], 0 });
 				case 8, 10 -> {

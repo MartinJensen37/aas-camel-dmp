@@ -39,7 +39,7 @@ public class HttpSynchronousInvocationAdapterTest {
 			var inventory = adapter.ownedEndpointUris(uri, schema("PUT"));
 			assertEquals(1, inventory.size());
 			assertEquals(baseline, camel.getEndpoints().size(), "preflight inventory must not allocate endpoints");
-			Map<String, Object> result = adapter.invoke(camel,
+			Map<String, Object> result = invoke(adapter, camel,
 					uri,
 					Map.of("input", "value"), schema("PUT"));
 			org.junit.jupiter.api.Assertions.assertNotNull(camel.hasEndpoint(inventory.iterator().next()), "inventory must identify the actual lazy invocation endpoint");
@@ -68,7 +68,7 @@ public class HttpSynchronousInvocationAdapterTest {
 			var adapter = new HttpSynchronousInvocationAdapter();
 			ConnectorInvocationException failure;
 			try {
-				adapter.invoke(camel,
+				invoke(adapter, camel,
 						"http://127.0.0.1:" + server.getAddress().getPort() + "/invoke",
 						Map.of("input", "value"), schema("POST"));
 				fail("HTTP error should be propagated as a connector outcome");
@@ -109,7 +109,7 @@ public class HttpSynchronousInvocationAdapterTest {
 					status.set(retryableStatus);
 					commands.set(0);
 					ConnectorInvocationException failure = assertThrows(ConnectorInvocationException.class,
-							() -> adapter.invoke(camel, uri, Map.of("input", "value"), schema(method)));
+							() -> invoke(adapter, camel, uri, Map.of("input", "value"), schema(method)));
 					assertEquals(ConnectorInvocationException.Category.REMOTE, failure.getCategory());
 					assertEquals("HTTP_" + retryableStatus, failure.getConnectorCode());
 					assertEquals(1, commands.get(), method + " must not retry HTTP " + retryableStatus);
@@ -125,5 +125,23 @@ public class HttpSynchronousInvocationAdapterTest {
 	private static SynchronousInvocationAdapter.InvocationSchema schema(String method) {
 		return new SynchronousInvocationAdapter.InvocationSchema(Map.of(), java.util.Set.of(),
 				Map.of(), java.util.Set.of(), Map.of("httpMethod", method));
+	}
+
+	/** Runs the adapter's invocation steps once, as the bridge's command route does. */
+	static Map<String, Object> invoke(SynchronousInvocationAdapter adapter, org.apache.camel.CamelContext camel,
+			String uri, Map<String, Object> request, SynchronousInvocationAdapter.InvocationSchema schema) throws Exception {
+		String route = "direct:invoke-" + java.util.UUID.randomUUID();
+		camel.addRoutes(new org.apache.camel.builder.RouteBuilder() {
+			@Override public void configure() { adapter.configureInvoke(from(route), uri, schema); }
+		});
+		if (!camel.isStarted()) camel.start();
+		try {
+			@SuppressWarnings("unchecked")
+			Map<String, Object> reply = camel.createProducerTemplate().requestBody(route, request, Map.class);
+			return reply;
+		} catch (org.apache.camel.CamelExecutionException failure) {
+			if (failure.getCause() instanceof RuntimeException cause) throw cause;
+			throw failure;
+		}
 	}
 }

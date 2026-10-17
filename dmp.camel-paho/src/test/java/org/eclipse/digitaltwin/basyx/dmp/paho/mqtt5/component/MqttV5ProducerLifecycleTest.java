@@ -39,7 +39,7 @@ class MqttV5ProducerLifecycleTest {
 			fixture.transport.failStarts.set(1);
 			assertThrows(Exception.class, () -> producer.process(fixture.request("authored")));
 			assertEquals(0, fixture.transport.publications.get());
-			assertEquals(0, fixture.replyRouteCount());
+			assertEquals(0, fixture.replySubscriptionCount());
 			assertEquals(0, fixture.endpoint.replies.pendingCount());
 			var request = fixture.request("authored");
 			producer.process(request);
@@ -101,15 +101,15 @@ class MqttV5ProducerLifecycleTest {
 			var a = fixture.executor.submit(() -> { first.process(fixture.request("a")); return null; });
 			var b = fixture.executor.submit(() -> { second.process(fixture.request("b")); return null; });
 			assertTrue(fixture.transport.published.await(5, TimeUnit.SECONDS));
-			assertEquals(1, fixture.replyRouteCount());
+			assertEquals(1, fixture.replySubscriptionCount());
 			assertEquals(1, fixture.transport.producersCreated.get());
 			assertEquals(1, fixture.transport.activeClients.get());
-			String oldRoute = fixture.replyRouteId();
+			String oldRoute = fixture.replySubscriptionId();
 			first.stop();
 			assertThrows(java.util.concurrent.ExecutionException.class, () -> a.get(5, TimeUnit.SECONDS));
 			assertFalse(b.isDone());
 			assertEquals(1, fixture.endpoint.replies.pendingCount());
-			assertEquals(1, fixture.replyRouteCount());
+			assertEquals(1, fixture.replySubscriptionCount());
 			assertEquals(1, fixture.transport.activeClients.get());
 			assertEquals(0, fixture.transport.clientsStopped.get());
 			fixture.transport.reply("a", "late");
@@ -117,8 +117,7 @@ class MqttV5ProducerLifecycleTest {
 			fixture.transport.reply("b", "{\"State\":\"SUCCESS\"}");
 			b.get(5, TimeUnit.SECONDS);
 			second.stop();
-			assertEquals(0, fixture.replyRouteCount());
-			assertEquals(0, fixture.replyDefinitionCount());
+			assertEquals(0, fixture.replySubscriptionCount());
 			assertTrue(fixture.transport.subscribers.isEmpty());
 			int endpointCount = fixture.context.getEndpoints().size();
 			fixture.transport.autoReply = true;
@@ -126,17 +125,15 @@ class MqttV5ProducerLifecycleTest {
 			assertThrows(IllegalStateException.class, () -> replacement.process(fixture.request("a")));
 			assertEquals(2, fixture.transport.publications.get(), "fenced generation must not publish");
 			replacement.process(fixture.request("new-generation"));
-			assertNotEquals(oldRoute, fixture.replyRouteId());
+			assertNotEquals(oldRoute, fixture.replySubscriptionId());
 			replacement.stop();
-			assertEquals(0, fixture.replyRouteCount());
-			assertEquals(0, fixture.replyDefinitionCount());
+			assertEquals(0, fixture.replySubscriptionCount());
 			assertEquals(endpointCount, fixture.context.getEndpoints().size());
 			for (int generation = 0; generation < 3; generation++) {
 				var readded = fixture.producer();
 				readded.process(fixture.request("readded-" + generation));
 				readded.stop();
-				assertEquals(0, fixture.replyRouteCount());
-				assertEquals(0, fixture.replyDefinitionCount());
+				assertEquals(0, fixture.replySubscriptionCount());
 				assertEquals(endpointCount, fixture.context.getEndpoints().size());
 			}
 		}
@@ -198,17 +195,17 @@ class MqttV5ProducerLifecycleTest {
 			Object ownerA = new Object();
 			Object ownerB = new Object();
 			try {
-				a.acquireReplyRoute(ownerA, "probe:reply-a");
-				b.acquireReplyRoute(ownerB, "probe:reply-b");
-				assertEquals(2, fixture.replyRouteCount());
-				a.releaseReplyRoute(ownerA);
-				assertEquals(1, fixture.replyRouteCount());
+				a.acquireReplySubscription(ownerA, "probe:reply-a");
+				b.acquireReplySubscription(ownerB, "probe:reply-b");
+				assertEquals(2, fixture.replySubscriptionCount());
+				a.releaseReplySubscription(ownerA);
+				assertEquals(1, fixture.replySubscriptionCount());
 				assertTrue(fixture.transport.subscribers.containsKey("reply-b"));
 			} finally {
-				a.releaseReplyRoute(ownerA);
-				b.releaseReplyRoute(ownerB);
+				a.releaseReplySubscription(ownerA);
+				b.releaseReplySubscription(ownerB);
 			}
-			assertEquals(0, fixture.replyRouteCount());
+			assertEquals(0, fixture.replySubscriptionCount());
 		}
 	}
 
@@ -278,34 +275,31 @@ class MqttV5ProducerLifecycleTest {
 		try (var fixture = new Fixture()) {
 			var first = fixture.producer();
 			first.process(fixture.request("before-cleanup-failure"));
-			String oldRoute = fixture.replyRouteId();
-			Endpoint oldReplyEndpoint = fixture.context.getRoute(oldRoute).getEndpoint();
+			String oldRoute = fixture.replySubscriptionId();
+			Endpoint oldReplyEndpoint = fixture.endpoint.replyEndpoint();
 			fixture.replyCleanupTarget = oldReplyEndpoint;
 			fixture.failReplyCleanup.set(2);
 			assertThrows(Exception.class, first::stop);
 			assertEquals(1, fixture.replyCleanupAttempts.get());
 			assertEquals(1, fixture.failReplyCleanup.get());
-			assertEquals(0, fixture.replyRouteCount());
-			assertEquals(1, fixture.replyDefinitionCount(), "Camel leaves the model after runtime endpoint removal fails");
+			assertEquals(0, fixture.replySubscriptionCount());
 			assertSame(oldReplyEndpoint, fixture.context.hasEndpoint("probe:reply"));
 			assertEquals(0, fixture.transport.activeClients.get(), "publication transport must release even if reply cleanup fails");
 			var replacement = fixture.producer();
 			assertThrows(Exception.class, () -> replacement.process(fixture.request("after-cleanup-failure")));
 			assertEquals(2, fixture.replyCleanupAttempts.get());
 			assertEquals(0, fixture.failReplyCleanup.get());
-			assertEquals(0, fixture.replyRouteCount());
-			assertEquals(0, fixture.replyDefinitionCount(), "retry must remove the orphan model through Camel's Model API");
+			assertEquals(0, fixture.replySubscriptionCount());
 			assertSame(oldReplyEndpoint, fixture.context.hasEndpoint("probe:reply"));
 			assertEquals(1, fixture.transport.publications.get(), "cleanup retry must not publish on failure");
 			assertEquals(0, fixture.endpoint.replies.pendingCount());
 			replacement.process(fixture.request("after-cleanup-failure"));
 			assertEquals(3, fixture.replyCleanupAttempts.get());
-			assertNotSame(oldReplyEndpoint, fixture.context.getRoute(fixture.replyRouteId()).getEndpoint());
-			assertNotEquals(oldRoute, fixture.replyRouteId());
+			assertNotSame(oldReplyEndpoint, fixture.endpoint.replyEndpoint());
+			assertNotEquals(oldRoute, fixture.replySubscriptionId());
 			assertEquals(2, fixture.transport.publications.get());
 			replacement.stop();
-			assertEquals(0, fixture.replyRouteCount());
-			assertEquals(0, fixture.replyDefinitionCount());
+			assertEquals(0, fixture.replySubscriptionCount());
 			assertEquals(0, fixture.context.getEndpoints().stream()
 					.filter(endpoint -> endpoint.getEndpointUri().equals(oldReplyEndpoint.getEndpointUri())).count());
 			assertNull(fixture.context.hasEndpoint("probe:reply"));
@@ -361,18 +355,14 @@ class MqttV5ProducerLifecycleTest {
 			return request;
 		}
 
-		long replyRouteCount() {
-			return context.getRoutes().stream().filter(r -> r.getRouteId().startsWith("dmp-mqtt-reply-")).count();
+		/** Started reply consumers across every request/reply endpoint of the context. */
+		long replySubscriptionCount() {
+			return context.getEndpoints().stream().filter(MqttV5Endpoint.class::isInstance)
+					.map(MqttV5Endpoint.class::cast).filter(MqttV5Endpoint::replySubscribed).count();
 		}
 
-		long replyDefinitionCount() {
-			return context.getNamedRouteDefinitions().stream()
-					.filter(r -> r.getRouteId().startsWith("dmp-mqtt-reply-")).count();
-		}
-
-		String replyRouteId() {
-			return context.getRoutes().stream().filter(r -> r.getRouteId().startsWith("dmp-mqtt-reply-"))
-					.findFirst().orElseThrow().getRouteId();
+		String replySubscriptionId() {
+			return java.util.Objects.requireNonNull(endpoint.replySubscriptionId(), "no reply subscription");
 		}
 
 		@Override public void close() throws Exception {

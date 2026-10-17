@@ -130,7 +130,7 @@ public class OpcuaDataSourceConfiguration extends DataSourceConfiguration {
 				.collect(Collectors.joining("&"));
 
 		return String.format(
-				"milo-client:opc.tcp://%s%s:%d/%s?node=RAW(%s)%s",
+				"dmp-milo-client:opc.tcp://%s%s:%d/%s?node=RAW(%s)%s",
 				credentials,
 				getServerUrl(),
 				getServerPort(),

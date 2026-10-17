@@ -36,8 +36,6 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RouteCrea
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.FanIn;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.FanOut;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SourceEventAdapter;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousSourceReadAdapter;
 import org.eclipse.digitaltwin.basyx.dmp.core.routebuilder.DmpRouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,13 +127,7 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 				ProcessorDefinition<?> poll = routeBuilder
 						.from("timer:" + timerName(routeId, endpointId) + "?period=" + periodMs)
 						.routeId(pollRouteId);
-				SynchronousSourceReadAdapter readAdapter = synchronousReadAdapter(dataSourceEndpoints[i]);
-				if (readAdapter == null) {
-					poll.setBody(org.apache.camel.builder.Builder.constant(null))
-							.pollEnrich(dataSourceEndpoints[i], SYNC_POLL_TIMEOUT_MS);
-				} else {
-					readAdapter.configureRead(poll, dataSourceEndpoints[i]);
-				}
+				RouteCreatorHelper.configureSyncRead(poll, dataSourceEndpoints[i], SYNC_POLL_TIMEOUT_MS);
 				poll.filter(exchange -> exchange.getMessage().getBody() != null)
 						.setHeader(FanIn.SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceId))
 						.process(fanIn.disassemble(endpointId))
@@ -152,17 +144,7 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 						.from(routesConfiguration.getDatasources().get(endpointId).getConnectionURI())
 						.routeId(sourceRouteId)
 						;
-				if (config != null && config.getSourceKind() != null
-						&& !config.getSourceKind().isBlank()) {
-					SourceEventAdapter adapter = sourceEventAdapter(config.getSourceKind());
-					if (adapter == null) {
-						throw new IllegalArgumentException("route " + routeId
-								+ " has no connector for event sourceKind " + config.getSourceKind());
-					}
-					sourceRoute = sourceRoute.process(adapter.normalizer(config))
-							.filter(exchange -> Boolean.TRUE.equals(
-								exchange.getProperty(SourceEventAdapter.CONTRIBUTION_PROPERTY)));
-				}
+				sourceRoute = RouteCreatorHelper.normalizeSourceEvents(sourceRoute, config, routeId);
 				sourceRoute
 						.setHeader(FanIn.SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceId))
 						.process(fanIn.disassemble(endpointId))
@@ -187,22 +169,9 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 	/** Backward-compatible cadence for device Read sources lacking authored intervals. */
 	static final long DEFAULT_DEVICE_POLL_MS = Long.getLong("dmp.policy.defaultSyncPollMs", 5000L);
 
-	private static SourceEventAdapter sourceEventAdapter(String kind) {
-		return java.util.ServiceLoader.load(SourceEventAdapter.class).stream()
-				.map(java.util.ServiceLoader.Provider::get)
-				.filter(adapter -> kind.equals(adapter.sourceKind()))
-				.findFirst().orElse(null);
-	}
-
-	private static SynchronousSourceReadAdapter synchronousReadAdapter(String endpointUri) {
-		return java.util.ServiceLoader.load(SynchronousSourceReadAdapter.class).stream()
-				.map(java.util.ServiceLoader.Provider::get)
-				.filter(adapter -> adapter.supports(endpointUri))
-				.findFirst().orElse(null);
-	}
 
 	/** Per-source poll ceiling for one sync read. */
-	static final long SYNC_POLL_TIMEOUT_MS = Long.getLong("dmp.policy.syncPollTimeoutMs", 5000L);
+	public static final long SYNC_POLL_TIMEOUT_MS = Long.getLong("dmp.policy.syncPollTimeoutMs", 5000L);
 
 	private static String timerName(String routeId, String endpointId) {
 		return ("policy-" + routeId + "-" + endpointId).replaceAll("[^A-Za-z0-9_.-]", "-");

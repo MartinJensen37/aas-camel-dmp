@@ -2,21 +2,14 @@ package org.eclipse.digitaltwin.basyx.dmp.opcua.metadata;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.camel.CamelContext;
-import org.apache.camel.ProducerTemplate;
-import org.apache.camel.component.milo.MiloConstants;
-import org.apache.camel.component.milo.client.MiloClientEndpoint;
+import org.apache.camel.model.ProcessorDefinition;
+import org.eclipse.digitaltwin.basyx.dmp.opcua.component.DmpMiloMethodProducer;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousInvocationAdapter;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.PayloadValidationException;
-import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
-import org.eclipse.milo.opcua.stack.core.types.structured.CallMethodRequest;
 import org.eclipse.milo.opcua.stack.core.types.structured.CallMethodResult;
 
 import com.google.gson.Gson;
@@ -36,11 +29,38 @@ public final class OpcUaSynchronousInvocationAdapter implements SynchronousInvoc
 
 	@Override
 	public boolean supports(String endpointUri) {
-		return endpointUri != null && endpointUri.startsWith("milo-client:");
+		return endpointUri != null && endpointUri.startsWith("dmp-milo-client:");
 	}
 
+	/**
+	 * The Method call as route steps: map the named request onto the server's
+	 * input arguments, call through {@code dmp-milo-client:} (whose producer
+	 * returns the Call result), then map its output arguments back by name.
+	 */
 	@Override
-	public Map<String, Object> invoke(CamelContext context, String endpointUri,
+	public void configureInvoke(ProcessorDefinition<?> route, String endpointUri, InvocationSchema schema) {
+		long timeoutMillis = timeoutSeconds(schema.connectorOptions().get("timeoutSeconds")) * 1000;
+		route.process(exchange -> {
+					@SuppressWarnings("unchecked")
+					Map<String, Object> request = exchange.getMessage().getBody(Map.class);
+					PreparedCall prepared = prepare(exchange.getContext(), endpointUri, request == null ? Map.of() : request, schema);
+					exchange.setProperty(SIGNATURE_PROPERTY, prepared.signature());
+					exchange.getMessage().setHeader(DmpMiloMethodProducer.CALL_TIMEOUT_HEADER, timeoutMillis);
+					exchange.getMessage().setBody(prepared.arguments());
+				})
+				.to(endpointUri)
+				.process(exchange -> exchange.getMessage().setBody(decode(exchange.getContext(),
+						exchange.getMessage().getBody(), exchange.getProperty(SIGNATURE_PROPERTY,
+								OpcUaMethodMetadataProvider.MethodSignature.class))));
+	}
+
+	private static final String SIGNATURE_PROPERTY = "dmp.opcua.methodSignature";
+
+	/** A Method call ready to send: the server's signature and the positional input arguments. */
+	record PreparedCall(OpcUaMethodMetadataProvider.MethodSignature signature, Variant[] arguments) { }
+
+	/** Reads the Method's signature and maps the named request onto its input arguments. */
+	PreparedCall prepare(CamelContext context, String endpointUri,
 			Map<String, Object> namedRequest, InvocationSchema schema) {
 		final OpcUaMethodMetadataProvider.MethodSignature signature;
 		try {
@@ -71,58 +91,7 @@ public final class OpcUaSynchronousInvocationAdapter implements SynchronousInvoc
 					Map.of("violations", mismatch.getViolations()));
 		}
 
-		try {
-			long timeoutSeconds = timeoutSeconds(schema.connectorOptions().get("timeoutSeconds"));
-			if (context.getEndpoint(endpointUri) instanceof MiloClientEndpoint endpoint) {
-				var connection = endpoint.createConnection();
-				try {
-					var client = connection.getOpcUaClient();
-					if (client == null) throw new IllegalStateException("OPC UA client is not connected");
-					var node = ExpandedNodeId.parse(endpoint.getNode()).toNodeIdOrThrow(client.getNamespaceTable());
-					var method = ExpandedNodeId.parse(endpoint.getMethod()).toNodeIdOrThrow(client.getNamespaceTable());
-					Variant[] variants = (Variant[]) arguments;
-					// Camel 4.22's SubscriptionManager.call discards the result. Use the same owned client, once.
-					var response = (org.eclipse.milo.opcua.stack.core.types.structured.CallResponse) await(
-							client.callAsync(List.of(new CallMethodRequest(node, method, variants))), timeoutSeconds);
-					if (response == null || response.getResults() == null || response.getResults().length != 1) {
-						throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
-								"METHOD_RESULT_INVALID", "OPC UA Method returned an unreadable result", Map.of());
-					}
-					return decode(context, response.getResults()[0], signature);
-				} finally {
-					endpoint.releaseConnection(connection);
-				}
-			}
-			ProducerTemplate template = context.createProducerTemplate();
-			try {
-				return decode(context, await(template.asyncRequestBodyAndHeader(endpointUri, arguments,
-						MiloConstants.HEADER_AWAIT, true), timeoutSeconds), signature);
-			} finally { template.stop(); }
-		} catch (ConnectorInvocationException error) {
-			throw error;
-		} catch (RuntimeException | org.eclipse.milo.opcua.stack.core.UaException error) {
-			throw failure(ConnectorInvocationException.Category.REMOTE,
-					"METHOD_CALL_FAILED", "OPC UA Method invocation failed", error);
-		}
-	}
-
-	private static Object await(Future<?> future, long timeoutSeconds) {
-		try {
-			return future.get(timeoutSeconds, TimeUnit.SECONDS);
-		} catch (TimeoutException timeout) {
-			future.cancel(true);
-			throw new ConnectorInvocationException(ConnectorInvocationException.Category.TIMEOUT,
-					"METHOD_CALL_TIMEOUT", "OPC UA Method invocation timed out",
-					Map.of("timeoutSeconds", timeoutSeconds));
-		} catch (InterruptedException interrupted) {
-			Thread.currentThread().interrupt();
-			throw new ConnectorInvocationException(ConnectorInvocationException.Category.TRANSPORT,
-					"METHOD_CALL_INTERRUPTED", "OPC UA Method invocation was interrupted", Map.of());
-		} catch (ExecutionException execution) {
-			Throwable cause = execution.getCause();
-			if (cause instanceof RuntimeException runtime) throw runtime;
-			throw new IllegalStateException(cause);
-		}
+		return new PreparedCall(signature, (Variant[]) arguments);
 	}
 
 	private static long timeoutSeconds(Object value) {

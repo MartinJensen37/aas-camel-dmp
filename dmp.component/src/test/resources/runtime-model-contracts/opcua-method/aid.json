@@ -2684,29 +2684,29 @@
                           },
                           "value": "invokeaction",
                           "valueType": "xs:string"
-                        },
-                        {
-                          "description": [
-                            {
-                              "language": "en",
-                              "text": "NodeId of the UA Object the method is defined in (the invocation objectId of the UA Call service)."
-                            }
-                          ],
-                          "idShort": "uav_componentOf",
-                          "modelType": "Property",
-                          "semanticId": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "http://opcfoundation.org/UA/WoT-Binding/componentOf"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "value": "ns=1;s=CalibrationObject",
-                          "valueType": "xs:string"
                         }
                       ]
+                    },
+                    {
+                      "description": [
+                        {
+                          "language": "en",
+                          "text": "NodeId of the UA Object the method is defined in (the invocation objectId of the UA Call service)."
+                        }
+                      ],
+                      "idShort": "uav_componentOf",
+                      "modelType": "Property",
+                      "semanticId": {
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "http://opcfoundation.org/UA/WoT-Binding/componentOf"
+                          }
+                        ],
+                        "type": "ExternalReference"
+                      },
+                      "value": "ns=1;s=CalibrationObject",
+                      "valueType": "xs:string"
                     }
                   ]
                 }
