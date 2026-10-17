@@ -118,6 +118,72 @@ a Content Enricher.
   BaSyx does not implement it yet) for actions longer than a caller's HTTP
   timeout.
 
+### P5. Follow the WoT protocol bindings under the hood (reviewed 2026-10-17)
+
+The AID should be authored as the W3C WoT binding templates (and OPC 10101)
+describe; the compiler translates those forms into connector URIs, so
+connector syntax (PLC4X tag strings, Camel options) never appears in an AID.
+Reviewed against the editor's drafts in `w3c/wot-binding-templates` (HTTP,
+MQTT, Modbus, BACnet; CoAP, PROFINET, EtherNet/IP, LoRaWAN are not AID
+protocols) and OPC 10101. IO-Link, SNMP and CAN have no W3C binding; the IDTA
+vocabulary is the only reference there.
+
+**Modbus** (least aligned; do first):
+
+| | WoT Modbus binding | DMP today |
+| --- | --- | --- |
+| Base | `modbus+tcp://host:port` | `tcp://host:port`, PLC4X options in the query (`?unit-identifier=2`) |
+| href | `/{unitID}/{address}?quantity={n}`, protocol address | a PLC4X tag string (`/coil:1`, `holding-register:1:INT`), 1-based (`PROTOCOL_ADDRESS_OFFSET = 1`): off by one against WoT |
+| `modv_entity` | Coil, DiscreteInput, HoldingRegister, InputRegister | misused as a PLC4X address |
+| `modv_function` | readCoil, readHoldingRegisters, writeSingleCoil, …; ignored with `modv_entity` | rejected |
+| Defaults | readproperty → readCoil; writeproperty, invokeaction → writeSingleCoil | none; the address must name the memory area |
+| `modv_type`, quantity | xsd payload type; quantity default 1 | rejected; PLC4X type suffix and `[n]` |
+| `modv_mostSignificantByte`/`Word` | default true | rejected (PLC4X's big-endian default matches) |
+| `modv_pollingTime`, `modv_timeout` | observe polling; timeout, default infinite | rejected; AIMC `PollingInterval` |
+| `modv_zeroBasedAddressing` | deprecated, default false | rejected |
+
+Plan: parse href, entity or function, type, quantity and byte/word order
+into a PLC4X tag (`holding-register:{address+1}[{quantity}]:{TYPE}`) plus the
+unit-identifier option; apply the per-op defaults; accept `modbus+tcp`.
+Decide whether PLC4X-syntax hrefs stay accepted during a transition.
+
+**MQTT:**
+
+- The IDTA term is `mqv_controlPacket` (W3C semantic id); the DMP and
+  `aas-model` use `mqv_control_packet` with a DMP id, so a standard IDTA MQTT
+  form is rejected.
+- WoT control packets describe the consumer (read/observe/subscribeevent →
+  subscribe; write/invoke → publish); ours describe the device (property:
+  publish, action: subscribe), inverted. The compiler only checks the value
+  set, but the `aas-model` builders author the inverted values.
+- `mqv_retain` and `mqv_qos` exist in the IDTA template with W3C ids;
+  `aas-model` redefines them with DMP ids.
+- WoT allows readproperty as a subscription to the retained message (the form
+  should also offer observeproperty); we reject it for sources.
+- `publishproperty` is accepted but is not a WoT operation.
+- Topic: the newest W3C draft moves it to `mqv:topic`/`mqv:filter` with href
+  = broker; IDTA keeps href = topic relative to the base, which we follow.
+- Request/reply (`mqv_request_reply`, `mqv_response_topic`) is our extension
+  (the binding has none); keep it.
+
+**HTTP:** writeproperty defaults to PUT in WoT, we require POST (a PUT form is
+rejected); honour `htv_methodName` with the WoT defaults. observeproperty
+means long polling or SSE (`subprotocol` longpoll/sse); we accept it with GET
+and poll: reject it until a subprotocol is implemented (A7).
+
+**BACnet** (not usable with conformant forms): WoT href
+`bacnet://<device-instance>/<objectType>,<instance>[/<property>]` (default
+present-value), `contentType` always `application/octet-stream` (we reject
+non-JSON), services per op (ReadProperty, WriteProperty, SubscribeCOV;
+commandPriority 16) via `bacv:usesService` (the IDTA template writes
+`bacv_useService`); we require an IP base, a PLC4X address and reject every
+`bacv_*` term. Check what PLC4X `bacnet-ip` supports before designing.
+
+**OPC UA** (aligned since 2026-10-17): op → service mapping, `/?id=` hrefs,
+`application/octet-stream`, `uav_componentOf`. Suspected bug:
+`uav_browsePath` is passed to Milo as a NodeId instead of being resolved
+(TranslateBrowsePathsToNodeIds).
+
 ### P2. AAS interaction log and TimeSeries sinks (InfluxDB)
 
 **Status:** the interaction log is implemented (SPEC §10). TimeSeries sinks
