@@ -1,5 +1,6 @@
 package org.eclipse.digitaltwin.basyx.dmp.executable.regression;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ServiceLoader;
@@ -18,7 +19,8 @@ public class ConnectorInvocationAdapterDiscoveryTest {
 		assertTrue(adapters.stream().anyMatch(a -> a.supports("milo-client:test")));
 		assertTrue(adapters.stream().anyMatch(a -> a.supports("paho-mqtt5:command")));
 		assertTrue(adapters.stream().anyMatch(a -> a.supports("http://device/action")));
-		assertTrue(adapters.stream().anyMatch(a -> a.supports("plc4x:driver://device")));
+		assertFalse(adapters.stream().anyMatch(a -> a.supports("dmp-plc4x:modbus-tcp://device")),
+				"a PLC4X action trigger is the dmp-plc4x producer's acknowledged tag write");
 	}
 
 	@Test

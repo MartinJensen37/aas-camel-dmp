@@ -39,7 +39,7 @@ import org.eclipse.digitaltwin.basyx.dmp.plc4x.configuration.deserializer.Option
  */
 public class Plc4xDataSinkConfiguration extends DataSinkConfiguration {
 
-	private static final String PLC4X_PROTOCOL_NAME = "plc4x:";
+	private static final String PLC4X_PROTOCOL_NAME = "dmp-plc4x:";
 
 	private String serverUrl;
 	private int serverPort;
