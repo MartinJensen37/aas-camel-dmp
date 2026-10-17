@@ -134,7 +134,9 @@ MQTT, Modbus, BACnet; CoAP, PROFINET, EtherNet/IP, LoRaWAN are not AID
 protocols) and OPC 10101. IO-Link, SNMP and CAN have no W3C binding; the IDTA
 vocabulary is the only reference there.
 
-**Modbus** (least aligned; do first):
+**Modbus** (done 2026-10-17, SPEC §5.2: WoT forms are translated into PLC4X
+tags; PLC4X-syntax hrefs and `tcp://` bases are rejected. Remaining: `aas-model`'s
+`test_serde` authors a `modbus://` base and a `/Coil,1` href, which are not WoT):
 
 | | WoT Modbus binding | DMP today |
 | --- | --- | --- |
@@ -148,10 +150,7 @@ vocabulary is the only reference there.
 | `modv_pollingTime`, `modv_timeout` | observe polling; timeout, default infinite | rejected; AIMC `PollingInterval` |
 | `modv_zeroBasedAddressing` | deprecated, default false | rejected |
 
-Plan: parse href, entity or function, type, quantity and byte/word order
-into a PLC4X tag (`holding-register:{address+1}[{quantity}]:{TYPE}`) plus the
-unit-identifier option; apply the per-op defaults; accept `modbus+tcp`.
-Decide whether PLC4X-syntax hrefs stay accepted during a transition.
+The table above describes the state before 2026-10-17.
 
 **MQTT:**
 

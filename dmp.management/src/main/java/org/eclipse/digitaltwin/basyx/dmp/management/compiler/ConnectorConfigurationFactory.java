@@ -656,7 +656,8 @@ public final class ConnectorConfigurationFactory {
 			Set<String> terms=switch(family) {
 				case MQTT -> Set.of("mqv_qos","mqv_retain","mqv_control_packet","mqv_request_reply","mqv_response_topic","mqv_reply_timeout","mqtt_responseTopic");
 				case OPCUA -> Set.of("uav_browsePath");
-				case MODBUS -> Set.of("modv_entity");
+				case MODBUS -> Set.of("modv_entity","modv_function","modv_type","modv_zeroBasedAddressing","modv_mostSignificantByte",
+						"modv_mostSignificantWord","modv_pollingTime","modv_timeout");
 				default -> Set.of();
 			};
 			for(Form form:target.resolved().affordance().forms()) {
@@ -695,14 +696,18 @@ public final class ConnectorConfigurationFactory {
 					// OPC 10101 §6.5.3: the default UA serialization is declared as application/octet-stream.
 					if(form.contentType().present() && form.contentType().value()!=null
 							&& !"application/json".equalsIgnoreCase(form.contentType().value())
-							&& !(family==WireModel.ProtocolFamily.OPCUA && "application/octet-stream".equalsIgnoreCase(form.contentType().value())))
+							&& !((family==WireModel.ProtocolFamily.OPCUA || family==WireModel.ProtocolFamily.MODBUS)
+									&& "application/octet-stream".equalsIgnoreCase(form.contentType().value())))
 						issue(issues,mapping,path,"native connector supports decoded JSON values, not the authored content type");
 					if(form.responseTopic().present())issue(issues,mapping,path,"reply topic is MQTT-only");
 					String op=form.operation().value();
 					// OPC 10101 §6.5.3: observeproperty is the UA Monitor service (a monitored item);
 					// subscribeevent (DMP extension) an event monitored item.
+					// WoT Modbus binding: observeproperty polls (readCoil at modv_pollingTime).
 					List<String> supportedOps=family==WireModel.ProtocolFamily.OPCUA
 							? List.of("readproperty","writeproperty","observeproperty","subscribeevent","invokeaction")
+							: family==WireModel.ProtocolFamily.MODBUS
+							? List.of("readproperty","writeproperty","observeproperty")
 							: List.of("readproperty","writeproperty","invokeaction");
 					if(op!=null && !supportedOps.contains(op.toLowerCase(java.util.Locale.ROOT)))
 						issue(issues,mapping,path,"unsupported protocol operation");
@@ -716,6 +721,7 @@ public final class ConnectorConfigurationFactory {
 					issue(issues,mapping,path,"form operation contradicts mapping read/write role");
 				if(read) {
 					boolean managedObserve=family==WireModel.ProtocolFamily.MQTT
+							|| family==WireModel.ProtocolFamily.MODBUS && op!=null && op.equalsIgnoreCase("observeproperty")
 							|| family==WireModel.ProtocolFamily.OPCUA && op!=null
 									&& (op.equalsIgnoreCase("observeproperty") || op.equalsIgnoreCase("subscribeevent"));
 					if(op!=null && (op.equalsIgnoreCase("observeproperty") || op.equalsIgnoreCase("subscribeevent")) && !managedObserve)
@@ -1497,23 +1503,16 @@ public final class ConnectorConfigurationFactory {
 			issue(issues,mapping,path,"Modbus sources must address a property endpoint");return null;
 		}
 		Form form=protocolForm(target,mapping,path,issues);if(form==null)return null;
-		if(formTerm(form,"modv_function")!=null) { issue(issues,mapping,path+"/forms/modv_function","PLC4X connector configuration does not represent modv_function");return null; }
-		if(formTerm(form,"modv_zeroBasedAddressing")!=null) { issue(issues,mapping,path+"/forms/modv_zeroBasedAddressing","PLC4X connector configuration does not represent zero-based addressing mode");return null; }
-		String scheme=target.resolved().owner().protocolFamilies().contains(WireModel.ProtocolFamily.BACNET)?"bacnet":"tcp";
-		ProtocolBase base=protocolBase(target,scheme,mapping,path,issues);if(base==null)return null;
-		String address=modbusAddress(form,mapping,path,issues);if(address==null)return null;
-		List<Option> options=plcOptions(base.uri(),mapping,path,issues);
-		if(hasIssue(issues,mapping))return null;
-		List<Tag> tags=List.of(new Tag(target.resolved().affordance().idShort().value(),address));
-		String driver="bacnet".equals(scheme)?"bacnet-ip":"modbus-tcp";
+		PlcTarget plc=plcTarget(target,form,false,mapping,path,issues);if(plc==null)return null;
+		List<Tag> tags=List.of(new Tag(target.resolved().affordance().idShort().value(),plc.address()));
 		Plc4xDataSourceConfiguration source=new Plc4xDataSourceConfiguration(entityId(mapping,"source",position),
-				base.host(),base.port(),driver,base.servicePath(),options,tags);
+				plc.base().host(),plc.base().port(),plc.driver(),plc.base().servicePath(),plc.options(),tags);
 		source.setSourceId(endpoint.id()); source.setDelivery("sync"); source.setSchema(schemaForAidTarget(target,mapping,path,issues));
 		setValuePath(source,target);
 		if(endpoint.pollingInterval().present()) {
 			OptionalLong interval=endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues);
 			if(interval.isPresent())source.setPollingIntervalMs(interval.getAsLong());
-		}
+		} else if(plc.pollingMs()!=null) source.setPollingIntervalMs(plc.pollingMs());
 		return hasIssue(issues,mapping)?null:source;
 	}
 
@@ -1534,16 +1533,126 @@ public final class ConnectorConfigurationFactory {
 	private static Plc4xDataSinkConfiguration plc4xTagSink(AidTarget target,String uniqueId,String tagName,
 			MappingPlan mapping,String path,List<Issue> issues) {
 		Form form=protocolForm(target,mapping,path,issues);if(form==null)return null;
-		if(formTerm(form,"modv_function")!=null) { issue(issues,mapping,path+"/forms/modv_function","PLC4X connector configuration does not represent modv_function");return null; }
-		if(formTerm(form,"modv_zeroBasedAddressing")!=null) { issue(issues,mapping,path+"/forms/modv_zeroBasedAddressing","PLC4X connector configuration does not represent zero-based addressing mode");return null; }
-		String scheme=target.resolved().owner().protocolFamilies().contains(WireModel.ProtocolFamily.BACNET)?"bacnet":"tcp";
-		ProtocolBase base=protocolBase(target,scheme,mapping,path,issues);if(base==null)return null;
-		String address=modbusAddress(form,mapping,path,issues);
-		List<Option> options=plcOptions(base.uri(),mapping,path,issues);
-		if(address==null || hasIssue(issues,mapping))return null;
-		String driver="bacnet".equals(scheme)?"bacnet-ip":"modbus-tcp";
-		return new Plc4xDataSinkConfiguration(uniqueId,base.host(),base.port(),driver,base.servicePath(),options,
-				List.of(new Tag(tagName,address)));
+		PlcTarget plc=plcTarget(target,form,true,mapping,path,issues);if(plc==null)return null;
+		return new Plc4xDataSinkConfiguration(uniqueId,plc.base().host(),plc.base().port(),plc.driver(),plc.base().servicePath(),
+				plc.options(),List.of(new Tag(tagName,plc.address())));
+	}
+
+	/** A PLC4X endpoint: base, driver, driver options, the tag address and a form-declared polling interval. */
+	private record PlcTarget(ProtocolBase base,String driver,List<Option> options,String address,Long pollingMs) { }
+
+	private static PlcTarget plcTarget(AidTarget target,Form form,boolean write,MappingPlan mapping,String path,List<Issue> issues) {
+		if(target.resolved().owner().protocolFamilies().contains(WireModel.ProtocolFamily.BACNET)) {
+			ProtocolBase base=protocolBase(target,"bacnet",mapping,path,issues);if(base==null)return null;
+			String address=bacnetAddress(form,mapping,path,issues);
+			List<Option> options=plcOptions(base.uri(),mapping,path,issues);
+			if(address==null || hasIssue(issues,mapping))return null;
+			return new PlcTarget(base,"bacnet-ip",options,address,null);
+		}
+		ProtocolBase base=protocolBase(target,"modbus+tcp",mapping,path,issues);if(base==null)return null;
+		if(base.uri().getRawQuery()!=null || !base.servicePath().isEmpty()) {
+			issue(issues,mapping,path+"/EndpointMetadata/base","a Modbus base is modbus+tcp://host:port; the unit ID belongs in the href");return null;
+		}
+		return modbusTarget(target,base,form,write,mapping,path,issues);
+	}
+
+	// ---- WoT Modbus binding (w3c/wot-binding-templates, bindings/protocols/modbus) → PLC4X tags ----
+
+	/** {@code /{unitID}/{address}?quantity={n}}, the address being the protocol address. */
+	private static final java.util.regex.Pattern MODBUS_HREF=java.util.regex.Pattern.compile("/?(\\d+)/(\\d+)(?:\\?quantity=(\\d+))?");
+	/** modv:entity → PLC4X memory area. */
+	private static final Map<String,String> MODBUS_ENTITIES=Map.of("coil","coil","discreteinput","discrete-input",
+			"holdingregister","holding-register","inputregister","input-register");
+	/** modv:function → PLC4X memory area; reads and writes per function. */
+	private static final Map<String,String> MODBUS_READ_FUNCTIONS=Map.of("readcoil","coil","readcoils","coil",
+			"readdiscreteinput","discrete-input","readdiscreteinputs","discrete-input","readholdingregisters","holding-register",
+			"readinputregisters","input-register");
+	private static final Map<String,String> MODBUS_WRITE_FUNCTIONS=Map.of("writesinglecoil","coil","writemultiplecoils","coil",
+			"writesingleholdingregister","holding-register","writemultipleholdingregisters","holding-register");
+	/** modv:type (xsd payload type) → PLC4X data type and the 16-bit registers one value takes. */
+	private static final Map<String,Map.Entry<String,Integer>> MODBUS_TYPES=Map.ofEntries(
+			Map.entry("boolean",Map.entry("BOOL",1)),Map.entry("byte",Map.entry("SINT",1)),Map.entry("unsignedbyte",Map.entry("USINT",1)),
+			Map.entry("short",Map.entry("INT",1)),Map.entry("unsignedshort",Map.entry("UINT",1)),Map.entry("integer",Map.entry("INT",1)),
+			Map.entry("int",Map.entry("DINT",2)),Map.entry("unsignedint",Map.entry("UDINT",2)),Map.entry("float",Map.entry("REAL",2)),
+			Map.entry("long",Map.entry("LINT",4)),Map.entry("unsignedlong",Map.entry("ULINT",4)),Map.entry("double",Map.entry("LREAL",4)));
+
+	/**
+	 * A Modbus form as the WoT Modbus binding describes it, translated into a PLC4X tag: the memory
+	 * area from {@code modv_entity}, else {@code modv_function}, else the binding's default per
+	 * operation (readCoil, writeSingleCoil); the address from the href (PLC4X counts from 1, the
+	 * binding uses the protocol address); {@code modv_type} and the quantity into the PLC4X data
+	 * type and element count; the unit ID, byte and word order and timeout into driver options.
+	 */
+	private static PlcTarget modbusTarget(AidTarget target,ProtocolBase base,Form form,boolean write,MappingPlan mapping,String path,List<Issue> issues) {
+		String href=form.href().present()?form.href().value():null;
+		java.util.regex.Matcher parsed=href==null?null:MODBUS_HREF.matcher(href.trim());
+		if(parsed==null || !parsed.matches()) {
+			issue(issues,mapping,path+"/forms/href","a Modbus href is /{unitID}/{address}?quantity={n} (WoT Modbus binding)");return null;
+		}
+		int unit=Integer.parseInt(parsed.group(1));
+		int address=Integer.parseInt(parsed.group(2));
+		int quantity=parsed.group(3)==null?1:Integer.parseInt(parsed.group(3));
+		if(unit>255 || address>65535 || quantity<1) { issue(issues,mapping,path+"/forms/href","Modbus unit ID, address or quantity out of range");return null; }
+		String zeroBased=formTerm(form,"modv_zeroBasedAddressing");
+		if(zeroBased!=null && !"true".equalsIgnoreCase(zeroBased)) {
+			issue(issues,mapping,path+"/forms/modv_zeroBasedAddressing","one-based addressing is deprecated in the WoT Modbus binding; author the protocol address");return null;
+		}
+		String entity=modbusTerm(form,"modv_entity"),function=modbusTerm(form,"modv_function");
+		String area;
+		if(entity!=null) {
+			area=MODBUS_ENTITIES.get(entity);
+			if(area==null) { issue(issues,mapping,path+"/forms/modv_entity","unknown Modbus entity "+formTerm(form,"modv_entity"));return null; }
+		} else if(function!=null) {
+			area=(write?MODBUS_WRITE_FUNCTIONS:MODBUS_READ_FUNCTIONS).get(function);
+			if(area==null) { issue(issues,mapping,path+"/forms/modv_function","Modbus function "+formTerm(form,"modv_function")
+					+" does not "+(write?"write":"read"));return null; }
+		} else area="coil";
+		if(write && List.of("discrete-input","input-register").contains(area)) {
+			issue(issues,mapping,path+"/forms","Modbus discrete inputs and input registers are read-only");return null;
+		}
+		String type=modbusTerm(form,"modv_type");
+		String plcType=null;int count=quantity;
+		if(type!=null) {
+			Map.Entry<String,Integer> mapped=MODBUS_TYPES.get(type.replaceFirst("^xsd:",""));
+			if(mapped==null) { issue(issues,mapping,path+"/forms/modv_type","Modbus payload type "+formTerm(form,"modv_type")+" is not supported");return null; }
+			boolean bits=List.of("coil","discrete-input").contains(area);
+			if(bits!=mapped.getKey().equals("BOOL")) { issue(issues,mapping,path+"/forms/modv_type","coils and discrete inputs carry booleans, registers carry numbers");return null; }
+			plcType=mapped.getKey();
+			if(!bits) {
+				if(quantity%mapped.getValue()!=0) { issue(issues,mapping,path+"/forms/href","quantity is not a multiple of the registers one "+type+" takes");return null; }
+				count=quantity/mapped.getValue();
+			}
+		}
+		List<Option> options=new ArrayList<>(List.of(new Option("default-unit-identifier",String.valueOf(unit))));
+		// The interface's EndpointMetadata may set the byte and word order for all its forms; a form overrides it.
+		SubmodelElement metadata=target.resolved().owner().endpointMetadata().present()?target.resolved().owner().endpointMetadata().value():null;
+		String msb=formTerm(form,"modv_mostSignificantByte"),msw=formTerm(form,"modv_mostSignificantWord");
+		if(msb==null && metadata!=null)msb=elementString(metadata,"modv_mostSignificantByte");
+		if(msw==null && metadata!=null)msw=elementString(metadata,"modv_mostSignificantWord");
+		if(msb!=null || msw!=null) {
+			boolean byteFirst=msb==null || "true".equalsIgnoreCase(msb), wordFirst=msw==null || "true".equalsIgnoreCase(msw);
+			options.add(new Option("default-payload-byte-order",wordFirst?(byteFirst?"BIG_ENDIAN":"BIG_ENDIAN_BYTE_SWAP")
+					:(byteFirst?"LITTLE_ENDIAN_BYTE_SWAP":"LITTLE_ENDIAN")));
+		}
+		Long timeout=modbusMillis(form,"modv_timeout",mapping,path,issues);
+		if(timeout!=null)options.add(new Option("request-timeout",String.valueOf(timeout)));
+		Long polling=modbusMillis(form,"modv_pollingTime",mapping,path,issues);
+		if(hasIssue(issues,mapping))return null;
+		String tag=area+":"+(address+1)+(plcType==null?"":":"+plcType)+(count>1?"["+count+"]":"");
+		return new PlcTarget(base,"modbus-tcp",List.copyOf(options),tag,polling);
+	}
+
+	/** A Modbus vocabulary value, lower-cased and without a {@code modv:} prefix; {@code null} when absent. */
+	private static String modbusTerm(Form form,String name) {
+		String value=formTerm(form,name);
+		return value==null || value.isBlank()?null:value.trim().replaceFirst("^modv:","").toLowerCase(java.util.Locale.ROOT);
+	}
+
+	private static Long modbusMillis(Form form,String name,MappingPlan mapping,String path,List<Issue> issues) {
+		String value=formTerm(form,name);
+		if(value==null || value.isBlank())return null;
+		try { long millis=Long.parseLong(value.trim()); if(millis>0)return millis; } catch(NumberFormatException ignored) { }
+		issue(issues,mapping,path+"/forms/"+name,name+" must be a positive number of milliseconds");return null;
 	}
 
 	private static ProtocolBase protocolBase(AidTarget target,String requiredScheme,MappingPlan mapping,String path,
@@ -1594,17 +1703,10 @@ public final class ConnectorConfigurationFactory {
 		return href;
 	}
 
-	private static String modbusAddress(Form form,MappingPlan mapping,String path,List<Issue> issues) {
-		String entity=formTerm(form,"modv_entity");
-		if(entity!=null && !entity.isBlank()) {
-			if(form.href().value()!=null && !form.href().value().isBlank()
-					&& !form.href().value().replaceFirst("^/","").equals(entity.replaceFirst("^/",""))) {
-				issue(issues,mapping,path,"conflicting PLC4X href and entity addresses");return null;
-			}
-			return entity;
-		}
-		if(form.href().present() && form.href().value()!=null && !form.href().value().isBlank())return form.href().value();
-		issue(issues,mapping,path+"/forms/modv_entity","Modbus tag address is absent");return null;
+	/** A BACnet form's PLC4X address (the WoT BACnet binding is P5 work); the href's leading slash is no part of it. */
+	private static String bacnetAddress(Form form,MappingPlan mapping,String path,List<Issue> issues) {
+		if(form.href().present() && form.href().value()!=null && !form.href().value().isBlank())return form.href().value().replaceFirst("^/","");
+		issue(issues,mapping,path+"/forms/href","BACnet address is absent");return null;
 	}
 
 	private static List<Option> plcOptions(URI base,MappingPlan mapping,String path,List<Issue> issues) {

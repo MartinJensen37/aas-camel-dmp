@@ -583,7 +583,7 @@
                 ],
                 "type": "ExternalReference"
               },
-              "value": "tcp://192.168.0.20:502/service?unit=2",
+              "value": "modbus+tcp://192.168.0.20:502",
               "valueType": "xs:anyURI"
             },
             {
@@ -1825,7 +1825,7 @@
                             ],
                             "type": "ExternalReference"
                           },
-                          "value": "/coil:1",
+                          "value": "/2/0",
                           "valueType": "xs:string"
                         },
                         {

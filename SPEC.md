@@ -187,6 +187,29 @@ Camel endpoint. Acquisition mode follows the declared capability:
 An MQTT subscription is never a Read; a polling declaration on it is rejected.
 A Read source without an interval polls every 5 s.
 
+Modbus follows the WoT Modbus binding (`w3c/wot-binding-templates`,
+`bindings/protocols/modbus`); the compiler translates a form into a PLC4X tag:
+
+- `EndpointMetadata.base` is `modbus+tcp://host:port`; the form `href` is
+  `/{unitID}/{address}?quantity={n}` with the protocol address (PLC4X counts
+  from 1, so protocol address 0 is PLC4X `coil:1`). PLC4X tag syntax in an
+  AID is rejected.
+- The memory area is `modv_entity` (Coil, DiscreteInput, HoldingRegister,
+  InputRegister), else `modv_function` (readCoil, readHoldingRegisters,
+  writeSingleCoil, …), else the binding's default: Coil (readCoil for reads,
+  writeSingleCoil for writes). Discrete inputs and input registers are not
+  writable.
+- `modv_type` (xsd:boolean, short, int, long, their unsigned forms, integer,
+  float, double) becomes the PLC4X data type; the quantity counts registers,
+  so four registers of `xsd:int` are two values.
+- `modv_mostSignificantByte`/`Word` (default true; on the form, or for all
+  forms on the interface's `EndpointMetadata`) set the driver's payload
+  byte order, `modv_timeout` its request timeout, the unit ID its unit
+  identifier; `modv_pollingTime` is a source's polling interval when the AIMC
+  gives none. `observeproperty` polls. `modv_zeroBasedAddressing` other than
+  true (one-based addressing, deprecated) is rejected.
+- Forms may declare `application/octet-stream`.
+
 OPC UA follows OPC 10101 (the OPC UA binding for WoT):
 
 - `readproperty`, `writeproperty`, `observeproperty` and `invokeaction` map to

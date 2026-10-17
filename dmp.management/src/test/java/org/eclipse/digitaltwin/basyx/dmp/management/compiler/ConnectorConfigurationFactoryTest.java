@@ -151,9 +151,9 @@ class ConnectorConfigurationFactoryTest {
 		var uaSink = endpointPlan("ua-write", protocolTarget(WireModel.ProtocolFamily.OPCUA,
 				"opc.tcp://ua.example:4840/milo", "/?id=ns=2;s=Temperature", Map.of(), null));
 		var modbusSource = endpointPlan("mb-read", protocolTarget(WireModel.ProtocolFamily.MODBUS,
-				"tcp://plc.example:502/service?unit=2", "/coil:1", Map.of("modv_entity", "coil:1"), null));
+				"modbus+tcp://plc.example:502", "/2/0", Map.of("modv_entity", "Coil"), null));
 		var modbusSink = endpointPlan("mb-write", protocolTarget(WireModel.ProtocolFamily.MODBUS,
-				"tcp://plc.example:502/service?unit=2", "/coil:1", Map.of("modv_entity", "coil:1"), null));
+				"modbus+tcp://plc.example:502", "/2/0", Map.of("modv_entity", "Coil"), null));
 		var plan = new Plan(List.of(mappingPlan("ua-map",0,uaSource,uaSink),
 				mappingPlan("mb-map",1,modbusSource,modbusSink)));
 		var result = factory.create(plan, "route");
@@ -172,10 +172,10 @@ class ConnectorConfigurationFactoryTest {
 				result.configuration().getDatasources().values().stream()
 						.filter(Plc4xDataSourceConfiguration.class::isInstance).findFirst().orElseThrow());
 		assertEquals("modbus-tcp", plcSource.getDriver());
-		assertEquals("service", plcSource.getServicePath());
-		assertEquals("unit", plcSource.getOptions().get(0).getName());
+		assertEquals("", plcSource.getServicePath());
+		assertEquals("default-unit-identifier", plcSource.getOptions().get(0).getName());
 		assertEquals("2", plcSource.getOptions().get(0).getValue());
-		assertEquals("coil:1", plcSource.getTags().get(0).getValue());
+		assertEquals("coil:1", plcSource.getTags().get(0).getValue(), "protocol address 0 is PLC4X coil 1");
 		var plcSink = assertInstanceOf(Plc4xDataSinkConfiguration.class,
 				result.configuration().getDatasinks().values().stream()
 						.filter(Plc4xDataSinkConfiguration.class::isInstance).findFirst().orElseThrow());
@@ -183,9 +183,44 @@ class ConnectorConfigurationFactoryTest {
 	}
 
 	@Test
+	void translatesWotModbusFormsIntoPlc4xTags() {
+		var source=endpointPlan("level",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502",
+				"/7/10?quantity=4",Map.of("modv_function","readHoldingRegisters","modv_type","xsd:int",
+						"modv_mostSignificantWord","false","modv_timeout","500","modv_pollingTime","250"),null));
+		var sink=endpointPlan("setpoint",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502",
+				"/7/20",Map.of("modv_entity","modv:HoldingRegister","modv_type","xsd:unsignedShort"),null));
+		var result=factory.create(new Plan(List.of(mappingPlan("mb-map",0,source,sink))),"route");
+		assertTrue(result.issues().isEmpty(),String.valueOf(result.issues()));
+		var read=assertInstanceOf(Plc4xDataSourceConfiguration.class,result.configuration().getDatasources().values().iterator().next());
+		assertEquals("holding-register:11:DINT[2]",read.getTags().get(0).getValue(),"four registers are two 32-bit values");
+		assertEquals(Map.of("default-unit-identifier","7","default-payload-byte-order","LITTLE_ENDIAN_BYTE_SWAP","request-timeout","500"),
+				read.getOptions().stream().collect(java.util.stream.Collectors.toMap(o -> o.getName(),o -> o.getValue())));
+		assertEquals(250,read.getPollingIntervalMs(),"modv_pollingTime is the polling interval without an AIMC one");
+		var write=assertInstanceOf(Plc4xDataSinkConfiguration.class,result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("holding-register:21:UINT",write.getTags().get(0).getValue());
+	}
+
+	@Test
+	void rejectsModbusFormsTheWotBindingDoesNotDescribe() {
+		for(var form:List.of(Map.entry("/coil:1",Map.<String,String>of()),
+				Map.entry("/1/0",Map.of("modv_entity","InputRegister")),
+				Map.entry("/1/0",Map.of("modv_zeroBasedAddressing","false")),
+				Map.entry("/1/0?quantity=3",Map.of("modv_entity","HoldingRegister","modv_type","xsd:int")))) {
+			var read=endpointPlan("in",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502","/1/1",Map.of(),null));
+			var write=endpointPlan("out",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502",form.getKey(),form.getValue(),null));
+			var result=factory.create(new Plan(List.of(mappingPlan("mb-map",0,read,write))),"route");
+			assertFalse(result.issues().isEmpty(),form+" must be rejected");
+			assertTrue(result.configuration().getRoutes().isEmpty());
+		}
+		var legacy=endpointPlan("in",protocolTarget(WireModel.ProtocolFamily.MODBUS,"tcp://plc.example:502","/1/1",Map.of(),null));
+		assertTrue(factory.create(new Plan(List.of(mappingWithEndpoints(legacy,legacy))),"route").issues().stream()
+				.anyMatch(issue -> issue.path().contains("EndpointMetadata/base")),"a tcp:// base is not the WoT modbus+tcp scheme");
+	}
+
+	@Test
 	void rejectsAnAuthoredModbusFunctionNotRepresentedByTheConnectorConfiguration() {
 		var modbus=endpointPlan("mb",protocolTarget(WireModel.ProtocolFamily.MODBUS,
-				"tcp://plc.example:502", "/coil:1", Map.of("modv_function", "read-holding"), null));
+				"modbus+tcp://plc.example:502", "/1/0", Map.of("modv_function", "read-holding"), null));
 		var result=factory.create(new Plan(List.of(mappingWithEndpoints(modbus,modbus))),"route");
 		assertFalse(result.issues().isEmpty());
 		assertTrue(result.issues().stream().anyMatch(issue -> issue.path().contains("modv_function")));
@@ -204,11 +239,11 @@ class ConnectorConfigurationFactoryTest {
 				result.configuration().getDatasources().values().iterator().next());
 		assertEquals("bacnet-ip",dataSource.getDriver());
 		assertEquals(47808,dataSource.getServerPort());
-		assertEquals("/analog-input:1",dataSource.getTags().get(0).getValue());
+		assertEquals("analog-input:1",dataSource.getTags().get(0).getValue(),"the href's leading slash is no part of the PLC4X address");
 		var dataSink=assertInstanceOf(Plc4xDataSinkConfiguration.class,
 				result.configuration().getDatasinks().values().iterator().next());
 		assertEquals("bacnet-ip",dataSink.getDriver());
-		assertEquals("/analog-output:2",dataSink.getTags().get(0).getValue());
+		assertEquals("analog-output:2",dataSink.getTags().get(0).getValue());
 	}
 
 	@Test
