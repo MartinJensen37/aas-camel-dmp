@@ -25,8 +25,6 @@
 package org.eclipse.digitaltwin.basyx.dmp.paho.mqtt5.component;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
@@ -39,35 +37,26 @@ import org.slf4j.LoggerFactory;
  * the bridge creator emits per DECLARED request/reply interaction: the
  * upstream consumer delivers the reply with its v5 properties on the
  * {@code CamelPahoMqtt5MsgProperties} header — this matcher completes the
- * pending future whose correlation matches, skipping intermediate replies
- * (the PackML {@code State: RUNNING} progress ack never completes an
- * exchange, like camel-jms skips intermediate progress replies).
- *
- * <p>
- * The {@code skipReplyStates} option comes from the interaction's InOut
- * endpoint options (the bridge creator passes them through).
+ * pending future whose correlation matches. The first reply carrying a
+ * request's correlation data is its terminal reply; the device publishes
+ * anything else (progress, events) without that correlation data.
  *
  * @author aas-camel-dmp
  */
 public class MqttV5ReplyMatcher implements Processor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(MqttV5ReplyMatcher.class);
-	private static final com.fasterxml.jackson.databind.ObjectMapper JSON_MAPPER =
-			new com.fasterxml.jackson.databind.ObjectMapper();
-
-	private final List<String> skipReplyStates;
 	private final MqttV5ReplyRegistry registry;
 	private final org.apache.camel.CamelContext context;
 	private final String broker;
 	private final String replyTopic;
 
 	MqttV5ReplyMatcher(MqttV5ReplyRegistry registry, org.apache.camel.CamelContext context,
-			String broker, String replyTopic, String skipReplyStates) {
+			String broker, String replyTopic) {
 		this.registry = registry;
 		this.context = context;
 		this.broker = broker;
 		this.replyTopic = replyTopic;
-		this.skipReplyStates = parseStates(skipReplyStates);
 	}
 
 	@Override
@@ -77,12 +66,6 @@ public class MqttV5ReplyMatcher implements Processor {
 			return;
 		}
 		String payload = exchange.getMessage().getBody(String.class);
-		if (isIntermediate(payload, skipReplyStates)) {
-			// the PackML intermediate progress ack never completes an exchange
-			LOGGER.debug("paho-mqtt5-inout: intermediate reply on {} — exchange not completed",
-					exchange.getMessage().getHeader(org.apache.camel.component.paho.mqtt5.PahoMqtt5Constants.MQTT_TOPIC));
-			return;
-		}
 		String correlation = correlationOf(exchange);
 		if (correlation == null) {
 			LOGGER.debug("paho-mqtt5-inout: reply without correlation data — ignored");
@@ -104,43 +87,5 @@ public class MqttV5ReplyMatcher implements Processor {
 			return null;
 		}
 		return new String(properties.getCorrelationData(), StandardCharsets.UTF_8);
-	}
-
-	/**
-	 * A reply whose top-level {@code State} field carries an intermediate
-	 * state does not complete an exchange. A non-JSON payload can never be
-	 * an intermediate progress ack. (Static core, unit-testable.)
-	 */
-	static boolean isIntermediate(String payload, List<String> skipStates) {
-		if (skipStates == null || skipStates.isEmpty()) {
-			return false;
-		}
-		if (payload == null || payload.isBlank() || payload.charAt(0) != '{') {
-			return false;
-		}
-		com.fasterxml.jackson.databind.JsonNode node;
-		try {
-			node = JSON_MAPPER.readTree(payload);
-		} catch (Exception e) {
-			return false;
-		}
-		com.fasterxml.jackson.databind.JsonNode state = node.get("State");
-		if (state == null || !state.isTextual()) {
-			return false;
-		}
-		return skipStates.contains(state.asText().toUpperCase());
-	}
-
-	static List<String> parseStates(String skipReplyStates) {
-		List<String> states = new ArrayList<>();
-		if (skipReplyStates != null) {
-			for (String s : skipReplyStates.split(",")) {
-				String trimmed = s.trim();
-				if (!trimmed.isEmpty()) {
-					states.add(trimmed.toUpperCase());
-				}
-			}
-		}
-		return states;
 	}
 }

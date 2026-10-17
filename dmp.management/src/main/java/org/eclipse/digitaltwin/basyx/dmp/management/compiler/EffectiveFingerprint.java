@@ -40,15 +40,13 @@ public final class EffectiveFingerprint {
 			WireModel.Presence<String> defaultPollingInterval, WireModel.Presence<WireModel.Blob> transformation,
 			WireModel.Presence<List<EndpointValue>> responseSources, WireModel.Presence<List<EndpointValue>> responseSinks,
 			WireModel.Presence<WireModel.Blob> responseTransformation, WireModel.Presence<List<String>> triggerSourceIds,
-			List<Qualifier> qualifiers, WireModel.Presence<List<EndpointValue>> statusSources,
-			WireModel.Presence<WireModel.Blob> statusTransformation, WireModel.Presence<String> statusTimeout) { }
+			List<Qualifier> qualifiers) { }
 	/** The mapping's list position names no route; reordering the AIMC list keeps its routes. */
 	private record PositionFreePlan(String identity, List<EndpointValue> sources, List<EndpointValue> sinks,
 			WireModel.Presence<String> defaultPollingInterval, WireModel.Presence<WireModel.Blob> transformation,
 			WireModel.Presence<List<EndpointValue>> responseSources, WireModel.Presence<List<EndpointValue>> responseSinks,
 			WireModel.Presence<WireModel.Blob> responseTransformation, WireModel.Presence<List<String>> triggerSourceIds,
-			List<Qualifier> qualifiers, WireModel.Presence<List<EndpointValue>> statusSources,
-			WireModel.Presence<WireModel.Blob> statusTransformation, WireModel.Presence<String> statusTimeout) { }
+			List<Qualifier> qualifiers) { }
 	private record DesiredValue(String identity, int listIndex, SubmodelElement input, Optional<String> authoredId,
 			WireModel.MappingFailure projectionFailure, PlanValue plan, List<MappingPlanCompiler.Dependency> dependencies,
 			List<String> failures, List<String> issues, String repository, String validation) { }
@@ -80,8 +78,7 @@ public final class EffectiveFingerprint {
 		PlanValue value = plan(plan);
 		return new EffectiveFingerprint(List.of(new PositionFreePlan(value.identity(), value.sources(), value.sinks(),
 				value.defaultPollingInterval(), value.transformation(), value.responseSources(), value.responseSinks(),
-				value.responseTransformation(), value.triggerSourceIds(), value.qualifiers(), value.statusSources(),
-				value.statusTransformation(), value.statusTimeout()),
+				value.responseTransformation(), value.triggerSourceIds(), value.qualifiers()),
 				String.valueOf(repository(runtime)), validation()));
 	}
 
@@ -115,8 +112,7 @@ public final class EffectiveFingerprint {
 		if (plan == null) return null;
 		return new PlanValue(plan.identity(), plan.listIndex(), endpoints(plan.sources()), endpoints(plan.sinks()),
 				plan.defaultPollingInterval(), plan.transformation(), endpoints(plan.responseSources()),
-				endpoints(plan.responseSinks()), plan.responseTransformation(), plan.triggerSourceIds(), plan.qualifiers(),
-				endpoints(plan.statusSources()), plan.statusTransformation(), plan.statusTimeout());
+				endpoints(plan.responseSinks()), plan.responseTransformation(), plan.triggerSourceIds(), plan.qualifiers());
 	}
 
 	private static WireModel.Presence<List<EndpointValue>> endpoints(WireModel.Presence<List<MappingPlanCompiler.EndpointPlan>> endpoints) {

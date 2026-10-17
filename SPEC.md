@@ -154,16 +154,13 @@ AssetInterfacesMappingConfiguration
     ├── Sources[]  : Source (Reference), SourceId, PollingInterval?
     ├── Sinks[]    : Sink (Reference), SinkId
     │   DMP extensions, bridge mappings only (§7):
-    ├── StatusSources[] : Source (Reference), SourceId, PollingInterval?
-    ├── StatusTransformation     (Blob, Lua)
-    ├── StatusTimeout            (seconds; required with StatusSources)
     ├── ResponseSources[] : Source (Reference), SourceId
     ├── ResponseTransformation   (Blob, Lua)
     └── ResponseSinks[]   : Sink (Reference), SinkId
 ```
 
 The IDTA template defines `DefaultPollingInterval`, `Transformation`,
-`Sources` and `Sinks`. Every DMP extension (Status*, Response*,
+`Sources` and `Sinks`. Every DMP extension (Response*,
 `ExecutionSemantics`) carries a semantic id
 `https://smartproductionlab.aau.dk/aimc/<Name>/1/0`; the DMP checks the
 `ExecutionSemantics` id and matches the others by idShort.
@@ -277,9 +274,8 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    qualifier. The DMP serves `POST` on that URL's path (by convention
    `/operations/{aasIdShort}/{skill}`). An Operation without exactly one
    absolute delegation URL blocks its mapping.
-2. The mapping has exactly one source (the Operation). Its sinks are the AID
-   action affordance of the same skill and, optionally, parameter properties
-   of the same AID (§7.1). Operation input, output and InOut
+2. The mapping has exactly one source (the Operation). Its sinks address the
+   AID action affordance of the same skill (§7.1). Operation input, output and InOut
    variables have unique idShorts and are one of:
    - a **Property** with a supported `valueType` → a typed scalar;
    - a **SubmodelElementCollection** of such variables (members uniquely
@@ -302,80 +298,47 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
      `InputArguments`/`OutputArguments`, outputs must match the declared basic
      type and rank;
    - **MQTT 5**: `paho-mqtt5-inout:` publishes with ResponseTopic and
-     CorrelationData and completes on the first terminal reply on the declared
-     reply topic, skipping `State: "RUNNING"` replies; with a status phase
-     (§7.1) the first correlated reply is the ack and completes the command.
-     Default timeout 30 s (`mqv_reply_timeout`).
-   - **PLC4X (Modbus, BACnet)**: a write of the action form's one tag, acknowledged
-     by the device; allowed only with a status phase (§7.1).
+     CorrelationData; the first reply on the declared reply topic that carries
+     the request's correlation data is the terminal reply, whatever its
+     payload. A device publishes progress or other messages without that
+     correlation data. Default timeout 30 s (`mqv_reply_timeout`).
+   - **PLC4X (Modbus, BACnet)**: no actions; a tag write reports no result.
 5. The reply is validated, optionally transformed by `ResponseTransformation`,
    and returned to the caller as its output variables. Without response Lua a
    native normalized reply passes through.
 6. `ResponseSinks` that address AAS elements receive their SinkId value
    asynchronously through a bounded Wire Tap (2 workers, 128 queued jobs, abort
    on overflow). These writes are best effort and never change the caller's
-   reply. `ResponseSinks` that address the device's AID are written
-   synchronously before the reply (§7.1).
-7. Failures return structured errors: `DMP_ACTION_BUSY` (409, §7.1), `DMP_DEVICE_TIMEOUT` (504),
+   reply.
+7. Failures return structured errors: `DMP_DEVICE_TIMEOUT` (504),
    `DMP_DEVICE_ERROR`/`DMP_DEVICE_TRANSPORT_ERROR` (502),
    `DMP_COMMAND_VALIDATION_FAILED`, `DMP_RESPONSE_VALIDATION_FAILED`,
    `DMP_RESPONSE_MAPPING_FAILED`, `DMP_OPERATION_VALIDATION_FAILED`,
    `DMP_CONNECTOR_CONFIGURATION_ERROR` (500). Nothing is retried.
 
-### 7.1 Invocation phases: command, status, response
+### 7.1 Scope: one action, one terminal reply
 
-An invocation runs up to three phases; only the command is required. Purely
-synchronous actions (HTTP, OPC UA Method, MQTT 5 request/reply) need no status
-phase.
+A bridge mapping invokes one action affordance whose terminal reply is its
+result: an OPC UA Method, an MQTT 5 request/reply, an HTTP request. The DMP
+does not model multi-step device sequences (write parameters, trigger, poll a
+status, read a result, reset, e.g. Modbus coils or OPC UA Programs); the
+higher-level control orchestrates them through ordinary mappings.
 
-1. **Command.** The request Lua runs. Parameter sinks (properties of the
-   action's AID) are written in authored order, each acknowledged by its
-   connector; then the action is sent. A failed write ends the call; nothing is
-   rolled back.
-2. **Status** (with `StatusSources`). Status sources are properties or events
-   of the action's AID, compiled like ordinary sources and acquired as
-   declared:
-   - a **read** property is read at its `PollingInterval` (else
-     `DefaultPollingInterval`, else 5 s);
-   - an **observed** property (an MQTT subscription) keeps its latest value
-     from a subscription that lives as long as the mapping;
-   - an **event** (MQTT `subscribeevent`) has no current value; only events
-     after the baseline count, and it cannot be polled.
-   An observed OPC UA property always reports its current value first; the
-   status phase waits for that value before the baseline (bounded by
-   `StatusTimeout`, nothing is sent if it expires).
-   Before the command the baseline is taken: read properties are read once (a
-   failed read answers `DMP_DEVICE_TRANSPORT_ERROR` before any write),
-   observed properties contribute their latest value, earlier events are
-   discarded. After the command the status Lua runs once (with the command's
-   reply), then after every sample, until it answers `"done"` or `"failed"`.
-   A failed status read answers `DMP_DEVICE_TRANSPORT_ERROR`; expiry of
-   `StatusTimeout` answers 504 `DMP_DEVICE_TIMEOUT`.
-3. **Response.** ResponseSources are taken once: the action output (from the
-   command's reply), the final value of an element that is also a StatusSource,
-   or a property of the action's AID (read once; events only as StatusSources).
-   The response Lua builds the caller's reply and the ResponseSink values, also
-   after `"failed"`. ResponseSinks addressing the device's AID (e.g. resetting a
-   start coil) are written before the reply. A failed action answers 200 with
-   the caller outputs the response Lua returned (e.g. an error code), or 502
-   `DMP_DEVICE_ERROR` when it returned none: BaSyx delegation discards the body
-   of a non-2xx reply.
+- **Concurrency.** Each invocation is correlated by its protocol (an OPC UA
+  Call, MQTT 5 correlation data, an HTTP exchange), so invocations of the
+  same action run concurrently; there is no busy guard.
+- **Timeouts.** A call waits for its terminal reply up to the connector's
+  timeout (MQTT `mqv_reply_timeout`, OPC UA Call timeout). BaSyx delegation is
+  synchronous and has no timeout of its own, so the invoking client's HTTP
+  timeout must exceed the connector's.
+- **Late replies.** When the timeout expires the call fails, but the device
+  may still carry out the action; a later reply is dropped. Idempotency and
+  compensation are the higher-level control's concern.
 
-With a status phase, one invocation per action is in flight; a concurrent call
-answers 409 `DMP_ACTION_BUSY` without reaching the device. The guard is held
-until the reply, cleanup writes included. Removing the mapping ends a running
-status phase with `DMP_DEVICE_TRANSPORT_ERROR`. BaSyx delegation is synchronous
-and has no timeout of its own, so the invoking client's HTTP timeout must
-exceed `StatusTimeout`.
-
-**Route.** The phases are Camel EIPs: a Throttle (concurrent requests, max 1,
-rejecting) guards the invocation; a Content Enricher sends the command through
-a command route that clears the caller's headers and runs the connector's
-invocation steps (`SynchronousInvocationAdapter.configureInvoke`); Content
-Enrichers make the baseline, due and read-once reads; a sequential Split with `stopOnException` makes the
-acknowledged writes; a Loop (`doWhile` running) around a Polling Consumer
-(`pollEnrich`) of a per-mapping SEDA queue, fed by the subscription routes,
-makes the status phase; a Wire Tap makes the AAS response writes.
+**Route.** A Content Enricher sends the command through a command route that
+clears the caller's headers and runs the connector's invocation steps
+(`SynchronousInvocationAdapter.configureInvoke`); a Wire Tap makes the AAS
+response writes.
 
 ## 8. Lua contract
 
@@ -385,14 +348,6 @@ function aimc_main(sources)          -- sources keyed by SourceId
 end
 ```
 
-- The status and response transformations (§7.1) are called as
-  `aimc_main(sources, invocation)`. One-argument scripts are unaffected.
-  - Status: `invocation.baseline` (status values before the command),
-    `elapsed` (seconds), `inputs` (the caller's input and InOut variables) and
-    `reply` (the command's reply or ack). It answers `"running"`, `"done"`,
-    `"failed"` or `{ state = …, reason = … }`.
-  - Response: `invocation.status` (`"done"`/`"failed"` after a status phase),
-    `reason`, `inputs` and `reply`; it returns a SinkId table.
 - Lua arrives only as AIMC Blobs and is compiled once per mapping in memory
   (`LuaCompiledSource`); identical sources share one compiled prototype.
 - Each invocation gets fresh, isolated globals. Inputs are converted from
@@ -417,7 +372,7 @@ end
 | OPC UA (Milo) | Read (Read service), Observe (monitored items), Events (event monitored items, DMP extension), Write, Invoke (Method) | Custom/structured datatypes, condition refresh and acknowledgement |
 | MQTT 5 | Observe (subscribe), Write (publish), Invoke (request/reply) | Read; MQTT 3.1.1 |
 | HTTP | Read (poll), Write, Invoke | Observe, inbound requests other than Operations |
-| PLC4X (Modbus, BACnet) | Read, acknowledged Write of one tag per affordance; Invoke with a status phase (§7.1) | Request/reply invoke |
+| PLC4X (Modbus, BACnet) | Read, acknowledged Write of one tag per affordance | Invoke (a tag write reports no result) |
 | Kafka, ActiveMQ, SQL, Hono, JsonJackson | Camel components only | No AID binding; Hono consumer is an incomplete prototype |
 
 Data-plane MQTT clients are one per endpoint; their credentials are bound in

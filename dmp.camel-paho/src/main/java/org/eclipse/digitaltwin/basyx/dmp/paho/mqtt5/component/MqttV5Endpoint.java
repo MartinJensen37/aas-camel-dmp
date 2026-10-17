@@ -44,9 +44,8 @@ import org.apache.camel.spi.UriPath;
  * InOut options: {@code replyTopic} (the DECLARED {@code mqv_response_topic}),
  * {@code replyTimeout} (seconds), {@code correlationHeader} (optional — when
  * set, the generated correlation id is exposed on that exchange header and a
- * non-blank header value is used as the correlation instead of a fresh UUID),
- * and {@code skipReplyStates} (intermediate reply filter — payloads whose
- * top-level {@code State} field matches are not treated as terminal replies).
+ * non-blank header value is used as the correlation instead of a fresh UUID).
+ * The first reply with the request's correlation data is the terminal reply.
  * The publish itself rides the upstream {@code paho-mqtt5:} producer derived
  * from the shared transport options (brokerUrl, clientId, qos, retained,
  * userName, password, or credentials: the registry name of bound credentials,
@@ -85,10 +84,6 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 			+ "when present and non-blank its value IS the correlation data, otherwise "
 			+ "a UUID is minted and exposed on this header")
 	private String correlationHeader;
-
-	@Metadata(defaultValue = "", description = "Comma-separated reply 'State' values treated "
-			+ "as intermediate (non-terminal) replies — the exchange is NOT completed by them")
-	private String skipReplyStates;
 
 	@Metadata(description = "MQTT user name (optional)")
 	private String userName;
@@ -195,14 +190,6 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 
 	public void setCorrelationHeader(String correlationHeader) {
 		this.correlationHeader = correlationHeader;
-	}
-
-	public String getSkipReplyStates() {
-		return skipReplyStates;
-	}
-
-	public void setSkipReplyStates(String skipReplyStates) {
-		this.skipReplyStates = skipReplyStates;
 	}
 
 	public String getUserName() {
@@ -526,7 +513,7 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 					paho.setClient(replyClient);
 				}
 				replyConsumer = replyEndpoint.createConsumer(new MqttV5ReplyMatcher(replies, getCamelContext(),
-						brokerUrl, replyTopic, skipReplyStates));
+						brokerUrl, replyTopic));
 				org.apache.camel.support.service.ServiceHelper.startService(replyConsumer);
 				assertReplyReady(deadline);
 			} catch (Exception failure) {

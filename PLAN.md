@@ -78,114 +78,45 @@ complete; live-cutover readiness is not established by this audit.**
 
 ## Planned work (designs agreed 2026-10-15, not implemented)
 
-### P1. Two-phase actions — superseded by P3
+### P3. Action invocation (rescoped 2026-10-17)
 
-The P1 model (status sources as ResponseSources, `CompletionTimeout`, response
-Lua returning `nil` until done) was replaced by P3 before release. Its
-remaining open points are tracked under P3.
+**Scope (SPEC §7.1):** a bridge mapping invokes one action affordance whose
+terminal reply is its result — OPC UA Method, MQTT 5 request/reply (the first
+reply carrying the request's correlation data; no `State: RUNNING` skip), HTTP.
+Invocations are correlated by their protocol and run concurrently.
 
-### P3. Invocation pattern: command, status, response (design agreed 2026-10-16)
+**Rescoped out (2026-10-17):** the status phase (`StatusSources`,
+`StatusTransformation`, `StatusTimeout`), parameter sinks, read-once
+ResponseSources, device ResponseSinks (cleanup writes) and PLC4X actions,
+together with the planned WoT asynchronous actions (`queryaction`,
+`cancelaction`, concurrency flags). Simulating actions from writes, polls and
+reads (Modbus coils, OPC UA Programs) is left to the higher-level control,
+which orchestrates them through ordinary mappings. These parts were built and
+tested (commit `250a89b`) and removed again to keep the DMP's scope bounded.
 
-**Progress (2026-10-16):** steps 1–4 implemented as in SPEC §7.1 — `aas-model`
-fields and ids, compiler, the bridge route built from EIPs (connector
-invocation steps included, B6) and the MQTT ack rule; tested end to end in
-`ActionInvocationPhasesTest` (Modbus test server, MQTT 5 test broker,
-including an MQTT action acked `RUNNING` that finishes on an event) and
-`OpcUaProgramActionTest` (Milo). Open:
+**Kept from the work:** the `dmp-plc4x:` and `dmp-milo-client:` components,
+OPC UA per OPC 10101 (observed variables as monitored items, `uav_componentOf`
+on the action), OPC UA events (`OpcuaEvent`, event monitored items; tested
+end to end as ordinary Sources in `OpcUaSubscriptionSourcesTest`), WoT event
+affordances and their builders in `aas-model`, the MQTT reply consumer owned
+by its endpoint, connector invocation steps (B6) and the command route behind
+a Content Enricher.
 
-- **OPC UA events** (2026-10-17): OPC 10101 defines none. To be modelled like
-  MQTT events (same consumption; an event has no current value): the form
-  `href` names the notifier, the event's `data` schema properties are the
-  select clauses (browse paths on the event type), and an event-type term for
-  the where clause lives in the project namespace, not `uav:`. Milo's client
-  has `OpcUaMonitoredItem.newEventItem(node, EventFilter)`; it would be a
-  second consumer kind of `dmp-milo-client:`. Observed variables (monitored
-  items, done 2026-10-17) already cover Part 10 programs through `CurrentState`
-  (`OpcUaProgramActionTest`).
+**Open:**
+
+- **Operations that write a property** (next): an Operation whose Sink is an
+  AID property affordance; the call returns once the connector acknowledges
+  the write (AAS has no write feedback other than Operations). Open per
+  connector: what counts as an acknowledgement (PLC4X write response, OPC UA
+  Write status, HTTP response; MQTT only reaches the broker).
+- **Concurrency test:** N parallel calls to one MQTT action with replies out
+  of order (deferred until after the rescoping).
 - **Remaining `ProducerTemplate` dispatch:** per-sink transformer chains of an
   operation mapping (`SyncOperationProcessor`) and the best-effort AAS
   response writes (`ResponseSinkFanOutProcessor`, behind the Wire Tap).
-- The busy guard is per mapping (Throttle per route), not per action across
-  mappings.
-
-Supersedes the P1 model where status sources are ResponseSources and the
-response Lua returns `nil` until done. P1's runtime pieces (subscriptions,
-polling, baseline, busy guard) carry over.
-
-**Phases of a bridge mapping** (only the first is required):
-
-1. **Command**: request Lua; IDTA `Sinks` written in authored order, parameter
-   properties of the same AID first, the action affordance last. Every write
-   is acknowledged; a failed write stops the phase, nothing is rolled back.
-2. **Status** (with `StatusSources`): status sources are sampled until the
-   status Lua returns `done` or `failed`, or `StatusTimeout` expires.
-3. **Response**: `ResponseSources` are taken once, the response Lua builds
-   the reply, `ResponseSinks` are written. The response phase also runs when
-   the status is `failed`, so device error codes can reach the caller.
-
-**AIMC** (IDTA fields keep their meaning; every DMP addition gets a DMP
-semantic id, not one under the IDTA namespace):
-
-| Field | Origin | Meaning |
-| --- | --- | --- |
-| `Sources`, `Transformation`, `Sinks`, `DefaultPollingInterval` | IDTA | as today; bridge Sinks may add parameter properties |
-| `StatusSources[]` (Source, SourceId, PollingInterval) | DMP | status properties (read or subscribed) and event affordances of the action's AID |
-| `StatusTransformation` | DMP | `aimc_main(sources, invocation)` → `"running"`, `"done"`, `"failed"` or `{ state, reason }`; `invocation` = `baseline`, `elapsed`, `inputs`, `reply` (command reply or ack, e.g. an OPC UA job id) |
-| `StatusTimeout` | DMP | seconds; required with `StatusSources` (replaces `CompletionTimeout`) |
-| `ResponseSources[]`, `ResponseTransformation`, `ResponseSinks[]` | DMP | as today; see rules below |
-
-- The status Lua runs once right after the trigger, with only the ack in
-  `invocation.reply`, so a rejecting ack fails at once.
-- A ResponseSource naming the same element as a StatusSource gets the value
-  that ended the wait (required for events); other properties are read once.
-- **Cleanup** (e.g. reset the start coil, PLCopen Execute/Done handshake) is a
-  ResponseSink addressing the device's AID. ResponseSinks that address an AID
-  affordance are written synchronously before the reply and before the busy
-  guard is released; AAS ResponseSinks stay best effort.
-- **MQTT**: with `StatusSources` the first correlated reply is the ack;
-  without them the current `RUNNING`-skipping request/reply stays.
-- **Events** are modelled as AID EventAffordances (`aas-model` `DmpEvent`)
-  and referenced from `StatusSources`, not as WoT `additionalResponses`.
-
-**Protocol coverage:** OPC UA terminal Methods (no status), OPC UA Programs
-(Start Method, `CurrentState` subscription first, transition events later),
-MQTT 5 req/resp (no status) and ack-then-event, Modbus/BACnet (parameters,
-start coil, polled status, result registers, reset), HTTP (no status).
-Not covered: HTTP 202 with a run-time `Location` (needs href templating).
-
-**Camel-native implementation** (replaces the hand-written wait):
-the bridge route is composed from EIPs instead of one processor, e.g.
-Throttle (concurrent requests, max 1, keyed by action, `rejectExecution` → 409)
-as the busy guard; Content Enricher for baseline and result reads; ordered
-command sends as a sequential route; Loop (`doWhile` running, `breakOnShutdown`)
-with `pollEnrich` from a per-mapping SEDA queue fed by the subscription
-routes (timeout = next poll) for the status phase; Wire Tap only for AAS
-ResponseSinks. Connector adapters stop dispatching through `ProducerTemplate`
-(B6).
-
-**Open:** wire format of a failed call's reply (BaSyx delegation receives only
-OperationVariables; check how it treats a non-2xx body); OPC UA event field
-selection (no OPC UA WoT binding term).
-
-**Future:** AAS asynchronous invocation (`invoke-async` with a handle; BaSyx
-does not implement it yet) for actions longer than a caller's HTTP timeout;
-keeping an action blocked after a timeout until its status says it stopped
-(today the busy guard is released at the timeout).
-
-### P4. WoT asynchronous actions in the AID (proposed 2026-10-16, not started)
-
-Follow the WoT TD 2.0 draft (terms already in TD 1.1): `synchronous`, form
-operations `queryaction` / `cancelaction`. TD 2.0 does not define the
-`queryaction` payload or action instances (w3c/wot-thing-description#2157,
-open); the WoT Profile (Working Draft) defines an HTTP ActionStatus object
-(`status` pending/running/completed/failed, `output`, `error`, `href`).
-
-- `aas-model`: `additionalForms` on actions (the IDTA AID allows one `forms`
-  per affordance), each with its own `op` and `href`; an optional `schema` on a
-  form's `response` (inline DataSchema; the AID has no `schemaDefinitions`).
-- DMP: `queryaction` forms supply the status sources; Profile ActionStatus is
-  interpreted without a status Lua; `cancelaction` on StatusTimeout.
-  `StatusSources` remain for events and status the action does not point to.
+- **Future:** AAS asynchronous invocation (`invoke-async` with a handle;
+  BaSyx does not implement it yet) for actions longer than a caller's HTTP
+  timeout.
 
 ### P2. AAS interaction log and TimeSeries sinks (InfluxDB)
 
@@ -255,9 +186,9 @@ Decide per item: keep (and schedule), or drop (and delete it from SPEC).
 | A3 | **Operation variables of other element types** (Range, MultiLanguageProperty, File, Blob, ReferenceElement) | Properties, collections and lists (nested) are supported (SPEC §7); other types block the mapping. |
 | A4 | **Custom/structured OPC UA datatypes** in Method arguments and reads | Basic types and arrays of them only. |
 | A5 | **Per-element array fan-out** via `valuePath` (apply a mapping to every array element) | Not expressible; Lua must loop. |
-| A6 | **PLC4X/Modbus action invocation** | Implemented as P3 (parameters, start write, status phase, reset). |
+| A6 | **PLC4X/Modbus action invocation** | Out of scope (P3 rescoping): a tag write reports no result; the higher-level control sequences writes and reads. |
 | A11 | **Ordinary PLC4X sinks** sent the bare Lua value, which camel-plc4x rejects (it needs `{tag: {address: value}}`). | Fixed by the `dmp-plc4x:` component (SPEC §9), whose producer takes the tag value and acknowledges the write. |
-| A7 | **OPC UA events and HTTP Observe** acquisition | Rejected at compile time. |
+| A7 | **HTTP Observe** acquisition | Rejected at compile time. OPC UA events are implemented (P3). |
 | A8 | **AID bindings for Kafka, ActiveMQ, SQL**; finishing the **Hono** consumer | Components exist but the compiler never selects them; Hono only logs messages. Alternative: delete these modules. |
 | A9 | **SNMP binding** (AID 1.2 `…/AssetInterfacesDescription/1/2/SNMP`) via Camel's `camel-snmp` component: Read (GET/poll), Observe (traps), Write (SET) | Not recognised: an SNMP interface is rejected with "no supported protocol binding". |
 | A10 | **CAN binding** (AID 1.2 `…/AssetInterfacesDescription/1/2/CAN`) via PLC4X's CAN drivers (e.g. CANopen), alongside Modbus and BACnet | Not recognised: a CAN interface is rejected with "no supported protocol binding". |

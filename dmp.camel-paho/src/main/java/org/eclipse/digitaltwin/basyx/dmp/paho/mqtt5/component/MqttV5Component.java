@@ -46,15 +46,14 @@ import java.util.Map;
  * header) and awaits the first terminal reply on the declared reply topic —
  * delivered by the {@code paho-mqtt5:} consumer route the bridge creator
  * emits per interaction, whose {@link MqttV5ReplyMatcher} completes the
- * pending future (skipping the PackML RUNNING progress ack like camel-jms
- * skips intermediate replies). The wire protocol — connections, reconnects,
+ * pending future with the first reply carrying the request's correlation
+ * data. The wire protocol — connections, reconnects,
  * subscriptions, persistence — stays upstream's; this component owns only
  * the InOut semantics.
  *
  * <p>
  * URI syntax: {@code paho-mqtt5-inout:<publishTopic>?brokerUrl=tcp://h:1883
- * &clientId=<id>&qos=2&retained=false&replyTopic=<reply>&replyTimeout=30
- * &skipReplyStates=RUNNING}
+ * &clientId=<id>&qos=2&retained=false&replyTopic=<reply>&replyTimeout=30}
  *
  * @author aas-camel-dmp
  */

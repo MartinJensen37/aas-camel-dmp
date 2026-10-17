@@ -38,11 +38,10 @@ class MqttV5ReplyRegistryTest {
 			var pending = registry.register(owner, "broker", "reply", " authored ");
 			var channel = registry.register(owner, "broker", "other-reply", " authored ");
 			var broker = registry.register(owner, "other-broker", "reply", " authored ");
-			var matcher = new MqttV5ReplyMatcher(registry, context, "broker", "reply", "RUNNING");
+			var matcher = new MqttV5ReplyMatcher(registry, context, "broker", "reply");
 			matcher.process(reply(otherContext, "reply", " authored ", "{}"));
 			matcher.process(reply(context, "other-reply", " authored ", "{}"));
 			matcher.process(reply(context, "reply", "authored", "{}"));
-			matcher.process(reply(context, "reply", " authored ", "{\"State\":\"RUNNING\"}"));
 			assertFalse(pending.isDone());
 			matcher.process(reply(context, "reply", " authored ", "{\"State\":\"SUCCESS\"}"));
 			assertTrue(pending.isDone());

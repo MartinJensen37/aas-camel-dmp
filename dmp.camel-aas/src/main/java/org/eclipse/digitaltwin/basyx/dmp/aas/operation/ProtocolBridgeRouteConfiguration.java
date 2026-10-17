@@ -61,12 +61,6 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public static final String RESPONSE_SOURCE_BINDINGS = "responseSourceBindings";
 	public static final String RESPONSE_SINK_BINDINGS = "responseSinkBindings";
 	public static final String EXPLICIT_RESPONSE_MAPPING = "explicitResponseMapping";
-	/** Command phase: parameter properties written in order before the action. */
-	public static final String PARAMETER_SINK_BINDINGS = "parameterSinkBindings";
-	/** Status phase: the status sources, the Lua deciding running/done/failed, and its time limit. */
-	public static final String STATUS_SOURCES = "statusSources";
-	public static final String STATUS_TRANSFORMER = "statusTransformer";
-	public static final String STATUS_TIMEOUT_MS = "statusTimeoutMs";
 	public static final String DEFAULT_REST_METHOD = "POST";
 
 	public ProtocolBridgeRouteConfiguration(RouteConfiguration configuration) {
@@ -231,29 +225,6 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 
 	public java.util.List<java.util.Map<String, Object>> getResponseSinkBindings() {
 		return mapList(RESPONSE_SINK_BINDINGS);
-	}
-
-	/** Same shape as {@link #getResponseSinkBindings()}, in write order. */
-	public java.util.List<java.util.Map<String, Object>> getParameterSinkBindings() {
-		return mapList(PARAMETER_SINK_BINDINGS);
-	}
-
-	/**
-	 * Each entry: {@code sourceId}, {@code dataSourceId}, {@code acquisition}
-	 * ({@code read}, {@code observe} or {@code event}) and, for reads,
-	 * {@code pollingIntervalMs}; empty without a status phase.
-	 */
-	public java.util.List<java.util.Map<String, Object>> getStatusSources() {
-		return mapList(STATUS_SOURCES);
-	}
-
-	public String getStatusTransformer() {
-		return stringValue(STATUS_TRANSFORMER);
-	}
-
-	public long getStatusTimeoutMs() {
-		Object value = getTriggerData().get(STATUS_TIMEOUT_MS);
-		return value instanceof Number number ? number.longValue() : 0L;
 	}
 
 	private java.util.List<java.util.Map<String, Object>> mapList(String key) {

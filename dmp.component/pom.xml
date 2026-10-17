@@ -174,13 +174,6 @@
 			<type>test-jar</type>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
-			<artifactId>dmp.camel-plc4x</artifactId>
-			<version>${revision}</version>
-			<type>test-jar</type>
-			<scope>test</scope>
-		</dependency>
 
 		<!-- kafka-clients comes from camel-kafka (Kafka 4.3.1). The embedded KRaft test broker uses the
 		     same Kafka line, so clients and broker share one version on the test classpath. -->

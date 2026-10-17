@@ -61,10 +61,8 @@ public final class MqttSynchronousInvocationAdapter implements SynchronousInvoca
 		}
 		long timeout = number(schema.connectorOptions().get("timeoutSeconds"), 30);
 		String options = CREDENTIALS.matcher(endpointUri.substring(SINK_SCHEME.length())).replaceAll("credentials=$1");
-		// With a status phase the first correlated reply is the ack; the status sources report completion.
-		boolean firstReplyIsAck = Boolean.TRUE.equals(schema.connectorOptions().get("firstReplyIsAck"));
-		return "paho-mqtt5-inout:" + options + "&replyTopic=" + topic + "&replyTimeout=" + timeout
-				+ (firstReplyIsAck ? "" : "&skipReplyStates=RUNNING");
+		// The first reply carrying the request's correlation data is the terminal reply.
+		return "paho-mqtt5-inout:" + options + "&replyTopic=" + topic + "&replyTimeout=" + timeout;
 	}
 
 	static ConnectorInvocationException connectorFailure(Throwable failure) {

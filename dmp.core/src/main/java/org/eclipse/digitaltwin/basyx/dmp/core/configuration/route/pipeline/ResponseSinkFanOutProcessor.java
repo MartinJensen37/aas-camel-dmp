@@ -39,7 +39,10 @@ public final class ResponseSinkFanOutProcessor implements Processor, ManagedRout
 	private final int workerCount;
 	private final int queueCapacity;
 	private final String correlationId;
-	private final SinkJobs jobs;
+	private final List<SinkBinding> bindings;
+	private final Map<String, AffordanceValidation> memberValidators;
+	private final Map<String, AffordanceValidation> payloadValidators;
+	private final Map<String, AffordanceValidation> singlePayloadValidators;
 	private final Object lifecycleLock = new Object();
 	private final AtomicInteger pendingWrites = new AtomicInteger();
 	private volatile boolean acceptingWrites = true;
@@ -65,7 +68,29 @@ public final class ResponseSinkFanOutProcessor implements Processor, ManagedRout
 		LOGGER.info("mapping {} response sink writes use bounded executor (workers={}, queueCapacity={}, rejection=Abort)",
 				correlationId, workers, queueCapacity);
 		this.correlationId = correlationId;
-		this.jobs = new SinkJobs(correlationId, rawBindings);
+		List<SinkBinding> resolvedBindings = new ArrayList<>();
+		this.memberValidators = new LinkedHashMap<>();
+		this.payloadValidators = new LinkedHashMap<>();
+		this.singlePayloadValidators = new LinkedHashMap<>();
+		for (Map<String, Object> raw : rawBindings) {
+			SinkBinding binding = SinkBinding.from(raw);
+			resolvedBindings.add(binding);
+			if (binding.schema != null) {
+				memberValidators.put(binding.sinkId,
+						new AffordanceValidation(binding.schema, "response sink " + binding.sinkId));
+			}
+			if (binding.payloadGroup != null && binding.payloadSchema != null) {
+				payloadValidators.putIfAbsent(binding.payloadGroup,
+						new AffordanceValidation(binding.payloadSchema,
+								"response payload group " + binding.payloadGroup));
+			}
+			if (binding.payloadGroup == null && binding.payloadSchema != null) {
+				singlePayloadValidators.put(binding.sinkId,
+						new AffordanceValidation(binding.payloadSchema,
+								"response sink payload " + binding.sinkId));
+			}
+		}
+		this.bindings = List.copyOf(resolvedBindings);
 		this.responseExecutor = context.getExecutorServiceManager().newThreadPool(
 				this, "response-sink-writes-" + correlationId, profile);
 		this.producerTemplate = context.createProducerTemplate();
@@ -77,7 +102,77 @@ public final class ResponseSinkFanOutProcessor implements Processor, ManagedRout
 	}
 
 	public List<DispatchJob> prepareJobs(Exchange exchange) {
-		return jobs.prepare(exchange.getMessage().getBody(), false);
+		Object parsed = exchange.getMessage().getBody();
+		if (!(parsed instanceof Map<?, ?> rawValues)) {
+			throw new IllegalArgumentException("response Lua returned no SinkId map");
+		}
+		Map<String, Object> values = new LinkedHashMap<>();
+		rawValues.forEach((key, value) -> values.put(String.valueOf(key), value));
+		Map<String, Group> groups = new LinkedHashMap<>();
+		List<DispatchJob> jobs = new ArrayList<>();
+		java.util.Set<String> incompleteGroups = new java.util.HashSet<>();
+		for (SinkBinding binding : bindings) {
+			if (!values.containsKey(binding.sinkId)) {
+				LOGGER.warn("mapping {} response Lua omitted SinkId {}; skipping response sink",
+						correlationId, binding.sinkId);
+				if (binding.payloadGroup != null) {
+					incompleteGroups.add(binding.payloadGroup);
+				}
+				continue;
+			}
+			String groupKey = binding.payloadGroup != null
+					? "payload:" + binding.payloadGroup : "sink:" + binding.sinkId;
+			groups.computeIfAbsent(groupKey, ignored -> new Group(binding.payloadGroup, binding.jsonPayload))
+					.add(binding, values.get(binding.sinkId));
+		}
+		for (Group group : groups.values()) {
+			if (group.payloadGroup != null && incompleteGroups.contains(group.payloadGroup)) {
+				LOGGER.warn("mapping {} response sink group {} is incomplete; skipping group",
+					correlationId, group.payloadGroup);
+				continue;
+			}
+			DispatchJob job = dispatch(group);
+			if (job != null) jobs.add(job);
+		}
+		return List.copyOf(jobs);
+	}
+
+	private DispatchJob dispatch(Group group) {
+		SinkBinding first = group.bindings.get(0);
+		Object payload;
+		boolean assembleMembers = group.bindings.size() > 1 || first.valuePath != null;
+		try {
+			if (assembleMembers) {
+				Map<String, Object> keyed = new LinkedHashMap<>();
+				Map<String, String> paths = new LinkedHashMap<>();
+				for (SinkBinding binding : group.bindings) {
+					keyed.put(binding.sinkId, group.values.get(binding.sinkId));
+					if (binding.valuePath != null) paths.put(binding.sinkId, binding.valuePath);
+					validateMember(binding, group.values.get(binding.sinkId));
+				}
+				payload = PayloadAssembler.assemble(keyed,
+						group.bindings.stream().map(b -> b.sinkId).toList(), paths);
+				AffordanceValidation validator = group.payloadGroup == null
+						? null : payloadValidators.get(group.payloadGroup);
+				if (validator != null) validator.outgoing(JsonCodec.toJsonCompatibleValue(payload));
+			} else {
+				payload = group.values.get(first.sinkId);
+				validateMember(first, payload);
+				AffordanceValidation validator = first.payloadGroup == null
+						? singlePayloadValidators.get(first.sinkId)
+						: payloadValidators.get(first.payloadGroup);
+				if (validator != null) validator.outgoing(JsonCodec.toJsonCompatibleValue(payload));
+			}
+		} catch (RuntimeException e) {
+			LOGGER.warn("mapping {} response sink group {} rejected before send",
+				correlationId, group.payloadGroup == null ? first.sinkId : group.payloadGroup);
+			return null;
+		}
+
+		String endpoint = first.endpoint;
+		String sinkLabel = group.payloadGroup == null ? first.sinkId : group.payloadGroup;
+		return new DispatchJob(endpoint, JsonCodec.copyValue(JsonCodec.toJsonCompatibleValue(payload)),
+				sinkLabel, group.jsonPayload);
 	}
 
 	/** Wire Tap's exchange copy is shallow; snapshot payload trees before scheduling. */
@@ -203,6 +298,13 @@ public final class ResponseSinkFanOutProcessor implements Processor, ManagedRout
 		}
 	}
 
+	private static boolean isJsonSchema(Map<String, Object> schema) {
+		if (schema == null || schema.isEmpty()) return false;
+		return schema.containsKey("type") || schema.containsKey("properties") || schema.containsKey("items")
+				|| schema.containsKey("const") || schema.containsKey("enum") || schema.containsKey("oneOf")
+				|| schema.containsKey("anyOf") || schema.containsKey("allOf");
+	}
+
 	public long rejectedWriteCount() {
 		return rejectedWrites.get();
 	}
@@ -215,6 +317,53 @@ public final class ResponseSinkFanOutProcessor implements Processor, ManagedRout
 
 	public int queueCapacity() { return queueCapacity; }
 
+	private void validateMember(SinkBinding binding, Object value) {
+		AffordanceValidation validator = memberValidators.get(binding.sinkId);
+		if (validator != null) validator.outgoing(JsonCodec.toJsonCompatibleValue(value));
+	}
+
+	private static final class Group {
+		private final String payloadGroup;
+		private final boolean jsonPayload;
+		private final List<SinkBinding> bindings = new ArrayList<>();
+		private final Map<String, Object> values = new LinkedHashMap<>();
+
+		private Group(String payloadGroup, boolean jsonPayload) {
+			this.payloadGroup = payloadGroup;
+			this.jsonPayload = jsonPayload;
+		}
+
+		private void add(SinkBinding binding, Object value) {
+			bindings.add(binding);
+			values.put(binding.sinkId, value == null ? JsonPointer.JSON_NULL : value);
+		}
+	}
+
 	public record DispatchJob(String endpoint, Object body, String sinkLabel, boolean jsonPayload) { }
 
+	private record SinkBinding(String sinkId, String endpoint, String payloadGroup,
+			String valuePath, Map<String, Object> payloadSchema, Map<String, Object> schema,
+			boolean jsonPayload) {
+		private static SinkBinding from(Map<String, Object> raw) {
+			Map<String, Object> payloadSchema = asSchema(raw.get("payloadSchema"));
+			Map<String, Object> schema = asSchema(raw.get("schema"));
+			boolean jsonPayload = raw.containsKey("jsonPayload")
+					? Boolean.TRUE.equals(raw.get("jsonPayload"))
+					: isJsonSchema(payloadSchema) || isJsonSchema(schema);
+			return new SinkBinding(string(raw.get("sinkId")), string(raw.get("endpoint")),
+				string(raw.get("payloadGroup")), string(raw.get("valuePath")),
+						payloadSchema, schema, jsonPayload);
+		}
+
+		private static String string(Object value) {
+			return value == null ? null : String.valueOf(value);
+		}
+
+		private static Map<String, Object> asSchema(Object value) {
+			if (!(value instanceof Map<?, ?> map)) return null;
+			Map<String, Object> result = new LinkedHashMap<>();
+			map.forEach((key, schemaValue) -> result.put(String.valueOf(key), schemaValue));
+			return result;
+		}
+	}
 }

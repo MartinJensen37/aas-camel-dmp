@@ -65,12 +65,6 @@ public class OperationFailureProcessor implements Processor {
 				break;
 			}
 		}
-		boolean busy = false;
-		for (Throwable cause = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class); cause != null && !busy;
-				cause = cause.getCause() == cause ? null : cause.getCause())
-			busy = cause instanceof org.apache.camel.processor.ThrottlerRejectedExecutionException;
-		if (busy) caught = new OperationValidationException("DMP_ACTION_BUSY", HttpURLConnection.HTTP_CONFLICT,
-				"Another invocation of this action is still running", java.util.List.of());
 		int callerStatus = status;
 		String code = status == HttpURLConnection.HTTP_GATEWAY_TIMEOUT ? "DMP_DEVICE_TIMEOUT" : "DMP_OPERATION_FAILED";
 		String message = status == HttpURLConnection.HTTP_GATEWAY_TIMEOUT ? "Device invocation timed out" : "Operation failed";
@@ -91,10 +85,6 @@ public class OperationFailureProcessor implements Processor {
 			} else if ("DMP_RESPONSE_MAPPING_FAILED".equals(validation.getCode())) {
 				code = "DMP_RESPONSE_MAPPING_FAILED";
 				message = "Response mapping failed";
-			} else if ("DMP_ACTION_BUSY".equals(validation.getCode())) {
-				callerStatus = HttpURLConnection.HTTP_CONFLICT;
-				code = "DMP_ACTION_BUSY";
-				message = "Another invocation of this action is still running";
 			}
 		} else if (caught instanceof PayloadValidationException validation) {
 			switch (validation.getStage()) {

@@ -25,7 +25,6 @@
 package org.eclipse.digitaltwin.basyx.dmp.paho.mqtt5.component;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.apache.camel.Exchange;
@@ -44,8 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Focused tests for the {@code paho-mqtt5-inout:} component: URI parsing,
- * InOut preconditions and the reply matcher (correlation completion + the
- * intermediate RUNNING-ack filter).
+ * InOut preconditions and the reply matcher (the first correlated reply is
+ * terminal).
  *
  * <p>
  * The transport (publish, reply subscription, reconnects) rides the upstream
@@ -70,7 +69,7 @@ class MqttV5EndpointTest extends CamelTestSupport {
 	void endpointParsesInOutOptions() throws Exception {
 		MqttV5Endpoint endpoint = context().getEndpoint(
 				"paho-mqtt5-inout:NN/x/CMD/Halt?brokerUrl=tcp://127.0.0.1:11883&clientId=test-halt"
-						+ "&qos=2&replyTopic=NN/x/DATA/Halt&replyTimeout=7&skipReplyStates=RUNNING",
+						+ "&qos=2&replyTopic=NN/x/DATA/Halt&replyTimeout=7",
 				MqttV5Endpoint.class);
 		assertEquals("NN/x/CMD/Halt", endpoint.getTopic());
 		assertEquals("tcp://127.0.0.1:11883", endpoint.getBrokerUrl());
@@ -78,7 +77,6 @@ class MqttV5EndpointTest extends CamelTestSupport {
 		assertEquals(2, endpoint.getQos());
 		assertEquals("NN/x/DATA/Halt", endpoint.getReplyTopic());
 		assertEquals(7, endpoint.getReplyTimeout());
-		assertEquals("RUNNING", endpoint.getSkipReplyStates());
 	}
 
 	@Test
@@ -96,40 +94,16 @@ class MqttV5EndpointTest extends CamelTestSupport {
 	}
 
 	@Test
-	void intermediateStateFilterDistinguishesReplies() {
-		assertTrue(intermediate("{\"State\": \"RUNNING\"}"));
-		assertTrue(intermediate("{\"State\": \"running\"}"));
-		// terminal replies — never filtered
-		assertFalse(intermediate("{\"State\": \"SUCCESS\", \"Outcome\": 0}"));
-		assertFalse(intermediate("{\"State\": \"FAILURE\"}"));
-		// no State field / non-JSON payloads ride through untouched
-		assertFalse(intermediate("{\"Uuid\": \"x\"}"));
-		assertFalse(intermediate("[1, 2]"));
-		assertFalse(intermediate("not json"));
-		assertFalse(intermediate(""));
-		// a matcher without the filter treats every reply as terminal
-		assertFalse(MqttV5ReplyMatcher.isIntermediate("{\"State\": \"RUNNING\"}", List.of()));
-	}
-
-	private static boolean intermediate(String payload) {
-		return MqttV5ReplyMatcher.isIntermediate(payload, List.of("RUNNING"));
-	}
-
-	@Test
 	void replyMatcherCompletesPendingByCorrelation() throws Exception {
 		MqttV5ReplyRegistry registry = new MqttV5ReplyRegistry();
 		Object owner = new Object();
 		MqttV5ReplyMatcher matcher = new MqttV5ReplyMatcher(registry, PROBE_CONTEXT,
-				"tcp://matcher-test:1883", "reply", "RUNNING");
+				"tcp://matcher-test:1883", "reply");
 
-		// a RUNNING progress ack never completes the pending future
+		// the first reply with the echoed correlation is terminal, whatever its payload says
 		CompletableFuture<String> pending = registry.register(owner, "tcp://matcher-test:1883", "reply", "corr-match");
 		matcher.process(reply("{\"State\": \"RUNNING\", \"Uuid\": \"x\"}", "corr-match"));
-		assertFalse(pending.isDone(), "the RUNNING ack must not complete the exchange");
-
-		// the terminal reply with the echoed correlation completes it
-		matcher.process(reply("{\"State\": \"SUCCESS\", \"Outcome\": 0}", "corr-match"));
-		assertEquals("{\"State\": \"SUCCESS\", \"Outcome\": 0}", pending.getNow(null));
+		assertEquals("{\"State\": \"RUNNING\", \"Uuid\": \"x\"}", pending.getNow(null));
 
 		// an unknown correlation is ignored
 		CompletableFuture<String> pending2 = registry.register(owner, "tcp://matcher-test:1883", "reply", "corr-other");

@@ -19,7 +19,7 @@ public class MqttSynchronousInvocationAdapterTest {
 		var schema = new SynchronousInvocationAdapter.InvocationSchema(Map.of(), Set.of(), Map.of(), Set.of(),
 				Map.of("requestReply", true, "responseTopic", "reply/channel", "timeoutSeconds", 4));
 		assertEquals(Set.of("paho-mqtt5-inout:command?brokerUrl=tcp://127.0.0.1:1883"
-				+ "&replyTopic=reply/channel&replyTimeout=4&skipReplyStates=RUNNING"),
+				+ "&replyTopic=reply/channel&replyTimeout=4"),
 				adapter.ownedEndpointUris("paho-mqtt5:command?brokerUrl=tcp://127.0.0.1:1883", schema));
 	}
 

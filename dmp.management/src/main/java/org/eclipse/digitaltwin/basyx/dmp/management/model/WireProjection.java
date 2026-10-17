@@ -83,8 +83,7 @@ public final class WireProjection {
 	/** An event's {@code data}: the schema of each notification (WoT TD 1.1 §5.3.1.5). */
 	private static final String WOT_NOTIFICATION = "https://www.w3.org/2019/wot/td#hasNotificationSchema";
 	private static final Set<String> MAPPING_FIELDS = Set.of("Sources","Sinks","DefaultPollingInterval","Transformation",
-			"ResponseSources","ResponseSinks","ResponseTransformation","ExecutionSemantics",
-			"StatusSources","StatusTransformation","StatusTimeout");
+			"ResponseSources","ResponseSinks","ResponseTransformation","ExecutionSemantics");
 	private static final Set<String> RETIRED_ID_SHORTS = Set.of("executionpolicy","writedelegation","luamode","transformengine","jsonata","querylanguage");
 	private static final List<String> BINDING_PREFIXES = List.of("mqtt_","mqv_","uav_","modv_","bacnet_","bacv_","iol_");
 	private WireProjection() { }
@@ -193,11 +192,8 @@ public final class WireProjection {
 			for (String trigger : triggers.value()) if (trigger.isBlank() || !selected.add(trigger) || !sourceIds.contains(trigger))
 				throw error(path + "/ExecutionSemantics", "trigger IDs must be unique known SourceIds");
 		}
-		Presence<List<Endpoint>> statusSources = optionalEndpoints(mapping, "StatusSources", "Source", i);
-		Presence<Blob> statusTransformation = blobField(mapping, "StatusTransformation", i);
-		Presence<String> statusTimeout = scalarField(mapping, "StatusTimeout", i);
 		return new Mapping(id, i, sources, sinks, polling, transformation, responseSources, responseSinks,
-				responseTransformation, execution, triggers, mapping, statusSources, statusTransformation, statusTimeout);
+				responseTransformation, execution, triggers, mapping);
 	}
 
 	private static List<RejectedReference> rejectedReferences(SubmodelElement mapping) {

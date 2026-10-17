@@ -334,8 +334,8 @@ class MqttV5ProducerLifecycleTest {
 			context.addComponent("probe", transport);
 			context.start();
 			endpoint = context.getEndpoint("paho-mqtt5-inout:command?brokerUrl=tcp://" + UUID.randomUUID()
-					+ ":1883&clientId=test&replyTopic=reply&replyTimeout=2&correlationHeader=Correlation"
-					+ "&skipReplyStates=RUNNING", MqttV5Endpoint.class);
+					+ ":1883&clientId=test&replyTopic=reply&replyTimeout=2&correlationHeader=Correlation",
+					MqttV5Endpoint.class);
 		}
 
 		MqttV5Producer producer() throws Exception {
@@ -441,7 +441,6 @@ class MqttV5ProducerLifecycleTest {
 								throw new IllegalStateException("publication failed");
 							}
 							if (autoReply) {
-								reply(correlation, "{\"State\":\"RUNNING\"}");
 								reply(correlation, "{\"State\":\"SUCCESS\"}");
 							}
 						}

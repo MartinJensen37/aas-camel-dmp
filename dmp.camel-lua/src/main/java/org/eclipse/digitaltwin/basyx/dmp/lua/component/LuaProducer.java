@@ -28,7 +28,6 @@ import java.util.Map;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.support.DefaultProducer;
-import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.TransformerInvocation;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaJsonCodec;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaSandbox;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaTimeoutHook;
@@ -64,7 +63,6 @@ public class LuaProducer extends DefaultProducer {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(LuaProducer.class);
 
-
 	private final LuaEndpoint endpoint;
 
 	public LuaProducer(LuaEndpoint endpoint) {
@@ -92,22 +90,14 @@ public class LuaProducer extends DefaultProducer {
 		Object body = getBody(exchange);
 		LuaValue sources = buildSources(body);
 
-		// Status and response transformations of an operation mapping also receive the invocation.
-		Object invocation = exchange.getProperty(TransformerInvocation.ARGUMENT_PROPERTY);
 		LuaValue result;
 		try {
-			result = invocation == null ? aimcMain.invoke(sources).arg1()
-					: aimcMain.invoke(sources, LuaJsonCodec.toLua(invocation)).arg1();
+			result = aimcMain.invoke(sources).arg1();
 		} catch (LuaError e) {
 			throw new RuntimeException("Lua transformation '" + endpoint.getDiagnosticIdentity() + "' failed: "
 					+ e.getMessage(), e);
 		}
 
-		// A status check answers "running", "done" or "failed", or a table carrying the state.
-		if (Boolean.TRUE.equals(exchange.getProperty(TransformerInvocation.STATUS_CHECK_PROPERTY)) && result.isstring()) {
-			setBody(exchange, result.tojstring());
-			return;
-		}
 		if (!result.istable()) {
 			throw new IllegalStateException("Lua blob '" + endpoint.getDiagnosticIdentity()
 					+ "' must return a table (map keyed by SinkId), got: " + result.typename());
