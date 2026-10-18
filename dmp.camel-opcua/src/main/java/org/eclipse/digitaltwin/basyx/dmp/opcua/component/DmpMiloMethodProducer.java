@@ -12,7 +12,9 @@ import org.apache.camel.Exchange;
 import org.apache.camel.component.milo.client.MiloClientConnection;
 import org.apache.camel.support.DefaultProducer;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
+import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.structured.CallMethodResult;
 import org.eclipse.milo.opcua.stack.core.types.structured.CallMethodRequest;
 import org.eclipse.milo.opcua.stack.core.types.structured.CallResponse;
 
@@ -49,12 +51,13 @@ public final class DmpMiloMethodProducer extends DefaultProducer {
 
 	@Override
 	public void process(Exchange exchange) {
-		Variant[] arguments = arguments(exchange.getMessage().getBody());
+		Variant[] pending = arguments(exchange.getMessage().getBody());
 		Long timeout = exchange.getMessage().getHeader(CALL_TIMEOUT_HEADER, Long.class);
 		long timeoutMs = timeout == null || timeout <= 0 ? DEFAULT_TIMEOUT_MS : timeout;
 		try {
 			var client = connection == null ? null : connection.getOpcUaClient();
 			if (client == null) throw new IllegalStateException("OPC UA client is not connected");
+			Variant[] arguments = encoded(pending, client);
 			var object = OpcUaBrowsePaths.resolve(client, endpoint.getNode());
 			var method = OpcUaBrowsePaths.resolve(client, endpoint.getMethod());
 			CallResponse response = client.callAsync(List.of(new CallMethodRequest(object, method, arguments)))
@@ -62,7 +65,12 @@ public final class DmpMiloMethodProducer extends DefaultProducer {
 			if (response == null || response.getResults() == null || response.getResults().length != 1)
 				throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
 						"METHOD_RESULT_INVALID", "OPC UA Method returned an unreadable result", Map.of());
-			exchange.getMessage().setBody(response.getResults()[0]);
+			CallMethodResult result = response.getResults()[0];
+			// Structured outputs are decoded with the server's DataTypes (SPEC §5.2).
+			exchange.getMessage().setBody(result.getOutputArguments() == null ? result
+					: new CallMethodResult(result.getStatusCode(), result.getInputArgumentResults(),
+							result.getInputArgumentDiagnosticInfos(),
+							(Variant[]) OpcUaStructures.decoded(result.getOutputArguments(), client)));
 		} catch (TimeoutException timeoutFailure) {
 			throw new ConnectorInvocationException(ConnectorInvocationException.Category.TIMEOUT,
 					"METHOD_CALL_TIMEOUT", "OPC UA Method invocation timed out", Map.of("timeoutMillis", timeoutMs));
@@ -83,6 +91,22 @@ public final class DmpMiloMethodProducer extends DefaultProducer {
 				.map(value -> value instanceof Variant variant ? variant : new Variant(value)).toArray(Variant[]::new);
 		throw new ConnectorInvocationException(ConnectorInvocationException.Category.CONFIGURATION,
 				"METHOD_ARGUMENTS_INVALID", "OPC UA Method arguments must be Variant[] or a list", Map.of());
+	}
+
+	/** Input arguments of a structured, enumerated or other non-simple DataType, encoded for the server. */
+	private static Variant[] encoded(Variant[] arguments, org.eclipse.milo.opcua.sdk.client.OpcUaClient client) {
+		Variant[] encoded = arguments.clone();
+		for (int i = 0; i < encoded.length; i++) {
+			if (!(encoded[i] != null && encoded[i].getValue() instanceof OpcUaStructures.Pending pending)) continue;
+			try {
+				encoded[i] = new Variant(OpcUaStructures.encode(pending.value(), NodeId.parse(pending.dataType()), client));
+			} catch (IllegalArgumentException | org.eclipse.milo.opcua.stack.core.UaException mismatch) {
+				throw new ConnectorInvocationException(ConnectorInvocationException.Category.CONFIGURATION,
+						"METHOD_ARGUMENT_MISMATCH", "OPC UA Method argument does not fit its DataType",
+						Map.of("argument", i, "cause", String.valueOf(mismatch.getMessage())));
+			}
+		}
+		return encoded;
 	}
 
 	private static ConnectorInvocationException transport(Exception failure) {

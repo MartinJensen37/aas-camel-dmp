@@ -67,7 +67,18 @@ final class DmpMiloWriteProducer extends MiloClientProducer {
 				callback.done(true);
 				return true;
 			}
-			return super.process(exchange, callback);
+			return super.process(exchange, done -> {
+				// A structure read is decoded with the server's DataTypes (SPEC §5.2).
+				OpcUaClient client = connection == null ? null : connection.getOpcUaClient();
+				if (client != null && exchange.getException() == null) {
+					Object result = exchange.getMessage().getBody();
+					exchange.getMessage().setBody(OpcUaStructures.decoded(result, client));
+					Map<String, Object> schema = readSchema(result, client);
+					if (schema != null)
+						exchange.getMessage().setHeader(org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SourceEventAdapter.DEVICE_SCHEMA_HEADER, schema);
+				}
+				callback.done(done);
+			});
 		}
 		Object written = exchange.getMessage().getBody();
 		try {
@@ -96,6 +107,11 @@ final class DmpMiloWriteProducer extends MiloClientProducer {
 			finish(exchange, written);
 			callback.done(done);
 		});
+	}
+
+	/** The read variable's own type (SourceEventAdapter#DEVICE_SCHEMA_HEADER); null for a pending or multi-node Read. */
+	private static Map<String, Object> readSchema(Object result, OpcUaClient client) {
+		return result instanceof List<?> values && values.size() == 1 ? OpcUaStructures.deviceSchema(values.get(0), client) : null;
 	}
 
 	/** A Bad write status or a failure becomes a typed invocation error; the body is the written value again. */
@@ -128,10 +144,26 @@ final class DmpMiloWriteProducer extends MiloClientProducer {
 		return client;
 	}
 
-	/** The value as a Variant of the variable's built-in DataType; other values pass unchanged. */
+	/**
+	 * The value as a Variant of the variable's DataType: a scalar of a simple built-in type
+	 * converted here, anything else (structures, enumerations, arrays, other built-in types)
+	 * encoded with the server's DataTypes. A value of an unknown DataType passes unchanged.
+	 */
 	private Object typed(Object value) {
-		if (!(value instanceof Number || value instanceof Boolean || value instanceof String)) return value;
+		if (value instanceof Variant variant && (variant.getValue() instanceof Map<?, ?> || variant.getValue() instanceof List<?>))
+			value = variant.getValue();
 		NodeId type = dataType();
+		if (type != null && value != null && !(value instanceof Variant)
+				&& (!OpcUaStructures.simpleBuiltin(type) || value instanceof Map<?, ?> || value instanceof List<?>)) {
+			try {
+				return new Variant(OpcUaStructures.encode(value, type, client()));
+			} catch (IllegalArgumentException | org.eclipse.milo.opcua.stack.core.UaException mismatch) {
+				throw new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
+						"OPCUA_VALUE_MISMATCH", "value does not fit the variable's DataType",
+						Map.of("cause", String.valueOf(mismatch.getMessage())));
+			}
+		}
+		if (!(value instanceof Number || value instanceof Boolean || value instanceof String)) return value;
 		if (type == null || type.getNamespaceIndex().intValue() != 0 || !(type.getIdentifier() instanceof Number id)) return value;
 		try {
 			Object converted = switch (id.intValue()) {

@@ -16,6 +16,7 @@ import org.apache.camel.component.milo.client.MiloClientConnection;
 import org.apache.camel.component.milo.client.MiloClientEndpoint;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.client.nodes.UaMethodNode;
+import org.eclipse.digitaltwin.basyx.dmp.opcua.component.OpcUaStructures;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Matrix;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UByte;
@@ -71,6 +72,8 @@ public final class CamelOpcUaMethodMetadataProvider implements OpcUaMethodMetada
 	private static Object coerce(Object value, Argument argument) {
 		if (value == null) return null;
 		int typeId = builtinTypeId(argument.dataType());
+		// Structures, enumerations and other DataTypes are encoded by the producer, which holds the client.
+		if (typeId < 1 || typeId > 12) return new OpcUaStructures.Pending(argument.dataType(), value);
 		int rank = argument.valueRank();
 		if (value instanceof List<?> || value.getClass().isArray()) {
 			return arrayValue(value, typeId, rank, argument.arrayDimensions());

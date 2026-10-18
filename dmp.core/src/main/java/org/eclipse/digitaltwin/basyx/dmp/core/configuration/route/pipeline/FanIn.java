@@ -197,6 +197,7 @@ public final class FanIn implements ManagedRouteResource {
 			}
 		}
 		Object json = decodeIncoming(exchange, config, body);
+		checkDeviceSchema(exchange, config, dataSourceId, pointer);
 		if (pointer == null || pointer.isBlank()) {
 			// Connector canonical forms may wrap the payload in a single-key
 			// envelope keyed by the endpoint id. Strip it: the cached source
@@ -212,6 +213,26 @@ public final class FanIn implements ManagedRouteResource {
 		}
 		Object value = leaf.get();
 		return value == JsonPointer.JSON_NULL ? JsonPointer.JSON_NULL : value;
+	}
+
+	/**
+	 * The AID describes the device: what the source's AID schema says about its value must exist
+	 * on the device with a compatible type, as the connector declares it. A source the AID
+	 * misdescribes contributes nothing; each value fails with the differences.
+	 */
+	private static void checkDeviceSchema(Exchange exchange, DataSourceConfiguration config, String dataSourceId, String pointer) {
+		Object device = exchange.getMessage().getHeader(SourceEventAdapter.DEVICE_SCHEMA_HEADER);
+		if (device == null || config == null || config.getSchema() == null) return;
+		Object member = pointer == null || pointer.isBlank() ? device
+				: org.eclipse.digitaltwin.basyx.dmp.core.util.SchemaCompatibility.member(device, JsonPointer.parse(pointer).tokens());
+		if (member == null)
+			throw new IllegalArgumentException("Source '" + dataSourceId + "': the AID references " + pointer
+					+ ", which the device's type does not have");
+		java.util.List<String> differences = org.eclipse.digitaltwin.basyx.dmp.core.util.SchemaCompatibility.differences(config.getSchema(), member);
+		if (!differences.isEmpty())
+			throw new IllegalArgumentException("Source '" + dataSourceId + "': the AID schema"
+					+ (pointer == null || pointer.isBlank() ? "" : " of " + pointer) + " does not match the device's type: "
+					+ String.join("; ", differences));
 	}
 
 	/** Strips a single-key envelope whose key is the endpoint id itself. */

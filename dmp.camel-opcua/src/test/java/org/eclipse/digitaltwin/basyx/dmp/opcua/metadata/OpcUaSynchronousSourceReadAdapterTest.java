@@ -26,11 +26,11 @@ class OpcUaSynchronousSourceReadAdapterTest {
 	}
 
 	@Test
-	void convertsFreshReadResultToTheCanonicalSourceObject() {
+	void aFreshReadIsTheVariablesValue() {
 		var value = new DataValue(new Variant("READY"));
 
 		assertEquals("READY", OpcUaSynchronousSourceReadAdapter
-				.normalizeReadResult(List.of(value), "ns=2;s=Machine.State").get("value"));
+				.normalizeReadResult(List.of(value)));
 	}
 
 	@Test
@@ -45,11 +45,10 @@ class OpcUaSynchronousSourceReadAdapterTest {
 		var value = new DataValue(new Variant("READY"));
 		var pending = new CompletableFuture<List<DataValue>>();
 		var reader = CompletableFuture.supplyAsync(() -> OpcUaSynchronousSourceReadAdapter
-				.normalizeReadResult(OpcUaSynchronousSourceReadAdapter.awaitReadResult(pending),
-						"ns=2;s=Machine.State"));
+				.normalizeReadResult(OpcUaSynchronousSourceReadAdapter.awaitReadResult(pending)));
 		assertFalse(reader.isDone());
 		pending.complete(List.of(value));
-		assertEquals("READY", reader.join().get("value"));
+		assertEquals("READY", reader.join());
 	}
 
 	@Test
@@ -64,8 +63,8 @@ class OpcUaSynchronousSourceReadAdapterTest {
 	@Test
 	void absentAndBadStatusReadsNeverBecomeContributions() {
 		assertThrows(IllegalStateException.class,
-				() -> OpcUaSynchronousSourceReadAdapter.normalizeReadResult(null, "ns=2;s=Machine.State"));
+				() -> OpcUaSynchronousSourceReadAdapter.normalizeReadResult(null));
 		assertThrows(IllegalStateException.class, () -> OpcUaSynchronousSourceReadAdapter.normalizeReadResult(
-				List.of(new DataValue(new Variant("BAD"), StatusCode.BAD)), "ns=2;s=Machine.State"));
+				List.of(new DataValue(new Variant("BAD"), StatusCode.BAD))));
 	}
 }

@@ -120,7 +120,7 @@ class OpcUaSubscriptionSourcesTest {
 
 	@Test
 	void anObservedVariableWritesEachChange() throws Exception {
-		runtime.installBundle("observe", compile(false, "function aimc_main(sources) return { Out = sources.Pressure.value } end"));
+		runtime.installBundle("observe", compile(false, "function aimc_main(sources) return { Out = sources.Pressure } end"));
 		// A monitored item reports the current value first, then each change.
 		await().atMost(Duration.ofSeconds(8)).until(() -> writes.stream().anyMatch(body -> body.contains("41")));
 		device.level(42);

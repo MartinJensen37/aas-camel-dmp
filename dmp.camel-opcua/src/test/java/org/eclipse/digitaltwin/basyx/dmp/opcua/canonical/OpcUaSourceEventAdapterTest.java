@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 class OpcUaSourceEventAdapterTest {
 	@Test
-	void normalizesNativeMiloDataValueIntoDecodedSourceTree() throws Exception {
+	void aSampleContributesItsValueOnly() throws Exception {
 		var configuration = new OpcuaDataSourceConfiguration();
 		configuration.setNodeInformation("ns=2;s=Machine.State");
 		var exchange = new DefaultExchange(new DefaultCamelContext());
@@ -25,9 +25,7 @@ class OpcUaSourceEventAdapterTest {
 
 		new OpcUaSourceEventAdapter().normalizer(configuration).process(exchange);
 
-		Map<?, ?> value = exchange.getMessage().getBody(Map.class);
-		assertEquals("ns=2;s=Machine.State", value.get("nodeId"));
-		assertEquals("READY", value.get("value"));
+		assertEquals("READY", exchange.getMessage().getBody(), "the value only, as an MQTT or HTTP source delivers it");
 		assertTrue(Boolean.TRUE.equals(exchange.getProperty(SourceEventAdapter.NORMALIZED_VALUE_PROPERTY)));
 		assertTrue(Boolean.TRUE.equals(exchange.getProperty(SourceEventAdapter.CONTRIBUTION_PROPERTY)));
 	}

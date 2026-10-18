@@ -14,6 +14,9 @@ import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.client.subscriptions.OpcUaMonitoredItem;
 import org.eclipse.milo.opcua.sdk.client.subscriptions.OpcUaSubscription;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SourceEventAdapter;
+import java.util.Map;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +46,7 @@ final class DmpMiloSubscriptionConsumer extends DefaultConsumer {
 	private ScheduledFuture<?> watch;
 	private volatile OpcUaClient subscribedClient;
 	private volatile OpcUaSubscription subscription;
+	private volatile java.util.Optional<Map<String, Object>> deviceSchema;
 
 	DmpMiloSubscriptionConsumer(DmpMiloClientEndpoint endpoint, Processor processor) {
 		super(endpoint, processor);
@@ -78,6 +82,7 @@ final class DmpMiloSubscriptionConsumer extends DefaultConsumer {
 			OpcUaSubscription created = new OpcUaSubscription(client,
 					publishing == null ? DEFAULT_PUBLISHING_INTERVAL_MS : publishing);
 			created.create();
+			deviceSchema = null;
 			NodeId node = endpoint.node(client);
 			EventSelection events = endpoint.getEventSelection();
 			OpcUaMonitoredItem item;
@@ -85,11 +90,16 @@ final class DmpMiloSubscriptionConsumer extends DefaultConsumer {
 				item = OpcUaMonitoredItem.newDataItem(node);
 				Double sampling = endpoint.getSamplingInterval();
 				if (sampling != null) item.setSamplingInterval(sampling);
-				item.setDataValueListener((monitored, value) -> deliver(value));
+				item.setDataValueListener((monitored, value) -> {
+					// The variable's own type, once per subscription: the AID schema is checked against it.
+					if (deviceSchema == null) deviceSchema = java.util.Optional.ofNullable(OpcUaStructures.deviceSchema(value, client));
+					deliver(OpcUaStructures.decoded(value, client), deviceSchema.orElse(null));
+				});
 			} else {
 				// An event item (OPC 10000-4 §5.12.1.4): the server queues each event the filter passes.
 				item = OpcUaMonitoredItem.newEventItem(node, events.filter(client));
-				item.setEventValueListener((monitored, values) -> deliver(events.notification(values)));
+				item.setEventValueListener((monitored, values) ->
+						deliver(events.notification((Variant[]) OpcUaStructures.decoded(values, client)), null));
 			}
 			item.setQueueSize(QUEUE_SIZE);
 			item.setDiscardOldest(true);
@@ -104,9 +114,10 @@ final class DmpMiloSubscriptionConsumer extends DefaultConsumer {
 		}
 	}
 
-	private void deliver(Object value) {
+	private void deliver(Object value, Map<String, Object> schema) {
 		Exchange exchange = createExchange(true);
 		exchange.getMessage().setBody(value);
+		if (schema != null) exchange.getMessage().setHeader(SourceEventAdapter.DEVICE_SCHEMA_HEADER, schema);
 		try {
 			getProcessor().process(exchange);
 		} catch (Exception failure) {

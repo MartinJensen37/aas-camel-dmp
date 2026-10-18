@@ -13,4 +13,10 @@ public interface SourceEventAdapter {
 	String CONTRIBUTION_PROPERTY = "dmp.source.contribution";
 	/** Set when a connector has decoded the message into its logical Java value. */
 	String NORMALIZED_VALUE_PROPERTY = "dmp.source.normalizedValue";
+	/**
+	 * Header with what the device itself declares for the value, as a JSON-schema map (e.g. an
+	 * OPC UA variable's DataType). The source's AID schema must agree with it
+	 * ({@link org.eclipse.digitaltwin.basyx.dmp.core.util.SchemaCompatibility}).
+	 */
+	String DEVICE_SCHEMA_HEADER = "DmpDeviceSchema";
 }

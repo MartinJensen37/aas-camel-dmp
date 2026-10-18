@@ -30,6 +30,11 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.eclipse.milo.opcua.sdk.core.types.DynamicStructType;
+import org.eclipse.milo.opcua.sdk.core.types.DynamicUnionType;
+import org.eclipse.milo.opcua.stack.core.types.UaEnumeratedType;
+import org.eclipse.milo.opcua.stack.core.types.UaStructuredType;
+import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
@@ -130,7 +135,9 @@ public final class OpcUaCanonical {
 	 * numbers, LocalizedText its text, NodeIds and QualifiedNames their
 	 * parseable string, DateTime an ISO-8601 instant, ByteString and byte
 	 * arrays base64, StatusCode its numeric code; arrays and collections map
-	 * member by member. Other values (structures) fall back to their string.
+	 * member by member. A decoded structure is an object keyed by field name (an absent
+	 * optional field is left out), a union {@code {field: value}} (null when it holds none), an
+	 * enumeration its Int32 value. An undecoded ExtensionObject falls back to its string.
 	 */
 	public static Object jsonValue(Object raw) {
 		if (raw == null) {
@@ -172,6 +179,25 @@ public final class OpcUaCanonical {
 		if (raw instanceof byte[]) {
 			return Base64.getEncoder().encodeToString((byte[]) raw);
 		}
+		if (raw instanceof UaEnumeratedType enumerated) {
+			return enumerated.getValue();
+		}
+		if (raw instanceof DynamicStructType struct) {
+			Map<String, Object> fields = new LinkedHashMap<>();
+			struct.getMembers().forEach((name, value) -> fields.put(name, jsonValue(value)));
+			return fields;
+		}
+		if (raw instanceof DynamicUnionType union) {
+			return union.getValue().map(selected -> {
+				Map<String, Object> field = new LinkedHashMap<>();
+				field.put(selected.fieldName(), jsonValue(selected.fieldValue()));
+				return field;
+			}).orElse(null);
+		}
+		if (raw instanceof UaStructuredType struct && !(raw instanceof ExtensionObject)) {
+			Map<String, Object> fields = generatedFields(struct);
+			if (fields != null) return fields;
+		}
 		if (raw instanceof Map<?, ?> map) {
 			Map<String, Object> copy = new LinkedHashMap<>();
 			for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -195,5 +221,36 @@ public final class OpcUaCanonical {
 			return copy;
 		}
 		return raw.toString();
+	}
+
+	/** Field getters of the structures the stack defines, in the order of their StructureDefinition. */
+	private static final ClassValue<java.util.List<Map.Entry<String, java.lang.reflect.Method>>> GENERATED_FIELDS = new ClassValue<>() {
+		@Override protected java.util.List<Map.Entry<String, java.lang.reflect.Method>> computeValue(Class<?> type) {
+			try {
+				var definition = (org.eclipse.milo.opcua.stack.core.types.structured.StructureDefinition)
+						type.getMethod("definition", org.eclipse.milo.opcua.stack.core.NamespaceTable.class)
+								.invoke(null, new org.eclipse.milo.opcua.stack.core.NamespaceTable());
+				java.util.List<Map.Entry<String, java.lang.reflect.Method>> getters = new java.util.ArrayList<>();
+				if (definition.getFields() != null)
+					for (var field : definition.getFields())
+						getters.add(Map.entry(field.getName(), type.getMethod("get" + field.getName())));
+				return java.util.List.copyOf(getters);
+			} catch (ReflectiveOperationException | RuntimeException notGenerated) {
+				return null;
+			}
+		}
+	};
+
+	/** A structure the stack defines (namespace 0, e.g. Range) as an object keyed by field name; null when unknown. */
+	private static Map<String, Object> generatedFields(UaStructuredType struct) {
+		var getters = GENERATED_FIELDS.get(struct.getClass());
+		if (getters == null) return null;
+		Map<String, Object> fields = new LinkedHashMap<>();
+		try {
+			for (var getter : getters) fields.put(getter.getKey(), jsonValue(getter.getValue().invoke(struct)));
+		} catch (ReflectiveOperationException unreadable) {
+			return null;
+		}
+		return fields;
 	}
 }
