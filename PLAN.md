@@ -68,13 +68,7 @@ the compiler blocks the mapping if the endpoint does not match the configured
 InfluxDB. Work: the sink in the compiler and connector, `aas-model` TimeSeries
 generation, a compose `influxdb` service, tests with a containerised InfluxDB.
 
-### 4. Container image platforms
-
-`docker.target.platforms` lists `linux/arm/v7`, but `eclipse-temurin:21-jre`
-publishes no `linux/arm/v7` image (only amd64, arm64, ppc64le, s390x). Decide
-whether arm/v7 is still needed; drop it, or choose another base for it.
-
-### 5. Parent workspace
+### 4. Parent workspace
 
 - The main and e2e stacks (`compose/`) run the `dmp` service; DataBridge
   residue is gone (2026-10-18; the listener port is `DMP_HTTP_PORT`, default
@@ -84,7 +78,7 @@ whether arm/v7 is still needed; drop it, or choose another base for it.
   once its operations run through the DMP. ARSO is a side project and out of
   scope.
 
-### 6. Small fixes
+### 5. Small fixes
 
 - A failed PLC4X request is reported as "the device could not be reached"
   without its cause.
@@ -141,6 +135,7 @@ whether arm/v7 is still needed; drop it, or choose another base for it.
 | Deployed-stack cutover (D1) | Not needed; the Python manager is gone. |
 | ARSO delegation defaults (D3) | Out of scope (side project). |
 | AID checked against Modbus, MQTT or HTTP devices | No (2026-10-18). These devices do not describe themselves; only OPC UA values are checked against the server's DataTypes (SPEC §5.2). Unsupported schema terms are rejected instead. |
+| `linux/arm/v7` image | Dropped (2026-10-18); the image is built for `linux/amd64` and `linux/arm64`. Inherited from the DataBridge build; `eclipse-temurin:21-jre` has no arm/v7 variant, the DMP runs on x86-64 servers, and current Raspberry Pis run arm64. |
 | Java 25 (E4) | Stay on Java 21 (2026-10-18). Camel 4.22 supports 25; PLC4X 0.13.1 is tested to 24; Milo and LuaJ make no statement. |
 | LuaJ replacement (E1) | Stay on LuaJ and work around its defects in `LuaSandbox` (as `6167ad5` did for the shared string metatable). Cobalt promises no API stability; luajava runs native code that can crash the JVM. Revisit only if a defect cannot be worked around. |
 
