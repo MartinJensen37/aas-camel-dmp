@@ -323,22 +323,15 @@ class ConnectorConfigurationFactoryTest {
 	}
 
 	@Test
-	void mapsScalarBacnetBindingsToThePlc4xBacnetIpDriver() {
+	void bacnetMappingsAreRejectedBecauseThePlc4xDriverNeitherReadsNorWrites() {
 		var source=endpointPlan("present-value",protocolTarget(WireModel.ProtocolFamily.BACNET,
-				"bacnet://bacnet.example:47808", "/analog-input:1", Map.of(), null));
+				"bacnet://5", "/0,1/85", Map.of(), null));
 		var sink=endpointPlan("present-value",protocolTarget(WireModel.ProtocolFamily.BACNET,
-				"bacnet://bacnet.example:47808", "/analog-output:2", Map.of(), null));
+				"bacnet://5", "/1,2/85", Map.of(), null));
 		var result=factory.create(new Plan(List.of(mappingPlan("bacnet-map",0,source,sink))),"route");
-		assertTrue(result.issues().isEmpty());
-		var dataSource=assertInstanceOf(Plc4xDataSourceConfiguration.class,
-				result.configuration().getDatasources().values().iterator().next());
-		assertEquals("bacnet-ip",dataSource.getDriver());
-		assertEquals(47808,dataSource.getServerPort());
-		assertEquals("analog-input:1",dataSource.getTags().get(0).getValue(),"the href's leading slash is no part of the PLC4X address");
-		var dataSink=assertInstanceOf(Plc4xDataSinkConfiguration.class,
-				result.configuration().getDatasinks().values().iterator().next());
-		assertEquals("bacnet-ip",dataSink.getDriver());
-		assertEquals("analog-output:2",dataSink.getTags().get(0).getValue());
+		assertTrue(result.configuration().getRoutes().isEmpty());
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("BACnet is not supported")),
+				String.valueOf(result.issues()));
 	}
 
 	@Test

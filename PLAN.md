@@ -171,11 +171,15 @@ connector URIs; connector syntax never appears in an AID (SPEC §5.2).
 - **HTTP `htv_headers`** are rejected ("not sent yet"); the polling source and
   the sink need static headers.
 - **HTTP observe** (`subprotocol` longpoll/sse) is rejected (A7).
-- **BACnet** (not usable with conformant forms): AID base
-  `bacnet://{deviceId}` carries no IP address; PLC4X `bacnet-ip` needs one.
-  Decide on device discovery or an extension term before implementing
-  `bacv_useService`, `bacv_hasDataType` and the uriVariables
-  (`commandPriority`, `covIncrement`).
+- **BACnet** is rejected by the compiler (2026-10-18): the PLC4X 0.13.1
+  `bacnet-ip` driver has `canRead`/`canWrite` false and only listens for COV
+  notifications, so the earlier PLC4X mapping never worked. AID addresses a
+  device by its instance number (`bacnet://{deviceId}`, B.1), not by IP; the
+  WoT BACnet binding leaves the data link out. Decide: implement
+  ReadProperty/WriteProperty/SubscribeCOV ourselves (PLC4X's generated BACnet
+  model, UDP), use a BACnet stack (BACnet4J: check its GPL licence), or drop
+  BACnet. Addressing: Who-Is/I-Am discovery by device instance, with an
+  optional address term on EndpointMetadata where broadcast does not reach.
 - **Parent workspace**: regenerate the AAS descriptions (bases now end with
   `/`, hrefs are relative); the registration service and other consumers of
   `mqv_control_packet`/`mqv_response_topic` follow.

@@ -1500,11 +1500,8 @@ public final class ConnectorConfigurationFactory {
 
 	private static PlcTarget plcTarget(AidTarget target,Form form,boolean write,MappingPlan mapping,String path,List<Issue> issues) {
 		if(target.resolved().owner().protocolFamilies().contains(WireModel.ProtocolFamily.BACNET)) {
-			ProtocolBase base=protocolBase(target,"bacnet",mapping,path,issues);if(base==null)return null;
-			String address=bacnetAddress(form,mapping,path,issues);
-			List<Option> options=plcOptions(base.uri(),mapping,path,issues);
-			if(address==null || hasIssue(issues,mapping))return null;
-			return new PlcTarget(base,"bacnet-ip",options,address,null);
+			// PLC4X 0.13.1's bacnet-ip driver neither reads nor writes (it only listens for COV notifications).
+			issue(issues,mapping,path,"BACnet is not supported: the PLC4X BACnet/IP driver neither reads nor writes");return null;
 		}
 		ProtocolBase base=protocolBase(target,"modbus+tcp",mapping,path,issues);if(base==null)return null;
 		if(base.uri().getRawQuery()!=null) {
@@ -1676,28 +1673,6 @@ public final class ConnectorConfigurationFactory {
 			return trimmed;
 		}
 		issue(issues,mapping,path+"/forms/href","an OPC UA form names its node by href /?id=<NodeId> or by uav_browsePath");return null;
-	}
-
-	/** A BACnet form's PLC4X address (the WoT BACnet binding is P5 work); the href's leading slash is no part of it. */
-	private static String bacnetAddress(Form form,MappingPlan mapping,String path,List<Issue> issues) {
-		if(form.href().present() && form.href().value()!=null && !form.href().value().isBlank())return form.href().value().replaceFirst("^/","");
-		issue(issues,mapping,path+"/forms/href","BACnet address is absent");return null;
-	}
-
-	private static List<Option> plcOptions(URI base,MappingPlan mapping,String path,List<Issue> issues) {
-		List<Option> options=new ArrayList<>();
-		String query=base.getRawQuery();
-		if(query==null || query.isBlank())return options;
-		Set<String> names=new LinkedHashSet<>();
-		for(String pair:query.split("&")) {
-			int separator=pair.indexOf('=');
-			if(separator<=0) { issue(issues,mapping,path+"/EndpointMetadata/base","PLC4X base query options must use name=value");return List.of(); }
-			String name=java.net.URLDecoder.decode(pair.substring(0,separator),StandardCharsets.UTF_8);
-			String value=java.net.URLDecoder.decode(pair.substring(separator+1),StandardCharsets.UTF_8);
-			if(!names.add(name)) { issue(issues,mapping,path+"/EndpointMetadata/base","duplicate PLC4X query option "+name);return List.of(); }
-			options.add(new Option(name,value));
-		}
-		return List.copyOf(options);
 	}
 
 	private static String formTerm(Form form,String name) {

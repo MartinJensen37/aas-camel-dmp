@@ -14,7 +14,7 @@ Administration Shells. It:
    AAS v3 repository and the AID (Asset Interfaces Description) and other
    submodels they reference;
 2. compiles each mapping into Camel routes that acquire values from sources
-   (MQTT, OPC UA, HTTP, Modbus/BACnet via PLC4X, AAS elements), transform them
+   (MQTT, OPC UA, HTTP, Modbus via PLC4X, AAS elements), transform them
    with a sandboxed Lua script, and write them to sinks;
 3. serves AAS Operation invocations delegated by BaSyx and forwards them to the
    device over HTTP, OPC UA Methods or MQTT 5 request/reply;
@@ -366,7 +366,7 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
      the request's correlation data is the terminal reply, whatever its
      payload. A device publishes progress or other messages without that
      correlation data. Timeout 30 s.
-   - **PLC4X (Modbus, BACnet)**: no actions; a tag write reports no result.
+   - **PLC4X (Modbus)**: no actions; a tag write reports no result.
 5. The reply is validated, optionally transformed by `ResponseTransformation`,
    and returned to the caller as its output variables. Without response Lua a
    native normalized reply passes through.
@@ -458,7 +458,8 @@ end
 | OPC UA (Milo) | Read (Read service), Observe (monitored items), Events (event monitored items, DMP extension), Write, Invoke (Method) | Custom/structured datatypes, condition refresh and acknowledgement |
 | MQTT 5 | Observe (subscribe), Write (publish), Invoke (request/reply) | Read; MQTT 3.1.1 |
 | HTTP | Read (poll), Write, Invoke | Observe, inbound requests other than Operations |
-| PLC4X (Modbus, BACnet) | Read, acknowledged Write of one tag per affordance | Invoke (a tag write reports no result) |
+| PLC4X (Modbus) | Read, acknowledged Write of one tag per affordance | Invoke (a tag write reports no result) |
+| BACnet | — (rejected: the PLC4X 0.13.1 `bacnet-ip` driver neither reads nor writes; it only listens for COV notifications) | Read, Write, Observe |
 
 Data-plane MQTT clients are one per endpoint; their credentials are bound in
 the Camel registry per bundle and referenced by name in URIs.
