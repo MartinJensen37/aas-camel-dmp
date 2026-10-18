@@ -1,23 +1,28 @@
 # aas-camel-dmp — Plan
 
 Companion to [SPEC.md](SPEC.md). This file holds the current state and the open
-work only. The previous plan (milestones M0–M11, workstreams W0–W6, phases
-R0–R8 and their verification logs) is in the git history before `8fe9c46`.
+work only; finished work is described in SPEC and the git history. The previous
+plan (milestones M0–M11, workstreams W0–W6, phases R0–R8, the retirement audit
+and the P3/P5 work logs) is in the git history.
 
-## Current state (2026-10-15)
+## Current state (2026-10-18)
 
 - The DMP is one Java process (SPEC §3). The Python management node,
   per-asset containers, standalone file configuration, examples, `--compare`
-  mode and BaSyx v1/VAB are removed.
+  mode and BaSyx v1/VAB are removed; the parent workspace's Compose stacks run
+  one `dmp` service with the delegation origin `http://dmp:8080`.
 - Discovery is need-to-know with an event-only lifecycle (SPEC §4); Kafka and
   MQTT event transports both work; event-sourced AAS Property values use a
   separate value feed.
-- Ordinary and bridge mappings, Lua, all AID-reachable connectors and the
-  health/status endpoints are implemented as specified.
-- Build: Java 21, Camel 4.22, AAS4J 2.0.1, Kafka clients 4.3.1, MQTT 5 only,
-  JUnit 5 only. Only `dmp.component` ships a logging backend.
-- The parent workspace's main/E2E Compose stacks select one `dmp:java`
-  service with the fixed delegation origin `http://dmp:8080`.
+- Ordinary and bridge mappings (SPEC §6, §7), Lua, the AAS interaction log
+  (SPEC §10) and the AID 1.2 bindings for HTTP (including `longpoll`/`sse`
+  observation), MQTT, OPC UA (including server-described structures) and
+  Modbus (SPEC §5.2) are implemented as specified. Lua receives AAS elements
+  in one typed value form (SPEC §5.3) and OPC UA values without an envelope,
+  checked against the AID (SPEC §5.2).
+- Build: Java 21, Camel 4.22, AAS4J 2.0.1, Milo 1.1.6, PLC4X 0.13.1,
+  LuaJ 3.0.1, Kafka clients 4.3.1, MQTT 5 only, JUnit 5 only. Only
+  `dmp.component` ships a logging backend.
 
 ### Verification
 
@@ -33,273 +38,108 @@ brokers (KRaft Kafka, MQTT 5) and need no external services.
 Do not run Maven while the IDE re-imports POMs: the IDE can rewrite
 `target/classes` underneath a running build.
 
-### Retirement revalidation (2026-10-16, repository-only)
+## Planned work
 
-The October 14 retirement-readiness prompt and parent audit are historical, not
-instructions to repeat the removal. At audited HEAD `34bba25`, commit `8fe9c46`
-already removed all 51 tracked Python management-node files. Later commits removed
-file-configured examples/deploy samples (`3cc40c0`), file configuration factories
-and loaders, standalone startup and `--compare`. Do not restore those interfaces,
-the removed SQL example or legacy compiled Lua trees to satisfy an older checklist.
+### 1. HTTP static headers
 
-Current parent main/E2E source definitions select one Java `dmp` service; the chosen
-AAS-reachable origin is `http://dmp:8080`. This is source-level configuration, not
-evidence of running ownership or migrated persisted qualifiers. Retained Python
-authoring, registration, simulations and independent services are not the removed
-DMP management plane.
+`htv_headers` is rejected ("not sent yet"); send the form's static headers on
+polls, observations, writes and invokes. HTTP observe and events (`longpoll`,
+`sse`) are done (SPEC §5.2); `websub` stays rejected until an inbound callback
+endpoint is designed.
 
-The origin is implemented through authored Operation qualifiers, not a verified
-global BaSyx delegator setting. `aas-model/src/aas_model/invocation_authoring.py` finalizes encoded
-owner/skill segments; generic ID injection skips invocation qualifiers. All four
-current parent station profiles already use the shared origin. Registration rejects
-the retired `delegation_base` field but deliberately preserves explicit URL strings;
-it does not enforce the shared origin or reject every remaining invocation macro.
-Decide that validation policy (D5) before treating registration as an origin guard.
+### 2. SNMP and CAN bindings (AID 1.2)
 
-Bounded remaining retirement work:
+Implement the AID 1.2 SNMP (`…/AssetInterfacesDescription/1/2/SNMP`) and CAN
+(`…/AssetInterfacesDescription/1/2/CAN`) bindings as AID 1.2 defines them
+(their EndpointMetadata and form terms), the WoT bindings filling only what AID
+leaves open. Today both are rejected with "no supported protocol binding".
 
-- Classify `labServer-compose.yml:260-272`, which still defines the old standalone
-  DataBridge image and config mount. It is not included by the current root Compose
-  entry point; decide whether to migrate or explicitly retire that deployment file
-  before using it. Its existence does not establish a running legacy owner.
-- Correct stale cross-repository prose in `Registration_Service/Dockerfile:3-9`
-  and `aas-model/tests/test_schema_lockstep.py:36-40` in a separately scoped change;
-  these references are comments/assertion text, not runnable manager dependencies.
-- Resolve fixture maintenance (C4). The manifest explicitly records the deleted
-  generator as capture provenance; keep those historical hashes. Decide a forward
-  maintenance workflow without regenerating expected outcomes to hide differences.
-- Complete separately authorized deployed-state inventory and exclusive cutover
-  where necessary (D1); resolve stale/unscoped authoring paths (D2/D3).
+- SNMP via `camel-snmp`: Read (GET, polled), Observe (traps), Write (SET).
+- CAN via PLC4X's CAN drivers (e.g. CANopen), next to Modbus. Check first that
+  the PLC4X 0.13.1 driver reads and writes (the BACnet driver did not).
 
-No builds, imports, live probes, asset writes or performance evaluations were run
-for this revalidation. Existing uncommitted action-phase work is preserved; earlier
-green logs do not certify those current edits. **Repository manager removal is
-complete; live-cutover readiness is not established by this audit.**
+### 3. Fixtures and models regenerated from `aas-model`
 
-## Planned work (designs agreed 2026-10-15, not implemented)
-
-### P3. Action invocation (rescoped 2026-10-17)
-
-**Scope (SPEC §7.1):** an operation mapping binds its Operation 1:1 to one
-affordance: an action whose terminal reply is its result — OPC UA Method,
-MQTT 5 request/reply (the first reply carrying the request's correlation
-data; no `State: RUNNING` skip), HTTP — or a property it writes, answering
-once the connector acknowledged the write. On the AAS side it fans in further
-AAS elements and fans the result out through ResponseSinks. Invocations are
-correlated by their protocol and run concurrently.
-
-**Rescoped out (2026-10-17):** the status phase (`StatusSources`,
-`StatusTransformation`, `StatusTimeout`), parameter sinks, read-once
-ResponseSources, device ResponseSinks (cleanup writes) and PLC4X actions,
-together with the planned WoT asynchronous actions (`queryaction`,
-`cancelaction`, concurrency flags). Simulating actions from writes, polls and
-reads (Modbus coils, OPC UA Programs) is left to the higher-level control,
-which orchestrates them through ordinary mappings. These parts were built and
-tested (commit `250a89b`) and removed again to keep the DMP's scope bounded.
-
-**Kept from the work:** the `dmp-plc4x:` and `dmp-milo-client:` components,
-OPC UA per OPC 10101 (observed variables as monitored items, `uav_componentOf`
-on the action), OPC UA events (`OpcuaEvent`, event monitored items; tested
-end to end as ordinary Sources in `OpcUaSubscriptionSourcesTest`), WoT event
-affordances and their builders in `aas-model`, the MQTT reply consumer owned
-by its endpoint, connector invocation steps (B6) and the command route behind
-a Content Enricher.
-
-**Done (2026-10-17):**
-
-- Operations bound to a property, AAS fan-in and fan-out
-  (`OperationPropertyWriteTest` with Milo; `OperationConnectorsTest` for
-  Modbus via PLC4X, HTTP including a rejected write, and MQTT). OPC UA writes
-  wait for the Write status and convert scalars to the variable's DataType.
-- Concurrency: eight parallel calls of one MQTT 5 action, answered in reverse
-  order, each get their own reply (`OperationConnectorsTest`).
-- No `ProducerTemplate` dispatch is left in operation mappings: per-sink
-  transformer chains run as Content Enrichers, and the AAS response writes run
-  in a write route behind the bounded Wire Tap
-  (`ResponseSinkFanOutProcessor.configureDispatch`/`configureWrite`).
-- Found on the way: PLC4X tag addresses kept the href's leading `/`
-  (`/coil:1`), which PLC4X silently dropped from the request; superseded by
-  the WoT Modbus translation (P5). A failed PLC4X request is still reported as "the device could not
-  be reached" without its cause.
-
-**Open:**
-
-- **Future:** AAS asynchronous invocation (`invoke-async` with a handle;
-  BaSyx does not implement it yet) for actions longer than a caller's HTTP
-  timeout.
-
-### P5. AID 1.2 and the WoT protocol bindings (reviewed 2026-10-17, implemented 2026-10-18)
-
-The AID is authored as IDTA AID 1.2 defines it; what AID leaves EXTERNAL or
-undefined (action and event members, `op`, `response`, `readOnly`/`writeOnly`,
-MQTT request/reply, OPC UA events) is added inside the AID by the extension of
-aas-model `docs/aid-extension.md`. No separate Thing Description. AID wins
-where a WoT draft disagrees (MQTT topic in `href`, `bacv_useService`,
-`modv_zeroBasedAddressing`); the WoT bindings decide where AID is silent
-(operation defaults, actions, events). The compiler translates forms into
-connector URIs; connector syntax never appears in an AID (SPEC §5.2).
-
-**Done (2026-10-18):**
-
-- aas-model: the extension classes (`aid.py`), the TD 1.1 IRIs
-  (`td#hasInputSchema`, `td#isSynchronous`, `hctl#hasOperationType`, …),
-  ActionDefinition/EventDefinition member ids, `op` as an optional list, AID's
-  own `mqv_controlPacket`/`mqv_retain`/`mqv_qos`, `mqv_responseTopic` replacing
-  `mqv_response_topic`/`mqv_request_reply`/`response.href`. Builders author
-  only what differs from the defaults, bases with a trailing `/` and relative
-  hrefs. The IDTA
-  generator now gives every class with a concrete template idShort that
-  idShort as default.
-- DMP: operations derived per affordance (`AidForms`); a mapping role needs an
-  operation the form serves. Hrefs resolve against the base per RFC 3986 (the
-  DMP used to join the two paths) for HTTP, MQTT and Modbus. HTTP honours
-  `htv_methodName` (WoT defaults GET/PUT/POST; ordinary HTTP sinks send the
-  method). MQTT: consumer-view control packets, `.//` and `%23` in topics,
-  JSON `contentType` accepted, a source must be observable or retained, reply
-  timeout fixed at 30 s (`mqv_reply_timeout` dropped). Modbus: unit ID in the
-  base, `modv_zeroBasedAddressing=false`, `modv_pollingTime` as a lower limit.
-  OPC UA: an observable variable is a monitored item; `uav_browsePath` (an
-  absolute path from Root) is resolved by `dmp-milo-client:` with
-  TranslateBrowsePathsToNodeIds when the href names no NodeId. Action and event members
-  of Modbus/BACnet/HTTP are rejected with a clear issue.
-- Fixtures (C4): migrated by a one-off script (its rules are in the manifest), `elements.aid`
-  re-captured from the migrated AIDs, manifest hashes and vocabulary updated,
-  the step recorded in `provenance.migrations`; compile outcomes untouched.
-
-**Open:**
-
-- **HTTP `htv_headers`** are rejected ("not sent yet"); the polling source and
-  the sink need static headers.
-- **HTTP observe** (`subprotocol` longpoll/sse) is rejected (A7).
-- **BACnet** is rejected by the compiler (2026-10-18): the PLC4X 0.13.1
-  `bacnet-ip` driver has `canRead`/`canWrite` false and only listens for COV
-  notifications, so the earlier PLC4X mapping never worked. AID addresses a
-  device by its instance number (`bacnet://{deviceId}`, B.1), not by IP; the
-  WoT BACnet binding leaves the data link out. Decide: implement
-  ReadProperty/WriteProperty/SubscribeCOV ourselves (PLC4X's generated BACnet
-  model, UDP), use a BACnet stack (BACnet4J: check its GPL licence), or drop
-  BACnet. Addressing: Who-Is/I-Am discovery by device instance, with an
-  optional address term on EndpointMetadata where broadcast does not reach.
-- **Parent workspace**: regenerate the AAS descriptions (bases now end with
-  `/`, hrefs are relative); the registration service and other consumers of
+- Regenerate the raw model fixtures in
+  `dmp.component/src/test/resources/runtime-model-contracts/` from `aas-model`
+  (AID 1.2) instead of migrating them by script. Compile outcomes may change;
+  each changed outcome is reviewed, never regenerated blindly.
+- Parent workspace: regenerate the AAS descriptions (bases now end with `/`,
+  hrefs are relative); this includes
+  `AASDescriptions/Resource/configs/syntegonStoppering.json`, which still
+  carries a pre-ADR-022 AID block. The consumers of
   `mqv_control_packet`/`mqv_response_topic` follow.
 
-### P2. AAS interaction log and TimeSeries sinks (InfluxDB)
+### 4. TimeSeries sinks (InfluxDB)
 
-**Status:** the interaction log is implemented (SPEC §10). TimeSeries sinks
-are not. Known gaps accepted for now (2026-10-15): no gap markers or sequence
-numbers, write-time timestamps that can collide within a series, no starting
-snapshot beyond the first `dmp_mapping` and read points.
+A Sink referencing a TimeSeries submodel (IDTA 02008) `LinkedSegment` writes
+only to InfluxDB (measurement `timeseries`, tags `submodel`, `segment`); a Sink
+referencing a Property writes the AAS as today. The segment's
+`Endpoint`/`Query` are authored by `aas-model` (the DMP never writes models);
+the compiler blocks the mapping if the endpoint does not match the configured
+InfluxDB. Work: the sink in the compiler and connector, `aas-model` TimeSeries
+generation, a compose `influxdb` service, tests with a containerised InfluxDB.
 
-Supersedes the parent plan `.kilo/plans/1788502800000-dmp-wire-tap-telemetry-plan.md`
-(2026-09-30) where they differ.
+### 5. Container image platforms
 
-**Decisions (2026-10-15):**
-- **Complete, never blocking.** Every AAS-side interaction is logged; there is
-  no per-Source/Sink opt-out (the planned `Logging` flag is dropped). Points go
-  through a bounded in-memory queue and batched writer. During an InfluxDB
-  outage the data path keeps working; dropped points are counted and shown in
-  `/management/status` (and the last successful write time). No file spool.
-- **Per-sink choice of destination.** A Sink that references a TimeSeries
-  submodel (IDTA 02008) segment writes only to InfluxDB; a Sink that references
-  a Property writes the AAS as today. Both are logged.
+`docker.target.platforms` lists `linux/arm/v7`, but `eclipse-temurin:21-jre`
+publishes no `linux/arm/v7` image (only amd64, arm64, ppc64le, s390x). Decide
+whether arm/v7 is still needed; drop it, or choose another base for it.
 
-**What is logged (one measurement each):**
+### 6. Parent workspace
 
-| Measurement | When |
+- `labServer-compose.yml:260-272` still defines the standalone DataBridge
+  image and config mount: migrate it to the `dmp` service.
+- The Python `OperationDelegation` service is what the DMP replaces; retire it
+  once its operations run through the DMP. ARSO is a side project and out of
+  scope.
+- Correct stale prose in `Registration_Service/Dockerfile:3-9` and
+  `aas-model/tests/test_schema_lockstep.py:36-40`.
+
+### 7. Small fixes
+
+- A failed PLC4X request is reported as "the device could not be reached"
+  without its cause.
+
+## Deferred (keep in mind)
+
+- **BACnet.** Rejected by the compiler: the PLC4X 0.13.1 `bacnet-ip` driver
+  has `canRead`/`canWrite` false and only listens for COV notifications.
+  Options: ReadProperty/WriteProperty/SubscribeCOV on PLC4X's generated BACnet
+  model over UDP, a BACnet stack (BACnet4J: check its GPL licence), or drop
+  it. AID addresses a device by instance number (`bacnet://{deviceId}`), so
+  Who-Is/I-Am discovery is needed, with an optional address term on
+  EndpointMetadata where broadcast does not reach.
+- **AAS asynchronous invocation** (`invoke-async` with a handle; BaSyx does
+  not implement it yet) for actions longer than a caller's HTTP timeout.
+- **Runtime:** recovery from a lost MQTT event session without a restart;
+  multiple DMP instances / HA (today `DMP_MANAGED_AIMC_IDS` partitions
+  manually); a shared MQTT client per broker; per-mapping Lua memory
+  isolation; Lua blob provenance (signing); a credential redaction audit of
+  data-plane log lines and caller error details.
+- **Verification:** live staging on the lab (Occupy/Halt and granular
+  Operations, cross-AAS references, mixed sync+async fan-in); Kafka
+  `SASL_SSL` with `PLAIN`; one final performance and capacity evaluation.
+- **C5 flaky test:** `ManagedPackagedRuntimeIntegrationTest` once exceeded the
+  managed-shutdown deadline after a Kafka outage; the deadline was raised from
+  15 s to 45 s (2026-10-18). Reopen only if it recurs.
+
+## Decided, not to be done
+
+| Item | Decision (2026-10-18) |
 | --- | --- |
-| `aas_read` | AAS Property/collection poll read (value, duration, HTTP status) |
-| `aas_event` | Value-feed event consumed by a source |
-| `aas_write` | AAS write, including response-sink writes (value, status) |
-| `aas_invoke` | Operation call accepted (input variables, caller kind) |
-| `aas_reply` | Operation answered (output variables, HTTP status, error code, duration) |
-| `dmp_mapping` | Mapping installed, replaced, blocked or removed (fingerprint, category) |
-
-- Tags (low cardinality): `submodel` (ID), `path` (idShortPath), `aimc`,
-  `mapping`, `outcome`; `aas` (idShort) only for Operations, taken from the
-  delegation path. Shells are never read, so the old `aas` ID tag and the
-  `dmp_{aasIdShort}` measurement are gone.
-- Fields: `invocation` (correlates `aas_invoke`/`aas_reply`), `durationMs`,
-  `httpStatus`, `errorCode`, `semanticId`, and the value in a type-specific
-  field (`value_num`, `value_bool`, `value_str`, `value_json` for collections
-  and lists), because InfluxDB fixes a field's type per measurement.
-- Settings: `DMP_AUDIT_INFLUX_URL`, `…_TOKEN` (secret), `…_ORG`, `…_BUCKET`,
-  `…_QUEUE_SIZE`. Without a URL the log is off and status says so.
-
-**TimeSeries sinks:** a Sink referencing a TimeSeries `LinkedSegment` compiles
-to an InfluxDB writer (measurement `timeseries`, tags `submodel`, `segment`).
-The segment's `Endpoint`/`Query` are authored by `aas-model` (the DMP never
-writes the AAS); the compiler blocks the mapping if the endpoint does not match
-the configured InfluxDB.
-
-**Work:** an audit writer in `dmp.camel-aas` called at each AAS boundary
-(polling consumer, value feed, AAS producer, Operation request/reply, response
-writes) and from reconciliation; TimeSeries sink in the compiler and
-connector; settings and status; `aas-model` TimeSeries generation; compose
-`influxdb` service. Tests with an embedded or containerised InfluxDB.
-
-## Open items to reconsider
-
-Each item was part of the spec or an earlier plan and is **not implemented**.
-Decide per item: keep (and schedule), or drop (and delete it from SPEC).
-
-### A. Mapping features
-
-| # | Item | Today |
-| --- | --- | --- |
-| A1 | **Action enrichment**: extra AAS sources on a bridge mapping, sampled at invocation time and passed to the request Lua | Implemented as P3 fan-in (SPEC §7.1). |
-| A2 | **Acknowledged writes to a different AAS Property**: correlated `ResponseSources`/`ResponseSinks` on ordinary mappings (terminal success/failure/timeout, no replay) | Response fields on ordinary mappings are rejected. |
-| A3 | **Operation variables of other element types** (Range, MultiLanguageProperty, File, Blob, ReferenceElement) | Properties, collections and lists (nested) are supported (SPEC §7); other types block the mapping. |
-| A4 | **Custom/structured OPC UA datatypes** in Method arguments and reads | Basic types and arrays of them only. |
-| A5 | **Per-element array fan-out** via `valuePath` (apply a mapping to every array element) | Not expressible; Lua must loop. |
-| A6 | **PLC4X/Modbus action invocation** | Out of scope (P3 rescoping): a tag write reports no result; the higher-level control sequences writes and reads. |
-| A11 | **Ordinary PLC4X sinks** sent the bare Lua value, which camel-plc4x rejects (it needs `{tag: {address: value}}`). | Fixed by the `dmp-plc4x:` component (SPEC §9), whose producer takes the tag value and acknowledges the write. |
-| A7 | **HTTP Observe** acquisition | Rejected at compile time. OPC UA events are implemented (P3). |
-| A8 | **AID bindings for Kafka, ActiveMQ, SQL**; finishing the **Hono** consumer | Dropped 2026-10-17: the DataBridge-era modules (`dmp.camel-activemq`, `-hono`, `-sql`, `-jsonjackson`, `-kafka`) are deleted; the compiler never selected them and they had no tests. Kafka stays as the repository-event transport (`camel-kafka` in `dmp.management`). A protocol needed later returns as an AID binding with tests. |
-| A9 | **SNMP binding** (AID 1.2 `…/AssetInterfacesDescription/1/2/SNMP`) via Camel's `camel-snmp` component: Read (GET/poll), Observe (traps), Write (SET) | Not recognised: an SNMP interface is rejected with "no supported protocol binding". |
-| A10 | **CAN binding** (AID 1.2 `…/AssetInterfacesDescription/1/2/CAN`) via PLC4X's CAN drivers (e.g. CANopen), alongside Modbus and BACnet | Not recognised: a CAN interface is rejected with "no supported protocol binding". |
-
-### B. Runtime and operations
-
-| # | Item | Today |
-| --- | --- | --- |
-| B1 | **Recover from a lost MQTT event session** (broker reset or expiry) without a restart, e.g. a targeted rescan on reconnect with a clean session | Events in the gap are lost until restart (SPEC §4.2). |
-| B2 | **Multiple DMP instances / high availability** (leases, partitioned adoption scopes, edge placement) | Exactly one DMP per set of mappings; `DMP_MANAGED_AIMC_IDS` can partition manually. |
-| B3 | **Shared MQTT client per broker** for data-plane sources (one subscription union, async fan-out) | One MQTT client per endpoint. |
-| B4 | **Per-mapping memory isolation** for Lua | Heap shared by all mappings. |
-| B5 | **Lua blob provenance** (signing or trusted-author checks) | Any Lua in a readable AIMC runs. |
-| B6 | **Remove the residual `ProducerTemplate` device dispatch** in the invocation adapters (HTTP, OPC UA, MQTT) in favour of plain route steps | Done (P3): adapters contribute route steps (`configureInvoke`), run in a command route behind a Content Enricher. Per-sink transformer chains still use a `ProducerTemplate`. |
-| B7 | **Credential redaction audit** of data-plane log lines and caller error details (connector URIs can carry credentials) | Redaction exists for status, fingerprints and settings; data-plane paths are not audited. |
-
-### C. Verification gaps
-
-| # | Item |
-| --- | --- |
-| C1 | Live staging on the lab: Occupy/Halt and granular Operations, cross-AAS references, a mixed sync+async fan-in mapping. |
-| C2 | Kafka `SASL_SSL` with `PLAIN` is not integration-tested (SCRAM over TLS and PLAIN without TLS are). |
-| C3 | Performance and capacity evaluation (mapping count, heap, sockets, latency) was deferred by decision to one final evaluation. |
-| C4 | The raw model fixtures in `dmp.component/src/test/resources/runtime-model-contracts/` were generated by the removed Python node. Forward maintenance (first used 2026-10-18, P5): migrate the fixtures with a one-off script whose rules the manifest records, re-capture `elements.aid` from the migrated files, update the manifest hashes and vocabulary and record the step in `provenance.migrations`; compile outcomes are never regenerated to hide a difference. Still open: whether to regenerate the fixtures from `aas-model` instead (all are AID 1.1; regenerated ones would be AID 1.2). |
-| C5 | `ManagedPackagedRuntimeIntegrationTest.brokerOutageDropsCachedHealthAndSameEndpointRecoveryDoesNotReplayActions` is flaky: once in three full runs, managed shutdown exceeded its deadline while the Kafka broker was down (the `dmp-value-feed` executor was force-stopped). Decide whether shutdown during a broker outage should be faster or the deadline longer. |
-| C6 | Polled AAS Property sources (and fan-in reads) hand Lua the element JSON (`value` as lexical text); SPEC §5.3 says `GET …/$value`. Decide which is intended and align SPEC or `AASPollingConsumer`. |
-
-### D. Deployment and migration (parent workspace)
-
-| # | Item |
-| --- | --- |
-| D1 | Cut over any deployed stack still running the Python manager and per-asset DMPs: stop old owners, migrate persisted `invocationDelegation` qualifiers to `http://dmp:8080/...`, start one Java DMP, with a rollback path. |
-| D2 | `AASDescriptions/Resource/configs/syntegonStoppering.json` still carries a pre-ADR-022 AID block; stations pin `syntegonStoppering.main.json` instead. Fix or delete the stale file. |
-| D3 | ARSO still defaults delegation to `http://registration-service:8087`; the independent Python `OperationDelegation` service has its own routes. Decide whether their assets are in scope; do not delete unrelated Python or rewrite their fixtures merely to remove old host strings. |
-| D4 | `labServer-compose.yml:260-272` still defines the legacy standalone DataBridge/config mount. Decide whether this separate deployment file is supported, then migrate or retire it; do not infer it is active from its presence. |
-| D5 | Registration preserves explicit authored invocation URLs (including other origins) and does not reject every unresolved qualifier macro. Decide whether intended shared-DMP operations must enforce origin/path/macro constraints; current fixed-origin authoring is not a global registration invariant. |
-
-### E. Library audit
-
-| # | Item |
-| --- | --- |
-| E1 | `luaj-jse` 3.0.1 (2015) is unmaintained and no LuaJ fork is actively maintained. Its process-wide string metatable let one blob change string methods for all others; fixed in `6167ad5`. Cobalt is ruled out: its README promises no API stability and advises against general use. The only maintained alternative found is **luajava** (real Lua 5.1–5.4/LuaJIT via JNI), where a native crash takes down the whole DMP. Decision for now: stay on LuaJ, work around its defects in `LuaSandbox`, and revisit if a defect cannot be worked around. |
-| E2 | ~~`dmp.camel-hono` mixed Hono 1.x and 2.x clients~~ — module deleted (A8). |
-| E3 | ~~Minor version lags of the SQL drivers (mariadb, postgresql, sqlite-jdbc, mysql-connector-j)~~ — module deleted (A8). |
-| E4 | Java 25: blocked until Milo, PLC4X, LuaJ and the `linux/arm/v7` image are verified on it. |
+| Acknowledgements written to AAS Properties (old A2) | No. A further Property is written through fan-out: an extra Sink on an ordinary mapping, a ResponseSink after the response transform on a bridge mapping. |
+| Operation variables of other element types (A3) | No. Properties, collections and lists (nested) only. |
+| Custom-encoded OPC UA datatypes (A4) | No. Structures the server describes are supported (SPEC §5.2, 2026-10-18); pre-1.04 DataTypeDictionaries only if a station needs them. |
+| Per-element array fan-out via `valuePath` (A5) | No; Lua loops. |
+| PLC4X/Modbus actions (A6) | No; the higher-level control sequences writes and reads (SPEC §7.1). |
+| Kafka/ActiveMQ/SQL bindings, Hono (A8) | Dropped 2026-10-17; a protocol needed later returns as an AID binding with tests. |
+| Invocation URL validation at registration (D5) | No. `aas-model` authors the final `invocationDelegation` URLs; registration stores the AAS unchanged and does not rewrite or validate them. |
+| Deployed-stack cutover (D1) | Not needed; the Python manager is gone. |
+| ARSO delegation defaults (D3) | Out of scope (side project). |
+| AID checked against Modbus, MQTT or HTTP devices | No (2026-10-18). These devices do not describe themselves; only OPC UA values are checked against the server's DataTypes (SPEC §5.2). Unsupported schema terms are rejected instead. |
+| Java 25 (E4) | Stay on Java 21 (2026-10-18). Camel 4.22 supports 25; PLC4X 0.13.1 is tested to 24; Milo and LuaJ make no statement. |
+| LuaJ replacement (E1) | Stay on LuaJ and work around its defects in `LuaSandbox` (as `6167ad5` did for the shared string metatable). Cobalt promises no API stability; luajava runs native code that can crash the JVM. Revisit only if a defect cannot be worked around. |
 
 ## Accepted limitations
 

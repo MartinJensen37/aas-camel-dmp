@@ -291,7 +291,8 @@ class ManagedPackagedRuntimeIntegrationTest {
 		void stop(boolean abrupt) throws Exception {
 			if (process == null) return;
 			if (abrupt) process.destroyForcibly(); else process.destroy();
-			if (!process.waitFor(15, TimeUnit.SECONDS)) {
+			// Kafka clients may wait out their own close timeout after a broker outage.
+			if (!process.waitFor(45, TimeUnit.SECONDS)) {
 				String threads = "";
 				Path dump = Files.createTempFile("dmp-managed-shutdown-", ".log");
 				var diagnostic = new ProcessBuilder(System.getProperty("java.home") + "/bin/jcmd", Long.toString(process.pid()), "Thread.print")

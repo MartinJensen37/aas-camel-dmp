@@ -1,6 +1,6 @@
 # aas-camel-dmp — Design Specification
 
-> **Status (2026-10-15):** describes the implemented single-process Java DMP.
+> **Status (2026-10-18):** describes the implemented single-process Java DMP.
 > Open and deferred work is tracked in [PLAN.md](PLAN.md). Earlier designs
 > (Python management node, per-asset containers, file configuration, JSONata,
 > BaSyx v1) are retired; see the git history before `8fe9c46` for their text.
@@ -17,7 +17,8 @@ Administration Shells. It:
    (MQTT, OPC UA, HTTP, Modbus via PLC4X, AAS elements), transform them
    with a sandboxed Lua script, and write them to sinks;
 3. serves AAS Operation invocations delegated by BaSyx and forwards them to the
-   device over HTTP, OPC UA Methods or MQTT 5 request/reply;
+   device over HTTP, OPC UA Methods or MQTT 5 request/reply, or as a property
+   write;
 4. keeps routes current from repository events.
 
 Out of scope: the AAS server, model authoring and registration (`aas-model`,
@@ -137,7 +138,7 @@ to devices. Such a source has no value until its first change event.
 Accepted template versions: AIMC 2.0 and its bug-fix release 2.1 (same
 semantic ID; 2.1 list members carry no idShort, so an unnamed mapping is
 identified by its position), and AID 1.1 and 1.2 (1.2 adds the SNMP and CAN
-bindings, not yet supported, and optional fields such as
+bindings, not yet supported (PLAN), and optional fields such as
 `EndpointMetadata/protocolVersion`, which the DMP ignores). Other versions
 block the mappings that reference them.
 
@@ -191,18 +192,47 @@ the form serves:
 
 | Mapping role | Needs | Interaction |
 | --- | --- | --- |
-| Source on a property | `observeproperty` or `readproperty` | Observe when the property is observable and the connector observes (MQTT, OPC UA monitored item, Modbus polling); else Read (with the effective polling interval; 5 s without one) |
+| Source on a property | `observeproperty` or `readproperty` | Observe when the property is observable and the connector observes (MQTT, OPC UA monitored item, HTTP `subprotocol`, Modbus polling); else Read (with the effective polling interval; 5 s without one) |
 | Source on an event | `subscribeevent` | Observe |
 | Sink on a property | `writeproperty` | Write |
 | Sink on an action | `invokeaction` | Invoke (bridge mappings only) |
 
+**Data schemas.** A schema's `type` is one of the JSON types (`boolean`,
+`integer`, `number`, `string`, `object`, `array`, `null`; a leaf written as a
+typed AAS Property takes its `valueType`). `properties`, `items` and `required`
+(or the `RequiredProperties` qualifier) nest freely. Constraints are read as AID
+writes them, `min_max`, `lengthRange` and `itemsRange` (Ranges), `const` and
+`enum`, as well as the JSON-schema names (`minimum`, `maxLength`, `pattern`,
+`format`, …); they matter to affordance validation. Annotations (`title`,
+`description`, `unit`, `default`, `key`) are accepted and ignored. Terms the DMP
+cannot honour reject the AID: `oneOf`, `anyOf`, `allOf`, `not`,
+`if`/`then`/`else`, `$ref`, `prefixItems`, `additionalProperties`,
+`patternProperties`, `contentEncoding`, `contentMediaType`, and any other `type`.
+
 An `op` value outside the WoT operation types, an unrepresented form term
-(e.g. `subprotocol`, `htv_headers`, a form `security` selection) or a binding
-term of another protocol blocks the mapping.
+(e.g. `htv_headers`, subprotocol `websub`, a form `security` selection) or a
+binding term of another protocol blocks the mapping.
 
 **HTTP.** The method is `htv_methodName` (mandatory in AID), else the WoT
 default: GET to read, PUT to write, POST to invoke. A read is a GET poll; a
 write is PUT, POST or PATCH. Bodies are JSON.
+
+A form with a `subprotocol` (AID 2.24.1, WoT HTTP binding) observes: it must
+serve `observeproperty` (a property, e.g. `observable` true) or
+`subscribeevent` (an event), and an HTTP event needs one. `dmp-http-observe:`
+(§9) consumes it:
+
+- `longpoll`: a GET the server answers on the next change; each answer with a
+  body is one value (204 or an empty body is none), and the GET is repeated
+  at once (at most every 100 ms; a request held for 5 minutes is reissued).
+- `sse`: a GET with `Accept: text/event-stream`; the `data` of each event is
+  one value. A closed stream is reopened after the server's `retry` (3 s by
+  default) with `Last-Event-ID`.
+
+Values are decoded as the form's `contentType` (JSON). A failed request or
+broken stream is retried with backoff (1 s doubling to 30 s); values in the
+gap are lost. An observed source takes no PollingInterval; `websub` (an
+inbound callback) is not supported.
 
 **MQTT.** The topic is the resolved `href`'s path without its leading `/`,
 percent-decoded: AID writes a topic with a leading `/` as `.//topic` and the
@@ -245,6 +275,18 @@ OPC UA follows OPC 10101 (the OPC UA binding for WoT):
 - `readproperty`, `writeproperty`, `observeproperty` and `invokeaction` map to
   the UA Read, Write, Monitor and Call services. An observable variable is
   observed (a monitored item); otherwise it is read.
+- A source receives the variable's value, as an MQTT or HTTP source receives
+  its payload, so the AID schema describes what Lua gets and a reference into
+  the schema selects a member of the value. A sample or read without a Good
+  status contributes nothing; status codes and timestamps are not passed on.
+- The AID must describe the device: a sampled or read value carries what the
+  server declares for it (the variable's built-in type, or the structure's
+  `DataTypeDefinition`, nested), and every member the AID schema describes must
+  exist there with a compatible JSON type (`number` accepts `integer`; members
+  the AID leaves out are still delivered). A source whose AID disagrees, or
+  whose reference names a member the device lacks, contributes nothing; each
+  value fails with the differences by path. Writes and Method inputs are held
+  to the server's definition when they are encoded (below).
 - A form names its node by the NodeId of its `href` (`/?id=<nodeId>`, `#` and
   `&` percent-encoded), else by `uav_browsePath`: an absolute path from the
   Root node (`/Root/Objects/2:Machine/2:Pressure`; qualified names
@@ -262,6 +304,21 @@ OPC UA follows OPC 10101 (the OPC UA binding for WoT):
   action affordance (a NodeId, or a list holding one), not in the form.
 - Forms may declare `application/octet-stream` (the binding's default UA
   serialization); values are decoded from the UA types either way.
+- Structures are UA Binary ExtensionObjects whose encoding the server
+  describes: the client reads the server's DataType nodes and their
+  `DataTypeDefinition`s (OPC UA 1.04) once per session, when it first meets a
+  structure (Milo's dynamic DataTypeManager), so the AID schema is not a codec.
+  A structure reaches Lua as an object keyed by field name (nested; an absent
+  optional field is left out), an array of structures as an array, a union as
+  `{field: value}` (null when empty), an enumeration as its Int32 value.
+  Namespace-0 structures (e.g. Range) are objects the same way. Writes and
+  Method inputs are encoded from objects by the variable's `DataType` or the
+  argument's `DataType`: every non-optional field is required, an unknown field
+  is an error, an enumeration takes its value or its name. A value that does
+  not fit fails the write (`OPCUA_VALUE_MISMATCH`) or the call
+  (`METHOD_ARGUMENT_MISMATCH`). Not supported: custom encodings the server does
+  not describe (they stay undecoded), servers that publish only the pre-1.04
+  DataTypeDictionary, and structure fields with a valueRank above 1.
 - Events (a DMP extension; OPC 10101 v1.00 defines no event vocabulary) are
   event affordances (WoT EventAffordance, `aas-model` `OpcuaEvent`), consumed
   like MQTT events: the form `href` (or `uav_browsePath`) names the event
@@ -289,14 +346,19 @@ no such payloads.
 | Reference target | Interaction |
 | --- | --- |
 | Operation as Source | Accept invocation (bridge mapping) |
-| Property Source with `PollingInterval` | Read (`GET …/$value`) |
+| Property Source with `PollingInterval` | Read (`GET` of the element) |
 | Property Source without one | Observe through the value feed (§4.3) |
 | Collection/list Source | Read; requires an explicit interval |
 | Property/collection Sink | Write (`PATCH …/$value`) |
 | Operation as Sink | Rejected (no chained actions) |
 
-The Property `valueType` (or list `valueTypeListElement`) types the values Lua
-receives and returns. Property values are never part of the configuration.
+Lua receives every AAS element in one form, whether polled, read for
+fan-in, delivered by the value feed or passed as an Operation variable: a
+Property as its value typed by its `valueType` (integers as integers, decimals
+and floats as numbers, booleans as booleans, other types as their lexical
+text), a collection as an object keyed by member idShort, a list as an array.
+The same types apply to the values Lua returns. Property values are never part
+of the configuration.
 
 ### 5.4 Granularity (`valuePath`)
 
@@ -360,13 +422,14 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    - **HTTP**: the HTTP response is the reply;
    - **OPC UA**: Method call; arguments are matched by name to the server's
      `InputArguments`/`OutputArguments`, outputs must match the declared basic
-     type and rank;
+     type and rank; structured arguments are objects (§5.2);
    - **MQTT 5**: `paho-mqtt5-inout:` publishes with ResponseTopic and
      CorrelationData; the first reply on the declared reply topic that carries
      the request's correlation data is the terminal reply, whatever its
      payload. A device publishes progress or other messages without that
      correlation data. Timeout 30 s.
-   - **PLC4X (Modbus)**: no actions; a tag write reports no result.
+   - **PLC4X (Modbus)**: no actions; an Operation bound to a property writes
+     its tag (§7.1).
 5. The reply is validated, optionally transformed by `ResponseTransformation`,
    and returned to the caller as its output variables. Without response Lua a
    native normalized reply passes through.
@@ -400,8 +463,8 @@ On the AAS side the mapping fans in and out:
 - **Fan-in.** Further Sources that address AAS elements are read once per
   invocation, before the request Lua, and passed to it under their SourceIds
   next to the Operation's variables. A failed read answers
-  `DMP_DEVICE_TRANSPORT_ERROR`. A read returns the element as the repository
-  serves it (a Property's value as lexical text).
+  `DMP_DEVICE_TRANSPORT_ERROR`. A read hands Lua the element's value
+  (§5.3).
 - **Fan-out.** ResponseSinks receive the response Lua's values for their
   SinkIds (§7 item 6).
 
@@ -455,10 +518,10 @@ end
 | Binding | Implemented | Not implemented |
 | --- | --- | --- |
 | AAS | Read, Observe (events), Write, Accept invocation | Operation sinks |
-| OPC UA (Milo) | Read (Read service), Observe (monitored items), Events (event monitored items, DMP extension), Write, Invoke (Method) | Custom/structured datatypes, condition refresh and acknowledgement |
+| OPC UA (Milo) | Read (Read service), Observe (monitored items), Events (event monitored items, DMP extension), Write, Invoke (Method); structures, unions and enumerations the server describes | Encodings the server does not describe, pre-1.04 DataTypeDictionaries, condition refresh and acknowledgement |
 | MQTT 5 | Observe (subscribe), Write (publish), Invoke (request/reply) | Read; MQTT 3.1.1 |
-| HTTP | Read (poll), Write, Invoke | Observe, inbound requests other than Operations |
-| PLC4X (Modbus) | Read, acknowledged Write of one tag per affordance | Invoke (a tag write reports no result) |
+| HTTP | Read (poll), Observe and events (`longpoll`, `sse`), Write, Invoke | `websub`, `htv_headers`, inbound requests other than Operations |
+| PLC4X (Modbus) | Read, acknowledged Write of one tag per affordance | Invoke (Modbus has no actions) |
 | BACnet | — (rejected: the PLC4X 0.13.1 `bacnet-ip` driver neither reads nor writes; it only listens for COV notifications) | Read, Write, Observe |
 
 Data-plane MQTT clients are one per endpoint; their credentials are bound in
@@ -472,12 +535,14 @@ any component, and the upstream component stays usable unchanged:
 | Scheme | Extends | Adds |
 | --- | --- | --- |
 | `dmp-plc4x:` | camel-plc4x | acknowledged writes and checked reads (failures raise instead of being logged or read as `{}`); the body is the tag value |
-| `dmp-milo-client:` | camel-milo client | a Method producer that answers with the Call's result (camel-milo 4.22 drops it); a consumer whose monitored item has its own subscription and a sample queue (camel-milo shares one subscription per server, created with the first endpoint's publishing interval, and keeps only the latest sample); event monitored items with an EventFilter (options `eventFields`, `eventType`; camel-milo has only data-change filters); a Write producer that waits for the server, fails on a Bad status and writes scalars as the variable's DataType (camel-milo ignores the status) |
+| `dmp-milo-client:` | camel-milo client | a Method producer that answers with the Call's result (camel-milo 4.22 drops it); a consumer whose monitored item has its own subscription and a sample queue (camel-milo shares one subscription per server, created with the first endpoint's publishing interval, and keeps only the latest sample); event monitored items with an EventFilter (options `eventFields`, `eventType`; camel-milo has only data-change filters); a Write producer that waits for the server, fails on a Bad status and writes scalars as the variable's DataType (camel-milo ignores the status); structures decoded and encoded with the server's DataTypes (§5.2) |
 | `paho-mqtt5-inout:` | camel-paho-mqtt5 | MQTT 5 request/reply with correlation; owns its reply consumer and publish producer |
+| `dmp-http-observe:` | — (camel-http has no consumer) | observing an HTTP resource by long polling or server-sent events (§5.2) |
 
 Connector invocation steps (`SynchronousInvocationAdapter.configureInvoke`)
-remain for argument and reply mapping (HTTP, OPC UA, MQTT); a PLC4X action
-trigger is the `dmp-plc4x:` producer itself.
+map arguments and replies of actions (HTTP, OPC UA, MQTT); an Operation bound
+to a property is the connector's acknowledged write (`dmp-plc4x:`,
+`dmp-milo-client:`, HTTP, MQTT).
 
 ## 10. AAS interaction log
 
@@ -529,7 +594,7 @@ InfluxDB point:
 | ADR-017 | Mapping-scoped entity identities; raw SourceId/SinkId reach Lua. |
 | ADR-019 | References are anchored at the submodel they name; no fallback to another AID. |
 | ADR-020 | One fixed execution rule per mapping (§6); no authorable execution policy. |
-| ADR-022 | Operation delegation: the Operation is the source, an AID action is the sink. |
+| ADR-022 | Operation delegation: the Operation is the source, one AID action or property is the sink (§7.1). |
 | ADR-023 | Variables/Parameters are plain Properties; references address the element itself. |
 | ADR-024 | Optional `TriggerSourceIds`; acquisition mode comes from declared capability. |
 | ADR-025 | Connector capabilities are explicit per interaction (§9). |
