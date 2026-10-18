@@ -212,8 +212,10 @@ class OpcUaSubscriptionSourcesTest {
 			interaction.getAsJsonArray("value").add(transitionEvents(pressure));
 			sourcePath = "events";
 		} else {
+			// An observable variable is a monitored item (OPC 10101 observeproperty).
 			child(forms, "href").addProperty("value", "/?id=ns=1;s=Level");
-			child(forms, "op").addProperty("value", "observeproperty");
+			pressure.getAsJsonArray("value").add(json("{\"modelType\":\"Property\",\"idShort\":\"observable\","
+					+ "\"valueType\":\"xs:boolean\",\"value\":\"true\"}"));
 			sourcePath = "properties";
 		}
 		JsonObject aimc = json(resource("opcua-read/aimc.json")).getAsJsonObject();
@@ -257,7 +259,6 @@ class OpcUaSubscriptionSourcesTest {
 		child(event, "title").addProperty("value", "Transition");
 		JsonObject forms = child(event, "forms");
 		child(forms, "href").addProperty("value", "/?id=i=2253");
-		child(forms, "op").addProperty("value", "subscribeevent");
 		JsonObject eventType = json("{\"modelType\":\"Property\",\"idShort\":\"uav_eventType\",\"valueType\":\"xs:string\","
 				+ "\"value\":\"i=2378\"}").getAsJsonObject();
 		eventType.add("semanticId", semantic("https://smartproductionlab.aau.dk/aid/OpcuaEventType/1/0"));

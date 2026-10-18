@@ -128,70 +128,58 @@ a Content Enricher.
   BaSyx does not implement it yet) for actions longer than a caller's HTTP
   timeout.
 
-### P5. Follow the WoT protocol bindings under the hood (reviewed 2026-10-17)
+### P5. AID 1.2 and the WoT protocol bindings (reviewed 2026-10-17, implemented 2026-10-18)
 
-The AID should be authored as the W3C WoT binding templates (and OPC 10101)
-describe; the compiler translates those forms into connector URIs, so
-connector syntax (PLC4X tag strings, Camel options) never appears in an AID.
-Reviewed against the editor's drafts in `w3c/wot-binding-templates` (HTTP,
-MQTT, Modbus, BACnet; CoAP, PROFINET, EtherNet/IP, LoRaWAN are not AID
-protocols) and OPC 10101. IO-Link, SNMP and CAN have no W3C binding; the IDTA
-vocabulary is the only reference there.
+The AID is authored as IDTA AID 1.2 defines it; what AID leaves EXTERNAL or
+undefined (action and event members, `op`, `response`, `readOnly`/`writeOnly`,
+MQTT request/reply, OPC UA events) is added inside the AID by the extension of
+aas-model `docs/aid-extension.md`. No separate Thing Description. AID wins
+where a WoT draft disagrees (MQTT topic in `href`, `bacv_useService`,
+`modv_zeroBasedAddressing`); the WoT bindings decide where AID is silent
+(operation defaults, actions, events). The compiler translates forms into
+connector URIs; connector syntax never appears in an AID (SPEC §5.2).
 
-**Modbus** (done 2026-10-17, SPEC §5.2: WoT forms are translated into PLC4X
-tags; PLC4X-syntax hrefs and `tcp://` bases are rejected. Remaining: `aas-model`'s
-`test_serde` authors a `modbus://` base and a `/Coil,1` href, which are not WoT):
+**Done (2026-10-18):**
 
-| | WoT Modbus binding | DMP today |
-| --- | --- | --- |
-| Base | `modbus+tcp://host:port` | `tcp://host:port`, PLC4X options in the query (`?unit-identifier=2`) |
-| href | `/{unitID}/{address}?quantity={n}`, protocol address | a PLC4X tag string (`/coil:1`, `holding-register:1:INT`), 1-based (`PROTOCOL_ADDRESS_OFFSET = 1`): off by one against WoT |
-| `modv_entity` | Coil, DiscreteInput, HoldingRegister, InputRegister | misused as a PLC4X address |
-| `modv_function` | readCoil, readHoldingRegisters, writeSingleCoil, …; ignored with `modv_entity` | rejected |
-| Defaults | readproperty → readCoil; writeproperty, invokeaction → writeSingleCoil | none; the address must name the memory area |
-| `modv_type`, quantity | xsd payload type; quantity default 1 | rejected; PLC4X type suffix and `[n]` |
-| `modv_mostSignificantByte`/`Word` | default true | rejected (PLC4X's big-endian default matches) |
-| `modv_pollingTime`, `modv_timeout` | observe polling; timeout, default infinite | rejected; AIMC `PollingInterval` |
-| `modv_zeroBasedAddressing` | deprecated, default false | rejected |
+- aas-model: the extension classes (`aid.py`), the TD 1.1 IRIs
+  (`td#hasInputSchema`, `td#isSynchronous`, `hctl#hasOperationType`, …),
+  ActionDefinition/EventDefinition member ids, `op` as an optional list, AID's
+  own `mqv_controlPacket`/`mqv_retain`/`mqv_qos`, `mqv_responseTopic` replacing
+  `mqv_response_topic`/`mqv_request_reply`/`response.href`. Builders author
+  only what differs from the defaults, bases with a trailing `/` and relative
+  hrefs. The IDTA
+  generator now gives every class with a concrete template idShort that
+  idShort as default.
+- DMP: operations derived per affordance (`AidForms`); a mapping role needs an
+  operation the form serves. Hrefs resolve against the base per RFC 3986 (the
+  DMP used to join the two paths) for HTTP, MQTT and Modbus. HTTP honours
+  `htv_methodName` (WoT defaults GET/PUT/POST; ordinary HTTP sinks send the
+  method). MQTT: consumer-view control packets, `.//` and `%23` in topics,
+  JSON `contentType` accepted, a source must be observable or retained, reply
+  timeout fixed at 30 s (`mqv_reply_timeout` dropped). Modbus: unit ID in the
+  base, `modv_zeroBasedAddressing=false`, `modv_pollingTime` as a lower limit.
+  OPC UA: an observable variable is a monitored item. Action and event members
+  of Modbus/BACnet/HTTP are rejected with a clear issue.
+- Fixtures (C4): migrated by a one-off script (its rules are in the manifest), `elements.aid`
+  re-captured from the migrated AIDs, manifest hashes and vocabulary updated,
+  the step recorded in `provenance.migrations`; compile outcomes untouched.
 
-The table above describes the state before 2026-10-17.
+**Open:**
 
-**MQTT:**
-
-- The IDTA term is `mqv_controlPacket` (W3C semantic id); the DMP and
-  `aas-model` use `mqv_control_packet` with a DMP id, so a standard IDTA MQTT
-  form is rejected.
-- WoT control packets describe the consumer (read/observe/subscribeevent →
-  subscribe; write/invoke → publish); ours describe the device (property:
-  publish, action: subscribe), inverted. The compiler only checks the value
-  set, but the `aas-model` builders author the inverted values.
-- `mqv_retain` and `mqv_qos` exist in the IDTA template with W3C ids;
-  `aas-model` redefines them with DMP ids.
-- WoT allows readproperty as a subscription to the retained message (the form
-  should also offer observeproperty); we reject it for sources.
-- `publishproperty` is accepted but is not a WoT operation.
-- Topic: the newest W3C draft moves it to `mqv:topic`/`mqv:filter` with href
-  = broker; IDTA keeps href = topic relative to the base, which we follow.
-- Request/reply (`mqv_request_reply`, `mqv_response_topic`) is our extension
-  (the binding has none); keep it.
-
-**HTTP:** writeproperty defaults to PUT in WoT, we require POST (a PUT form is
-rejected); honour `htv_methodName` with the WoT defaults. observeproperty
-means long polling or SSE (`subprotocol` longpoll/sse); we accept it with GET
-and poll: reject it until a subprotocol is implemented (A7).
-
-**BACnet** (not usable with conformant forms): WoT href
-`bacnet://<device-instance>/<objectType>,<instance>[/<property>]` (default
-present-value), `contentType` always `application/octet-stream` (we reject
-non-JSON), services per op (ReadProperty, WriteProperty, SubscribeCOV;
-commandPriority 16) via `bacv:usesService` (the IDTA template writes
-`bacv_useService`); we require an IP base, a PLC4X address and reject every
-`bacv_*` term. Check what PLC4X `bacnet-ip` supports before designing.
-
-**OPC UA** (aligned since 2026-10-17): op → service mapping, `/?id=` hrefs,
-`application/octet-stream`, `uav_componentOf`. Suspected bug:
-`uav_browsePath` is passed to Milo as a NodeId instead of being resolved
-(TranslateBrowsePathsToNodeIds).
+- **OPC UA `uav_browsePath`** is passed to Milo as a NodeId. AID: an absolute
+  path from the Root node; translate it (TranslateBrowsePathsToNodeIds) in
+  `dmp-milo-client:`.
+- **HTTP `htv_headers`** are rejected ("not sent yet"); the polling source and
+  the sink need static headers.
+- **HTTP observe** (`subprotocol` longpoll/sse) is rejected (A7).
+- **BACnet** (not usable with conformant forms): AID base
+  `bacnet://{deviceId}` carries no IP address; PLC4X `bacnet-ip` needs one.
+  Decide on device discovery or an extension term before implementing
+  `bacv_useService`, `bacv_hasDataType` and the uriVariables
+  (`commandPriority`, `covIncrement`).
+- **Parent workspace**: regenerate the AAS descriptions (bases now end with
+  `/`, hrefs are relative); the registration service and other consumers of
+  `mqv_control_packet`/`mqv_response_topic` follow.
 
 ### P2. AAS interaction log and TimeSeries sinks (InfluxDB)
 
@@ -287,7 +275,7 @@ Decide per item: keep (and schedule), or drop (and delete it from SPEC).
 | C1 | Live staging on the lab: Occupy/Halt and granular Operations, cross-AAS references, a mixed sync+async fan-in mapping. |
 | C2 | Kafka `SASL_SSL` with `PLAIN` is not integration-tested (SCRAM over TLS and PLAIN without TLS are). |
 | C3 | Performance and capacity evaluation (mapping count, heap, sockets, latency) was deferred by decision to one final evaluation. |
-| C4 | The raw model fixtures in `dmp.component/src/test/resources/runtime-model-contracts/` were generated by the removed Python node. Decide how they are maintained (hand-edited, or generated from `aas-model`). All fixtures are AID 1.1; regenerated ones from the current `aas-model` would be AID 1.2, which the DMP accepts since 2026-10-16. |
+| C4 | The raw model fixtures in `dmp.component/src/test/resources/runtime-model-contracts/` were generated by the removed Python node. Forward maintenance (first used 2026-10-18, P5): migrate the fixtures with a one-off script whose rules the manifest records, re-capture `elements.aid` from the migrated files, update the manifest hashes and vocabulary and record the step in `provenance.migrations`; compile outcomes are never regenerated to hide a difference. Still open: whether to regenerate the fixtures from `aas-model` instead (all are AID 1.1; regenerated ones would be AID 1.2). |
 | C5 | `ManagedPackagedRuntimeIntegrationTest.brokerOutageDropsCachedHealthAndSameEndpointRecoveryDoesNotReplayActions` is flaky: once in three full runs, managed shutdown exceeded its deadline while the Kafka broker was down (the `dmp-value-feed` executor was force-stopped). Decide whether shutdown during a broker outage should be faster or the deadline longer. |
 | C6 | Polled AAS Property sources (and fan-in reads) hand Lua the element JSON (`value` as lexical text); SPEC §5.3 says `GET …/$value`. Decide which is intended and align SPEC or `AASPollingConsumer`. |
 

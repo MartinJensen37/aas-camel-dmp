@@ -100,16 +100,15 @@ public final class WireModel {
 			Presence<DataSchema> output, SubmodelElement element) {
 		public Affordance { forms = List.copyOf(forms); }
 	}
-	/** One AID form; protocol binding terms ({@code mqv_*}, {@code uav_*}, …) keep their authored lexical values. */
-	public record Form(Presence<String> href, Presence<String> contentType, Presence<String> operation,
-			Presence<String> semanticProtocol, Presence<String> httpMethod, Map<String, String> mqttTerms,
-			Presence<String> responseTopic, Map<String, String> bindingTerms, SubmodelElement element) {
-		public Form(Presence<String> href, Presence<String> contentType, Presence<String> operation,
-				Presence<String> semanticProtocol, Presence<String> httpMethod, Map<String, String> mqttTerms,
-				Presence<String> responseTopic, SubmodelElement element) {
-			this(href, contentType, operation, semanticProtocol, httpMethod, mqttTerms, responseTopic, Map.of(), element);
-		}
-		public Form { mqttTerms = immutableMap(mqttTerms); bindingTerms = immutableMap(bindingTerms); }
+	/**
+	 * One AID form; protocol binding terms ({@code mqv_*}, {@code uav_*}, …) keep their authored lexical values.
+	 * {@code operations} is the authored {@code op} list, lower-cased; empty when {@code op} is absent, in which
+	 * case the affordance's default operations apply (aas-model docs/aid-extension.md §3.4).
+	 */
+	public record Form(Presence<String> href, Presence<String> contentType, List<String> operations,
+			Presence<String> httpMethod, Map<String, String> mqttTerms, Presence<String> responseTopic,
+			Map<String, String> bindingTerms, SubmodelElement element) {
+		public Form { operations = List.copyOf(operations); mqttTerms = immutableMap(mqttTerms); bindingTerms = immutableMap(bindingTerms); }
 	}
 	/** A WoT data schema; typed constraint values are String, Number, Boolean or a List of enum members. */
 	public record DataSchema(Presence<String> valueType, Presence<String> contentType,

@@ -20,12 +20,8 @@
     "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sources",
     "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Transformation",
     "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/Submodel",
-    "https://smartproductionlab.aau.dk/aid/MqttControlPacket/1/0",
-    "https://smartproductionlab.aau.dk/aid/MqttQos/1/0",
-    "https://smartproductionlab.aau.dk/aid/MqttRequestReply/1/0",
-    "https://smartproductionlab.aau.dk/aid/MqttResponseForm/1/0",
+    "https://smartproductionlab.aau.dk/aid/ActionDefinition/1/0",
     "https://smartproductionlab.aau.dk/aid/MqttResponseTopic/1/0",
-    "https://smartproductionlab.aau.dk/aid/MqttRetain/1/0",
     "https://smartproductionlab.aau.dk/aimc/ExecutionSemantics/1/0",
     "https://smartproductionlab.aau.dk/aimc/ExecutionSemantics/TriggerSourceIds/1/0",
     "https://smartproductionlab.aau.dk/aimc/ResponseSink/Sink/1/0",
@@ -38,22 +34,26 @@
     "https://www.w3.org/1999/02/22-rdf-syntax-ns#type",
     "https://www.w3.org/2011/http#methodName",
     "https://www.w3.org/2019/wot/hypermedia#forContentType",
+    "https://www.w3.org/2019/wot/hypermedia#hasOperationType",
     "https://www.w3.org/2019/wot/hypermedia#hasTarget",
+    "https://www.w3.org/2019/wot/hypermedia#returns",
     "https://www.w3.org/2019/wot/json-schema#enum",
     "https://www.w3.org/2019/wot/json-schema#items",
     "https://www.w3.org/2019/wot/json-schema#properties",
     "https://www.w3.org/2019/wot/json-schema#propertyName",
+    "https://www.w3.org/2019/wot/json-schema#required",
+    "https://www.w3.org/2019/wot/mqtt#hasQoSFlag",
+    "https://www.w3.org/2019/wot/mqtt#hasRetainFlag",
     "https://www.w3.org/2019/wot/td#ActionAffordance",
     "https://www.w3.org/2019/wot/td#PropertyAffordance",
     "https://www.w3.org/2019/wot/td#baseURI",
     "https://www.w3.org/2019/wot/td#definesSecurityScheme",
     "https://www.w3.org/2019/wot/td#hasForm",
-    "https://www.w3.org/2019/wot/td#hasInput",
-    "https://www.w3.org/2019/wot/td#hasOperationType",
-    "https://www.w3.org/2019/wot/td#hasOutput",
+    "https://www.w3.org/2019/wot/td#hasInputSchema",
+    "https://www.w3.org/2019/wot/td#hasOutputSchema",
     "https://www.w3.org/2019/wot/td#hasSecurityConfiguration",
     "https://www.w3.org/2019/wot/td#isObservable",
-    "https://www.w3.org/2019/wot/td#synchronous",
+    "https://www.w3.org/2019/wot/td#isSynchronous",
     "https://www.w3.org/2019/wot/td#title"
   ],
   "acceptedSupplementalSemanticIds": [
@@ -683,7 +683,35 @@
       "external/python/basyx/aas/adapter/json/json_serialization.py": "a3fbf780a1b30014a547e595be09e33ef0ca4cef58623ab96c43649d03277c29"
     },
     "stationSubmodelsSourceOnly": "AASDescriptions/Resource/configs/syntegonStoppering.main.json; the raw contract contains submodels only, not a synthesized owner shell",
-    "uuidAllocation": "UUIDv5(NAMESPACE_URL, runtime-model-contracts/{case}/{allocation-index}) during converter execution only"
+    "uuidAllocation": "UUIDv5(NAMESPACE_URL, runtime-model-contracts/{case}/{allocation-index}) during converter execution only",
+    "migrations": [
+      {
+        "date": "2026-10-18",
+        "tool": "one-off migration, not kept (aas-model docs/aid-extension.md §5)",
+        "rules": [
+          "action and event members: semanticId ActionDefinition/EventDefinition, supplemental td#name",
+          "input/output/safe/idempotent/synchronous: TD 1.1 IRIs (td#hasInputSchema, td#isSynchronous, ...)",
+          "form op: a list of lower-cased operation types, dropped where it is the affordance's default",
+          "MQTT: mqv_control_packet and mqv_request_reply dropped, mqv_retain/mqv_qos as AID terms (false retain dropped), mqv_response_topic or response.href as mqv_responseTopic, response reduced to contentType",
+          "htv_* terms dropped from forms of non-HTTP interfaces",
+          "MQTT/HTTP/Modbus: a base path ends with / and its hrefs are relative (RFC 3986 resolution, same topics and URLs)"
+        ],
+        "cases": [
+          "fan-in-out",
+          "fine-path",
+          "fine-protocols",
+          "grouped-action",
+          "http-operation",
+          "opcua-method",
+          "opcua-read",
+          "plc4x",
+          "projection-extensions",
+          "stoppering",
+          "stoppering-new-build"
+        ],
+        "recapture": "expected.json elements.aid re-captured from the migrated aid.json; compile outcomes unchanged"
+      }
+    ]
   },
   "resources": {
     "aas-collection-poll/aid.json": {
@@ -759,8 +787,8 @@
       "sha256": "548e031ee01f82b0cbecb20cee4b73dba430fa373ba2898742318be5391a1289"
     },
     "fan-in-out/aid.json": {
-      "byteLength": 105463,
-      "sha256": "cd49c141e351e935130af4255cfd9f087bd9fe9795d48b0ec1a5f1d424d4d74e"
+      "byteLength": 105346,
+      "sha256": "19b815b8b345acd96b8c1e95e7a58075218938d2d82106749fe61c150444f95a"
     },
     "fan-in-out/aimc.json": {
       "byteLength": 35797,
@@ -771,48 +799,48 @@
       "sha256": "69b052f4ceed353445a0e012eb668620737420e89d08ebfc2e0dd49530d75c2b"
     },
     "fan-in-out/expected.json": {
-      "byteLength": 21152,
-      "sha256": "0a1fd25c251f0e13a578a7ac3db42caa2000cbd87a5623d32d9279d0e9c60216"
+      "byteLength": 20994,
+      "sha256": "39ca216971a092c185335b7671eb8a51854d0cd58c7218de44cbfe89b645e8c5"
     },
     "fan-in-out/owner.json": {
       "byteLength": 3989,
       "sha256": "60fa191bfff1c9bb7e6cfb667269cc06312a1b6c80c2e0717e7f1b8f4d61592b"
     },
     "fine-path/aid.json": {
-      "byteLength": 91489,
-      "sha256": "f623b7d8422fce1eaeb3f6444b89aec144c06e6fc3409b9955176ed2166ccf43"
+      "byteLength": 91416,
+      "sha256": "8349a6eb21036645d86942b5d15a376f8fdd0ed21b6d570eec5542b1783d073e"
     },
     "fine-path/aimc.json": {
       "byteLength": 24546,
       "sha256": "516dce1a36b28958d3d1e54a4f8855ddae3a2bc59fc63ae7ffeffd7103eb48c8"
     },
     "fine-path/expected.json": {
-      "byteLength": 19229,
-      "sha256": "daed681f743445fec82dfc59f449177f5da44cd69405f568942787191966221b"
+      "byteLength": 19150,
+      "sha256": "0ef52b0e94fa84955b41038357281e1265ad84590d892b29b96cc044ec0fc865"
     },
     "fine-path/owner.json": {
       "byteLength": 3249,
       "sha256": "a7f9bb58e2ed75907eb23c8579acec534efed3dae859b4f3267d087c8d1a7e38"
     },
     "fine-protocols/aid.json": {
-      "byteLength": 193093,
-      "sha256": "faddbfc2d3172fe1394c2241a7e651c51a7c426ddffd1c057c25c2c743c53061"
+      "byteLength": 192437,
+      "sha256": "69cc643120ad13a189a9c7349ccfb9e54e5b8b749723359ba482f00b07101ddd"
     },
     "fine-protocols/aimc.json": {
       "byteLength": 37560,
       "sha256": "dc55e04103dfe244924d2bdd451bc7250cc298f665dd1262c526408061a71013"
     },
     "fine-protocols/expected.json": {
-      "byteLength": 38224,
-      "sha256": "4cbacf1b5387081b875f000d74d5aecd762263bc6222ae30eef307873ffc66c6"
+      "byteLength": 37823,
+      "sha256": "7181deffd5ccc9c94bed69892976414d6521e1cb1b7a104cedc80c299f58d8d2"
     },
     "fine-protocols/owner.json": {
       "byteLength": 3249,
       "sha256": "a7f9bb58e2ed75907eb23c8579acec534efed3dae859b4f3267d087c8d1a7e38"
     },
     "grouped-action/aid.json": {
-      "byteLength": 172115,
-      "sha256": "ec858892a96fa4689e60f6ab16e218ae559addc36a792b893d5163485164153c"
+      "byteLength": 162161,
+      "sha256": "6054ae9d08eac3d6f21de7232b547e42ac1b2b2f4ef9b98f9f2d136a8dfce969"
     },
     "grouped-action/aimc.json": {
       "byteLength": 30461,
@@ -823,16 +851,16 @@
       "sha256": "af89ef71416aaf8527df76c6a1688e24b0461e0b4b6e055347f5600e333355ac"
     },
     "grouped-action/expected.json": {
-      "byteLength": 26717,
-      "sha256": "fb52cc7417e74a6c6a57d724cf21aa924ed51de556d7ae7ba3b7781f5a7b4991"
+      "byteLength": 26269,
+      "sha256": "922ee9431938904196480983e7e972c847ce19e87b4589909fed37c7a8c37505"
     },
     "grouped-action/owner.json": {
       "byteLength": 4031,
       "sha256": "1308676092d1a4cb006617c8173ec04cab8eed195903462acb592f118c9b734c"
     },
     "http-operation/aid.json": {
-      "byteLength": 85008,
-      "sha256": "b46ede967eddee775bf6c3d790b66d0ded36ea8406ee61310c6ee5137618bdf0"
+      "byteLength": 84742,
+      "sha256": "9e326bb717d56829684f9c8c952603cfa9ca8bcfef36121db29e10e6f2d42d87"
     },
     "http-operation/aimc.json": {
       "byteLength": 24030,
@@ -843,8 +871,8 @@
       "sha256": "fbb94a43c69c5733ccc567ac72743d6c23b1acbfd9b1a78384a84c874d1a71fe"
     },
     "http-operation/expected.json": {
-      "byteLength": 20566,
-      "sha256": "a086881568cbb40e4694eb2c8b5b29d03268fb2dd31699946d6ecbaa60929cb1"
+      "byteLength": 20463,
+      "sha256": "61c827e19c336fd4e219c4b0d0385be59bdfb5089bfd13ed83a941b0afd1c759"
     },
     "http-operation/owner.json": {
       "byteLength": 4021,
@@ -871,8 +899,8 @@
       "sha256": "60fa191bfff1c9bb7e6cfb667269cc06312a1b6c80c2e0717e7f1b8f4d61592b"
     },
     "opcua-method/aid.json": {
-      "byteLength": 91889,
-      "sha256": "cfc527662f5fad2721c0ab861d92604985f497c32205e617e4f62e9335afe0e8"
+      "byteLength": 90699,
+      "sha256": "f5f7ad51f6c6ebecaa57324fe452c47836f05ec732351a1af0c7b5fa2eaa3dae"
     },
     "opcua-method/aimc.json": {
       "byteLength": 24045,
@@ -883,16 +911,16 @@
       "sha256": "c4faae0e2b28d70551acf4d2b5525037be01261f4890f827e3d5d30faf48dfd8"
     },
     "opcua-method/expected.json": {
-      "byteLength": 21015,
-      "sha256": "3df640aac10657618239f28171cf8683c0cd097a4b0b8bf4d6b61bdcd2370777"
+      "byteLength": 20507,
+      "sha256": "d1adf79a5cc013d4874c2ceee5fcd80b00dd313d935459539d48ff4bc56efeab"
     },
     "opcua-method/owner.json": {
       "byteLength": 4021,
       "sha256": "b02931035a3da2aa1bd303878fbb9055417e3292063c7a9e352735c8bb505e35"
     },
     "opcua-read/aid.json": {
-      "byteLength": 94968,
-      "sha256": "2980d1ad4a215783df420841302291d892523841b67d83ca64587c264e9f9728"
+      "byteLength": 94345,
+      "sha256": "266f2dc85f0f47522baafce55d1b305083acfdaa70d5c09ccc1ef372dd85965d"
     },
     "opcua-read/aimc.json": {
       "byteLength": 24692,
@@ -903,32 +931,32 @@
       "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
     },
     "opcua-read/expected.json": {
-      "byteLength": 20727,
-      "sha256": "7459c1e0ca18ba6eefaa8f02a6c2be7deb0ccf108f989cb253b8d2e9288fcf82"
+      "byteLength": 20326,
+      "sha256": "4a61a48be16a617cc6dcd5911ab29a5d4a590404a7ee676b6969b22f462d8d94"
     },
     "opcua-read/owner.json": {
       "byteLength": 3989,
       "sha256": "60fa191bfff1c9bb7e6cfb667269cc06312a1b6c80c2e0717e7f1b8f4d61592b"
     },
     "plc4x/aid.json": {
-      "byteLength": 97957,
-      "sha256": "896f88194950fc6d4ba97537fc2dc22323522f33acdbd746e9db7bf4857d04f0"
+      "byteLength": 97334,
+      "sha256": "7b39bad4ef4e823b4e6f55d25214edb8e54861dfe22e239e6618d26c3fc26588"
     },
     "plc4x/aimc.json": {
       "byteLength": 25205,
       "sha256": "96d8f0ecca1f7d161b639b5079f07579e1ee2836b23bc8ec4c61159dce71aaf8"
     },
     "plc4x/expected.json": {
-      "byteLength": 21052,
-      "sha256": "dee091bb9cf7cacf94c5c4f3802dbb5fa077ba715202ae5544420210c5676783"
+      "byteLength": 20651,
+      "sha256": "c7af3622d589a28f37d1dbbe5d121f0cbeae4e3b58d70aed9a62890706a4391a"
     },
     "plc4x/owner.json": {
       "byteLength": 3249,
       "sha256": "a7f9bb58e2ed75907eb23c8579acec534efed3dae859b4f3267d087c8d1a7e38"
     },
     "projection-extensions/aid.json": {
-      "byteLength": 116159,
-      "sha256": "b434f6ca7883ab761a73b57aa52fe04f40bf1f8dd49e4bcc914ab3fd3c765d69"
+      "byteLength": 103165,
+      "sha256": "a72d9449199e8a4cb216bed2a70e3cd8ebbde1a11b5a669255f91171cceab8eb"
     },
     "projection-extensions/aimc.json": {
       "byteLength": 40111,
@@ -951,16 +979,16 @@
       "sha256": "9c7e710a2ec0826cbcc971d9eaa33e348688746e44231d65a16ab00545fa9c4b"
     },
     "projection-extensions/expected.json": {
-      "byteLength": 26689,
-      "sha256": "775dd30fae5ddf41fb5263197799ed59638acdcfde2ff3e3d93433454417ba4a"
+      "byteLength": 24013,
+      "sha256": "2c1a8e1a7e4a1a5d4816d93b7437b65800516ccf3c469e5b51cc1e0ff888c5ab"
     },
     "projection-extensions/owner.json": {
       "byteLength": 7143,
       "sha256": "b8f93d15a36d9da047618a6e62505246323b7bfd0d64f732a1fb5ec3f49ad91a"
     },
     "stoppering-new-build/aid.json": {
-      "byteLength": 730949,
-      "sha256": "b6c56e47a5b34143eaa77adef92e68ab6caeafbb0364a50db5b34f3ea4b74152"
+      "byteLength": 689788,
+      "sha256": "0f245bcf0fe8615948a93e5d2ba8293320b944c0075c0580f02ae75a342cc78c"
     },
     "stoppering-new-build/aimc.json": {
       "byteLength": 95177,
@@ -983,16 +1011,16 @@
       "sha256": "793fae1cadc7c245b54c054a40d42076c647c3028d01388a313887e3b95ec679"
     },
     "stoppering-new-build/expected.json": {
-      "byteLength": 113925,
-      "sha256": "414165781fbb931ac569f2ee3c739a28a2939c429b29a74f5fc44a7573b8bc2d"
+      "byteLength": 105136,
+      "sha256": "461e6d1b4be2709700da122493115d7cd2f8a104320482ba341df0a8e6662eb5"
     },
     "stoppering-new-build/owner.json": {
       "byteLength": 38,
       "sha256": "87c5c7374745e6857b4e95162ce6293c6422a01ef91552039ee4a882dd61eaa5"
     },
     "stoppering/aid.json": {
-      "byteLength": 1208014,
-      "sha256": "b91eda1d062d85d6f7a94247e41a16ba72d8f63e8ce9aa2644a34b12968d266b"
+      "byteLength": 1144462,
+      "sha256": "13a2f5784743a2993c400b342a84e60c652ae17d0d3d70e5d01e457ccff92d33"
     },
     "stoppering/aimc.json": {
       "byteLength": 169445,
@@ -1015,8 +1043,8 @@
       "sha256": "8df8e9671e70c650822a2a66b32f0794595d6e76cd553da43d57cdd398df87d3"
     },
     "stoppering/expected.json": {
-      "byteLength": 180702,
-      "sha256": "ab83d1802485ae7e8c8477c2feedb86c7474a635dca3cae41da7aaad6ec8cf21"
+      "byteLength": 169039,
+      "sha256": "b45f9ba4cd64d6acc4f45761d465e2a39163aa8109e271562487ccd836bca02b"
     },
     "stoppering/owner.json": {
       "byteLength": 38,

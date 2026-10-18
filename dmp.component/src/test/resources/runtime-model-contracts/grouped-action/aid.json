@@ -338,7 +338,7 @@
           "description": [
             {
               "language": "en",
-              "text": "Provides the metadata of the asset\u2019s endpoint (base, content type that is used for interaction, etc)"
+              "text": "Provides the metadata of the asset’s endpoint (base, content type that is used for interaction, etc)"
             }
           ],
           "embeddedDataSpecifications": [
@@ -478,7 +478,7 @@
                 ],
                 "type": "ExternalReference"
               },
-              "value": "mqtt://192.168.0.104:1883/base",
+              "value": "mqtt://192.168.0.104:1883/base/",
               "valueType": "xs:anyURI"
             },
             {
@@ -918,7 +918,7 @@
               "description": [
                 {
                   "language": "en",
-                  "text": "Collection of asset\u2019s datapoint definitions"
+                  "text": "Collection of asset’s datapoint definitions"
                 }
               ],
               "embeddedDataSpecifications": [
@@ -1790,7 +1790,7 @@
                           "description": [
                             {
                               "language": "en",
-                              "text": "Indicates target IRI relative path or full IRI of asset\u2019s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
+                              "text": "Indicates target IRI relative path or full IRI of asset’s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
                             }
                           ],
                           "idShort": "href",
@@ -1804,7 +1804,7 @@
                             ],
                             "type": "ExternalReference"
                           },
-                          "value": "/state",
+                          "value": "state",
                           "valueType": "xs:string"
                         },
                         {
@@ -1829,36 +1829,34 @@
                           "typeValueListElement": "ReferenceElement"
                         },
                         {
-                          "idShort": "op",
                           "modelType": "Property",
+                          "idShort": "mqv_retain",
                           "semanticId": {
+                            "type": "ExternalReference",
                             "keys": [
                               {
                                 "type": "GlobalReference",
-                                "value": "https://www.w3.org/2019/wot/td#hasOperationType"
+                                "value": "https://www.w3.org/2019/wot/mqtt#hasRetainFlag"
                               }
-                            ],
-                            "type": "ExternalReference"
+                            ]
                           },
-                          "valueType": "xs:string"
+                          "valueType": "xs:boolean",
+                          "value": "true"
                         },
                         {
-                          "idShort": "mqv_retain",
                           "modelType": "Property",
-                          "value": "true",
-                          "valueType": "xs:string"
-                        },
-                        {
                           "idShort": "mqv_qos",
-                          "modelType": "Property",
-                          "value": "0",
-                          "valueType": "xs:string"
-                        },
-                        {
-                          "idShort": "mqv_control_packet",
-                          "modelType": "Property",
-                          "value": "publish",
-                          "valueType": "xs:string"
+                          "semanticId": {
+                            "type": "ExternalReference",
+                            "keys": [
+                              {
+                                "type": "GlobalReference",
+                                "value": "https://www.w3.org/2019/wot/mqtt#hasQoSFlag"
+                              }
+                            ]
+                          },
+                          "valueType": "xs:string",
+                          "value": "0"
                         }
                       ]
                     }
@@ -2109,20 +2107,29 @@
                   "idShort": "Move",
                   "modelType": "SubmodelElementCollection",
                   "semanticId": {
+                    "type": "ExternalReference",
                     "keys": [
                       {
                         "type": "GlobalReference",
-                        "value": "https://www.w3.org/2019/wot/td#ActionAffordance"
+                        "value": "https://smartproductionlab.aau.dk/aid/ActionDefinition/1/0"
                       }
-                    ],
-                    "type": "ExternalReference"
+                    ]
                   },
                   "value": [
                     {
                       "idShort": "synchronous",
                       "modelType": "Property",
                       "value": "false",
-                      "valueType": "xs:string"
+                      "valueType": "xs:string",
+                      "semanticId": {
+                        "type": "ExternalReference",
+                        "keys": [
+                          {
+                            "type": "GlobalReference",
+                            "value": "https://www.w3.org/2019/wot/td#isSynchronous"
+                          }
+                        ]
+                      }
                     },
                     {
                       "description": [
@@ -2468,13 +2475,13 @@
                         }
                       ],
                       "semanticId": {
+                        "type": "ExternalReference",
                         "keys": [
                           {
                             "type": "GlobalReference",
-                            "value": "https://www.w3.org/2019/wot/td#hasInput"
+                            "value": "https://www.w3.org/2019/wot/td#hasInputSchema"
                           }
-                        ],
-                        "type": "ExternalReference"
+                        ]
                       },
                       "value": [
                         {
@@ -2880,7 +2887,7 @@
                                   "description": [
                                     {
                                       "language": "en",
-                                      "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses \u201ctemperature-value\u201d as key term)."
+                                      "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses “temperature-value” as key term)."
                                     }
                                   ],
                                   "idShort": "key",
@@ -3271,7 +3278,7 @@
                                   "description": [
                                     {
                                       "language": "en",
-                                      "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses \u201ctemperature-value\u201d as key term)."
+                                      "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses “temperature-value” as key term)."
                                     }
                                   ],
                                   "idShort": "key",
@@ -3834,7 +3841,7 @@
                           "description": [
                             {
                               "language": "en",
-                              "text": "Indicates target IRI relative path or full IRI of asset\u2019s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
+                              "text": "Indicates target IRI relative path or full IRI of asset’s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
                             }
                           ],
                           "idShort": "href",
@@ -3848,7 +3855,7 @@
                             ],
                             "type": "ExternalReference"
                           },
-                          "value": "/move",
+                          "value": "move",
                           "valueType": "xs:string"
                         },
                         {
@@ -3873,213 +3880,16 @@
                           "typeValueListElement": "ReferenceElement"
                         },
                         {
-                          "idShort": "op",
-                          "modelType": "Property",
-                          "value": "invokeaction",
-                          "valueType": "xs:string"
-                        },
-                        {
-                          "embeddedDataSpecifications": [
-                            {
-                              "dataSpecification": {
-                                "keys": [
-                                  {
-                                    "type": "GlobalReference",
-                                    "value": "response"
-                                  }
-                                ],
-                                "type": "ExternalReference"
-                              },
-                              "dataSpecificationContent": {
-                                "modelType": "DataSpecificationIec61360",
-                                "preferredName": [
-                                  {
-                                    "language": "en",
-                                    "text": "class"
-                                  }
-                                ],
-                                "value": "MqttResponseForm"
-                              }
-                            },
-                            {
-                              "dataSpecification": {
-                                "keys": [
-                                  {
-                                    "type": "GlobalReference",
-                                    "value": "contentType"
-                                  }
-                                ],
-                                "type": "ExternalReference"
-                              },
-                              "dataSpecificationContent": {
-                                "modelType": "DataSpecificationIec61360",
-                                "preferredName": [
-                                  {
-                                    "language": "en",
-                                    "text": "attribute"
-                                  }
-                                ],
-                                "value": "contentType"
-                              }
-                            },
-                            {
-                              "dataSpecification": {
-                                "keys": [
-                                  {
-                                    "type": "GlobalReference",
-                                    "value": "contentType"
-                                  }
-                                ],
-                                "type": "ExternalReference"
-                              },
-                              "dataSpecificationContent": {
-                                "modelType": "DataSpecificationIec61360",
-                                "preferredName": [
-                                  {
-                                    "language": "en",
-                                    "text": "default"
-                                  }
-                                ],
-                                "value": "Property"
-                              }
-                            },
-                            {
-                              "dataSpecification": {
-                                "keys": [
-                                  {
-                                    "type": "GlobalReference",
-                                    "value": "href"
-                                  }
-                                ],
-                                "type": "ExternalReference"
-                              },
-                              "dataSpecificationContent": {
-                                "modelType": "DataSpecificationIec61360",
-                                "preferredName": [
-                                  {
-                                    "language": "en",
-                                    "text": "attribute"
-                                  }
-                                ],
-                                "value": "href"
-                              }
-                            },
-                            {
-                              "dataSpecification": {
-                                "keys": [
-                                  {
-                                    "type": "GlobalReference",
-                                    "value": "href"
-                                  }
-                                ],
-                                "type": "ExternalReference"
-                              },
-                              "dataSpecificationContent": {
-                                "modelType": "DataSpecificationIec61360",
-                                "preferredName": [
-                                  {
-                                    "language": "en",
-                                    "text": "default"
-                                  }
-                                ],
-                                "value": "Property"
-                              }
-                            },
-                            {
-                              "dataSpecification": {
-                                "keys": [
-                                  {
-                                    "type": "GlobalReference",
-                                    "value": "mqv_retain"
-                                  }
-                                ],
-                                "type": "ExternalReference"
-                              },
-                              "dataSpecificationContent": {
-                                "modelType": "DataSpecificationIec61360",
-                                "preferredName": [
-                                  {
-                                    "language": "en",
-                                    "text": "attribute"
-                                  }
-                                ],
-                                "value": "mqv_retain"
-                              }
-                            },
-                            {
-                              "dataSpecification": {
-                                "keys": [
-                                  {
-                                    "type": "GlobalReference",
-                                    "value": "mqv_retain"
-                                  }
-                                ],
-                                "type": "ExternalReference"
-                              },
-                              "dataSpecificationContent": {
-                                "modelType": "DataSpecificationIec61360",
-                                "preferredName": [
-                                  {
-                                    "language": "en",
-                                    "text": "default"
-                                  }
-                                ],
-                                "value": "Property"
-                              }
-                            },
-                            {
-                              "dataSpecification": {
-                                "keys": [
-                                  {
-                                    "type": "GlobalReference",
-                                    "value": "mqv_control_packet"
-                                  }
-                                ],
-                                "type": "ExternalReference"
-                              },
-                              "dataSpecificationContent": {
-                                "modelType": "DataSpecificationIec61360",
-                                "preferredName": [
-                                  {
-                                    "language": "en",
-                                    "text": "attribute"
-                                  }
-                                ],
-                                "value": "mqv_control_packet"
-                              }
-                            },
-                            {
-                              "dataSpecification": {
-                                "keys": [
-                                  {
-                                    "type": "GlobalReference",
-                                    "value": "mqv_control_packet"
-                                  }
-                                ],
-                                "type": "ExternalReference"
-                              },
-                              "dataSpecificationContent": {
-                                "modelType": "DataSpecificationIec61360",
-                                "preferredName": [
-                                  {
-                                    "language": "en",
-                                    "text": "default"
-                                  }
-                                ],
-                                "value": "Property"
-                              }
-                            }
-                          ],
-                          "idShort": "response",
                           "modelType": "SubmodelElementCollection",
+                          "idShort": "response",
                           "semanticId": {
+                            "type": "ExternalReference",
                             "keys": [
                               {
                                 "type": "GlobalReference",
-                                "value": "https://smartproductionlab.aau.dk/aid/MqttResponseForm/1/0"
+                                "value": "https://www.w3.org/2019/wot/hypermedia#returns"
                               }
-                            ],
-                            "type": "ExternalReference"
+                            ]
                           },
                           "value": [
                             {
@@ -4102,71 +3912,49 @@
                               },
                               "value": "application/json",
                               "valueType": "xs:string"
-                            },
-                            {
-                              "description": [
-                                {
-                                  "language": "en",
-                                  "text": "Indicates target IRI relative path or full IRI of asset\u2019s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
-                                }
-                              ],
-                              "idShort": "href",
-                              "modelType": "Property",
-                              "semanticId": {
-                                "keys": [
-                                  {
-                                    "type": "GlobalReference",
-                                    "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
-                                  }
-                                ],
-                                "type": "ExternalReference"
-                              },
-                              "value": "/move/reply",
-                              "valueType": "xs:string"
-                            },
-                            {
-                              "idShort": "mqv_retain",
-                              "modelType": "Property",
-                              "value": "false",
-                              "valueType": "xs:string"
-                            },
-                            {
-                              "idShort": "mqv_control_packet",
-                              "modelType": "Property",
-                              "value": "publish",
-                              "valueType": "xs:string"
                             }
                           ]
                         },
                         {
-                          "idShort": "mqv_retain",
                           "modelType": "Property",
-                          "value": "false",
-                          "valueType": "xs:string"
-                        },
-                        {
                           "idShort": "mqv_qos",
-                          "modelType": "Property",
-                          "value": "2",
-                          "valueType": "xs:string"
+                          "semanticId": {
+                            "type": "ExternalReference",
+                            "keys": [
+                              {
+                                "type": "GlobalReference",
+                                "value": "https://www.w3.org/2019/wot/mqtt#hasQoSFlag"
+                              }
+                            ]
+                          },
+                          "valueType": "xs:string",
+                          "value": "2"
                         },
                         {
-                          "idShort": "mqv_control_packet",
                           "modelType": "Property",
-                          "value": "subscribe",
-                          "valueType": "xs:string"
-                        },
+                          "idShort": "mqv_responseTopic",
+                          "semanticId": {
+                            "type": "ExternalReference",
+                            "keys": [
+                              {
+                                "type": "GlobalReference",
+                                "value": "https://smartproductionlab.aau.dk/aid/MqttResponseTopic/1/0"
+                              }
+                            ]
+                          },
+                          "valueType": "xs:string",
+                          "value": "move/reply"
+                        }
+                      ]
+                    }
+                  ],
+                  "supplementalSemanticIds": [
+                    {
+                      "type": "ExternalReference",
+                      "keys": [
                         {
-                          "idShort": "mqv_request_reply",
-                          "modelType": "Property",
-                          "value": "true",
-                          "valueType": "xs:string"
-                        },
-                        {
-                          "idShort": "mqv_response_topic",
-                          "modelType": "Property",
-                          "value": "/move/reply",
-                          "valueType": "xs:string"
+                          "type": "GlobalReference",
+                          "value": "https://www.w3.org/2019/wot/td#name"
                         }
                       ]
                     }

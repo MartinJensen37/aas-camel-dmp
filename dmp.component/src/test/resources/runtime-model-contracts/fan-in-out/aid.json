@@ -338,7 +338,7 @@
           "description": [
             {
               "language": "en",
-              "text": "Provides the metadata of the asset\u2019s endpoint (base, content type that is used for interaction, etc)"
+              "text": "Provides the metadata of the asset’s endpoint (base, content type that is used for interaction, etc)"
             }
           ],
           "embeddedDataSpecifications": [
@@ -478,7 +478,7 @@
                 ],
                 "type": "ExternalReference"
               },
-              "value": "mqtt://192.168.0.104:1883/base",
+              "value": "mqtt://192.168.0.104:1883/base/",
               "valueType": "xs:anyURI"
             },
             {
@@ -918,7 +918,7 @@
               "description": [
                 {
                   "language": "en",
-                  "text": "Collection of asset\u2019s datapoint definitions"
+                  "text": "Collection of asset’s datapoint definitions"
                 }
               ],
               "embeddedDataSpecifications": [
@@ -1790,7 +1790,7 @@
                           "description": [
                             {
                               "language": "en",
-                              "text": "Indicates target IRI relative path or full IRI of asset\u2019s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
+                              "text": "Indicates target IRI relative path or full IRI of asset’s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
                             }
                           ],
                           "idShort": "href",
@@ -1804,7 +1804,7 @@
                             ],
                             "type": "ExternalReference"
                           },
-                          "value": "/state",
+                          "value": "state",
                           "valueType": "xs:string"
                         },
                         {
@@ -1829,36 +1829,34 @@
                           "typeValueListElement": "ReferenceElement"
                         },
                         {
-                          "idShort": "op",
                           "modelType": "Property",
+                          "idShort": "mqv_retain",
                           "semanticId": {
+                            "type": "ExternalReference",
                             "keys": [
                               {
                                 "type": "GlobalReference",
-                                "value": "https://www.w3.org/2019/wot/td#hasOperationType"
+                                "value": "https://www.w3.org/2019/wot/mqtt#hasRetainFlag"
                               }
-                            ],
-                            "type": "ExternalReference"
+                            ]
                           },
-                          "valueType": "xs:string"
+                          "valueType": "xs:boolean",
+                          "value": "true"
                         },
                         {
-                          "idShort": "mqv_retain",
                           "modelType": "Property",
-                          "value": "true",
-                          "valueType": "xs:string"
-                        },
-                        {
                           "idShort": "mqv_qos",
-                          "modelType": "Property",
-                          "value": "0",
-                          "valueType": "xs:string"
-                        },
-                        {
-                          "idShort": "mqv_control_packet",
-                          "modelType": "Property",
-                          "value": "publish",
-                          "valueType": "xs:string"
+                          "semanticId": {
+                            "type": "ExternalReference",
+                            "keys": [
+                              {
+                                "type": "GlobalReference",
+                                "value": "https://www.w3.org/2019/wot/mqtt#hasQoSFlag"
+                              }
+                            ]
+                          },
+                          "valueType": "xs:string",
+                          "value": "0"
                         }
                       ]
                     }
@@ -2698,7 +2696,7 @@
                           "description": [
                             {
                               "language": "en",
-                              "text": "Indicates target IRI relative path or full IRI of asset\u2019s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
+                              "text": "Indicates target IRI relative path or full IRI of asset’s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
                             }
                           ],
                           "idShort": "href",
@@ -2712,7 +2710,7 @@
                             ],
                             "type": "ExternalReference"
                           },
-                          "value": "/mode",
+                          "value": "mode",
                           "valueType": "xs:string"
                         },
                         {
@@ -2737,36 +2735,34 @@
                           "typeValueListElement": "ReferenceElement"
                         },
                         {
-                          "idShort": "op",
                           "modelType": "Property",
+                          "idShort": "mqv_retain",
                           "semanticId": {
+                            "type": "ExternalReference",
                             "keys": [
                               {
                                 "type": "GlobalReference",
-                                "value": "https://www.w3.org/2019/wot/td#hasOperationType"
+                                "value": "https://www.w3.org/2019/wot/mqtt#hasRetainFlag"
                               }
-                            ],
-                            "type": "ExternalReference"
+                            ]
                           },
-                          "valueType": "xs:string"
+                          "valueType": "xs:boolean",
+                          "value": "true"
                         },
                         {
-                          "idShort": "mqv_retain",
                           "modelType": "Property",
-                          "value": "true",
-                          "valueType": "xs:string"
-                        },
-                        {
                           "idShort": "mqv_qos",
-                          "modelType": "Property",
-                          "value": "0",
-                          "valueType": "xs:string"
-                        },
-                        {
-                          "idShort": "mqv_control_packet",
-                          "modelType": "Property",
-                          "value": "publish",
-                          "valueType": "xs:string"
+                          "semanticId": {
+                            "type": "ExternalReference",
+                            "keys": [
+                              {
+                                "type": "GlobalReference",
+                                "value": "https://www.w3.org/2019/wot/mqtt#hasQoSFlag"
+                              }
+                            ]
+                          },
+                          "valueType": "xs:string",
+                          "value": "0"
                         }
                       ]
                     }

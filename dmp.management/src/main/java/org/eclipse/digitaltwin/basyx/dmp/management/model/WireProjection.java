@@ -78,14 +78,14 @@ public final class WireProjection {
 	private static final String WOT_PROPERTY = "https://www.w3.org/2019/wot/td#PropertyAffordance";
 	private static final String WOT_ACTION = "https://www.w3.org/2019/wot/td#ActionAffordance";
 	private static final String WOT_EVENT = "https://www.w3.org/2019/wot/td#EventAffordance";
-	private static final String WOT_INPUT = "https://www.w3.org/2019/wot/td#hasInput";
-	private static final String WOT_OUTPUT = "https://www.w3.org/2019/wot/td#hasOutput";
+	private static final String WOT_INPUT = "https://www.w3.org/2019/wot/td#hasInputSchema";
+	private static final String WOT_OUTPUT = "https://www.w3.org/2019/wot/td#hasOutputSchema";
 	/** An event's {@code data}: the schema of each notification (WoT TD 1.1 §5.3.1.5). */
 	private static final String WOT_NOTIFICATION = "https://www.w3.org/2019/wot/td#hasNotificationSchema";
 	private static final Set<String> MAPPING_FIELDS = Set.of("Sources","Sinks","DefaultPollingInterval","Transformation",
 			"ResponseSources","ResponseSinks","ResponseTransformation","ExecutionSemantics");
 	private static final Set<String> RETIRED_ID_SHORTS = Set.of("executionpolicy","writedelegation","luamode","transformengine","jsonata","querylanguage");
-	private static final List<String> BINDING_PREFIXES = List.of("mqtt_","mqv_","uav_","modv_","bacnet_","bacv_","iol_");
+	private static final List<String> BINDING_PREFIXES = List.of("mqv_","uav_","modv_","bacv_","iolv_","canv_");
 	private WireProjection() { }
 
 	public static boolean isAimc(Submodel submodel) { return hasExactSemantic(submodel, AIMC); }
@@ -335,26 +335,30 @@ public final class WireProjection {
 		Map<String,String> binding = new LinkedHashMap<>();
 		for (SubmodelElement child : children(e)) {
 			String name = child.getIdShort();
-			if (name == null || BINDING_PREFIXES.stream().noneMatch(name::startsWith)) continue;
-			if (!(child instanceof Property property)) throw error(p + "/" + name, "binding term must be Property");
+			// Structured binding terms (bacv_hasDataType, iolv_payloadMapping, …) are no lexical values;
+			// the compiler rejects the ones its connector does not represent.
+			if (name == null || BINDING_PREFIXES.stream().noneMatch(name::startsWith) || !(child instanceof Property property)) continue;
 			if (property.getValue() == null) continue;
 			binding.put(name, property.getValue());
-			if (name.startsWith("mqtt_") || name.startsWith("mqv_")) mqtt.put(name, property.getValue());
+			if (name.startsWith("mqv_")) mqtt.put(name, property.getValue());
 		}
-		Presence<String> responseTopic = stringAlias(e, "responseTopic", "mqtt_responseTopic", p);
-		if (!responseTopic.present()) {
-			SubmodelElement response = directChild(e, "response", p);
-			if (response != null) responseTopic = stringField(response, "href", p + "/response");
-		}
-		if (!responseTopic.present()) responseTopic = stringField(e, "mqv_response_topic", p);
-		return new Form(stringField(e, "href", p), stringField(e, "contentType", p), stringField(e, "op", p),
-				stringField(e, "semanticProtocol", p), stringAlias(e, "httpMethod", "htv_methodName", p), mqtt,
-				responseTopic, binding, e);
+		return new Form(stringField(e, "href", p), stringField(e, "contentType", p), operations(e, p),
+				stringField(e, "htv_methodName", p), mqtt, stringField(e, "mqv_responseTopic", p), binding, e);
 	}
 
-	private static Presence<String> stringAlias(SubmodelElement e, String first, String second, String path) {
-		if (directChild(e, first, path) != null && directChild(e, second, path) != null) throw error(path, "duplicate aliases for " + first);
-		return directChild(e, first, path) != null ? stringField(e, first, path) : stringField(e, second, path);
+	/** The form's {@code op} (hctl:hasOperationType): a list of operation types, lower-cased. */
+	private static List<String> operations(SubmodelElement form, String p) {
+		SubmodelElement op = directChild(form, "op", p);
+		if (op == null) return List.of();
+		if (!(op instanceof SubmodelElementList list))
+			throw error(p + "/op", "op must be a list of WoT operation types (hctl:hasOperationType)");
+		List<String> result = new ArrayList<>();
+		for (SubmodelElement member : children(list)) {
+			if (!(member instanceof Property property) || property.getValue() == null || property.getValue().isBlank())
+				throw error(p + "/op", "op lists operation types as string Properties");
+			result.add(property.getValue().trim().toLowerCase(java.util.Locale.ROOT));
+		}
+		return List.copyOf(result);
 	}
 
 	private static DataSchema dataSchema(SubmodelElement e, String p) {

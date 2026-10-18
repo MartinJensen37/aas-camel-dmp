@@ -212,7 +212,7 @@ class AasReferenceResolverTest {
 				+ "\"value\":[{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"InteractionMetadata\",\"value\":["
 				+ "{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"actions\",\"value\":["
 				+ "{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"Request\",\"semanticId\":{\"type\":\"ExternalReference\",\"keys\":[{\"type\":\"GlobalReference\",\"value\":\"" + AID_ACTION + "\"}]},\"value\":["
-				+ "{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"input\",\"semanticId\":{\"type\":\"ExternalReference\",\"keys\":[{\"type\":\"GlobalReference\",\"value\":\"https://www.w3.org/2019/wot/td#hasInput\"}]},\"value\":["
+				+ "{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"input\",\"semanticId\":{\"type\":\"ExternalReference\",\"keys\":[{\"type\":\"GlobalReference\",\"value\":\"https://www.w3.org/2019/wot/td#hasInputSchema\"}]},\"value\":["
 				+ "{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"properties\",\"semanticId\":{\"type\":\"ExternalReference\",\"keys\":[{\"type\":\"GlobalReference\",\"value\":\"" + PROPERTIES + "\"}]},\"value\":["
 				+ "{\"modelType\":\"Property\",\"idShort\":\"temperature-value\",\"valueType\":\"xs:double\",\"value\":\"0\"}]}]}]}]}]}]}]}";
 	}

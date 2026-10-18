@@ -460,7 +460,7 @@ class ManagedProtocolOutcomeParityTest {
         JsonObject action = child(child(child(child(aid, "interface_opcua"), "InteractionMetadata"), "actions"), "Calibrate");
         JsonObject output = schemaElement("output", "object");
         output.add("semanticId", json("{\"type\":\"ExternalReference\",\"keys\":[{\"type\":\"GlobalReference\","
-                + "\"value\":\"https://www.w3.org/2019/wot/td#hasOutput\"}]}"));
+                + "\"value\":\"https://www.w3.org/2019/wot/td#hasOutputSchema\"}]}"));
         JsonObject properties = schemaElement("properties", null);
         for (String[] field : List.of(new String[] { "State", "string" }, new String[] { "Label", "string" },
                 new String[] { "Nullable", "null" }, new String[] { "Calibrate", "boolean" }, new String[] { "Count", "integer" }))

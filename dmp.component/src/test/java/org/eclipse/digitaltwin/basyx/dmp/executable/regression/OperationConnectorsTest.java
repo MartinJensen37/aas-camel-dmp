@@ -88,9 +88,8 @@ class OperationConnectorsTest {
 		try (ModbusTestServer device = new ModbusTestServer()) {
 			runtime.installBundle("modbus", compile("plc4x", "interface_modbus", "Coil1",
 					"modbus+tcp://127.0.0.1:" + device.port(), form -> {
-						// WoT Modbus binding: unit 1, protocol address 2 of the holding registers.
+						// Unit 1, protocol address 2 of the holding registers; the property is writable by default.
 						child(form, "href").addProperty("value", "/1/2");
-						child(form, "op").addProperty("value", "writeproperty");
 						form.getAsJsonArray("value").add(json("{\"modelType\":\"Property\",\"idShort\":\"modv_entity\","
 								+ "\"valueType\":\"xs:string\",\"value\":\"HoldingRegister\"}"));
 					}, setpointInput(), WRITE_LUA));
@@ -114,8 +113,8 @@ class OperationConnectorsTest {
 		try {
 			runtime.installBundle("http", compile("http-poll", "interface_http", "Pressure",
 					"http://127.0.0.1:" + device.getAddress().getPort(), form -> {
+						// Without htv_methodName a write is a PUT (WoT HTTP binding default).
 						child(form, "href").addProperty("value", "/setpoint");
-						form.getAsJsonArray("value").add(json("{\"modelType\":\"Property\",\"idShort\":\"op\",\"valueType\":\"xs:string\",\"value\":\"writeproperty\"}"));
 					}, setpointInput(), WRITE_LUA));
 			var reply = call("{\"Setpoint\":7}");
 			assertEquals(200, reply.statusCode(), reply.body());
@@ -137,9 +136,8 @@ class OperationConnectorsTest {
 			List<Mqtt5TestBroker.Publication> published = new CopyOnWriteArrayList<>();
 			broker.onPublish(published::add);
 			runtime.installBundle("mqtt", compile("fan-in-out", "interface_mqtt", "State",
-					"mqtt://127.0.0.1:" + broker.port() + "/base", form -> {
-						child(form, "href").addProperty("value", "/setpoint");
-						child(form, "op").addProperty("value", "writeproperty");
+					"mqtt://127.0.0.1:" + broker.port() + "/base/", form -> {
+						child(form, "href").addProperty("value", "setpoint");
 						child(form, "mqv_retain").addProperty("value", "false");
 						child(form, "mqv_qos").addProperty("value", "1");
 					}, setpointInput(), WRITE_LUA));
@@ -224,13 +222,11 @@ class OperationConnectorsTest {
 		occupy.addProperty("idShort", "Calibrate");
 		child(occupy, "title").addProperty("value", "Calibrate");
 		JsonObject forms = child(occupy, "forms");
-		child(forms, "href").addProperty("value", "/CMD/Calibrate");
-		child(forms, "mqv_response_topic").addProperty("value", "/DATA/Calibrate");
-		child(child(forms, "response"), "href").addProperty("value", "/DATA/Calibrate");
-		child(forms, "op").addProperty("value", "invokeaction");
+		child(forms, "href").addProperty("value", "CMD/Calibrate");
+		child(forms, "mqv_responseTopic").addProperty("value", "DATA/Calibrate");
 		JsonObject aid = json(resource("fan-in-out/aid.json")).getAsJsonObject();
 		JsonObject mqtt = child(aid, "interface_mqtt");
-		child(child(mqtt, "EndpointMetadata"), "base").addProperty("value", "mqtt://127.0.0.1:" + broker.port() + "/base");
+		child(child(mqtt, "EndpointMetadata"), "base").addProperty("value", "mqtt://127.0.0.1:" + broker.port() + "/base/");
 		JsonObject actions = child(child(mqtt, "InteractionMetadata"), "actions");
 		if (!actions.has("value")) actions.add("value", new JsonArray());
 		actions.getAsJsonArray("value").add(occupy);

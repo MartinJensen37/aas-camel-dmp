@@ -27,9 +27,9 @@
   "elements": {
     "aid": [
       {
-        "idShort": "AID",
-        "modelType": "Submodel",
         "path": "",
+        "modelType": "Submodel",
+        "idShort": "AID",
         "semanticId": {
           "keys": [
             {
@@ -41,9 +41,9 @@
         }
       },
       {
-        "idShort": "interface_mqtt",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "interface_mqtt",
         "semanticId": {
           "keys": [
             {
@@ -75,9 +75,9 @@
         ]
       },
       {
-        "idShort": "title",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/0",
+        "modelType": "Property",
+        "idShort": "title",
         "semanticId": {
           "keys": [
             {
@@ -89,9 +89,9 @@
         }
       },
       {
-        "idShort": "EndpointMetadata",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/1",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "EndpointMetadata",
         "semanticId": {
           "keys": [
             {
@@ -103,9 +103,9 @@
         }
       },
       {
-        "idShort": "base",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/1/value/0",
+        "modelType": "Property",
+        "idShort": "base",
         "semanticId": {
           "keys": [
             {
@@ -117,9 +117,9 @@
         }
       },
       {
-        "idShort": "contentType",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/1/value/1",
+        "modelType": "Property",
+        "idShort": "contentType",
         "semanticId": {
           "keys": [
             {
@@ -131,9 +131,9 @@
         }
       },
       {
-        "idShort": "security",
-        "modelType": "SubmodelElementList",
         "path": "/submodelElements/0/value/1/value/2",
+        "modelType": "SubmodelElementList",
+        "idShort": "security",
         "semanticId": {
           "keys": [
             {
@@ -145,9 +145,9 @@
         }
       },
       {
-        "idShort": "securityDefinitions",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/1/value/3",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "securityDefinitions",
         "semanticId": {
           "keys": [
             {
@@ -159,9 +159,9 @@
         }
       },
       {
-        "idShort": "InteractionMetadata",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "InteractionMetadata",
         "semanticId": {
           "keys": [
             {
@@ -184,9 +184,9 @@
         ]
       },
       {
-        "idShort": "properties",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "properties",
         "semanticId": {
           "keys": [
             {
@@ -198,9 +198,9 @@
         }
       },
       {
-        "idShort": "State",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0/value/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "State",
         "semanticId": {
           "keys": [
             {
@@ -223,9 +223,9 @@
         ]
       },
       {
-        "idShort": "forms",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "forms",
         "semanticId": {
           "keys": [
             {
@@ -237,9 +237,9 @@
         }
       },
       {
-        "idShort": "href",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/0",
+        "modelType": "Property",
+        "idShort": "href",
         "semanticId": {
           "keys": [
             {
@@ -251,9 +251,9 @@
         }
       },
       {
-        "idShort": "security",
-        "modelType": "SubmodelElementList",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/1",
+        "modelType": "SubmodelElementList",
+        "idShort": "security",
         "semanticId": {
           "keys": [
             {
@@ -265,38 +265,37 @@
         }
       },
       {
-        "idShort": "op",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/2",
+        "modelType": "Property",
+        "idShort": "mqv_retain",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasOperationType"
+              "value": "https://www.w3.org/2019/wot/mqtt#hasRetainFlag"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       },
       {
-        "idShort": "mqv_retain",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/3",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/3"
-      },
-      {
         "idShort": "mqv_qos",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/4"
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/mqtt#hasQoSFlag"
+            }
+          ]
+        }
       },
       {
-        "idShort": "mqv_control_packet",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/0/value/5"
-      },
-      {
-        "idShort": "Mode",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0/value/1",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "Mode",
         "semanticId": {
           "keys": [
             {
@@ -319,9 +318,9 @@
         ]
       },
       {
-        "idShort": "forms",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0/value/1/value/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "forms",
         "semanticId": {
           "keys": [
             {
@@ -333,9 +332,9 @@
         }
       },
       {
-        "idShort": "href",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/1/value/0/value/0",
+        "modelType": "Property",
+        "idShort": "href",
         "semanticId": {
           "keys": [
             {
@@ -347,9 +346,9 @@
         }
       },
       {
-        "idShort": "security",
-        "modelType": "SubmodelElementList",
         "path": "/submodelElements/0/value/2/value/0/value/1/value/0/value/1",
+        "modelType": "SubmodelElementList",
+        "idShort": "security",
         "semanticId": {
           "keys": [
             {
@@ -361,38 +360,37 @@
         }
       },
       {
-        "idShort": "op",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/1/value/0/value/2",
+        "modelType": "Property",
+        "idShort": "mqv_retain",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasOperationType"
+              "value": "https://www.w3.org/2019/wot/mqtt#hasRetainFlag"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       },
       {
-        "idShort": "mqv_retain",
+        "path": "/submodelElements/0/value/2/value/0/value/1/value/0/value/3",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/1/value/0/value/3"
-      },
-      {
         "idShort": "mqv_qos",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/1/value/0/value/4"
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/mqtt#hasQoSFlag"
+            }
+          ]
+        }
       },
       {
-        "idShort": "mqv_control_packet",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/1/value/0/value/5"
-      },
-      {
-        "idShort": "actions",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "actions",
         "semanticId": {
           "keys": [
             {

@@ -170,29 +170,60 @@ rejected, not ignored.
 
 ### 5.2 AID bindings
 
-A reference into AID `InteractionMetadata` selects one affordance. Its form
-(`href`, `op`, protocol terms such as `mqv_qos`, `mqv_retain`,
-`mqv_control_packet`, `mqv_request_reply`, `mqv_response_topic`,
-`mqv_reply_timeout`) and the interface's `EndpointMetadata.base` determine the
-Camel endpoint. Acquisition mode follows the declared capability:
+The AID is read as IDTA AID 1.2 defines it, plus the extension of
+aas-model `docs/aid-extension.md` for what AID leaves EXTERNAL or undefined
+(action and event members, the form's `op` and `response`, `readOnly`/
+`writeOnly`, `mqv_responseTopic`, the OPC UA event terms). No separate Thing
+Description is consulted. Where AID is silent, the W3C WoT protocol bindings
+apply.
 
-| Declaration | Interaction |
-| --- | --- |
-| `op=readproperty` (plus effective polling interval) | Read |
-| `op=observeproperty` / event affordance / MQTT subscription | Observe |
-| `op=writeproperty` | Write |
-| `op=invokeaction` | Invoke (bridge mappings only) |
+A reference into AID `InteractionMetadata` selects one affordance with one
+form. The form's `href` is resolved against the interface's
+`EndpointMetadata.base` as RFC 3986 says (AID 1.2 Annex B): a base path ends
+with `/` for relative hrefs to extend it, and an href starting with `/`
+replaces it.
 
-An MQTT subscription is never a Read; a polling declaration on it is rejected.
-A Read source without an interval polls every 5 s.
+**Operations.** A form serves its `op` list (`hctl:hasOperationType`); without
+`op` it serves the affordance's WoT TD defaults: a property is readable unless
+`writeOnly`, writable unless `readOnly` and observable when `observable`; an
+action is invoked; an event is subscribed. A mapping role needs an operation
+the form serves:
 
-Modbus follows the WoT Modbus binding (`w3c/wot-binding-templates`,
-`bindings/protocols/modbus`); the compiler translates a form into a PLC4X tag:
+| Mapping role | Needs | Interaction |
+| --- | --- | --- |
+| Source on a property | `observeproperty` or `readproperty` | Observe when the property is observable and the connector observes (MQTT, OPC UA monitored item, Modbus polling); else Read (with the effective polling interval; 5 s without one) |
+| Source on an event | `subscribeevent` | Observe |
+| Sink on a property | `writeproperty` | Write |
+| Sink on an action | `invokeaction` | Invoke (bridge mappings only) |
 
-- `EndpointMetadata.base` is `modbus+tcp://host:port`; the form `href` is
-  `/{unitID}/{address}?quantity={n}` with the protocol address (PLC4X counts
-  from 1, so protocol address 0 is PLC4X `coil:1`). PLC4X tag syntax in an
-  AID is rejected.
+An `op` value outside the WoT operation types, an unrepresented form term
+(e.g. `subprotocol`, `htv_headers`, a form `security` selection) or a binding
+term of another protocol blocks the mapping.
+
+**HTTP.** The method is `htv_methodName` (mandatory in AID), else the WoT
+default: GET to read, PUT to write, POST to invoke. A read is a GET poll; a
+write is PUT, POST or PATCH. Bodies are JSON.
+
+**MQTT.** The topic is the resolved `href`'s path without its leading `/`,
+percent-decoded: AID writes a topic with a leading `/` as `.//topic` and the
+`#` wildcard as `%23`. `mqv_controlPacket` describes the consumer (WoT MQTT
+binding): `subscribe` to read and observe, `publish` to write and invoke; a
+form whose packet contradicts the mapping role blocks it. An MQTT property is
+read by subscription, so a source needs it observable or retained
+(`mqv_retain`); a PollingInterval on it is rejected. `mqv_qos` and
+`mqv_retain` apply to the subscription and the publication. An action with
+`mqv_responseTopic` is an MQTT 5 request/reply (§7.1). Payloads are JSON.
+
+Modbus follows AID 1.2 and the WoT Modbus binding; the compiler translates a
+form into a PLC4X tag:
+
+- The resolved `href` is `/{unitID}/{address}?quantity={n}`: AID writes the
+  unit ID in the base (`modbus+tcp://host:port/{unitID}/`) and
+  `{address}?quantity={n}` in the href; `/{unitID}/{address}` in the href
+  against `modbus+tcp://host:port` resolves to the same. The address is the
+  protocol address (PLC4X counts from 1, so protocol address 0 is PLC4X
+  `coil:1`); with `modv_zeroBasedAddressing` false it counts from 1. PLC4X
+  tag syntax in an AID is rejected.
 - The memory area is `modv_entity` (Coil, DiscreteInput, HoldingRegister,
   InputRegister), else `modv_function` (readCoil, readHoldingRegisters,
   writeSingleCoil, …), else the binding's default: Coil (readCoil for reads,
@@ -204,16 +235,16 @@ Modbus follows the WoT Modbus binding (`w3c/wot-binding-templates`,
 - `modv_mostSignificantByte`/`Word` (default true; on the form, or for all
   forms on the interface's `EndpointMetadata`) set the driver's payload
   byte order, `modv_timeout` its request timeout, the unit ID its unit
-  identifier; `modv_pollingTime` is a source's polling interval when the AIMC
-  gives none. `observeproperty` polls. `modv_zeroBasedAddressing` other than
-  true (one-based addressing, deprecated) is rejected.
+  identifier. `modv_pollingTime`, the device's maximum polling rate, is a
+  source's polling interval when the AIMC gives none and a lower limit for
+  the one it gives. Observing a Modbus property polls.
 - Forms may declare `application/octet-stream`.
 
 OPC UA follows OPC 10101 (the OPC UA binding for WoT):
 
 - `readproperty`, `writeproperty`, `observeproperty` and `invokeaction` map to
-  the UA Read, Write, Monitor and Call services. The form's single `op`
-  chooses Read or Observe for a variable.
+  the UA Read, Write, Monitor and Call services. An observable variable is
+  observed (a monitored item); otherwise it is read.
 - An observed variable is a monitored item in a subscription of its own; the
   source's `PollingInterval` sets its sampling and publishing interval (the
   IDTA AIMC text calls the interval ignored for asynchronous sources; for OPC
@@ -226,7 +257,7 @@ OPC UA follows OPC 10101 (the OPC UA binding for WoT):
 - Events (a DMP extension; OPC 10101 v1.00 defines no event vocabulary) are
   event affordances (WoT EventAffordance, `aas-model` `OpcuaEvent`), consumed
   like MQTT events: the form `href` (or `uav_browsePath`) names the event
-  notifier (e.g. the Server object `i=2253`), `op` is `subscribeevent`. Each
+  notifier (e.g. the Server object `i=2253`), the form serves `subscribeevent` (the default). Each
   property of the event's `data` schema (an object) is one selected field:
   its `uav_eventField` browse path relative to the event (`0:ToState/0:Id`,
   `/`-separated qualified names, namespace 0 without a prefix), or its own
@@ -326,7 +357,7 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
      CorrelationData; the first reply on the declared reply topic that carries
      the request's correlation data is the terminal reply, whatever its
      payload. A device publishes progress or other messages without that
-     correlation data. Default timeout 30 s (`mqv_reply_timeout`).
+     correlation data. Timeout 30 s.
    - **PLC4X (Modbus, BACnet)**: no actions; a tag write reports no result.
 5. The reply is validated, optionally transformed by `ResponseTransformation`,
    and returned to the caller as its output variables. Without response Lua a
@@ -375,7 +406,7 @@ higher-level control orchestrates them through ordinary mappings.
   Call, MQTT 5 correlation data, an HTTP exchange), so invocations of the
   same action run concurrently; there is no busy guard.
 - **Timeouts.** A call waits for its terminal reply up to the connector's
-  timeout (MQTT `mqv_reply_timeout`, OPC UA Call timeout). BaSyx delegation is
+  timeout (30 s for MQTT, OPC UA and HTTP). BaSyx delegation is
   synchronous and has no timeout of its own, so the invoking client's HTTP
   timeout must exceed the connector's.
 - **Late replies.** When the timeout expires the call fails, but the device

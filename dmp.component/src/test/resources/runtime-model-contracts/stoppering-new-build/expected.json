@@ -74,9 +74,9 @@
   "elements": {
     "aid": [
       {
-        "idShort": "AssetInterfacesDescription",
-        "modelType": "Submodel",
         "path": "",
+        "modelType": "Submodel",
+        "idShort": "AssetInterfacesDescription",
         "semanticId": {
           "keys": [
             {
@@ -88,9 +88,9 @@
         }
       },
       {
-        "idShort": "interface_mqtt",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "interface_mqtt",
         "semanticId": {
           "keys": [
             {
@@ -122,9 +122,9 @@
         ]
       },
       {
-        "idShort": "title",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/0",
+        "modelType": "Property",
+        "idShort": "title",
         "semanticId": {
           "keys": [
             {
@@ -136,9 +136,9 @@
         }
       },
       {
-        "idShort": "EndpointMetadata",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/1",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "EndpointMetadata",
         "semanticId": {
           "keys": [
             {
@@ -150,9 +150,9 @@
         }
       },
       {
-        "idShort": "base",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/1/value/0",
+        "modelType": "Property",
+        "idShort": "base",
         "semanticId": {
           "keys": [
             {
@@ -164,9 +164,9 @@
         }
       },
       {
-        "idShort": "contentType",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/1/value/1",
+        "modelType": "Property",
+        "idShort": "contentType",
         "semanticId": {
           "keys": [
             {
@@ -178,9 +178,9 @@
         }
       },
       {
-        "idShort": "security",
-        "modelType": "SubmodelElementList",
         "path": "/submodelElements/0/value/1/value/2",
+        "modelType": "SubmodelElementList",
+        "idShort": "security",
         "semanticId": {
           "keys": [
             {
@@ -192,9 +192,9 @@
         }
       },
       {
-        "idShort": "securityDefinitions",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/1/value/3",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "securityDefinitions",
         "semanticId": {
           "keys": [
             {
@@ -206,9 +206,9 @@
         }
       },
       {
-        "idShort": "InteractionMetadata",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "InteractionMetadata",
         "semanticId": {
           "keys": [
             {
@@ -231,9 +231,9 @@
         ]
       },
       {
-        "idShort": "properties",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "properties",
         "semanticId": {
           "keys": [
             {
@@ -245,26 +245,9 @@
         }
       },
       {
-        "idShort": "StationState",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0/value/0",
-        "qualifiers": [
-          {
-            "kind": "TemplateQualifier",
-            "semanticId": {
-              "keys": [
-                {
-                  "type": "GlobalReference",
-                  "value": "https://www.w3.org/2019/wot/json-schema#required"
-                }
-              ],
-              "type": "ExternalReference"
-            },
-            "type": "RequiredProperties",
-            "value": "[\"ProcessQueue\",\"State\",\"TimeStamp\"]",
-            "valueType": "xs:string"
-          }
-        ],
+        "modelType": "SubmodelElementCollection",
+        "idShort": "StationState",
         "semanticId": {
           "keys": [
             {
@@ -293,12 +276,29 @@
             ],
             "type": "ExternalReference"
           }
+        ],
+        "qualifiers": [
+          {
+            "kind": "TemplateQualifier",
+            "semanticId": {
+              "keys": [
+                {
+                  "type": "GlobalReference",
+                  "value": "https://www.w3.org/2019/wot/json-schema#required"
+                }
+              ],
+              "type": "ExternalReference"
+            },
+            "type": "RequiredProperties",
+            "value": "[\"ProcessQueue\",\"State\",\"TimeStamp\"]",
+            "valueType": "xs:string"
+          }
         ]
       },
       {
-        "idShort": "key",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/0",
+        "modelType": "Property",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -321,9 +321,9 @@
         ]
       },
       {
-        "idShort": "type",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/1",
+        "modelType": "Property",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -335,9 +335,9 @@
         }
       },
       {
-        "idShort": "title",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/2",
+        "modelType": "Property",
+        "idShort": "title",
         "semanticId": {
           "keys": [
             {
@@ -349,9 +349,9 @@
         }
       },
       {
-        "idShort": "properties",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/3",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "properties",
         "semanticId": {
           "keys": [
             {
@@ -363,62 +363,9 @@
         }
       },
       {
-        "idShort": "TimeStamp",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "key",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/0/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://www.w3.org/2019/wot/td#name"
-              }
-            ],
-            "type": "ExternalReference"
-          }
-        ]
-      },
-      {
-        "idShort": "type",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/0/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "State",
         "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1",
+        "idShort": "TimeStamp",
         "semanticId": {
           "keys": [
             {
@@ -430,9 +377,9 @@
         }
       },
       {
-        "idShort": "key",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/0/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/0",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -455,9 +402,9 @@
         ]
       },
       {
-        "idShort": "type",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/0/value/1",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/1",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -469,9 +416,62 @@
         }
       },
       {
-        "idShort": "enum",
-        "modelType": "SubmodelElementList",
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "State",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/0",
+        "modelType": "Property",
+        "idShort": "key",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/1",
+        "modelType": "Property",
+        "idShort": "type",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
         "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2",
+        "modelType": "SubmodelElementList",
+        "idShort": "enum",
         "semanticId": {
           "keys": [
             {
@@ -483,77 +483,77 @@
         }
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/0"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/0",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/1"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/1",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/2"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/2",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/3"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/3",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/4"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/4",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/5"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/5",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/6"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/6",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/7"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/7",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/8"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/8",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/9"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/9",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/10"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/10",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/11"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/11",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/12"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/12",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/13"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/13",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/14"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/14",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/15"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/15",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/16"
+        "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/1/value/2/value/16",
+        "modelType": "Property"
       },
       {
-        "idShort": "ProcessQueue",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "ProcessQueue",
         "semanticId": {
           "keys": [
             {
@@ -565,9 +565,9 @@
         }
       },
       {
-        "idShort": "key",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/2/value/0",
+        "modelType": "Property",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -590,9 +590,9 @@
         ]
       },
       {
-        "idShort": "type",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/2/value/1",
+        "modelType": "Property",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -604,9 +604,9 @@
         }
       },
       {
-        "idShort": "items",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/2/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "items",
         "semanticId": {
           "keys": [
             {
@@ -618,9 +618,9 @@
         }
       },
       {
-        "idShort": "type",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/3/value/2/value/2/value/0",
+        "modelType": "Property",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -632,9 +632,9 @@
         }
       },
       {
-        "idShort": "forms",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/4",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "forms",
         "semanticId": {
           "keys": [
             {
@@ -646,9 +646,9 @@
         }
       },
       {
-        "idShort": "href",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/4/value/0",
+        "modelType": "Property",
+        "idShort": "href",
         "semanticId": {
           "keys": [
             {
@@ -660,9 +660,9 @@
         }
       },
       {
-        "idShort": "security",
-        "modelType": "SubmodelElementList",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/4/value/1",
+        "modelType": "SubmodelElementList",
+        "idShort": "security",
         "semanticId": {
           "keys": [
             {
@@ -674,65 +674,37 @@
         }
       },
       {
-        "idShort": "op",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/4/value/2",
+        "modelType": "Property",
+        "idShort": "mqv_retain",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasOperationType"
+              "value": "https://www.w3.org/2019/wot/mqtt#hasRetainFlag"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       },
       {
-        "idShort": "mqv_retain",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/0/value/0/value/4/value/3",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttRetain/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
+        "modelType": "Property",
         "idShort": "mqv_qos",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/4/value/4",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttQos/1/0"
+              "value": "https://www.w3.org/2019/wot/mqtt#hasQoSFlag"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       },
       {
-        "idShort": "mqv_control_packet",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/0/value/0/value/4/value/5",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttControlPacket/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "actions",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "actions",
         "semanticId": {
           "keys": [
             {
@@ -744,23 +716,34 @@
         }
       },
       {
-        "idShort": "Halt",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "Halt",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#ActionAffordance"
+              "value": "https://smartproductionlab.aau.dk/aid/ActionDefinition/1/0"
             }
-          ],
-          "type": "ExternalReference"
-        }
+          ]
+        },
+        "supplementalSemanticIds": [
+          {
+            "type": "ExternalReference",
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ]
+          }
+        ]
       },
       {
-        "idShort": "title",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/0",
+        "modelType": "Property",
+        "idShort": "title",
         "semanticId": {
           "keys": [
             {
@@ -772,23 +755,43 @@
         }
       },
       {
-        "idShort": "synchronous",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/1",
+        "modelType": "Property",
+        "idShort": "synchronous",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#synchronous"
+              "value": "https://www.w3.org/2019/wot/td#isSynchronous"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       },
       {
-        "idShort": "input",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "input",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasInputSchema"
+            }
+          ]
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/command.schema.json"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ],
         "qualifiers": [
           {
             "kind": "TemplateQualifier",
@@ -805,32 +808,12 @@
             "value": "[\"Uuid\"]",
             "valueType": "xs:string"
           }
-        ],
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasInput"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/command.schema.json"
-              }
-            ],
-            "type": "ExternalReference"
-          }
         ]
       },
       {
-        "idShort": "type",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/0",
+        "modelType": "Property",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -842,9 +825,9 @@
         }
       },
       {
-        "idShort": "title",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/1",
+        "modelType": "Property",
+        "idShort": "title",
         "semanticId": {
           "keys": [
             {
@@ -856,9 +839,9 @@
         }
       },
       {
-        "idShort": "properties",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "properties",
         "semanticId": {
           "keys": [
             {
@@ -870,9 +853,9 @@
         }
       },
       {
-        "idShort": "Uuid",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/2/value/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "Uuid",
         "semanticId": {
           "keys": [
             {
@@ -884,9 +867,9 @@
         }
       },
       {
-        "idShort": "key",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/2/value/0/value/0",
+        "modelType": "Property",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -909,9 +892,9 @@
         ]
       },
       {
-        "idShort": "type",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/2/value/2/value/0/value/1",
+        "modelType": "Property",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -923,9 +906,29 @@
         }
       },
       {
-        "idShort": "output",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "output",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasOutputSchema"
+            }
+          ]
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/commandResponse.schema.json"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ],
         "qualifiers": [
           {
             "kind": "TemplateQualifier",
@@ -942,32 +945,12 @@
             "value": "[\"State\",\"TimeStamp\",\"Uuid\"]",
             "valueType": "xs:string"
           }
-        ],
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasOutput"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/commandResponse.schema.json"
-              }
-            ],
-            "type": "ExternalReference"
-          }
         ]
       },
       {
-        "idShort": "type",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/0",
+        "modelType": "Property",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -979,9 +962,9 @@
         }
       },
       {
-        "idShort": "title",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/1",
+        "modelType": "Property",
+        "idShort": "title",
         "semanticId": {
           "keys": [
             {
@@ -993,9 +976,9 @@
         }
       },
       {
-        "idShort": "properties",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "properties",
         "semanticId": {
           "keys": [
             {
@@ -1007,9 +990,9 @@
         }
       },
       {
-        "idShort": "TimeStamp",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "TimeStamp",
         "semanticId": {
           "keys": [
             {
@@ -1021,9 +1004,9 @@
         }
       },
       {
-        "idShort": "key",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/0/value/0",
+        "modelType": "Property",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -1046,9 +1029,9 @@
         ]
       },
       {
-        "idShort": "type",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/0/value/1",
+        "modelType": "Property",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -1060,9 +1043,9 @@
         }
       },
       {
-        "idShort": "Uuid",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/1",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "Uuid",
         "semanticId": {
           "keys": [
             {
@@ -1074,9 +1057,9 @@
         }
       },
       {
-        "idShort": "key",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/1/value/0",
+        "modelType": "Property",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -1099,9 +1082,9 @@
         ]
       },
       {
-        "idShort": "type",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/1/value/1",
+        "modelType": "Property",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -1113,9 +1096,9 @@
         }
       },
       {
-        "idShort": "State",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "State",
         "semanticId": {
           "keys": [
             {
@@ -1127,9 +1110,9 @@
         }
       },
       {
-        "idShort": "key",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/2/value/0",
+        "modelType": "Property",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -1152,9 +1135,9 @@
         ]
       },
       {
-        "idShort": "type",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/2/value/1",
+        "modelType": "Property",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -1166,9 +1149,9 @@
         }
       },
       {
-        "idShort": "enum",
-        "modelType": "SubmodelElementList",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/2/value/2",
+        "modelType": "SubmodelElementList",
+        "idShort": "enum",
         "semanticId": {
           "keys": [
             {
@@ -1180,21 +1163,21 @@
         }
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/2/value/2/value/0"
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/2/value/2/value/0",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/2/value/2/value/1"
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/2/value/2/value/1",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/2/value/2/value/2"
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/2/value/2/value/2",
+        "modelType": "Property"
       },
       {
-        "idShort": "Outcome",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/3",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "Outcome",
         "semanticId": {
           "keys": [
             {
@@ -1206,9 +1189,9 @@
         }
       },
       {
-        "idShort": "key",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/3/value/0",
+        "modelType": "Property",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -1231,9 +1214,9 @@
         ]
       },
       {
-        "idShort": "type",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/3/value/1",
+        "modelType": "Property",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -1245,9 +1228,9 @@
         }
       },
       {
-        "idShort": "min_max",
-        "modelType": "Range",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/3/value/2/value/3/value/2",
+        "modelType": "Range",
+        "idShort": "min_max",
         "semanticId": {
           "keys": [
             {
@@ -1279,9 +1262,9 @@
         ]
       },
       {
-        "idShort": "forms",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/4",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "forms",
         "semanticId": {
           "keys": [
             {
@@ -1293,9 +1276,9 @@
         }
       },
       {
-        "idShort": "href",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/0",
+        "modelType": "Property",
+        "idShort": "href",
         "semanticId": {
           "keys": [
             {
@@ -1307,9 +1290,9 @@
         }
       },
       {
-        "idShort": "security",
-        "modelType": "SubmodelElementList",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/1",
+        "modelType": "SubmodelElementList",
+        "idShort": "security",
         "semanticId": {
           "keys": [
             {
@@ -1321,177 +1304,90 @@
         }
       },
       {
-        "idShort": "op",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "response",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/hypermedia#returns"
+            }
+          ]
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/2/value/0",
+        "modelType": "Property",
+        "idShort": "contentType",
         "semanticId": {
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasOperationType"
+              "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
             }
           ],
           "type": "ExternalReference"
         }
       },
       {
-        "idShort": "response",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/3",
+        "modelType": "Property",
+        "idShort": "mqv_qos",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttResponseForm/1/0"
+              "value": "https://www.w3.org/2019/wot/mqtt#hasQoSFlag"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       },
       {
-        "idShort": "contentType",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/3/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "href",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/3/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_retain",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/3/value/2",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttRetain/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_control_packet",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/3/value/3",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttControlPacket/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_retain",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/4",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttRetain/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_qos",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/5",
+        "idShort": "mqv_responseTopic",
         "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttQos/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_control_packet",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/6",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttControlPacket/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_request_reply",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/7",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttRequestReply/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_response_topic",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/0/value/4/value/8",
-        "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
               "value": "https://smartproductionlab.aau.dk/aid/MqttResponseTopic/1/0"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       },
       {
-        "idShort": "Occupy",
-        "modelType": "SubmodelElementCollection",
         "path": "/submodelElements/0/value/2/value/1/value/1",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "Occupy",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#ActionAffordance"
+              "value": "https://smartproductionlab.aau.dk/aid/ActionDefinition/1/0"
             }
-          ],
-          "type": "ExternalReference"
-        }
+          ]
+        },
+        "supplementalSemanticIds": [
+          {
+            "type": "ExternalReference",
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ]
+          }
+        ]
       },
       {
-        "idShort": "title",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/1/value/0",
+        "modelType": "Property",
+        "idShort": "title",
         "semanticId": {
           "keys": [
             {
@@ -1503,754 +1399,43 @@
         }
       },
       {
-        "idShort": "synchronous",
-        "modelType": "Property",
         "path": "/submodelElements/0/value/2/value/1/value/1/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#synchronous"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "input",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/2",
-        "qualifiers": [
-          {
-            "kind": "TemplateQualifier",
-            "semanticId": {
-              "keys": [
-                {
-                  "type": "GlobalReference",
-                  "value": "https://www.w3.org/2019/wot/json-schema#required"
-                }
-              ],
-              "type": "ExternalReference"
-            },
-            "type": "RequiredProperties",
-            "value": "[\"Uuid\"]",
-            "valueType": "xs:string"
-          }
-        ],
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasInput"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/command.schema.json"
-              }
-            ],
-            "type": "ExternalReference"
-          }
-        ]
-      },
-      {
-        "idShort": "type",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "title",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#title"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "properties",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/2",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/json-schema#properties"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "Uuid",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/2/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "key",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/2/value/0/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://www.w3.org/2019/wot/td#name"
-              }
-            ],
-            "type": "ExternalReference"
-          }
-        ]
-      },
-      {
-        "idShort": "type",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/2/value/0/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "output",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3",
-        "qualifiers": [
-          {
-            "kind": "TemplateQualifier",
-            "semanticId": {
-              "keys": [
-                {
-                  "type": "GlobalReference",
-                  "value": "https://www.w3.org/2019/wot/json-schema#required"
-                }
-              ],
-              "type": "ExternalReference"
-            },
-            "type": "RequiredProperties",
-            "value": "[\"State\",\"TimeStamp\",\"Uuid\"]",
-            "valueType": "xs:string"
-          }
-        ],
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasOutput"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/commandResponse.schema.json"
-              }
-            ],
-            "type": "ExternalReference"
-          }
-        ]
-      },
-      {
-        "idShort": "type",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "title",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#title"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "properties",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/json-schema#properties"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "TimeStamp",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "key",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/0/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://www.w3.org/2019/wot/td#name"
-              }
-            ],
-            "type": "ExternalReference"
-          }
-        ]
-      },
-      {
-        "idShort": "type",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/0/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "Uuid",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "key",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/1/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://www.w3.org/2019/wot/td#name"
-              }
-            ],
-            "type": "ExternalReference"
-          }
-        ]
-      },
-      {
-        "idShort": "type",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/1/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "State",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "key",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://www.w3.org/2019/wot/td#name"
-              }
-            ],
-            "type": "ExternalReference"
-          }
-        ]
-      },
-      {
-        "idShort": "type",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "enum",
-        "modelType": "SubmodelElementList",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/2",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/json-schema#enum"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/2/value/0"
-      },
-      {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/2/value/1"
-      },
-      {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/2/value/2"
-      },
-      {
-        "idShort": "Outcome",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/3",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "key",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/3/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://www.w3.org/2019/wot/td#name"
-              }
-            ],
-            "type": "ExternalReference"
-          }
-        ]
-      },
-      {
-        "idShort": "type",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/3/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "min_max",
-        "modelType": "Range",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/3/value/2",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/minMaxRange"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://www.w3.org/2019/wot/json-schema#minimum"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://www.w3.org/2019/wot/json-schema#maximum"
-              }
-            ],
-            "type": "ExternalReference"
-          }
-        ]
-      },
-      {
-        "idShort": "forms",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasForm"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "href",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "security",
-        "modelType": "SubmodelElementList",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "op",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/2",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasOperationType"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "response",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/3",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttResponseForm/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "contentType",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/3/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "href",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/3/value/1",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_retain",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/3/value/2",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttRetain/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_control_packet",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/3/value/3",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttControlPacket/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_retain",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/4",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttRetain/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_qos",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/5",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttQos/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_control_packet",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/6",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttControlPacket/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_request_reply",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/7",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttRequestReply/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_response_topic",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/8",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttResponseTopic/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "Release",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#ActionAffordance"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "title",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/0",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#title"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
         "idShort": "synchronous",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/1",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#synchronous"
+              "value": "https://www.w3.org/2019/wot/td#isSynchronous"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       },
       {
-        "idShort": "input",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/2",
         "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/2",
+        "idShort": "input",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasInputSchema"
+            }
+          ]
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/command.schema.json"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ],
         "qualifiers": [
           {
             "kind": "TemplateQualifier",
@@ -2267,32 +1452,12 @@
             "value": "[\"Uuid\"]",
             "valueType": "xs:string"
           }
-        ],
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasInput"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/command.schema.json"
-              }
-            ],
-            "type": "ExternalReference"
-          }
         ]
       },
       {
-        "idShort": "type",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/0",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -2304,9 +1469,9 @@
         }
       },
       {
-        "idShort": "title",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/1",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/1",
+        "idShort": "title",
         "semanticId": {
           "keys": [
             {
@@ -2318,9 +1483,9 @@
         }
       },
       {
-        "idShort": "properties",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/2",
         "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/2",
+        "idShort": "properties",
         "semanticId": {
           "keys": [
             {
@@ -2332,9 +1497,9 @@
         }
       },
       {
-        "idShort": "Uuid",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/2/value/0",
         "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/2/value/0",
+        "idShort": "Uuid",
         "semanticId": {
           "keys": [
             {
@@ -2346,9 +1511,9 @@
         }
       },
       {
-        "idShort": "key",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/2/value/0/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/2/value/0/value/0",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -2371,9 +1536,9 @@
         ]
       },
       {
-        "idShort": "type",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/2/value/2/value/0/value/1",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/2/value/0/value/1",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -2385,9 +1550,29 @@
         }
       },
       {
-        "idShort": "output",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3",
         "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3",
+        "idShort": "output",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasOutputSchema"
+            }
+          ]
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/commandResponse.schema.json"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ],
         "qualifiers": [
           {
             "kind": "TemplateQualifier",
@@ -2404,32 +1589,12 @@
             "value": "[\"State\",\"TimeStamp\",\"Uuid\"]",
             "valueType": "xs:string"
           }
-        ],
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasOutput"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        "supplementalSemanticIds": [
-          {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/commandResponse.schema.json"
-              }
-            ],
-            "type": "ExternalReference"
-          }
         ]
       },
       {
-        "idShort": "type",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/0",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -2441,9 +1606,9 @@
         }
       },
       {
-        "idShort": "title",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/1",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/1",
+        "idShort": "title",
         "semanticId": {
           "keys": [
             {
@@ -2455,9 +1620,9 @@
         }
       },
       {
-        "idShort": "properties",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2",
         "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2",
+        "idShort": "properties",
         "semanticId": {
           "keys": [
             {
@@ -2469,9 +1634,9 @@
         }
       },
       {
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/0",
+        "modelType": "SubmodelElementCollection",
         "idShort": "TimeStamp",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/0",
         "semanticId": {
           "keys": [
             {
@@ -2483,9 +1648,9 @@
         }
       },
       {
-        "idShort": "key",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/0/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/0/value/0",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -2508,9 +1673,9 @@
         ]
       },
       {
-        "idShort": "type",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/0/value/1",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/0/value/1",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -2522,9 +1687,9 @@
         }
       },
       {
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/1",
+        "modelType": "SubmodelElementCollection",
         "idShort": "Uuid",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/1",
         "semanticId": {
           "keys": [
             {
@@ -2536,9 +1701,9 @@
         }
       },
       {
-        "idShort": "key",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/1/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/1/value/0",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -2561,9 +1726,9 @@
         ]
       },
       {
-        "idShort": "type",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/1/value/1",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/1/value/1",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -2575,9 +1740,9 @@
         }
       },
       {
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2",
+        "modelType": "SubmodelElementCollection",
         "idShort": "State",
-        "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2",
         "semanticId": {
           "keys": [
             {
@@ -2589,9 +1754,9 @@
         }
       },
       {
-        "idShort": "key",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/0",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -2614,9 +1779,9 @@
         ]
       },
       {
-        "idShort": "type",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/1",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/1",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -2628,9 +1793,9 @@
         }
       },
       {
-        "idShort": "enum",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/2",
         "modelType": "SubmodelElementList",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/2",
+        "idShort": "enum",
         "semanticId": {
           "keys": [
             {
@@ -2642,21 +1807,21 @@
         }
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/2/value/0"
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/2/value/0",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/2/value/1"
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/2/value/1",
+        "modelType": "Property"
       },
       {
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/2/value/2"
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/2/value/2/value/2",
+        "modelType": "Property"
       },
       {
-        "idShort": "Outcome",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/3",
         "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/3",
+        "idShort": "Outcome",
         "semanticId": {
           "keys": [
             {
@@ -2668,9 +1833,9 @@
         }
       },
       {
-        "idShort": "key",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/3/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/3/value/0",
+        "idShort": "key",
         "semanticId": {
           "keys": [
             {
@@ -2693,9 +1858,9 @@
         ]
       },
       {
-        "idShort": "type",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/3/value/1",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/3/value/1",
+        "idShort": "type",
         "semanticId": {
           "keys": [
             {
@@ -2707,9 +1872,9 @@
         }
       },
       {
-        "idShort": "min_max",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/3/value/2/value/3/value/2",
         "modelType": "Range",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/3/value/2",
+        "idShort": "min_max",
         "semanticId": {
           "keys": [
             {
@@ -2741,9 +1906,9 @@
         ]
       },
       {
-        "idShort": "forms",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/4",
         "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4",
+        "idShort": "forms",
         "semanticId": {
           "keys": [
             {
@@ -2755,9 +1920,9 @@
         }
       },
       {
-        "idShort": "href",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/0",
+        "idShort": "href",
         "semanticId": {
           "keys": [
             {
@@ -2769,9 +1934,9 @@
         }
       },
       {
-        "idShort": "security",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/1",
         "modelType": "SubmodelElementList",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/1",
+        "idShort": "security",
         "semanticId": {
           "keys": [
             {
@@ -2783,37 +1948,23 @@
         }
       },
       {
-        "idShort": "op",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/2",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td#hasOperationType"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "response",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/2",
         "modelType": "SubmodelElementCollection",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/3",
+        "idShort": "response",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttResponseForm/1/0"
+              "value": "https://www.w3.org/2019/wot/hypermedia#returns"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       },
       {
-        "idShort": "contentType",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/2/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/3/value/0",
+        "idShort": "contentType",
         "semanticId": {
           "keys": [
             {
@@ -2825,9 +1976,597 @@
         }
       },
       {
-        "idShort": "href",
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/3",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/3/value/1",
+        "idShort": "mqv_qos",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/mqtt#hasQoSFlag"
+            }
+          ]
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/1/value/4/value/4",
+        "modelType": "Property",
+        "idShort": "mqv_responseTopic",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aid/MqttResponseTopic/1/0"
+            }
+          ]
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "Release",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aid/ActionDefinition/1/0"
+            }
+          ]
+        },
+        "supplementalSemanticIds": [
+          {
+            "type": "ExternalReference",
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/0",
+        "modelType": "Property",
+        "idShort": "title",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#title"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/1",
+        "modelType": "Property",
+        "idShort": "synchronous",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#isSynchronous"
+            }
+          ]
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "input",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasInputSchema"
+            }
+          ]
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/command.schema.json"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ],
+        "qualifiers": [
+          {
+            "kind": "TemplateQualifier",
+            "semanticId": {
+              "keys": [
+                {
+                  "type": "GlobalReference",
+                  "value": "https://www.w3.org/2019/wot/json-schema#required"
+                }
+              ],
+              "type": "ExternalReference"
+            },
+            "type": "RequiredProperties",
+            "value": "[\"Uuid\"]",
+            "valueType": "xs:string"
+          }
+        ]
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/0",
+        "modelType": "Property",
+        "idShort": "type",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/1",
+        "modelType": "Property",
+        "idShort": "title",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#title"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "properties",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#properties"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/2/value/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "Uuid",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/2/value/0/value/0",
+        "modelType": "Property",
+        "idShort": "key",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/2/value/2/value/0/value/1",
+        "modelType": "Property",
+        "idShort": "type",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "output",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasOutputSchema"
+            }
+          ]
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/commandResponse.schema.json"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ],
+        "qualifiers": [
+          {
+            "kind": "TemplateQualifier",
+            "semanticId": {
+              "keys": [
+                {
+                  "type": "GlobalReference",
+                  "value": "https://www.w3.org/2019/wot/json-schema#required"
+                }
+              ],
+              "type": "ExternalReference"
+            },
+            "type": "RequiredProperties",
+            "value": "[\"State\",\"TimeStamp\",\"Uuid\"]",
+            "valueType": "xs:string"
+          }
+        ]
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/0",
+        "modelType": "Property",
+        "idShort": "type",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/1",
+        "modelType": "Property",
+        "idShort": "title",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#title"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "properties",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#properties"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/0",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "TimeStamp",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/0/value/0",
+        "modelType": "Property",
+        "idShort": "key",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/0/value/1",
+        "modelType": "Property",
+        "idShort": "type",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/1",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "Uuid",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/1/value/0",
+        "modelType": "Property",
+        "idShort": "key",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/1/value/1",
+        "modelType": "Property",
+        "idShort": "type",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "State",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/0",
+        "modelType": "Property",
+        "idShort": "key",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/1",
+        "modelType": "Property",
+        "idShort": "type",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/2",
+        "modelType": "SubmodelElementList",
+        "idShort": "enum",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#enum"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/2/value/0",
+        "modelType": "Property"
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/2/value/1",
+        "modelType": "Property"
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/2/value/2/value/2",
+        "modelType": "Property"
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/3",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "Outcome",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/json-schema#propertyName"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/3/value/0",
+        "modelType": "Property",
+        "idShort": "key",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/td#name"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/3/value/1",
+        "modelType": "Property",
+        "idShort": "type",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/3/value/2/value/3/value/2",
+        "modelType": "Range",
+        "idShort": "min_max",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/minMaxRange"
+            }
+          ],
+          "type": "ExternalReference"
+        },
+        "supplementalSemanticIds": [
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/json-schema#minimum"
+              }
+            ],
+            "type": "ExternalReference"
+          },
+          {
+            "keys": [
+              {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/json-schema#maximum"
+              }
+            ],
+            "type": "ExternalReference"
+          }
+        ]
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/4",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "forms",
+        "semanticId": {
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasForm"
+            }
+          ],
+          "type": "ExternalReference"
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/0",
+        "modelType": "Property",
+        "idShort": "href",
         "semanticId": {
           "keys": [
             {
@@ -2839,101 +2578,73 @@
         }
       },
       {
-        "idShort": "mqv_retain",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/3/value/2",
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/1",
+        "modelType": "SubmodelElementList",
+        "idShort": "security",
         "semanticId": {
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttRetain/1/0"
+              "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
             }
           ],
           "type": "ExternalReference"
         }
       },
       {
-        "idShort": "mqv_control_packet",
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/2",
+        "modelType": "SubmodelElementCollection",
+        "idShort": "response",
+        "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+            {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/hypermedia#returns"
+            }
+          ]
+        }
+      },
+      {
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/2/value/0",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/3/value/3",
+        "idShort": "contentType",
         "semanticId": {
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttControlPacket/1/0"
+              "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
             }
           ],
           "type": "ExternalReference"
         }
       },
       {
-        "idShort": "mqv_retain",
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/3",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/4",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttRetain/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
         "idShort": "mqv_qos",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/5",
         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttQos/1/0"
+              "value": "https://www.w3.org/2019/wot/mqtt#hasQoSFlag"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       },
       {
-        "idShort": "mqv_control_packet",
+        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/4",
         "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/6",
+        "idShort": "mqv_responseTopic",
         "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttControlPacket/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_request_reply",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/7",
-        "semanticId": {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://smartproductionlab.aau.dk/aid/MqttRequestReply/1/0"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      },
-      {
-        "idShort": "mqv_response_topic",
-        "modelType": "Property",
-        "path": "/submodelElements/0/value/2/value/1/value/2/value/4/value/8",
-        "semanticId": {
+          "type": "ExternalReference",
           "keys": [
             {
               "type": "GlobalReference",
               "value": "https://smartproductionlab.aau.dk/aid/MqttResponseTopic/1/0"
             }
-          ],
-          "type": "ExternalReference"
+          ]
         }
       }
     ],

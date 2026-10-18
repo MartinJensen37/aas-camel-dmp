@@ -476,13 +476,13 @@ public final class ConnectorConfigurationFactory {
 		if(family==WireModel.ProtocolFamily.HTTP || family==WireModel.ProtocolFamily.IOLINK) {
 			if(!selectHttpForm(target,mapping,path,issues))return null;
 			Form form=selectedForm(target);
-			if(!validateForm(form,"POST",mapping,path,issues))return null;
-			URI uri=formUri(target,form,mapping,path,false,issues);
+			String method=httpMethod(form,"invoke",mapping,path,issues);
+			if(method==null)return null;
+			URI uri=formUri(target,form,mapping,path,issues);
 			if(uri==null || !httpUri(uri,mapping,path,issues))return null;
 			if(uri.getUserInfo()!=null) { issue(issues,mapping,path+"/forms/href","HTTP operation targets have no credentials field");return null; }
 			HttpDataSinkConfiguration sink=new HttpDataSinkConfiguration(uniqueId,uri.getScheme(),uri.getHost(),uri.getPath(),effectivePort(uri));
 			sink.setQuery(uri.getQuery());sink.setSinkId(action);sink.setSchema(schemaOptional(input));
-			String method=form.httpMethod().present()?form.httpMethod().value():"POST";
 			targetOptions.put("httpMethod",method);targetOptions.put("timeoutSeconds",30);
 			return sink;
 		}
@@ -504,20 +504,15 @@ public final class ConnectorConfigurationFactory {
 			Form form=mqttForm(target,mapping,path,"sink",true,issues);if(form==null)return null;
 			MqttConnection base=mqttConnection(target,mapping,path,issues);if(base==null)return null;
 			String topic=mqttTopic(base,form,mapping,path,issues);if(topic==null)return null;
-			String reply=form.responseTopic().present()?form.responseTopic().value():mqttTerm(form,"mqv_response_topic");
-			String requestReply=mqttTerm(form,"mqv_request_reply");
-			if(!"true".equalsIgnoreCase(requestReply) || reply==null || reply.isBlank()) {
-				issue(issues,mapping,path+"/forms","MQTT Operation requires requestReply=true and an exact reply topic");return null;
+			String reply=form.responseTopic().present()?form.responseTopic().value():null;
+			if(reply==null || reply.isBlank()) {
+				issue(issues,mapping,path+"/forms/mqv_responseTopic","an MQTT Operation needs the action's mqv_responseTopic (MQTT 5 request/reply)");return null;
 			}
-			String replyTopic=mqttTopic(base,reply,mapping,path+"/forms/response",issues);
+			String replyTopic=mqttTopic(base,reply,mapping,path+"/forms/mqv_responseTopic",issues);
 			Integer qos=mqttQos(form,mapping,path,issues);
 			Boolean retained=mqttRetain(form,mapping,path,issues);
 			if(replyTopic==null || hasIssue(issues,mapping))return null;
-			String timeout=mqttTerm(form,"mqv_reply_timeout");
 			long timeoutSeconds=30;
-			if(timeout!=null)try { timeoutSeconds=Long.parseLong(timeout); }
-				catch(NumberFormatException invalid) { issue(issues,mapping,path+"/forms/mqv_reply_timeout","reply timeout must be a positive integer seconds");return null; }
-			if(timeoutSeconds<1) { issue(issues,mapping,path+"/forms/mqv_reply_timeout","reply timeout must be positive");return null; }
 			MqttV5OperationDataSinkConfiguration sink=new MqttV5OperationDataSinkConfiguration(uniqueId,
 					"tcp://"+base.host()+":"+base.port(),topic,stableMqttClientId(plan,routeId,mapping,action,"operation"),
 					qos==null?2:qos,Boolean.TRUE.equals(retained),replyTopic,timeoutSeconds,base.username(),base.password());
@@ -634,7 +629,9 @@ public final class ConnectorConfigurationFactory {
 			if(families.size()!=1) { issue(issues,mapping,path,"ambiguous protocol bindings require an exact single binding");continue; }
 			WireModel.ProtocolFamily family=families.get(0);
 			boolean read=mapping.sources().contains(endpoint) || mapping.responseSources().value()!=null && mapping.responseSources().value().contains(endpoint);
-			for(SubmodelElement child:Aas.children(target.resolved().affordance().element())) {
+			WireModel.Affordance affordance=target.resolved().affordance();
+			String kind=affordance.kind();
+			for(SubmodelElement child:Aas.children(affordance.element())) {
 				String name=child.getIdShort();
 				if(!List.of("readOnly","writeOnly","synchronous","observable").contains(name==null?"":name) || Aas.value(child)==null)continue;
 				String text=Aas.value(child);
@@ -642,54 +639,74 @@ public final class ConnectorConfigurationFactory {
 					issue(issues,mapping,path+"/"+name,"capability must be a declared boolean");continue;
 				}
 				boolean enabled="true".equalsIgnoreCase(text) || "1".equals(text);
-				if((read && "writeOnly".equals(name) || !read && "readOnly".equals(name)) && enabled)
-					issue(issues,mapping,path+"/"+name,"mapping role contradicts authored capability");
-				if("synchronous".equals(name) && !enabled && "action".equals(target.resolved().affordance().kind())
-						&& !(family==WireModel.ProtocolFamily.MQTT && target.resolved().affordance().forms().stream()
-								.anyMatch(form -> "true".equalsIgnoreCase(mqttTerm(form,"mqv_request_reply")))))
+				if("synchronous".equals(name) && !enabled && "action".equals(kind)
+						&& !(family==WireModel.ProtocolFamily.MQTT && affordance.forms().stream().anyMatch(form -> form.responseTopic().present())))
 					issue(issues,mapping,path+"/"+name,"non-synchronous actions are not supported by the request/reply bridge");
 			}
-			if("event".equals(target.resolved().affordance().kind()))
-				for(SubmodelElement child:Aas.children(target.resolved().affordance().element()))
+			if("event".equals(kind))
+				for(SubmodelElement child:Aas.children(affordance.element()))
 					if(List.of("subscription","dataResponse","cancellation").contains(child.getIdShort()==null?"":child.getIdShort()))
 						issue(issues,mapping,path+"/"+child.getIdShort(),"event subscription, response and cancellation payloads are not sent by the DMP");
 			Set<String> terms=switch(family) {
-				case MQTT -> Set.of("mqv_qos","mqv_retain","mqv_control_packet","mqv_request_reply","mqv_response_topic","mqv_reply_timeout","mqtt_responseTopic");
+				case MQTT -> Set.of("mqv_qos","mqv_retain","mqv_controlPacket","mqv_responseTopic");
 				case OPCUA -> Set.of("uav_browsePath");
 				case MODBUS -> Set.of("modv_entity","modv_function","modv_type","modv_zeroBasedAddressing","modv_mostSignificantByte",
 						"modv_mostSignificantWord","modv_pollingTime","modv_timeout");
 				default -> Set.of();
 			};
-			for(Form form:target.resolved().affordance().forms()) {
+			for(Form form:affordance.forms()) {
 				for(SubmodelElement child:Aas.children(form.element())) {
-					String name=child.getIdShort();
+					String name=child.getIdShort()==null?"":child.getIdShort();
+					boolean authored=Aas.value(child)!=null || !Aas.children(child).isEmpty();
 					if("security".equals(name) && !Aas.children(child).isEmpty())issue(issues,mapping,path,"authored form security selection is not represented by connector credentials");
-					if(!Set.of("href","contentType","op","semanticProtocol","httpMethod","htv_methodName","security","response").contains(name==null?"":name)
-							&& !terms.contains(name==null?"":name) && (Aas.value(child)!=null || !Aas.children(child).isEmpty()))
+					else if("subprotocol".equals(name) && authored)
+						issue(issues,mapping,path+"/forms/subprotocol","observing through a subprotocol (longpoll, websub, sse) is not supported");
+					else if("htv_headers".equals(name) && authored)
+						issue(issues,mapping,path+"/forms/htv_headers","HTTP message headers are not sent yet");
+					else if("response".equals(name) && !"action".equals(kind))
+						issue(issues,mapping,path+"/forms/response","an expected response belongs to an action form");
+					else if(!Set.of("href","contentType","op","htv_methodName","security","response").contains(name)
+							&& !terms.contains(name) && authored)
 						issue(issues,mapping,path+"/forms/"+name,"unknown consumed form option");
 				}
-				Set<String> authored=new LinkedHashSet<>(form.bindingTerms().keySet());authored.addAll(form.mqttTerms().keySet());
-				for(String term:authored)if(!terms.contains(term))issue(issues,mapping,path+"/forms/"+term,"authored protocol option is not represented by this connector");
-				if(family==WireModel.ProtocolFamily.MQTT) {
-					String packet=mqttTerm(form,"mqv_control_packet");
-					if(packet!=null && !List.of("publish","subscribe").contains(packet.toLowerCase(java.util.Locale.ROOT)))
-						issue(issues,mapping,path,"unsupported MQTT control packet");
-					// Authored control packets describe the device-side leg (publish source, subscribe action).
-					// Source retain metadata likewise describes the device publisher, not subscriber controls.
-					mqttRetain(form,mapping,path,issues);
-					for(SubmodelElement child:Aas.children(form.element()))if("response".equals(child.getIdShort())) {
-						for(SubmodelElement option:Aas.children(child))if(Aas.value(option)!=null) {
-							String name=option.getIdShort();String value=Aas.value(option);
-							if("mqv_retain".equals(name) && !(value.equalsIgnoreCase("false") || value.equals("0")))
-								issue(issues,mapping,path+"/forms/response","retained correlated replies are unsupported");
-							else if("mqv_control_packet".equals(name) && !value.equalsIgnoreCase("publish"))
-								issue(issues,mapping,path+"/forms/response","MQTT correlated response must describe publish");
-							else if("contentType".equals(name) && !value.equalsIgnoreCase("application/json"))
-								issue(issues,mapping,path+"/forms/response","MQTT correlated response requires JSON");
-							else if(!List.of("href","mqv_retain","mqv_control_packet","contentType").contains(name==null?"":name))
-								issue(issues,mapping,path+"/forms/response","authored reply options are not represented by the connector");
-						}
+				for(String term:form.bindingTerms().keySet())if(!terms.contains(term))issue(issues,mapping,path+"/forms/"+term,"authored protocol option is not represented by this connector");
+				for(String operation:form.operations())
+					if(!AidForms.KNOWN.contains(operation))issue(issues,mapping,path+"/forms/op","unknown WoT operation type "+operation);
+				Set<String> operations=AidForms.operations(affordance,form);
+				// The mapping role needs an operation the form serves (op, else the TD defaults from
+				// readOnly/writeOnly/observable; aas-model docs/aid-extension.md §3.4).
+				if(read && "property".equals(kind) && !operations.contains(AidForms.READ) && !operations.contains(AidForms.OBSERVE))
+					issue(issues,mapping,path,"the property is neither readable nor observable (op, writeOnly, observable)");
+				if(!read && "property".equals(kind) && !operations.contains(AidForms.WRITE))
+					issue(issues,mapping,path,"the property is not writable (op, readOnly)");
+				if(!read && "action".equals(kind) && !operations.contains(AidForms.INVOKE))
+					issue(issues,mapping,path+"/forms/op","the action form does not serve invokeaction");
+				if(read && "event".equals(kind) && !operations.contains(AidForms.SUBSCRIBE))
+					issue(issues,mapping,path+"/forms/op","the event form does not serve subscribeevent");
+				if(!read && "event".equals(kind))issue(issues,mapping,path,"event affordances cannot be writable destinations");
+				for(SubmodelElement child:Aas.children(form.element()))if("response".equals(child.getIdShort()))
+					for(SubmodelElement option:Aas.children(child)) {
+						String value=Aas.value(option);
+						if(!"contentType".equals(option.getIdShort()))
+							issue(issues,mapping,path+"/forms/response","an expected response declares only its contentType");
+						else if(value!=null && !"application/json".equalsIgnoreCase(value))
+							issue(issues,mapping,path+"/forms/response","action results are decoded as JSON, not "+value);
 					}
+				if(family==WireModel.ProtocolFamily.MQTT) {
+					// WoT MQTT binding: the control packet is the consumer's (subscribe to read and observe,
+					// publish to write and invoke), as AID's "in relation to the broker".
+					String packet=mqttTerm(form,"mqv_controlPacket");
+					String expected=read?"subscribe":"publish";
+					if(packet!=null && !expected.equalsIgnoreCase(packet.trim()))
+						issue(issues,mapping,path+"/forms/mqv_controlPacket","mqv_controlPacket "+packet+" does not serve this mapping role (expected "+expected+")");
+					mqttRetain(form,mapping,path,issues);
+					if(form.contentType().present() && form.contentType().value()!=null && !"application/json".equalsIgnoreCase(form.contentType().value()))
+						issue(issues,mapping,path+"/forms/contentType","MQTT payloads are decoded as JSON, not "+form.contentType().value());
+					if(mapping.sources().contains(endpoint) && "property".equals(kind) && !operations.contains(AidForms.OBSERVE)
+							&& !Boolean.TRUE.equals(mqttRetain(form,mapping,path,new ArrayList<>())))
+						issue(issues,mapping,path,"an MQTT property is read by subscription: declare it observable, or retained (mqv_retain)");
+					if(mapping.sources().contains(endpoint) && endpoint.pollingInterval().present())
+						issue(issues,mapping,path,"MQTT polling cannot be implemented as fresh Read");
 				}
 				if(family!=WireModel.ProtocolFamily.HTTP && family!=WireModel.ProtocolFamily.IOLINK
 						&& family!=WireModel.ProtocolFamily.MQTT) {
@@ -699,41 +716,12 @@ public final class ConnectorConfigurationFactory {
 							&& !((family==WireModel.ProtocolFamily.OPCUA || family==WireModel.ProtocolFamily.MODBUS)
 									&& "application/octet-stream".equalsIgnoreCase(form.contentType().value())))
 						issue(issues,mapping,path,"native connector supports decoded JSON values, not the authored content type");
-					if(form.responseTopic().present())issue(issues,mapping,path,"reply topic is MQTT-only");
-					String op=form.operation().value();
-					// OPC 10101 §6.5.3: observeproperty is the UA Monitor service (a monitored item);
-					// subscribeevent (DMP extension) an event monitored item.
-					// WoT Modbus binding: observeproperty polls (readCoil at modv_pollingTime).
-					List<String> supportedOps=family==WireModel.ProtocolFamily.OPCUA
-							? List.of("readproperty","writeproperty","observeproperty","subscribeevent","invokeaction")
-							: family==WireModel.ProtocolFamily.MODBUS
-							? List.of("readproperty","writeproperty","observeproperty")
-							: List.of("readproperty","writeproperty","invokeaction");
-					if(op!=null && !supportedOps.contains(op.toLowerCase(java.util.Locale.ROOT)))
-						issue(issues,mapping,path,"unsupported protocol operation");
-					String method=form.httpMethod().value();
-				String expected="action".equals(target.resolved().affordance().kind())?"POST":read?"GET":"POST";
-					if(method!=null && !expected.equalsIgnoreCase(method))issue(issues,mapping,path,"native binding method annotation contradicts the mapping role");
+					if(form.httpMethod().present())issue(issues,mapping,path+"/forms/htv_methodName","an HTTP method on a non-HTTP form");
+					if("action".equals(kind) && family!=WireModel.ProtocolFamily.OPCUA)
+						issue(issues,mapping,path,"actions of this protocol are not invoked by the DMP (a write reports no result)");
+					if("event".equals(kind) && family!=WireModel.ProtocolFamily.OPCUA)
+						issue(issues,mapping,path,"events of this protocol are not consumed by the DMP");
 				}
-				String op=form.operation().value();
-				if(op!=null && (read && op.equalsIgnoreCase("writeproperty")
-						|| !read && (op.equalsIgnoreCase("readproperty") || op.equalsIgnoreCase("observeproperty"))))
-					issue(issues,mapping,path,"form operation contradicts mapping read/write role");
-				if(read) {
-					boolean managedObserve=family==WireModel.ProtocolFamily.MQTT
-							|| family==WireModel.ProtocolFamily.MODBUS && op!=null && op.equalsIgnoreCase("observeproperty")
-							|| family==WireModel.ProtocolFamily.OPCUA && op!=null
-									&& (op.equalsIgnoreCase("observeproperty") || op.equalsIgnoreCase("subscribeevent"));
-					if(op!=null && (op.equalsIgnoreCase("observeproperty") || op.equalsIgnoreCase("subscribeevent")) && !managedObserve)
-						issue(issues,mapping,path,"declared Observe/event acquisition has no supported managed consumer");
-				}
-				if(mapping.sources().contains(endpoint)) {
-					if(op!=null && op.equalsIgnoreCase("readproperty") && family==WireModel.ProtocolFamily.MQTT)
-						issue(issues,mapping,path,"MQTT subscription queue is not fresh Read acquisition");
-					if(endpoint.pollingInterval().present() && family==WireModel.ProtocolFamily.MQTT)
-						issue(issues,mapping,path,"MQTT polling cannot be implemented as fresh Read");
-				}
-				if(!read && "event".equals(target.resolved().affordance().kind()))issue(issues,mapping,path,"event affordances cannot be writable destinations");
 			}
 			if(target.resolved().owner().endpointMetadata().value()!=null) {
 				for(SubmodelElement child:Aas.children(target.resolved().owner().endpointMetadata().value()))
@@ -875,8 +863,8 @@ public final class ConnectorConfigurationFactory {
 		}
 		if (!selectHttpForm(target, mapping, path, issues)) return null;
 		Form form = selectedForm(target);
-		if (!validateForm(form, "GET", mapping, path, issues)) return null;
-		URI uri = formUri(target,form, mapping, path, true, issues);
+		if (httpMethod(form, "read", mapping, path, issues) == null) return null;
+		URI uri = formUri(target,form, mapping, path, issues);
 		if (uri == null) return null;
 		if (!httpUri(uri, mapping, path, issues)) return null;
 		String username = uri.getUserInfo() == null ? null : uri.getUserInfo().split(":", 2)[0];
@@ -956,8 +944,9 @@ public final class ConnectorConfigurationFactory {
 		}
 		if (!selectHttpForm(target, mapping, path, issues)) return null;
 		Form form = selectedForm(target);
-		if (!validateForm(form, "POST", mapping, path, issues)) return null;
-		URI uri = formUri(target,form, mapping, path, false, issues);
+		String method = httpMethod(form, "write", mapping, path, issues);
+		if (method == null) return null;
+		URI uri = formUri(target,form, mapping, path, issues);
 		if (uri == null) return null;
 		if (!httpUri(uri, mapping, path, issues)) return null;
 		if (uri.getUserInfo() != null) {
@@ -967,6 +956,7 @@ public final class ConnectorConfigurationFactory {
 		HttpDataSinkConfiguration result = new HttpDataSinkConfiguration(entityId(mapping, "sink", position),
 				uri.getScheme(), uri.getHost(), uri.getPath(), effectivePort(uri));
 		result.setQuery(uri.getQuery());
+		result.setMethod(method);
 		result.setSinkId(endpoint.id());
 		result.setSchema(schemaForAidTarget(target,mapping,path,issues));
 		setValuePath(result,target);
@@ -1132,38 +1122,34 @@ public final class ConnectorConfigurationFactory {
 		return issues.stream().anyMatch(issue -> issue.mappingId().equals(mapping.identity()));
 	}
 
-	private static boolean validateForm(Form form, String expectedMethod, MappingPlan mapping, String path,
-			List<Issue> issues) {
-		// Existing HTTP source/sink components have fixed GET/POST methods when
-		// the optional WOT htv_methodName binding is not authored.
-		if (form.httpMethod().present() && (form.httpMethod().value()==null
-				|| !expectedMethod.equalsIgnoreCase(form.httpMethod().value()))) {
-			issue(issues, mapping, path + "/forms/httpMethod", "HTTP endpoint method must be " + expectedMethod);
-			return false;
-		}
-		if (form.semanticProtocol().present() && form.semanticProtocol().value()!=null
-				&& !form.semanticProtocol().value().contains("http")) {
-			issue(issues,mapping,path+"/forms/semanticProtocol","HTTP form declares a different protocol");
-			return false;
-		}
-		if (form.operation().present() && form.operation().value()!=null) {
-			String op=form.operation().value().toLowerCase(java.util.Locale.ROOT);
-			if(!(expectedMethod.equals("GET") && List.of("readproperty","observeproperty").contains(op))
-					&& !(expectedMethod.equals("POST") && List.of("writeproperty","invokeaction").contains(op))) {
-				issue(issues,mapping,path+"/forms/op","HTTP form operation is not represented by the connector route");
-				return false;
-			}
+	/**
+	 * The HTTP method of a form for a mapping role: {@code htv_methodName} (mandatory in AID 1.2), else
+	 * the WoT HTTP binding default (GET to read, PUT to write, POST to invoke). A read is a GET poll.
+	 * Null after an issue.
+	 */
+	private static String httpMethod(Form form, String role, MappingPlan mapping, String path, List<Issue> issues) {
+		String fallback=switch(role) { case "read" -> "GET"; case "write" -> "PUT"; default -> "POST"; };
+		String method=form.httpMethod().present() && form.httpMethod().value()!=null
+				? form.httpMethod().value().trim().toUpperCase(java.util.Locale.ROOT) : fallback;
+		Set<String> allowed=switch(role) {
+			case "read" -> Set.of("GET");
+			case "write" -> Set.of("PUT","POST","PATCH");
+			default -> Set.of("POST","PUT","PATCH","GET","DELETE");
+		};
+		if(!allowed.contains(method)) {
+			issue(issues,mapping,path+"/forms/htv_methodName","HTTP "+method+" cannot "+role+" (expected one of "+new java.util.TreeSet<>(allowed)+")");
+			return null;
 		}
 		if (form.contentType().present() && form.contentType().value()!=null
 				&& !"application/json".equalsIgnoreCase(form.contentType().value())) {
 			issue(issues,mapping,path+"/forms/contentType","HTTP connector only binds JSON request/response bodies");
-			return false;
+			return null;
 		}
 		if(!form.mqttTerms().isEmpty() || form.responseTopic().present()) {
 			issue(issues,mapping,path+"/forms","HTTP form contains MQTT-only binding terms");
-			return false;
+			return null;
 		}
-		return true;
+		return method;
 	}
 
 	private static boolean selectHttpForm(AidTarget target, MappingPlan mapping, String path, List<Issue> issues) {
@@ -1181,48 +1167,25 @@ public final class ConnectorConfigurationFactory {
 	}
 
 	private static Form selectedForm(AidTarget target) { return target.resolved().affordance().forms().get(0); }
-	private static URI formUri(AidTarget target, Form form, MappingPlan mapping, String path,
-			boolean allowBaseForEmptyHref,List<Issue> issues) {
-		if (!form.href().present() || form.href().value() == null || form.href().value().isBlank()) {
-			WireModel.Presence<SubmodelElement> endpoint=target.resolved().owner().endpointMetadata();
-			String base=endpoint.present() && endpoint.value()!=null?elementString(endpoint.value(),"base"):null;
-			if(allowBaseForEmptyHref && base!=null && !base.isBlank()) {
-				try { return URI.create(base); }
-				catch(IllegalArgumentException malformed) { issue(issues,mapping,path+"/EndpointMetadata/base","invalid HTTP endpoint base URI");return null; }
-			}
+	/** The form's {@code href} resolved against the interface's {@code base} (AID 1.2 Annex B, RFC 3986). */
+	private static URI formUri(AidTarget target, Form form, MappingPlan mapping, String path, List<Issue> issues) {
+		return formUri(target, form.href().present() ? form.href().value() : null, mapping, path, issues);
+	}
+
+	private static URI formUri(AidTarget target, String href, MappingPlan mapping, String path, List<Issue> issues) {
+		WireModel.Presence<SubmodelElement> metadata=target.resolved().owner().endpointMetadata();
+		String base=metadata.present() && metadata.value()!=null ? elementString(metadata.value(),"base") : null;
+		if((href==null || href.isBlank()) && (base==null || base.isBlank())) {
 			issue(issues, mapping, path + "/forms/href", "required endpoint href is absent"); return null;
 		}
 		try {
-			URI href=URI.create(form.href().value());
-			if(href.isAbsolute())return href;
-			WireModel.Presence<SubmodelElement> metadata=target.resolved().owner().endpointMetadata();
-			String base=metadata.present() && metadata.value()!=null ? elementString(metadata.value(),"base") : null;
-			if(base==null || base.isBlank()) {
-				issue(issues,mapping,path+"/EndpointMetadata/base","relative HTTP href requires an authored endpoint base");
-				return null;
-			}
-			URI endpoint=URI.create(base);
-			if(!("http".equalsIgnoreCase(endpoint.getScheme()) || "https".equalsIgnoreCase(endpoint.getScheme()))
-					|| endpoint.getHost()==null) {
-				issue(issues,mapping,path+"/EndpointMetadata/base","relative HTTP href requires an http(s) endpoint base");
-				return null;
-			}
-			String prefix=endpoint.getPath()==null?"":endpoint.getPath().replaceAll("/+$","");
-			String suffix=href.getPath()==null?"":href.getPath().replaceAll("^/+","");
-			String fullPath=prefix+(suffix.isEmpty()?"":"/"+suffix);
-			String query=href.getRawQuery();
-			if(query==null)query=endpoint.getRawQuery();
-			if(query!=null && endpoint.getRawQuery()!=null && href.getRawQuery()!=null) {
-				issue(issues,mapping,path+"/forms/href","query parameters cannot be declared in both HTTP base and form href");
-				return null;
-			}
-			return new URI(endpoint.getScheme(),endpoint.getUserInfo(),endpoint.getHost(),endpoint.getPort(),
-					fullPath,query,href.getRawFragment());
-		} catch (IllegalArgumentException | java.net.URISyntaxException malformed) {
-			issue(issues, mapping, path + "/forms/href", "endpoint href is not a valid URI");
+			return AidForms.resolve(base, href);
+		} catch (IllegalArgumentException malformed) {
+			issue(issues, mapping, path + "/forms/href", "href cannot be resolved against the endpoint base: " + malformed.getMessage());
 			return null;
 		}
 	}
+
 	private static boolean httpUri(URI uri, MappingPlan mapping, String path, List<Issue> issues) {
 		if (!("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
 				|| uri.getHost() == null || uri.getHost().isBlank() || uri.getRawFragment()!=null) {
@@ -1237,7 +1200,7 @@ public final class ConnectorConfigurationFactory {
 		return child==null?null:Aas.value(child);
 	}
 
-	private record MqttConnection(String host,int port,String prefix,String username,String password) { }
+	private record MqttConnection(String host,int port,String base,String username,String password) { }
 
 	private static MqttConnection mqttConnection(AidTarget target,MappingPlan mapping,String path,List<Issue> issues) {
 		WireModel.Presence<SubmodelElement> metadata=target.resolved().owner().endpointMetadata();
@@ -1260,7 +1223,7 @@ public final class ConnectorConfigurationFactory {
 			}
 			username=uri.getUserInfo().substring(0,separator); password=uri.getUserInfo().substring(separator+1);
 		}
-		return new MqttConnection(uri.getHost(),uri.getPort(),uri.getPath(),username,password);
+		return new MqttConnection(uri.getHost(),uri.getPort(),base,username,password);
 	}
 
 	private static String mqttTopic(MqttConnection base,Form form,MappingPlan mapping,String path,List<Issue> issues) {
@@ -1268,21 +1231,25 @@ public final class ConnectorConfigurationFactory {
 		return mqttTopic(base,href,mapping,path,issues);
 	}
 
+	/**
+	 * The MQTT topic of an {@code href} (AID 1.2 Annex B.2): the href resolved against the base, its
+	 * path without the leading {@code /}, percent-decoded. A topic with a leading {@code /} is written
+	 * {@code .//topic}, a {@code #} wildcard {@code %23}.
+	 */
 	private static String mqttTopic(MqttConnection base,String href,MappingPlan mapping,String path,List<Issue> issues) {
 		if(href==null || href.isBlank()) {
 			issue(issues,mapping,path+"/forms/href","MQTT topic href is required"); return null;
 		}
-		URI pathUri;
-		try { pathUri=URI.create(href); } catch(IllegalArgumentException malformed) {
+		URI resolved;
+		try { resolved=AidForms.resolve(base.base(),href); } catch(IllegalArgumentException malformed) {
 			issue(issues,mapping,path+"/forms/href","invalid MQTT topic href"); return null;
 		}
-		if(pathUri.isAbsolute() || pathUri.getPath()==null || pathUri.getRawQuery()!=null || pathUri.getRawFragment()!=null) {
-			issue(issues,mapping,path+"/forms/href","MQTT href must be a relative topic path"); return null;
+		if(!"mqtt".equalsIgnoreCase(resolved.getScheme()) || resolved.getRawQuery()!=null || resolved.getRawFragment()!=null) {
+			issue(issues,mapping,path+"/forms/href","an MQTT href is a topic on the interface's broker"); return null;
 		}
-		String prefix=base.prefix()==null?"":base.prefix().replaceAll("^/+|/+$","");
-		String suffix=pathUri.getPath().replaceAll("^/+|/+$","");
-		String topic=prefix.isEmpty()?suffix:(suffix.isEmpty()?prefix:prefix+"/"+suffix);
-		if(topic.isBlank()) { issue(issues,mapping,path+"/forms/href","MQTT topic must not be empty"); return null; }
+		String raw=resolved.getRawPath()==null?"":resolved.getRawPath();
+		String topic=AidForms.percentDecode(raw.startsWith("/")?raw.substring(1):raw);
+		if(topic.isEmpty()) { issue(issues,mapping,path+"/forms/href","MQTT topic must not be empty"); return null; }
 		return topic;
 	}
 
@@ -1296,22 +1263,11 @@ public final class ConnectorConfigurationFactory {
 		}
 		List<Form> forms=target.resolved().affordance().forms();
 		if(forms.size()!=1) { issue(issues,mapping,path+"/forms","MQTT connector requires exactly one form"); return null; }
-		Form form=forms.get(0);
-		String operation=form.operation().value();
-		if(operation!=null && !operation.isBlank()) {
-			boolean supported=bridge && operation.equalsIgnoreCase("invokeaction")
-					|| (leg.equals("source")
-							? List.of("subscribeevent","observeproperty","readproperty").contains(operation.toLowerCase(java.util.Locale.ROOT))
-							: List.of("publishproperty","writeproperty").contains(operation.toLowerCase(java.util.Locale.ROOT)));
-			if(!supported) { issue(issues,mapping,path+"/forms/op","unsupported MQTT "+leg+" operation "+operation); return null; }
-		}
-		if(form.contentType().present()) { issue(issues,mapping,path+"/forms/contentType","MQTT content type is not represented by the selected connector version"); return null; }
-		return form;
+		return forms.get(0);
 	}
 
 	private static boolean hasMqttReplyTerms(Form form) {
-		return form.responseTopic().present() || form.mqttTerms().containsKey("mqv_request_reply")
-				|| form.mqttTerms().containsKey("mqv_response_topic") || form.mqttTerms().containsKey("mqtt_responseTopic");
+		return form.responseTopic().present();
 	}
 
 	private static String mqttTerm(Form form,String name) {
@@ -1399,7 +1355,8 @@ public final class ConnectorConfigurationFactory {
 		OptionalLong interval=endpoint.pollingInterval().present()?endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues):OptionalLong.empty();
 		// observeproperty (OPC 10101 §6.4.1) is a monitored item: the server samples the variable at the
 		// sampling interval and reports changes; PollingInterval sets both sampling and publishing interval.
-		boolean observed="observeproperty".equalsIgnoreCase(form.operation().value());
+		// A property that is observable is observed; otherwise it is read.
+		boolean observed=AidForms.operations(target.resolved().affordance(),form).contains(AidForms.OBSERVE);
 		if(interval.isPresent())configuration.put("requestedPublishingInterval",Long.toString(interval.getAsLong()));
 		if(interval.isPresent() && observed)configuration.put("samplingInterval",Long.toString(interval.getAsLong()));
 		OpcuaDataSourceConfiguration source=new OpcuaDataSourceConfiguration(entityId(mapping,"source",position),
@@ -1426,8 +1383,6 @@ public final class ConnectorConfigurationFactory {
 			AidTarget target,List<Issue> issues) {
 		String path=endpointPath(mapping,"Sources",position);
 		Form form=protocolForm(target,mapping,path,issues);if(form==null)return null;
-		String op=form.operation().value();
-		if(op!=null && !"subscribeevent".equalsIgnoreCase(op)) { issue(issues,mapping,path+"/forms/op","an OPC UA event is subscribed (op subscribeevent)");return null; }
 		ProtocolBase base=protocolBase(target,"opc.tcp",mapping,path,issues);if(base==null)return null;
 		String notifier=opcuaNode(form,mapping,path,issues);if(notifier==null)return null;
 		Presence<WireModel.DataSchema> data=target.resolved().affordance().schema();
@@ -1509,9 +1464,11 @@ public final class ConnectorConfigurationFactory {
 				plc.base().host(),plc.base().port(),plc.driver(),plc.base().servicePath(),plc.options(),tags);
 		source.setSourceId(endpoint.id()); source.setDelivery("sync"); source.setSchema(schemaForAidTarget(target,mapping,path,issues));
 		setValuePath(source,target);
+		// modv_pollingTime is the device's maximum polling rate: the interval when the AIMC gives
+		// none, and a lower limit for the one it gives.
 		if(endpoint.pollingInterval().present()) {
 			OptionalLong interval=endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues);
-			if(interval.isPresent())source.setPollingIntervalMs(interval.getAsLong());
+			if(interval.isPresent())source.setPollingIntervalMs(plc.pollingMs()==null?interval.getAsLong():Math.max(interval.getAsLong(),plc.pollingMs()));
 		} else if(plc.pollingMs()!=null) source.setPollingIntervalMs(plc.pollingMs());
 		return hasIssue(issues,mapping)?null:source;
 	}
@@ -1550,16 +1507,17 @@ public final class ConnectorConfigurationFactory {
 			return new PlcTarget(base,"bacnet-ip",options,address,null);
 		}
 		ProtocolBase base=protocolBase(target,"modbus+tcp",mapping,path,issues);if(base==null)return null;
-		if(base.uri().getRawQuery()!=null || !base.servicePath().isEmpty()) {
-			issue(issues,mapping,path+"/EndpointMetadata/base","a Modbus base is modbus+tcp://host:port; the unit ID belongs in the href");return null;
+		if(base.uri().getRawQuery()!=null) {
+			issue(issues,mapping,path+"/EndpointMetadata/base","a Modbus base is modbus+tcp://host:port[/unitID/]");return null;
 		}
 		return modbusTarget(target,base,form,write,mapping,path,issues);
 	}
 
 	// ---- WoT Modbus binding (w3c/wot-binding-templates, bindings/protocols/modbus) → PLC4X tags ----
 
-	/** {@code /{unitID}/{address}?quantity={n}}, the address being the protocol address. */
-	private static final java.util.regex.Pattern MODBUS_HREF=java.util.regex.Pattern.compile("/?(\\d+)/(\\d+)(?:\\?quantity=(\\d+))?");
+	/** The resolved path {@code /{unitID}/{address}} and query {@code quantity={n}} (AID 1.2 Annex B). */
+	private static final java.util.regex.Pattern MODBUS_PATH=java.util.regex.Pattern.compile("/(\\d+)/(\\d+)");
+	private static final java.util.regex.Pattern MODBUS_QUERY=java.util.regex.Pattern.compile("quantity=(\\d+)");
 	/** modv:entity → PLC4X memory area. */
 	private static final Map<String,String> MODBUS_ENTITIES=Map.of("coil","coil","discreteinput","discrete-input",
 			"holdingregister","holding-register","inputregister","input-register");
@@ -1584,19 +1542,30 @@ public final class ConnectorConfigurationFactory {
 	 * type and element count; the unit ID, byte and word order and timeout into driver options.
 	 */
 	private static PlcTarget modbusTarget(AidTarget target,ProtocolBase base,Form form,boolean write,MappingPlan mapping,String path,List<Issue> issues) {
+		// The href resolved against the base: AID writes the unit ID in the base
+		// (modbus+tcp://host:port/{unitID}/) and the address in the href ({address}?quantity={n}).
 		String href=form.href().present()?form.href().value():null;
-		java.util.regex.Matcher parsed=href==null?null:MODBUS_HREF.matcher(href.trim());
-		if(parsed==null || !parsed.matches()) {
-			issue(issues,mapping,path+"/forms/href","a Modbus href is /{unitID}/{address}?quantity={n} (WoT Modbus binding)");return null;
+		URI resolved;
+		try { resolved=href==null || href.isBlank()?null:AidForms.resolve(base.uri().toString(),href.trim()); }
+		catch(IllegalArgumentException malformed) { resolved=null; }
+		java.util.regex.Matcher parsed=resolved==null?null:MODBUS_PATH.matcher(resolved.getRawPath()==null?"":resolved.getRawPath());
+		java.util.regex.Matcher quantityQuery=resolved==null || resolved.getRawQuery()==null?null:MODBUS_QUERY.matcher(resolved.getRawQuery());
+		if(parsed==null || !parsed.matches() || quantityQuery!=null && !quantityQuery.matches()) {
+			issue(issues,mapping,path+"/forms/href","a Modbus href resolves to /{unitID}/{address}?quantity={n} against the base");return null;
 		}
 		int unit=Integer.parseInt(parsed.group(1));
 		int address=Integer.parseInt(parsed.group(2));
-		int quantity=parsed.group(3)==null?1:Integer.parseInt(parsed.group(3));
-		if(unit>255 || address>65535 || quantity<1) { issue(issues,mapping,path+"/forms/href","Modbus unit ID, address or quantity out of range");return null; }
+		int quantity=quantityQuery==null?1:Integer.parseInt(quantityQuery.group(1));
+		// modv_zeroBasedAddressing=false: the href counts from 1, the protocol address is one less.
 		String zeroBased=formTerm(form,"modv_zeroBasedAddressing");
-		if(zeroBased!=null && !"true".equalsIgnoreCase(zeroBased)) {
-			issue(issues,mapping,path+"/forms/modv_zeroBasedAddressing","one-based addressing is deprecated in the WoT Modbus binding; author the protocol address");return null;
+		if(zeroBased!=null && !List.of("true","false").contains(zeroBased.trim().toLowerCase(java.util.Locale.ROOT))) {
+			issue(issues,mapping,path+"/forms/modv_zeroBasedAddressing","modv_zeroBasedAddressing must be true or false");return null;
 		}
+		if(zeroBased!=null && "false".equalsIgnoreCase(zeroBased.trim())) {
+			if(address<1) { issue(issues,mapping,path+"/forms/href","with one-based addressing the first address is 1");return null; }
+			address--;
+		}
+		if(unit>255 || address>65535 || quantity<1) { issue(issues,mapping,path+"/forms/href","Modbus unit ID, address or quantity out of range");return null; }
 		String entity=modbusTerm(form,"modv_entity"),function=modbusTerm(form,"modv_function");
 		String area;
 		if(entity!=null) {

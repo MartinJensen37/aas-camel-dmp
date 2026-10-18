@@ -101,9 +101,10 @@ class ConnectorConfigurationFactoryTest {
 
 	@Test
 	void projectsMqttBaseRelativeTopicsAndDeclaredQualityTerms() {
-		var endpointMetadata = AasFixtures.collection("EndpointMetadata", property("base", "mqtt://broker.example:1883/base"));
-		var sourceForm = mqttForm("/state", "0", null);
-		var sinkForm = mqttForm("/command", "1", "true");
+		// AID 1.2 Annex B: an href resolves against the base (RFC 3986), so the base path ends with "/".
+		var endpointMetadata = AasFixtures.collection("EndpointMetadata", property("base", "mqtt://broker.example:1883/base/"));
+		var sourceForm = mqttForm("state", "0", null);
+		var sinkForm = mqttForm("command", "1", "true");
 		var sourceTarget = mqttTarget(endpointMetadata, sourceForm, "State");
 		var sinkTarget = mqttTarget(endpointMetadata, sinkForm, "Command");
 		var source = new EndpointPlan("State", reference(), sourceTarget);
@@ -130,9 +131,9 @@ class ConnectorConfigurationFactoryTest {
 	@Test
 	void resolvesRelativeHttpFormsAgainstTheirAuthoredEndpointBase() {
 		var source=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
-				"http://api.example:8080/api/v1","/temperature",Map.of(),"GET"));
+				"http://api.example:8080/api/v1/","temperature",Map.of(),"GET"));
 		var sink=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,
-				"http://api.example:8080/api/v1","/alarm",Map.of(),"POST"));
+				"http://api.example:8080/api/v1/","alarm",Map.of(),"POST"));
 		var result=factory.create(new Plan(List.of(mappingWithEndpoints(source,sink))),"route");
 		assertTrue(result.issues().isEmpty());
 		var httpSource=assertInstanceOf(HttpPollingDataSourceConfiguration.class,
@@ -142,6 +143,24 @@ class ConnectorConfigurationFactoryTest {
 				result.configuration().getDatasinks().values().iterator().next());
 		assertEquals("api.example",httpSink.getServerUrl());
 		assertEquals("/api/v1/alarm",httpSink.getPath());
+		assertEquals("POST",httpSink.getMethod());
+		assertTrue(httpSink.getConnectionURI().contains("httpMethod=POST"));
+
+		// RFC 3986: a path-absolute href replaces the base path; a write without htv_methodName is a PUT (WoT default).
+		var absolute=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
+				"http://api.example:8080/api/v1/","/temperature",Map.of(),null));
+		var put=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,
+				"http://api.example:8080/api/v1/","alarm",Map.of(),null));
+		var resolved=factory.create(new Plan(List.of(mappingWithEndpoints(absolute,put))),"route");
+		assertTrue(resolved.issues().isEmpty(),resolved.issues().toString());
+		assertEquals("http://api.example:8080/temperature",
+				assertInstanceOf(HttpPollingDataSourceConfiguration.class,resolved.configuration().getDatasources().values().iterator().next()).getServerUrl());
+		assertEquals("PUT",assertInstanceOf(HttpDataSinkConfiguration.class,resolved.configuration().getDatasinks().values().iterator().next()).getMethod());
+
+		// A GET cannot write.
+		var getWrite=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080/","alarm",Map.of(),"GET"));
+		var rejected=factory.create(new Plan(List.of(mappingWithEndpoints(absolute,getWrite))),"route");
+		assertTrue(rejected.issues().stream().anyMatch(issue -> issue.path().endsWith("/forms/htv_methodName")),rejected.issues().toString());
 	}
 
 	@Test
@@ -198,6 +217,63 @@ class ConnectorConfigurationFactoryTest {
 		assertEquals(250,read.getPollingIntervalMs(),"modv_pollingTime is the polling interval without an AIMC one");
 		var write=assertInstanceOf(Plc4xDataSinkConfiguration.class,result.configuration().getDatasinks().values().iterator().next());
 		assertEquals("holding-register:21:UINT",write.getTags().get(0).getValue());
+	}
+
+	@Test
+	void resolvesAidModbusFormsAgainstTheUnitIdInTheBase() {
+		// AID 1.2 Annex B: modbus+tcp://host:port/{unitID}/ and {address}?quantity={n}; one-based addressing
+		// counts from 1, and modv_pollingTime is a lower limit for the AIMC interval.
+		var source=new EndpointPlan("level",reference(),protocolTarget(WireModel.ProtocolFamily.MODBUS,
+				"modbus+tcp://plc.example:502/7/","10?quantity=2",Map.of("modv_entity","HoldingRegister","modv_type","xsd:short",
+						"modv_zeroBasedAddressing","false","modv_pollingTime","250"),null),Presence.of("0.1"));
+		var sink=endpointPlan("setpoint",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502/7/",
+				"20",Map.of("modv_entity","HoldingRegister","modv_type","xsd:unsignedShort"),null));
+		var result=factory.create(new Plan(List.of(mappingPlan("mb-map",0,source,sink))),"route");
+		assertTrue(result.issues().isEmpty(),String.valueOf(result.issues()));
+		var read=assertInstanceOf(Plc4xDataSourceConfiguration.class,result.configuration().getDatasources().values().iterator().next());
+		assertEquals("holding-register:10:INT[2]",read.getTags().get(0).getValue(),"one-based 10 is protocol address 9, PLC4X 10");
+		assertEquals("7",read.getOptions().get(0).getValue());
+		assertEquals(250,read.getPollingIntervalMs(),"the device's polling rate bounds the AIMC interval");
+		var write=assertInstanceOf(Plc4xDataSinkConfiguration.class,result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("holding-register:21:UINT",write.getTags().get(0).getValue());
+	}
+
+	@Test
+	void mqttTopicsFollowAidHrefRulesAndControlPacketsAreTheConsumers() {
+		var endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base","mqtt://broker.example:1883/site/"));
+		// ".//" writes a topic with a leading "/", "%23" the "#" wildcard (AID 1.2 Annex B.2).
+		var events=new EndpointPlan("Events",reference(),mqttTarget(endpointMetadata,mqttForm(".//alarms/%23","1",null),"Events"));
+		var command=new EndpointPlan("Command",reference(),mqttTarget(endpointMetadata,mqttForm("cmd","1",null),"Command"));
+		var result=factory.create(new Plan(List.of(mappingPlan("topics",0,events,command))),"route");
+		assertTrue(result.issues().isEmpty(),String.valueOf(result.issues()));
+		assertEquals("site//alarms/#",assertInstanceOf(MqttDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next()).getTopic());
+		assertEquals("site/cmd",assertInstanceOf(MqttDataSinkConfiguration.class,
+				result.configuration().getDatasinks().values().iterator().next()).getTopic());
+
+		// mqv_controlPacket describes the consumer: a form whose packet is publish cannot be subscribed to.
+		Map<String,String> terms=Map.of("mqv_qos","1","mqv_controlPacket","publish");
+		var publishOnly=new WireModel.Form(Presence.of("state"),Presence.absent(),List.of(),Presence.absent(),terms,
+				Presence.absent(),terms,emptyElement());
+		var wrong=new EndpointPlan("State",reference(),mqttTarget(endpointMetadata,publishOnly,"State"));
+		var rejected=factory.create(new Plan(List.of(mappingPlan("packet",0,wrong,command))),"route");
+		assertTrue(rejected.issues().stream().anyMatch(issue -> issue.path().endsWith("/forms/mqv_controlPacket")),
+				String.valueOf(rejected.issues()));
+	}
+
+	@Test
+	void theFormMustServeTheMappingRole() {
+		var endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base","mqtt://broker.example:1883/"));
+		var readOnly=new WireModel.Affordance("property",Presence.of("State"),Presence.absent(),List.of(mqttForm("state","0",null)),
+				Presence.absent(),Presence.absent(),Presence.absent(),
+				AasFixtures.collection("State",property("observable","true"),property("readOnly","true")));
+		var iface=new WireModel.Interface("interface-semantic","interface_mqtt",List.of("http://www.w3.org/2011/mqtt"),
+				List.of(WireModel.ProtocolFamily.MQTT),emptyElement(),readOnly.forms(),List.of(),List.of(readOnly),List.of(),List.of(),
+				Presence.of(endpointMetadata),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent());
+		var target=new AidTarget(new AasReferenceResolver.AidTarget(iface,readOnly,Presence.absent(),List.of()));
+		var source=new EndpointPlan("in",reference(),mqttTarget(endpointMetadata,mqttForm("in","0",null),"In"));
+		var result=factory.create(new Plan(List.of(mappingPlan("write-read-only",0,source,new EndpointPlan("State",reference(),target)))),"route");
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("not writable")),String.valueOf(result.issues()));
 	}
 
 	@Test
@@ -377,7 +453,7 @@ class ConnectorConfigurationFactoryTest {
 	}
 
 	@Test void defaultPollingDoesNotConvertMqttSubscriptionToQueueSampling() {
-		var source=endpointPlan("mqtt",protocolTarget(WireModel.ProtocolFamily.MQTT,"mqtt://broker.example:1883","/state",Map.of(),null));
+		var source=endpointPlan("mqtt",protocolTarget(WireModel.ProtocolFamily.MQTT,"mqtt://broker.example:1883","/state",Map.of("mqv_retain","true"),null));
 		var sink=endpointPlan("http",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"POST"));
 		var map=mappingPlan("fan",0,source,sink);
 		map=new MappingPlan(map.identity(),0,map.sources(),map.sinks(),Presence.of("2"),
@@ -614,7 +690,8 @@ class ConnectorConfigurationFactoryTest {
 	private static AidTarget target(WireModel.ProtocolFamily family, String method,
 			Presence<WireModel.DataSchema> schema) {
 		var form = new WireModel.Form(Presence.of("http://device.example/api/value"), Presence.absent(),
-				Presence.absent(), Presence.absent(), Presence.of(method), Map.of(), Presence.absent(), emptyElement());
+				List.of(), family == WireModel.ProtocolFamily.HTTP ? Presence.of(method) : Presence.absent(),
+				Map.of(), Presence.absent(), Map.of(), emptyElement());
 		var affordance = new WireModel.Affordance("property", Presence.of("value"), Presence.absent(),
 				List.of(form), schema, schema, schema, emptyElement());
 		var iface = new WireModel.Interface("interface-semantic", "interface-device", List.of(), List.of(family),
@@ -626,8 +703,10 @@ class ConnectorConfigurationFactoryTest {
 	private static AidTarget protocolTarget(WireModel.ProtocolFamily family,String base,String href,
 			Map<String,String> bindingTerms, String httpMethod) {
 		Map<String,String> terms=new java.util.LinkedHashMap<>(bindingTerms);
-		var form=new WireModel.Form(Presence.of(href),Presence.absent(),Presence.absent(),Presence.absent(),
-				httpMethod==null?Presence.absent():Presence.of(httpMethod),Map.of(),Presence.absent(),terms,emptyElement());
+		Map<String,String> mqtt=new java.util.LinkedHashMap<>();
+		terms.forEach((name,value) -> { if(name.startsWith("mqv_"))mqtt.put(name,value); });
+		var form=new WireModel.Form(Presence.of(href),Presence.absent(),List.of(),
+				httpMethod==null?Presence.absent():Presence.of(httpMethod),mqtt,Presence.absent(),terms,emptyElement());
 		var affordance=new WireModel.Affordance("property",Presence.of("value"),Presence.absent(),
 				List.of(form),Presence.absent(),Presence.absent(),Presence.absent(),emptyElement());
 		SubmodelElement endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base",base));
@@ -653,9 +732,10 @@ class ConnectorConfigurationFactoryTest {
 	private static Reference reference() {
 		return AasFixtures.reference("Submodel", "aid");
 	}
+	/** An observable MQTT property (AID recommends observable for every MQTT property). */
 	private static AidTarget mqttTarget(SubmodelElement endpoint, WireModel.Form form, String id) {
 		var affordance = new WireModel.Affordance("property", Presence.of(id), Presence.absent(), List.of(form),
-				Presence.absent(), Presence.absent(), Presence.absent(), emptyElement());
+				Presence.absent(), Presence.absent(), Presence.absent(), AasFixtures.collection(id, property("observable", "true")));
 		var iface = new WireModel.Interface("interface-semantic", "interface_mqtt", List.of("http://www.w3.org/2011/mqtt"),
 				List.of(WireModel.ProtocolFamily.MQTT), emptyElement(), List.of(form), List.of(), List.of(affordance),
 					List.of(), List.of(), Presence.of(endpoint), Presence.absent(), Presence.absent(), Presence.absent(),
@@ -666,8 +746,8 @@ class ConnectorConfigurationFactoryTest {
 		Map<String, String> terms = new java.util.LinkedHashMap<>();
 		terms.put("mqv_qos", qos);
 		if (retain != null) terms.put("mqv_retain", retain);
-		return new WireModel.Form(Presence.of(href), Presence.absent(), Presence.absent(), Presence.absent(),
-				Presence.absent(), terms, Presence.absent(), emptyElement());
+		return new WireModel.Form(Presence.of(href), Presence.absent(), List.of(), Presence.absent(),
+				terms, Presence.absent(), terms, emptyElement());
 	}
 	private static SubmodelElement property(String id, String value) {
 		return AasFixtures.property(id, value);

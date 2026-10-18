@@ -41,8 +41,8 @@ public final class AasReferenceResolver {
 	static final int MAX_ELEMENT_READS = 8;
 	private static final List<String> AID_TRANSPARENT_SCHEMA_SEMANTICS = List.of(
 			"https://www.w3.org/2019/wot/json-schema#properties",
-			"https://www.w3.org/2019/wot/td#hasInput",
-			"https://www.w3.org/2019/wot/td#hasOutput");
+			"https://www.w3.org/2019/wot/td#hasInputSchema",
+			"https://www.w3.org/2019/wot/td#hasOutputSchema");
 
 	private final AasRepositoryClient repository;
 	private final Map<String, Entry> entries = new ConcurrentHashMap<>();

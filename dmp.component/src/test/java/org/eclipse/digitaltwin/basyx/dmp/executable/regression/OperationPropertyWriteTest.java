@@ -226,7 +226,6 @@ class OperationPropertyWriteTest {
 		variable.addProperty("idShort", "Setpoint");
 		child(variable, "title").addProperty("value", "Setpoint");
 		child(child(variable, "forms"), "href").addProperty("value", "/?id=ns=1;s=Setpoint");
-		child(child(variable, "forms"), "op").addProperty("value", "writeproperty");
 		properties.getAsJsonArray("value").add(variable);
 
 		JsonObject cci = json(resource("opcua-method/dependencies/0.json")).getAsJsonObject();

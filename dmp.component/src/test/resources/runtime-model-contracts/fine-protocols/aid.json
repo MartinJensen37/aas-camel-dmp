@@ -296,7 +296,7 @@
           "description": [
             {
               "language": "en",
-              "text": "Provides the metadata of the asset\u2019s endpoint (base, content type that is used for interaction, etc)"
+              "text": "Provides the metadata of the asset’s endpoint (base, content type that is used for interaction, etc)"
             }
           ],
           "embeddedDataSpecifications": [
@@ -436,7 +436,7 @@
                 ],
                 "type": "ExternalReference"
               },
-              "value": "http://192.168.0.30:8080/api",
+              "value": "http://192.168.0.30:8080/api/",
               "valueType": "xs:anyURI"
             },
             {
@@ -876,7 +876,7 @@
               "description": [
                 {
                   "language": "en",
-                  "text": "Collection of asset\u2019s datapoint definitions"
+                  "text": "Collection of asset’s datapoint definitions"
                 }
               ],
               "embeddedDataSpecifications": [
@@ -1303,7 +1303,7 @@
                       "description": [
                         {
                           "language": "en",
-                          "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses \u201ctemperature-value\u201d as key term)."
+                          "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses “temperature-value” as key term)."
                         }
                       ],
                       "idShort": "key",
@@ -1734,7 +1734,7 @@
                               "description": [
                                 {
                                   "language": "en",
-                                  "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses \u201ctemperature-value\u201d as key term)."
+                                  "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses “temperature-value” as key term)."
                                 }
                               ],
                               "idShort": "key",
@@ -1959,7 +1959,7 @@
                           "description": [
                             {
                               "language": "en",
-                              "text": "Indicates target IRI relative path or full IRI of asset\u2019s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
+                              "text": "Indicates target IRI relative path or full IRI of asset’s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
                             }
                           ],
                           "idShort": "href",
@@ -1973,7 +1973,7 @@
                             ],
                             "type": "ExternalReference"
                           },
-                          "value": "/pressure",
+                          "value": "pressure",
                           "valueType": "xs:string"
                         },
                         {
@@ -2345,7 +2345,7 @@
           "description": [
             {
               "language": "en",
-              "text": "Provides the metadata of the asset\u2019s endpoint (base, content type that is used for interaction, etc)"
+              "text": "Provides the metadata of the asset’s endpoint (base, content type that is used for interaction, etc)"
             }
           ],
           "embeddedDataSpecifications": [
@@ -2923,7 +2923,7 @@
               "description": [
                 {
                   "language": "en",
-                  "text": "Collection of asset\u2019s datapoint definitions"
+                  "text": "Collection of asset’s datapoint definitions"
                 }
               ],
               "embeddedDataSpecifications": [
@@ -3304,7 +3304,7 @@
           "description": [
             {
               "language": "en",
-              "text": "Provides the metadata of the asset\u2019s endpoint (base, content type that is used for interaction, etc)"
+              "text": "Provides the metadata of the asset’s endpoint (base, content type that is used for interaction, etc)"
             }
           ],
           "embeddedDataSpecifications": [
@@ -3947,7 +3947,7 @@
               "description": [
                 {
                   "language": "en",
-                  "text": "Collection of asset\u2019s datapoint definitions"
+                  "text": "Collection of asset’s datapoint definitions"
                 }
               ],
               "embeddedDataSpecifications": [
@@ -4395,7 +4395,7 @@
                       "description": [
                         {
                           "language": "en",
-                          "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses \u201ctemperature-value\u201d as key term)."
+                          "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses “temperature-value” as key term)."
                         }
                       ],
                       "idShort": "key",
@@ -4826,7 +4826,7 @@
                               "description": [
                                 {
                                   "language": "en",
-                                  "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses \u201ctemperature-value\u201d as key term)."
+                                  "text": "Optional element when the idShort of {property_name} cannot be used to reflect the desired property name due to the idShort restrictions (e.g., payload message uses “temperature-value” as key term)."
                                 }
                               ],
                               "idShort": "key",
@@ -5177,7 +5177,7 @@
                           "description": [
                             {
                               "language": "en",
-                              "text": "Indicates target IRI relative path or full IRI of asset\u2019s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
+                              "text": "Indicates target IRI relative path or full IRI of asset’s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
                             }
                           ],
                           "idShort": "href",
@@ -5235,20 +5235,6 @@
                             "type": "ExternalReference"
                           },
                           "typeValueListElement": "ReferenceElement"
-                        },
-                        {
-                          "idShort": "op",
-                          "modelType": "Property",
-                          "semanticId": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "https://www.w3.org/2019/wot/td#hasOperationType"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "valueType": "xs:string"
                         }
                       ]
                     }

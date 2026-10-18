@@ -158,7 +158,7 @@ class WireProjectionTest {
 				[{"modelType":"SubmodelElementCollection","idShort":"http","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"%s"}]},"supplementalSemanticIds":[{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"http://www.w3.org/2011/http"},{"type":"GlobalReference","value":"https://www.w3.org/2019/wot/td"}]}],"value":[
 				 {"modelType":"SubmodelElementCollection","idShort":"EndpointMetadata","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata"}]},"value":[{"modelType":"Property","idShort":"base","valueType":"xs:anyURI","value":"https://example.test"}]},
 				 {"modelType":"SubmodelElementCollection","idShort":"InteractionMetadata","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata"}]},"value":[
-				  {"modelType":"SubmodelElementCollection","idShort":"forms","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"https://www.w3.org/2019/wot/td#hasForm"}]},"value":[{"modelType":"SubmodelElementCollection","value":[{"modelType":"Property","idShort":"href","valueType":"xs:string","value":"/status"},{"modelType":"Property","idShort":"httpMethod","valueType":"xs:string","value":"GET"}]}]},
+				  {"modelType":"SubmodelElementCollection","idShort":"forms","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"https://www.w3.org/2019/wot/td#hasForm"}]},"value":[{"modelType":"SubmodelElementCollection","value":[{"modelType":"Property","idShort":"href","valueType":"xs:string","value":"/status"},{"modelType":"Property","idShort":"htv_methodName","valueType":"xs:string","value":"GET"}]}]},
 				  {"modelType":"SubmodelElementCollection","idShort":"DataSchema","value":[{"modelType":"Property","idShort":"type","valueType":"xs:string","value":"object"},{"modelType":"SubmodelElementCollection","idShort":"properties","value":[{"modelType":"SubmodelElementCollection","idShort":"state","value":[{"modelType":"Property","idShort":"type","valueType":"xs:string","value":"string"}]}]},{"modelType":"SubmodelElementList","idShort":"required","typeValueListElement":"Property","value":[{"modelType":"Property","valueType":"xs:string","value":"state"}]}]}
 				 ]}]}]
 				 """.formatted(AID_INTERFACE_SEMANTIC));
@@ -171,6 +171,26 @@ class WireProjectionTest {
 		assertEquals("GET",projected.forms().get(0).httpMethod().value());
 		assertEquals("string",projected.schemas().get(0).properties().get("state").type().value());
 		assertEquals(java.util.List.of("state"),projected.schemas().get(0).required().value());
+	}
+
+	@Test void projectsTheOpListAndRejectsASingleOpProperty() {
+		String list="{\"modelType\":\"SubmodelElementList\",\"idShort\":\"op\",\"typeValueListElement\":\"Property\",\"value\":["
+				+"{\"modelType\":\"Property\",\"valueType\":\"xs:string\",\"value\":\"readProperty\"},"
+				+"{\"modelType\":\"Property\",\"valueType\":\"xs:string\",\"value\":\"observeproperty\"}]}";
+		assertEquals(java.util.List.of("readproperty","observeproperty"),
+				WireProjection.aid(sm(aidWithFormOp(list))).interfaces().get(0).forms().get(0).operations());
+		String single="{\"modelType\":\"Property\",\"idShort\":\"op\",\"valueType\":\"xs:string\",\"value\":\"readproperty\"}";
+		var failure=assertThrows(WireProjectionException.class,() -> WireProjection.aid(sm(aidWithFormOp(single))));
+		assertTrue(failure.getMessage().contains("op must be a list"),failure.getMessage());
+	}
+
+	private static String aidWithFormOp(String op) {
+		return submodel(AID_SEMANTIC,"""
+				[{"modelType":"SubmodelElementCollection","idShort":"http","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"%s"}]},"supplementalSemanticIds":[{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"http://www.w3.org/2011/http"}]}],"value":[
+				 {"modelType":"SubmodelElementCollection","idShort":"InteractionMetadata","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata"}]},"value":[
+				  {"modelType":"SubmodelElementCollection","idShort":"forms","semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"https://www.w3.org/2019/wot/td#hasForm"}]},"value":[{"modelType":"Property","idShort":"href","valueType":"xs:string","value":"/status"},%s]}
+				 ]}]}]
+				 """.formatted(AID_INTERFACE_SEMANTIC,op));
 	}
 
 	@Test void acceptsAid12AndRejectsAid10() {

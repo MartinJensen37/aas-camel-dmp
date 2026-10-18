@@ -42,6 +42,8 @@ public class HttpDataSinkConfiguration extends DataSinkConfiguration{
 	private String path;
 	private String query;
 	private int port;
+	/** The HTTP method of the write (the form's htv_methodName); absent, Camel's default applies. */
+	private String method;
 	
 	public HttpDataSinkConfiguration() {}
 	
@@ -89,6 +91,14 @@ public class HttpDataSinkConfiguration extends DataSinkConfiguration{
 		return port;
 	}
 
+	public String getMethod() {
+		return method;
+	}
+
+	public void setMethod(String method) {
+		this.method = method;
+	}
+
 	public void setPort(int port) {
 		this.port = port;
 	}
@@ -101,8 +111,11 @@ public class HttpDataSinkConfiguration extends DataSinkConfiguration{
 		uriBuilder.setHost(getServerUrl());
 		uriBuilder.setPort(getPort());
 		uriBuilder.setPath(getPath());
-		if (query != null && !query.isBlank()) {
-			uriBuilder.setCustomQuery(query);
+		// httpMethod is a Camel endpoint option: Camel consumes it and does not send it to the device.
+		String options = method == null || method.isBlank() ? null : "httpMethod=" + method;
+		String fullQuery = query == null || query.isBlank() ? options : options == null ? query : query + "&" + options;
+		if (fullQuery != null) {
+			uriBuilder.setCustomQuery(fullQuery);
 		}
 		
 		return buildConnectionUri(uriBuilder);
