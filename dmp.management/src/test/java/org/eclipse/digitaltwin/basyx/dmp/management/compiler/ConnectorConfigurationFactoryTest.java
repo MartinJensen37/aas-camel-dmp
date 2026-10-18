@@ -21,6 +21,7 @@ import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASDatasinkConfigurat
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.ProtocolBridgeRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpDataSinkConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpObserveDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.LuaTransformerConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.MqttDataSinkConfiguration;
@@ -278,6 +279,50 @@ class ConnectorConfigurationFactoryTest {
 		var rejected=factory.create(new Plan(List.of(mappingPlan("packet",0,wrong,command))),"route");
 		assertTrue(rejected.issues().stream().anyMatch(issue -> issue.path().endsWith("/forms/mqv_controlPacket")),
 				String.valueOf(rejected.issues()));
+	}
+
+	@Test
+	void httpSubprotocolsObservePropertiesAndSubscribeEvents() {
+		var sink=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080/","alarm",Map.of(),"POST"));
+		var sse=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",httpObserved("property","sse",true)),sink))),"route");
+		assertTrue(sse.issues().isEmpty(),sse.issues().toString());
+		var observed=assertInstanceOf(HttpObserveDataSourceConfiguration.class,sse.configuration().getDatasources().values().iterator().next());
+		assertEquals("async",observed.getDelivery());
+		assertEquals("dmp-http-observe:sse?url=RAW(http://api.example:8080/temperature)&contentType=RAW(application/json)",
+				observed.getConnectionURI());
+
+		var event=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",httpObserved("event","longpoll",false)),sink))),"route");
+		assertTrue(event.issues().isEmpty(),event.issues().toString());
+		assertTrue(assertInstanceOf(HttpObserveDataSourceConfiguration.class,event.configuration().getDatasources().values().iterator().next())
+				.getConnectionURI().startsWith("dmp-http-observe:longpoll?"));
+
+		for(var rejected:List.of(
+				Map.entry(httpObserved("event",null,false),"subscribed through subprotocol"),
+				Map.entry(httpObserved("property","websub",true),"websub is not supported"),
+				Map.entry(httpObserved("property","sse",false),"does not serve observeproperty"))) {
+			var result=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",rejected.getKey()),sink))),"route");
+			assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains(rejected.getValue())),result.issues().toString());
+		}
+		var writeObserved=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",httpObserved("property","sse",true)),
+				endpointPlan("write",httpObserved("property","sse",true))))),"route");
+		assertTrue(writeObserved.issues().stream().anyMatch(issue -> issue.message().contains("cannot be a writable destination")),
+				writeObserved.issues().toString());
+	}
+
+	/** An HTTP property or event on {@code http://api.example:8080/temperature} with the given form subprotocol. */
+	private static AidTarget httpObserved(String kind,String subprotocol,boolean observable) {
+		SubmodelElement formElement=subprotocol==null?emptyElement():AasFixtures.collection(null,property("subprotocol",subprotocol));
+		var form=new WireModel.Form(Presence.of("temperature"),Presence.absent(),List.of(),Presence.of("GET"),Map.of(),Presence.absent(),
+				Map.of(),formElement);
+		SubmodelElement element=observable?AasFixtures.collection("value",property("observable","true")):emptyElement();
+		var affordance=new WireModel.Affordance(kind,Presence.of("value"),Presence.absent(),List.of(form),
+				Presence.absent(),Presence.absent(),Presence.absent(),element);
+		SubmodelElement endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base","http://api.example:8080/"));
+		var iface=new WireModel.Interface("interface-semantic","interface_http",List.of("http"),List.of(WireModel.ProtocolFamily.HTTP),
+				emptyElement(),List.of(form),List.of(),"event".equals(kind)?List.of():List.of(affordance),List.of(),
+				"event".equals(kind)?List.of(affordance):List.of(),Presence.of(endpointMetadata),
+				Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent());
+		return new AidTarget(new AasReferenceResolver.AidTarget(iface,affordance,Presence.absent(),List.of()));
 	}
 
 	@Test

@@ -31,6 +31,7 @@ import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AasEventDataSourceCon
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.OperationVariableValues;
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.ProtocolBridgeRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpDataSinkConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpObserveDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.LuaTransformerConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaCompiledSource;
@@ -659,8 +660,16 @@ public final class ConnectorConfigurationFactory {
 					String name=child.getIdShort()==null?"":child.getIdShort();
 					boolean authored=Aas.value(child)!=null || !Aas.children(child).isEmpty();
 					if("security".equals(name) && !Aas.children(child).isEmpty())issue(issues,mapping,path,"authored form security selection is not represented by connector credentials");
-					else if("subprotocol".equals(name) && authored)
-						issue(issues,mapping,path+"/forms/subprotocol","observing through a subprotocol (longpoll, websub, sse) is not supported");
+					else if("subprotocol".equals(name) && authored) {
+						// WoT HTTP binding: a subprotocol observes a property or subscribes an event.
+						String subprotocol=httpSubprotocol(form);
+						if(family!=WireModel.ProtocolFamily.HTTP && family!=WireModel.ProtocolFamily.IOLINK)
+							issue(issues,mapping,path+"/forms/subprotocol","a subprotocol belongs to an HTTP form");
+						else if(!Set.of("longpoll","sse").contains(subprotocol))
+							issue(issues,mapping,path+"/forms/subprotocol","subprotocol "+subprotocol+" is not supported (longpoll and sse are)");
+						else if(!read)
+							issue(issues,mapping,path+"/forms/subprotocol","a subprotocol form observes; it cannot be a writable destination or an action");
+					}
 					else if("htv_headers".equals(name) && authored)
 						issue(issues,mapping,path+"/forms/htv_headers","HTTP message headers are not sent yet");
 					else if("response".equals(name) && !"action".equals(kind))
@@ -684,6 +693,15 @@ public final class ConnectorConfigurationFactory {
 				if(read && "event".equals(kind) && !operations.contains(AidForms.SUBSCRIBE))
 					issue(issues,mapping,path+"/forms/op","the event form does not serve subscribeevent");
 				if(!read && "event".equals(kind))issue(issues,mapping,path,"event affordances cannot be writable destinations");
+				if(family==WireModel.ProtocolFamily.HTTP || family==WireModel.ProtocolFamily.IOLINK) {
+					boolean observed=httpSubprotocol(form)!=null;
+					if(read && "event".equals(kind) && !observed)
+						issue(issues,mapping,path+"/forms/subprotocol","an HTTP event is subscribed through subprotocol longpoll or sse");
+					if(read && "property".equals(kind) && observed && !operations.contains(AidForms.OBSERVE))
+						issue(issues,mapping,path+"/forms/op","the form's subprotocol observes, but the form does not serve observeproperty (op, observable)");
+					if(observed && mapping.sources().contains(endpoint) && endpoint.pollingInterval().present())
+						issue(issues,mapping,path,"an observed HTTP source is not polled; remove its PollingInterval");
+				}
 				for(SubmodelElement child:Aas.children(form.element()))if("response".equals(child.getIdShort()))
 					for(SubmodelElement option:Aas.children(child)) {
 						String value=Aas.value(option);
@@ -877,6 +895,18 @@ public final class ConnectorConfigurationFactory {
 		URI credentialFreeUri;
 		try { credentialFreeUri = new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), uri.getPath(), uri.getQuery(), uri.getFragment()); }
 		catch (java.net.URISyntaxException impossible) { throw new IllegalArgumentException("invalid projected endpoint URI", impossible); }
+		String subprotocol = httpSubprotocol(form);
+		if (subprotocol != null) {
+			// Observed (property) or subscribed (event) through the WoT HTTP binding's subprotocol.
+			HttpObserveDataSourceConfiguration observed = new HttpObserveDataSourceConfiguration(entityId(mapping, "source", position),
+					credentialFreeUri.toString(), effectivePort(uri), subprotocol,
+					form.contentType().present() && form.contentType().value() != null ? form.contentType().value() : "application/json",
+					username, password);
+			observed.setSourceId(endpoint.id());
+			observed.setSchema(schemaForAidTarget(target,mapping,path,issues));
+			setValuePath(observed,target);
+			return observed;
+		}
 		HttpPollingDataSourceConfiguration result = new HttpPollingDataSourceConfiguration(
 				entityId(mapping, "source", position), credentialFreeUri.toString(), effectivePort(uri), username, password);
 		result.setSourceId(endpoint.id());
@@ -1167,6 +1197,13 @@ public final class ConnectorConfigurationFactory {
 	}
 
 	private static Form selectedForm(AidTarget target) { return target.resolved().affordance().forms().get(0); }
+
+	/** The form's WoT {@code subprotocol} (longpoll, sse, websub), lower case; null when absent. */
+	private static String httpSubprotocol(Form form) {
+		SubmodelElement child=Aas.child(form.element(),"subprotocol");
+		String value=child==null?null:Aas.value(child);
+		return value==null || value.isBlank()?null:value.trim().toLowerCase(java.util.Locale.ROOT);
+	}
 	/** The form's {@code href} resolved against the interface's {@code base} (AID 1.2 Annex B, RFC 3986). */
 	private static URI formUri(AidTarget target, Form form, MappingPlan mapping, String path, List<Issue> issues) {
 		return formUri(target, form.href().present() ? form.href().value() : null, mapping, path, issues);
