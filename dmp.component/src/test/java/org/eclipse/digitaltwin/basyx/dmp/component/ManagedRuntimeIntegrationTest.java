@@ -43,17 +43,17 @@ import com.sun.net.httpserver.HttpServer;
 class ManagedRuntimeIntegrationTest {
 	private String oldHealthPort;
 	@AfterEach void restoreHealthPort() {
-		if (oldHealthPort == null) System.clearProperty("databridge.health.port");
-		else System.setProperty("databridge.health.port", oldHealthPort);
+		if (oldHealthPort == null) System.clearProperty("dmp.http.port");
+		else System.setProperty("dmp.http.port", oldHealthPort);
 		ManagedRuntimeStatus.reset();
 	}
 
 	@Test
 	void discoversTwoOperationsOnOnePortAndKeepsAValidSiblingBesideABadMapping() throws Exception {
-		oldHealthPort = System.getProperty("databridge.health.port");
+		oldHealthPort = System.getProperty("dmp.http.port");
 		int port;
 		try (ServerSocket socket = new ServerSocket(0)) { port = socket.getLocalPort(); }
-		System.setProperty("databridge.health.port", Integer.toString(port));
+		System.setProperty("dmp.http.port", Integer.toString(port));
 		AtomicInteger deviceSends = new AtomicInteger();
 		AtomicReference<Throwable> deviceFailure = new AtomicReference<>();
 		HttpServer device = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

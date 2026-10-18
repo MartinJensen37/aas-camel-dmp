@@ -57,18 +57,18 @@ import com.sun.net.httpserver.HttpServer;
 /** Real loopback authentication/authorization, not an exception-classification stub. */
 @org.junit.jupiter.api.Tag("integration")
 public class ManagedKafkaSaslIntegrationTest {
-	private final String oldHealthPort = System.getProperty("databridge.health.port");
+	private final String oldHealthPort = System.getProperty("dmp.http.port");
 	private final HttpClient caller = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build();
 	@AfterEach void reset() {
-		if (oldHealthPort == null) System.clearProperty("databridge.health.port");
-		else System.setProperty("databridge.health.port", oldHealthPort);
+		if (oldHealthPort == null) System.clearProperty("dmp.http.port");
+		else System.setProperty("dmp.http.port", oldHealthPort);
 		ManagedRuntimeStatus.reset();
 	}
 
 	@Test void authenticatedAssignmentAclRecoveryAndRestartNeverReplayActionsOrAcceptedEvents() throws Exception {
 		Set<Thread> before = clientThreads();
 		int healthPort = ManagedKafkaControlIntegrationTest.freePort();
-		System.setProperty("databridge.health.port", Integer.toString(healthPort));
+		System.setProperty("dmp.http.port", Integer.toString(healthPort));
 		try (var broker = new AuthenticatedBroker(); var repository = new OperationRepository(); var admin = broker.admin()) {
 			String topic = "sasl-control", submodelTopic = "sasl-submodel-control", group = "sasl-control-group";
 			var partition = new TopicPartition(topic, 0);
@@ -163,7 +163,7 @@ public class ManagedKafkaSaslIntegrationTest {
 	@Test void deniedControlConsumerRequiresRuntimeRecreationAfterAclGrant() throws Exception {
 		Set<Thread> before = clientThreads();
 		int healthPort = ManagedKafkaControlIntegrationTest.freePort();
-		System.setProperty("databridge.health.port", Integer.toString(healthPort));
+		System.setProperty("dmp.http.port", Integer.toString(healthPort));
 		var repository = new ManagedKafkaControlIntegrationTest.EmptyRepository();
 		repository.start();
 		try (var broker = new AuthenticatedBroker(); var admin = broker.admin()) {

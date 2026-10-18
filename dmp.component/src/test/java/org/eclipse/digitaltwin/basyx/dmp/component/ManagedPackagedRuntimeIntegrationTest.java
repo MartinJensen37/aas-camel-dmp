@@ -232,7 +232,7 @@ class ManagedPackagedRuntimeIntegrationTest {
 			previousMember = joinedMember;
 			String jar = System.getProperty("dmp.runtime.jar");
 			List<String> arguments = new ArrayList<>(List.of(System.getProperty("java.home") + "/bin/java",
-					"-Ddatabridge.health.port=" + port, "-Dorg.slf4j.simpleLogger.defaultLogLevel=warn"));
+					"-Ddmp.http.port=" + port, "-Dorg.slf4j.simpleLogger.defaultLogLevel=warn"));
 			if (Boolean.getBoolean("dmp.runtime.traceExceptions")) arguments.add("-Xlog:exceptions=info");
 			if (jar == null) arguments.addAll(List.of("-cp", System.getProperty("java.class.path"), DmpExecutable.class.getName()));
 			else arguments.addAll(List.of("-jar", jar));

@@ -114,7 +114,7 @@ The container listens on port 8080 for operation calls, `/health` and
 | `DMP_MANAGED_CONNECT_TIMEOUT_MS`, `DMP_MANAGED_REQUEST_TIMEOUT_MS` | 5000 / 15000 |
 | `DMP_MANAGED_PAGE_SIZE`, `DMP_MANAGED_MAX_PAGES` | 100 / 100 |
 | `DMP_AFFORDANCE_VALIDATION` | `OFF` (default), `ON` or `REPORT` |
-| `DATABRIDGE_HEALTH_PORT` / `-Ddatabridge.health.port` | HTTP listener port, default 8080 |
+| `DMP_HTTP_PORT` / `-Ddmp.http.port` | HTTP listener port (health, status, Operations), default 8080 |
 | `DMP_AUDIT_INFLUX_URL` | Optional InfluxDB base URL; enables the AAS interaction log |
 | `DMP_AUDIT_INFLUX_TOKEN`, `…_ORG`, `…_BUCKET` | Required with the URL; the token is never logged or exposed |
 | `DMP_AUDIT_INFLUX_QUEUE_SIZE`, `…_BATCH_SIZE`, `…_FLUSH_INTERVAL_MS` | 10000 / 500 / 1000 |

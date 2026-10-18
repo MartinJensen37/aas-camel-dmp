@@ -41,8 +41,8 @@ class ManagedKafkaControlIntegrationTest {
 	@AfterEach void cleanup() throws Exception {
 		try { if (broker != null) broker.close(); }
 		finally {
-				if (previousHealthPort == null) System.clearProperty("databridge.health.port");
-				else System.setProperty("databridge.health.port", previousHealthPort);
+				if (previousHealthPort == null) System.clearProperty("dmp.http.port");
+				else System.setProperty("dmp.http.port", previousHealthPort);
 				ManagedRuntimeStatus.reset();
 		}
 	}
@@ -50,11 +50,11 @@ class ManagedKafkaControlIntegrationTest {
 	@Test
 	void kafkaEventIsAcceptedCommittedAndNotReplayedAfterManagedRestart() throws Exception {
 		Set<Thread> observersBefore = observerThreads();
-		previousHealthPort = System.getProperty("databridge.health.port");
+		previousHealthPort = System.getProperty("dmp.http.port");
 		int healthPort = freePort();
 		broker = new EmbeddedBroker(true);
 		int kafkaPort = broker.port;
-		System.setProperty("databridge.health.port", Integer.toString(healthPort));
+		System.setProperty("dmp.http.port", Integer.toString(healthPort));
 
 		var repository = new EmptyRepository();
 		repository.start();
@@ -145,8 +145,8 @@ class ManagedKafkaControlIntegrationTest {
 	}
 
 	@Test void missingTopicThenRebalanceAndResubscriptionPreserveAcceptedOffsets() throws Exception {
-		previousHealthPort = System.getProperty("databridge.health.port");
-		System.setProperty("databridge.health.port", Integer.toString(freePort()));
+		previousHealthPort = System.getProperty("dmp.http.port");
+		System.setProperty("dmp.http.port", Integer.toString(freePort()));
 		broker = new EmbeddedBroker(false);
 		var repository = new EmptyRepository();
 		repository.start();
@@ -190,8 +190,8 @@ class ManagedKafkaControlIntegrationTest {
 	}
 
 	@Test void readinessStaysUnreadyUntilEveryConfiguredControlTopicExistsAndIsAssigned() throws Exception {
-		previousHealthPort = System.getProperty("databridge.health.port");
-		System.setProperty("databridge.health.port", Integer.toString(freePort()));
+		previousHealthPort = System.getProperty("dmp.http.port");
+		System.setProperty("dmp.http.port", Integer.toString(freePort()));
 		broker = new EmbeddedBroker(false);
 		var repository = new EmptyRepository();
 		repository.start();
@@ -216,7 +216,7 @@ class ManagedKafkaControlIntegrationTest {
 	}
 
 	@Test void staleOtherGroupMemberDoesNotQualifyCurrentClient() throws Exception {
-		previousHealthPort = System.getProperty("databridge.health.port");
+		previousHealthPort = System.getProperty("dmp.http.port");
 		broker = new EmbeddedBroker(false);
 		String topic = "own-member-control", group = "own-member-control-group";
 		try (var admin = broker.admin()) {

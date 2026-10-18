@@ -101,7 +101,7 @@ class ManagedRuntimeLifecycleTest {
 
 	@Test
 	void actualDmpContextStartsHealthBeforeControlRoutesAndStopsCleanly() throws Exception {
-		System.setProperty("databridge.health.port", "0");
+		System.setProperty("dmp.http.port", "0");
 		HttpServer repository = repository();
 		ActualRuntime component = new ActualRuntime();
 		var settings = settings(repository.getAddress().getPort());

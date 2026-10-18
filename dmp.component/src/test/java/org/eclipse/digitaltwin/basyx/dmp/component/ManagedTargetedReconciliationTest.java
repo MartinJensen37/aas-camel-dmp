@@ -16,9 +16,9 @@ import org.junit.jupiter.api.Test;
 
 class ManagedTargetedReconciliationTest {
 	@Test void aChangedAimcIsRefreshedAloneAndUnknownSubmodelsNeverTriggerAFullScan() throws Exception {
-		String oldPort = System.getProperty("databridge.health.port");
+		String oldPort = System.getProperty("dmp.http.port");
 		try (var fixture = new ManagedPackagedRuntimeIntegrationTest.Fixture()) {
-			System.setProperty("databridge.health.port", Integer.toString(fixture.port));
+			System.setProperty("dmp.http.port", Integer.toString(fixture.port));
 			URI repositoryUri = fixture.repository.uri();
 			var settings = ManagedRuntimeSettings.fromEnvironment(Map.of("DMP_MANAGED_AAS_REPOSITORY_URI", repositoryUri.toString(), "DMP_MANAGED_KAFKA_BROKERS", fixture.broker.bootstrap(),
 					"DMP_MANAGED_CONTROL_TOPIC", fixture.topic, "DMP_MANAGED_CONTROL_GROUP_ID", fixture.group));
@@ -55,7 +55,7 @@ class ManagedTargetedReconciliationTest {
 			}
 			finally { component.stopComponent(); }
 		} finally {
-			if (oldPort == null) System.clearProperty("databridge.health.port"); else System.setProperty("databridge.health.port", oldPort);
+			if (oldPort == null) System.clearProperty("dmp.http.port"); else System.setProperty("dmp.http.port", oldPort);
 			ManagedRuntimeStatus.reset();
 		}
 	}

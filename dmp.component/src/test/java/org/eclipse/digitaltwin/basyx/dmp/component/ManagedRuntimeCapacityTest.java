@@ -34,9 +34,9 @@ class ManagedRuntimeCapacityTest {
 	void desiredMappingsStayWithinCapacityAcrossBurstAndRepeatedReplacement(int desired, int capacity) throws Exception {
 		long started = System.nanoTime();
 		var phases = new java.util.ArrayList<Map<String, Object>>();
-		String previousPort = System.getProperty("databridge.health.port");
+		String previousPort = System.getProperty("dmp.http.port");
 		try (var fixture = new ManagedPackagedRuntimeIntegrationTest.Fixture()) {
-			System.setProperty("databridge.health.port", Integer.toString(fixture.port));
+			System.setProperty("dmp.http.port", Integer.toString(fixture.port));
 			fixture.models.remove("contractBAS/submodels/AIMC");
 			fixture.models.remove("contractBAS/submodels/ControlComponentInstance");
 			for (int i = 1; i < desired; i++) fixture.unit("unit-" + i, "unit-" + i);
@@ -106,7 +106,7 @@ class ManagedRuntimeCapacityTest {
 						"finalResources", component.resourceMetrics(), "actionSends", fixture.sends.get())));
 			} finally { component.stopComponent(); }
 		} finally {
-			if (previousPort == null) System.clearProperty("databridge.health.port"); else System.setProperty("databridge.health.port", previousPort);
+			if (previousPort == null) System.clearProperty("dmp.http.port"); else System.setProperty("dmp.http.port", previousPort);
 			ManagedRuntimeStatus.reset();
 		}
 	}

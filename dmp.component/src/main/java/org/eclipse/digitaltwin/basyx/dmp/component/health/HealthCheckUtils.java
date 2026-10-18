@@ -35,9 +35,9 @@ public class HealthCheckUtils {
 	public static final String ROUTE_ID = "app.health.context";
 	public static final String DEFAULT_PORT = "8080";
 
-	/** Env var / system property that overrides the health endpoint port (per-asset DMPs). */
-	public static final String HEALTH_PORT_ENV_VAR = "DATABRIDGE_HEALTH_PORT";
-	public static final String HEALTH_PORT_SYSTEM_PROPERTY = "databridge.health.port";
+	/** Env var / system property that overrides the port of the HTTP listener (health, status, Operations). */
+	public static final String HEALTH_PORT_ENV_VAR = "DMP_HTTP_PORT";
+	public static final String HEALTH_PORT_SYSTEM_PROPERTY = "dmp.http.port";
 
 	private static final String COMPONENT = "jetty";
 	private static final String PROTOCOL = "http";
@@ -50,9 +50,8 @@ public class HealthCheckUtils {
 	}
 
 	private static String resolvePort() {
-		// the SYSTEM PROPERTY wins (tests pick a free port via
-		// databridge.health.port; an inherited DATABRIDGE_HEALTH_PORT env var
-		// must not shadow it); env otherwise drives the per-asset deployments
+		// The system property wins (tests pick a free port with dmp.http.port; an
+		// inherited DMP_HTTP_PORT must not shadow it); the env var otherwise.
 		String fromProperty = System.getProperty(HEALTH_PORT_SYSTEM_PROPERTY);
 		if (fromProperty != null && !fromProperty.isBlank()) {
 			return fromProperty;

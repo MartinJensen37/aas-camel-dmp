@@ -6,7 +6,7 @@ RUN apt update && apt install -y wget && apt clean
 # Copy built jar to image using the jar name specified in the pom.xml (JAR_FILE)
 ARG JAR_FILE=target/*.jar
 
-COPY ${JAR_FILE} /usr/share/databridgeExecutable.jar
+COPY ${JAR_FILE} /usr/share/dmp.jar
 COPY target/lib /usr/share/lib
 
 # This is a process-wide bound, shared by all mappings and Lua blobs.
@@ -17,4 +17,4 @@ ENV JAVA_OPTS="-Xmx512m"
 EXPOSE 8080
 
 # Forward stop signals to the JVM for bounded managed shutdown.
-CMD exec java $JAVA_OPTS -jar "/usr/share/databridgeExecutable.jar"
+CMD exec java $JAVA_OPTS -jar "/usr/share/dmp.jar"

@@ -35,7 +35,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpComponent;
  */
 public class DmpExecutable {
 
-	private static DmpComponent dataBridgeComponent;
+	private static DmpComponent component;
 	private static ManagedDmpRuntime managedRuntime;
 	private static InfluxAuditLog auditLog;
 	private static boolean shutdownHookRegistered;
@@ -51,12 +51,12 @@ public class DmpExecutable {
 			throw startFailure;
 		}
 		managedRuntime = runtime;
-		dataBridgeComponent = runtime.component();
+		component = runtime.component();
 		registerManagedShutdownHook();
 	}
 
 	public static DmpComponent getDmpComponent() {
-		return dataBridgeComponent;
+		return component;
 	}
 
 	public static synchronized void stopManagedRuntime() {
@@ -65,7 +65,7 @@ public class DmpExecutable {
 		try {
 			if (runtime != null) runtime.close();
 		} finally {
-			dataBridgeComponent = null;
+			component = null;
 			stopAuditLog();
 		}
 	}
