@@ -98,6 +98,9 @@ This is the only full discovery. There is no periodic repair.
   `submodel-events` topics, committed offsets) or `mqtt` (BaSyx
   submodel-repository MQTT feature, two persistent QoS 1 subscriptions:
   `sm-repository/<repo>/submodels/+` and `…/submodels/+/submodelElements/#`).
+  Both carry the same events: a batch update of a submodel arrives as one
+  submodel event, never as per-Property value events. The parent workspace's
+  stacks use Kafka, for its committed offsets.
 - Parsing is lazy: event identity first; payload and AAS4J parsing only for
   relevant events.
 - Relevance filter: events on unreferenced submodels, unreferenced elements and
@@ -115,7 +118,9 @@ AAS Property sources without a `PollingInterval` are event-sourced: each
 change event carries the new value. Values come from a separate feed (Kafka:
 per-process consumer group at the latest offset, no commits; MQTT: clean
 session), started only while such sources exist, so a backlog is never replayed
-to devices. Such a source has no value until its first change event.
+to devices. Such a source has no value until its first change event. A
+submodel event carries the whole submodel; the source takes its Property's
+value from it, so batch updates reach event-sourced sources too.
 
 ### 4.4 Compilation and installation
 
