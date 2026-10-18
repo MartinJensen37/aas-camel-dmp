@@ -41,7 +41,7 @@ import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementCollection;
  */
 public final class WireModel {
 	private WireModel() { }
-	public enum ProtocolFamily { MQTT, HTTP, MODBUS, OPCUA, BACNET, IOLINK, SNMP, CAN }
+	public enum ProtocolFamily { MQTT, HTTP, MODBUS, OPCUA, BACNET, IOLINK, SNMP }
 
 	/** Distinguishes an authored optional AIMC/AID field from its absence. */
 	public record Presence<T>(boolean present, T value) {

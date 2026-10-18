@@ -72,8 +72,7 @@ public final class WireProjection {
 			"http://opcfoundation.org/UA/WoT-Binding/",ProtocolFamily.OPCUA,
 			"http://www.w3.org/2022/bacnet",ProtocolFamily.BACNET,
 			"https://admin-shell.io/idta/AssetInterfacesDescription/1/1/IO-Link",ProtocolFamily.IOLINK,
-			"https://admin-shell.io/idta/AssetInterfacesDescription/1/2/SNMP",ProtocolFamily.SNMP,
-			"https://admin-shell.io/idta/AssetInterfacesDescription/1/2/CAN",ProtocolFamily.CAN);
+			"https://admin-shell.io/idta/AssetInterfacesDescription/1/2/SNMP",ProtocolFamily.SNMP);
 	private static final String AID_ENDPOINT = "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata";
 	private static final String AID_INTERACTION = "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata";
 	private static final String WOT_FORM = "https://www.w3.org/2019/wot/td#hasForm";

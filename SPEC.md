@@ -138,7 +138,8 @@ to devices. Such a source has no value until its first change event.
 Accepted template versions: AIMC 2.0 and its bug-fix release 2.1 (same
 semantic ID; 2.1 list members carry no idShort, so an unnamed mapping is
 identified by its position), and AID 1.1 and 1.2 (1.2 adds the SNMP binding,
-supported, and the CAN binding, not yet (PLAN), and optional fields such as
+supported, and the CAN binding, rejected because it is not IP-based (PLAN),
+and optional fields such as
 `EndpointMetadata/protocolVersion`, which the DMP ignores). Other versions
 block the mappings that reference them.
 
