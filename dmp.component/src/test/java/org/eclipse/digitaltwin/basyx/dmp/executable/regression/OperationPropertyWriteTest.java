@@ -163,6 +163,15 @@ class OperationPropertyWriteTest {
 	}
 
 	@Test
+	void aVariableNamedByItsAidBrowsePathIsWritten() throws Exception {
+		// AID 1.2: uav_browsePath is an absolute path from the Root node; the href names no node.
+		runtime.installBundle("setpoint", compile("/Root/Objects/1:Setpoint"));
+		var reply = call("{\"Setpoint\":42}");
+		assertEquals(200, reply.statusCode(), reply.body());
+		assertEquals(47, device.setpoint());
+	}
+
+	@Test
 	void aRejectedWriteFailsTheCall() throws Exception {
 		runtime.installBundle("setpoint", compile());
 		device.readOnly();
@@ -194,6 +203,9 @@ class OperationPropertyWriteTest {
 					.setDataType(NodeIds.Int32).setTypeDefinition(NodeIds.BaseDataVariableType)
 					.setAccessLevel(AccessLevel.READ_WRITE).setUserAccessLevel(AccessLevel.READ_WRITE).buildAndAdd();
 			setpoint.setValue(new DataValue(new Variant(0), StatusCode.GOOD, DateTime.now()));
+			// Browsable from the Root node: /Root/Objects/1:Setpoint.
+			setpoint.addReference(new org.eclipse.milo.opcua.sdk.core.Reference(setpoint.getNodeId(), NodeIds.Organizes,
+					NodeIds.ObjectsFolder.expanded(), false));
 		}
 
 		int setpoint() { return ((Number) setpoint.getValue().getValue().getValue()).intValue(); }
@@ -215,6 +227,10 @@ class OperationPropertyWriteTest {
 	// ---- models: the opcua-method fixture, its Operation bound to a Setpoint variable ----
 
 	private RoutesConfiguration compile() throws Exception {
+		return compile(null);
+	}
+
+	private RoutesConfiguration compile(String browsePath) throws Exception {
 		JsonObject aid = json(resource("opcua-method/aid.json")).getAsJsonObject();
 		JsonObject opcua = child(aid, "interface_opcua");
 		child(child(opcua, "EndpointMetadata"), "base").addProperty("value", "opc.tcp://127.0.0.1:" + devicePort);
@@ -225,7 +241,9 @@ class OperationPropertyWriteTest {
 		JsonObject variable = pressure.deepCopy();
 		variable.addProperty("idShort", "Setpoint");
 		child(variable, "title").addProperty("value", "Setpoint");
-		child(child(variable, "forms"), "href").addProperty("value", "/?id=ns=1;s=Setpoint");
+		child(child(variable, "forms"), "href").addProperty("value", browsePath == null ? "/?id=ns=1;s=Setpoint" : "/");
+		if (browsePath != null) child(variable, "forms").getAsJsonArray("value").add(json(
+				"{\"modelType\":\"Property\",\"idShort\":\"uav_browsePath\",\"valueType\":\"xs:string\",\"value\":\"" + browsePath + "\"}"));
 		properties.getAsJsonArray("value").add(variable);
 
 		JsonObject cci = json(resource("opcua-method/dependencies/0.json")).getAsJsonObject();

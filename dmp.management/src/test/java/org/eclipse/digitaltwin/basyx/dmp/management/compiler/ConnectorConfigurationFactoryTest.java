@@ -220,6 +220,25 @@ class ConnectorConfigurationFactoryTest {
 	}
 
 	@Test
+	void anOpcUaFormNamesItsNodeByHrefNodeIdElseByBrowsePath() {
+		var byPath=endpointPlan("level",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840",
+				"/",Map.of("uav_browsePath","/Root/Objects/2:Tank/2:Level"),null));
+		var byId=endpointPlan("out",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840",
+				"/?id=ns=2;s=Out",Map.of("uav_browsePath","/Root/Objects/2:Tank/2:Out"),null));
+		var result=factory.create(new Plan(List.of(mappingPlan("ua",0,byPath,byId))),"route");
+		assertTrue(result.issues().isEmpty(),String.valueOf(result.issues()));
+		String source=result.configuration().getDatasources().values().iterator().next().getConnectionURI();
+		assertTrue(source.contains("browsePath=RAW(/Root/Objects/2:Tank/2:Level)") && !source.contains("node="),source);
+		String sink=result.configuration().getDatasinks().values().iterator().next().getConnectionURI();
+		assertTrue(sink.contains("node=RAW(ns=2;s=Out)"),"the href's NodeId wins: "+sink);
+
+		var relative=endpointPlan("level",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840",
+				"/",Map.of("uav_browsePath","Objects/2:Level"),null));
+		var rejected=factory.create(new Plan(List.of(mappingPlan("ua",0,relative,byId))),"route");
+		assertTrue(rejected.issues().stream().anyMatch(issue -> issue.path().endsWith("/forms/uav_browsePath")),String.valueOf(rejected.issues()));
+	}
+
+	@Test
 	void resolvesAidModbusFormsAgainstTheUnitIdInTheBase() {
 		// AID 1.2 Annex B: modbus+tcp://host:port/{unitID}/ and {address}?quantity={n}; one-based addressing
 		// counts from 1, and modv_pollingTime is a lower limit for the AIMC interval.

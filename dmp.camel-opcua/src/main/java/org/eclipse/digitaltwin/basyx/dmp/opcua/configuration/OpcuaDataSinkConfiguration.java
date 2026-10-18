@@ -144,11 +144,12 @@ public class OpcuaDataSinkConfiguration extends DataSinkConfiguration {
                 .collect(Collectors.joining("&"));
 
         return String.format(
-                "dmp-milo-client:opc.tcp://%s%s:%d/%s?node=RAW(%s)%s",
+                "dmp-milo-client:opc.tcp://%s%s:%d/%s?%s=RAW(%s)%s",
                 credentials,
 				getServerUrl(),
 				getServerPort(),
                 getPathToService(),
+                OpcuaDataSourceConfiguration.nodeParameter(getNodeInformation()),
                 getNodeInformation(),
                 parameters.length() > 0 ? "&" + parameters : "");
     }

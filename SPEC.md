@@ -245,6 +245,14 @@ OPC UA follows OPC 10101 (the OPC UA binding for WoT):
 - `readproperty`, `writeproperty`, `observeproperty` and `invokeaction` map to
   the UA Read, Write, Monitor and Call services. An observable variable is
   observed (a monitored item); otherwise it is read.
+- A form names its node by the NodeId of its `href` (`/?id=<nodeId>`, `#` and
+  `&` percent-encoded), else by `uav_browsePath`: an absolute path from the
+  Root node (`/Root/Objects/2:Machine/2:Pressure`; qualified names
+  `<namespaceIndex>:<name>`, namespace 0 without a prefix) along hierarchical
+  references. AID makes `href` mandatory, so such a form carries an href
+  without an id (e.g. `/`). `dmp-milo-client:` resolves the path with
+  TranslateBrowsePathsToNodeIds once per client session (option
+  `browsePath`).
 - An observed variable is a monitored item in a subscription of its own; the
   source's `PollingInterval` sets its sampling and publishing interval (the
   IDTA AIMC text calls the interval ignored for asynchronous sources; for OPC

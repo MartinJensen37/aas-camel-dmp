@@ -158,7 +158,9 @@ connector URIs; connector syntax never appears in an AID (SPEC §5.2).
   JSON `contentType` accepted, a source must be observable or retained, reply
   timeout fixed at 30 s (`mqv_reply_timeout` dropped). Modbus: unit ID in the
   base, `modv_zeroBasedAddressing=false`, `modv_pollingTime` as a lower limit.
-  OPC UA: an observable variable is a monitored item. Action and event members
+  OPC UA: an observable variable is a monitored item; `uav_browsePath` (an
+  absolute path from Root) is resolved by `dmp-milo-client:` with
+  TranslateBrowsePathsToNodeIds when the href names no NodeId. Action and event members
   of Modbus/BACnet/HTTP are rejected with a clear issue.
 - Fixtures (C4): migrated by a one-off script (its rules are in the manifest), `elements.aid`
   re-captured from the migrated AIDs, manifest hashes and vocabulary updated,
@@ -166,9 +168,6 @@ connector URIs; connector syntax never appears in an AID (SPEC §5.2).
 
 **Open:**
 
-- **OPC UA `uav_browsePath`** is passed to Milo as a NodeId. AID: an absolute
-  path from the Root node; translate it (TranslateBrowsePathsToNodeIds) in
-  `dmp-milo-client:`.
 - **HTTP `htv_headers`** are rejected ("not sent yet"); the polling source and
   the sink need static headers.
 - **HTTP observe** (`subprotocol` longpoll/sse) is rejected (A7).

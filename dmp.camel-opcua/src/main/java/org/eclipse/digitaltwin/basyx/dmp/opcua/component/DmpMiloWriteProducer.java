@@ -7,13 +7,13 @@ import java.util.Map;
 
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.Exchange;
+import org.apache.camel.component.milo.MiloConstants;
 import org.apache.camel.component.milo.client.MiloClientConnection;
 import org.apache.camel.component.milo.client.MiloClientProducer;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.stack.core.AttributeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
-import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.QualifiedName;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
@@ -57,6 +57,18 @@ final class DmpMiloWriteProducer extends MiloClientProducer {
 
 	@Override
 	public boolean process(Exchange exchange, AsyncCallback callback) {
+		List<?> reads = exchange.getMessage().getHeader(MiloConstants.HEADER_NODE_IDS, List.class);
+		if (reads != null) {
+			// A Read: browse paths in the node list are resolved to their NodeIds first.
+			try {
+				exchange.getMessage().setHeader(MiloConstants.HEADER_NODE_IDS, resolved(reads));
+			} catch (Exception unresolved) {
+				exchange.setException(unresolved);
+				callback.done(true);
+				return true;
+			}
+			return super.process(exchange, callback);
+		}
 		Object written = exchange.getMessage().getBody();
 		try {
 			exchange.getMessage().setBody(typed(written));
@@ -65,19 +77,55 @@ final class DmpMiloWriteProducer extends MiloClientProducer {
 			callback.done(true);
 			return true;
 		}
-		return super.process(exchange, done -> {
-			Object answer = exchange.getMessage().getBody();
-			if (exchange.getException() == null && answer instanceof StatusCode status && !status.isGood()) {
-				exchange.setException(new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
-						"OPCUA_WRITE_REJECTED", "OPC UA server rejected the write",
-						Map.of("status", Long.toHexString(status.getValue()))));
-			} else if (exchange.getException() != null && !(exchange.getException() instanceof ConnectorInvocationException)) {
-				exchange.setException(new ConnectorInvocationException(ConnectorInvocationException.Category.TRANSPORT,
-						"OPCUA_WRITE_FAILED", "OPC UA write failed", Map.of()));
+		if (endpoint.getBrowsePath() != null) {
+			// camel-milo writes the NodeId it parsed when the producer was created; a browse path is resolved here.
+			try {
+				OpcUaClient client = client();
+				Object value = exchange.getMessage().getBody();
+				StatusCode status = client.writeValues(List.of(endpoint.node(client)),
+						List.of(DataValue.valueOnly(value instanceof Variant variant ? variant : new Variant(value)))).get(0);
+				exchange.getMessage().setBody(status);
+			} catch (Exception failure) {
+				exchange.setException(failure);
 			}
-			exchange.getMessage().setBody(written);
+			finish(exchange, written);
+			callback.done(true);
+			return true;
+		}
+		return super.process(exchange, done -> {
+			finish(exchange, written);
 			callback.done(done);
 		});
+	}
+
+	/** A Bad write status or a failure becomes a typed invocation error; the body is the written value again. */
+	private static void finish(Exchange exchange, Object written) {
+		Object answer = exchange.getMessage().getBody();
+		if (exchange.getException() == null && answer instanceof StatusCode status && !status.isGood()) {
+			exchange.setException(new ConnectorInvocationException(ConnectorInvocationException.Category.REMOTE,
+					"OPCUA_WRITE_REJECTED", "OPC UA server rejected the write",
+					Map.of("status", Long.toHexString(status.getValue()))));
+		} else if (exchange.getException() != null && !(exchange.getException() instanceof ConnectorInvocationException)) {
+			exchange.setException(new ConnectorInvocationException(ConnectorInvocationException.Category.TRANSPORT,
+					"OPCUA_WRITE_FAILED", "OPC UA write failed", Map.of()));
+		}
+		exchange.getMessage().setBody(written);
+	}
+
+	/** The Read's node list with each browse path replaced by its NodeId. */
+	private List<String> resolved(List<?> nodes) throws Exception {
+		List<String> result = new java.util.ArrayList<>();
+		for (Object node : nodes) {
+			String text = String.valueOf(node);
+			result.add(OpcUaBrowsePaths.isBrowsePath(text) ? OpcUaBrowsePaths.resolve(client(), text).toParseableString() : text);
+		}
+		return result;
+	}
+
+	private OpcUaClient client() {
+		OpcUaClient client = connection == null ? null : connection.getOpcUaClient();
+		if (client == null) throw new IllegalStateException("OPC UA client is not connected");
+		return client;
 	}
 
 	/** The value as a Variant of the variable's built-in DataType; other values pass unchanged. */
@@ -126,7 +174,7 @@ final class DmpMiloWriteProducer extends MiloClientProducer {
 		OpcUaClient client = connection == null ? null : connection.getOpcUaClient();
 		if (client == null) return null;
 		try {
-			NodeId node = ExpandedNodeId.parse(endpoint.getNode()).toNodeIdOrThrow(client.getNamespaceTable());
+			NodeId node = endpoint.node(client);
 			DataValue read = client.read(0, TimestampsToReturn.Neither, List.of(new ReadValueId(node,
 					AttributeId.DataType.uid(), null, QualifiedName.NULL_VALUE))).getResults()[0];
 			if (read.getValue() != null && read.getValue().getValue() instanceof NodeId type) dataType = type;

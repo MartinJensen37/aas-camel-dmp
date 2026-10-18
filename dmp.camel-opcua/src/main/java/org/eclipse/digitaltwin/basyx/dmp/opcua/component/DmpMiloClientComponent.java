@@ -15,7 +15,8 @@ import org.apache.camel.component.milo.client.MiloClientConfiguration;
  * connection manager; reads and writes are upstream's, subscriptions this
  * module's ({@link DmpMiloSubscriptionConsumer}): a variable, or with the DMP
  * options {@code eventFields} and {@code eventType} the events of a notifier
- * ({@link EventSelection}). The
+ * ({@link EventSelection}). The DMP option {@code browsePath} names the node by
+ * an AID browse path instead of {@code node} ({@link OpcUaBrowsePaths}). The
  * upstream generated configurers are registered under this scheme
  * ({@code META-INF/services/org/apache/camel/configurer/dmp-milo-client-*}), so
  * every {@code milo-client:} option binds the same way.
@@ -30,6 +31,8 @@ public class DmpMiloClientComponent extends MiloClientComponent {
 				getMiloClientConnectionManager());
 		endpoint.setConfiguration(configuration);
 		// DMP options, unknown to the upstream configurer: an event subscription's select and where clause.
+		String browsePath = getAndRemoveParameter(parameters, "browsePath", String.class);
+		if (browsePath != null) endpoint.setBrowsePath(browsePath);
 		String eventFields = getAndRemoveParameter(parameters, "eventFields", String.class);
 		String eventType = getAndRemoveParameter(parameters, "eventType", String.class);
 		if (eventFields != null) endpoint.setEventSelection(EventSelection.parse(eventFields, eventType));

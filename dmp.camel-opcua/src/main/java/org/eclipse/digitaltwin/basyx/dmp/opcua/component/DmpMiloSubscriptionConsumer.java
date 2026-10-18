@@ -13,7 +13,6 @@ import org.apache.camel.support.DefaultConsumer;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.client.subscriptions.OpcUaMonitoredItem;
 import org.eclipse.milo.opcua.sdk.client.subscriptions.OpcUaSubscription;
-import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
 import org.slf4j.Logger;
@@ -79,7 +78,7 @@ final class DmpMiloSubscriptionConsumer extends DefaultConsumer {
 			OpcUaSubscription created = new OpcUaSubscription(client,
 					publishing == null ? DEFAULT_PUBLISHING_INTERVAL_MS : publishing);
 			created.create();
-			NodeId node = ExpandedNodeId.parse(endpoint.getNode()).toNodeIdOrThrow(client.getNamespaceTable());
+			NodeId node = endpoint.node(client);
 			EventSelection events = endpoint.getEventSelection();
 			OpcUaMonitoredItem item;
 			if (events == null) {
@@ -99,7 +98,8 @@ final class DmpMiloSubscriptionConsumer extends DefaultConsumer {
 			subscription = created;
 			subscribedClient = client;
 		} catch (Exception failure) {
-			LOGGER.warn("OPC UA subscription to {} is not established yet: {}", endpoint.getNode(), failure.getMessage());
+			LOGGER.warn("OPC UA subscription to {} is not established yet: {}",
+					endpoint.getBrowsePath() == null ? endpoint.getNode() : endpoint.getBrowsePath(), failure.getMessage());
 			deleteSubscription();
 		}
 	}

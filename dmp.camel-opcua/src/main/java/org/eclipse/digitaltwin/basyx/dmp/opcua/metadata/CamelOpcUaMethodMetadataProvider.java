@@ -16,7 +16,6 @@ import org.apache.camel.component.milo.client.MiloClientConnection;
 import org.apache.camel.component.milo.client.MiloClientEndpoint;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.client.nodes.UaMethodNode;
-import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Matrix;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UByte;
@@ -230,8 +229,8 @@ public final class CamelOpcUaMethodMetadataProvider implements OpcUaMethodMetada
 		MiloClientConnection connection = endpoint.createConnection();
 		try {
 			OpcUaClient client = connection.getOpcUaClient();
-			ExpandedNodeId expandedMethodId = ExpandedNodeId.parse(endpoint.getMethod());
-			var methodId = expandedMethodId.toNodeIdOrThrow(client.getNamespaceTable());
+			// The Method's NodeId, or its AID browse path.
+			var methodId = org.eclipse.digitaltwin.basyx.dmp.opcua.component.OpcUaBrowsePaths.resolve(client, endpoint.getMethod());
 			UaMethodNode method = (UaMethodNode) client.getAddressSpace().getNode(methodId);
 			org.eclipse.milo.opcua.stack.core.types.structured.Argument[] inputs = method.readInputArgumentsAsync().join();
 			org.eclipse.milo.opcua.stack.core.types.structured.Argument[] outputs = method.readOutputArgumentsAsync().join();

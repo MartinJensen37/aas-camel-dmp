@@ -12,7 +12,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.component.milo.client.MiloClientConnection;
 import org.apache.camel.support.DefaultProducer;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.ConnectorInvocationException;
-import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.structured.CallMethodRequest;
 import org.eclipse.milo.opcua.stack.core.types.structured.CallResponse;
@@ -56,9 +55,8 @@ public final class DmpMiloMethodProducer extends DefaultProducer {
 		try {
 			var client = connection == null ? null : connection.getOpcUaClient();
 			if (client == null) throw new IllegalStateException("OPC UA client is not connected");
-			var namespaces = client.getNamespaceTable();
-			var object = ExpandedNodeId.parse(endpoint.getNode()).toNodeIdOrThrow(namespaces);
-			var method = ExpandedNodeId.parse(endpoint.getMethod()).toNodeIdOrThrow(namespaces);
+			var object = OpcUaBrowsePaths.resolve(client, endpoint.getNode());
+			var method = OpcUaBrowsePaths.resolve(client, endpoint.getMethod());
 			CallResponse response = client.callAsync(List.of(new CallMethodRequest(object, method, arguments)))
 					.get(timeoutMs, TimeUnit.MILLISECONDS);
 			if (response == null || response.getResults() == null || response.getResults().length != 1)

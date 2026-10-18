@@ -1655,21 +1655,27 @@ public final class ConnectorConfigurationFactory {
 		return forms.get(0);
 	}
 
+	/**
+	 * The node an OPC UA form names: the NodeId of its {@code href} ({@code /?id=<nodeId>}, OPC 10101 and AID
+	 * 1.2 Annex B, {@code #} and {@code &} percent-encoded), else its {@code uav_browsePath}, an absolute path
+	 * from the Root node that the connector resolves (TranslateBrowsePathsToNodeIds). AID makes {@code href}
+	 * mandatory, so a form naming its node by browse path carries an href without an id (e.g. {@code /}).
+	 */
 	private static String opcuaNode(Form form,MappingPlan mapping,String path,List<Issue> issues) {
+		String href=form.href().present() && form.href().value()!=null?form.href().value().trim():"";
+		int id=href.toLowerCase(java.util.Locale.ROOT).indexOf("?id=");
+		String nodeId=id>=0?href.substring(id+4).replace("%23","#").replace("%26","&")
+				:!href.isEmpty() && !href.startsWith("/")?href:null;
+		if(nodeId!=null && !nodeId.isBlank())return nodeId;
 		String browse=formTerm(form,"uav_browsePath");
 		if(browse!=null && !browse.isBlank()) {
-			if(form.href().value()!=null && !form.href().value().isBlank()) {
-				issue(issues,mapping,path,"simultaneous OPC UA href and browsePath are ambiguous");return null;
+			String trimmed=browse.trim();
+			if(!trimmed.startsWith("/") || trimmed.length()<2 || trimmed.contains("//") || trimmed.contains(")")) {
+				issue(issues,mapping,path+"/forms/uav_browsePath","uav_browsePath is an absolute path from the Root node, e.g. /Root/Objects/2:Machine");return null;
 			}
-			return browse;
+			return trimmed;
 		}
-		if(!form.href().present() || form.href().value()==null || form.href().value().isBlank()) {
-			issue(issues,mapping,path+"/forms/href","OPC UA node href is required");return null;
-		}
-		String href=form.href().value().trim();
-		int id=href.toLowerCase(java.util.Locale.ROOT).indexOf("?id=");
-		if(id>=0)return href.substring(id+4).replace("%23","#").replace("%26","&");
-		return href;
+		issue(issues,mapping,path+"/forms/href","an OPC UA form names its node by href /?id=<NodeId> or by uav_browsePath");return null;
 	}
 
 	/** A BACnet form's PLC4X address (the WoT BACnet binding is P5 work); the href's leading slash is no part of it. */

@@ -15,7 +15,8 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 
 /** Issues a UA Read service call instead of sampling monitored-item events. */
 public final class OpcUaSynchronousSourceReadAdapter implements SynchronousSourceReadAdapter {
-	private static final Pattern NODE_PARAMETER = Pattern.compile("(?:[?&])node=RAW\\(([^)]*)\\)");
+	/** The endpoint's node: a NodeId ({@code node}) or an AID browse path ({@code browsePath}), resolved by the producer. */
+	private static final Pattern NODE_PARAMETER = Pattern.compile("(?:[?&])(?:node|browsePath)=RAW\\(([^)]*)\\)");
 
 	@Override
 	public boolean supports(String endpointUri) {

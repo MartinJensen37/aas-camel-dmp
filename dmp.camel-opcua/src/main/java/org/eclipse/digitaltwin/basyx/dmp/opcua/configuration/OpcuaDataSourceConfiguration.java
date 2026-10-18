@@ -121,6 +121,11 @@ public class OpcuaDataSourceConfiguration extends DataSourceConfiguration {
 		this.configuration = configuration;
 	}
 
+	/** A node named by an AID browse path (starting with {@code /}) is the {@code browsePath} option, else {@code node}. */
+	static String nodeParameter(String node) {
+		return node != null && node.startsWith("/") ? "browsePath" : "node";
+	}
+
 	public String getConnectionURI() {
 		String credentials = username == null || password == null ? "" : username + ":" + password + "@";
 		String parameters = this.configuration.entrySet()
@@ -130,11 +135,12 @@ public class OpcuaDataSourceConfiguration extends DataSourceConfiguration {
 				.collect(Collectors.joining("&"));
 
 		return String.format(
-				"dmp-milo-client:opc.tcp://%s%s:%d/%s?node=RAW(%s)%s",
+				"dmp-milo-client:opc.tcp://%s%s:%d/%s?%s=RAW(%s)%s",
 				credentials,
 				getServerUrl(),
 				getServerPort(),
 				getPathToService(),
+				nodeParameter(getNodeInformation()),
 				getNodeInformation(),
 				parameters.length() > 0 ? "&" + parameters : ""
 		);
