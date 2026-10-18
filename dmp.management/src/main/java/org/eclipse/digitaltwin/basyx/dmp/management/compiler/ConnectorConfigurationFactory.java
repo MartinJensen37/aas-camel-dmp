@@ -178,7 +178,10 @@ public final class ConnectorConfigurationFactory {
 				if(sink!=null)payloadBinding(sink,endpoint,mapping,issues);
 				if (sink != null) { sinks.add(sink); sinkIds.add(sink.getUniqueId()); }
 			}
-			OptionalLong pollingMillis = pollingMillis(mapping, issues);
+			// IDTA AIMC: DefaultPollingInterval must be positive for sources that are read, and is
+			// ignored for asynchronous ones; it is judged only when a read source falls back to it.
+			boolean fallback = sources.stream().anyMatch(source -> "sync".equalsIgnoreCase(source.getDelivery()) && source.getPollingIntervalMs()<=0);
+			OptionalLong pollingMillis = fallback ? pollingMillis(mapping, issues) : OptionalLong.empty();
 			if (pollingMillis.isPresent()) sources.stream()
 					.filter(source -> "sync".equalsIgnoreCase(source.getDelivery()) && source.getPollingIntervalMs()<=0)
 					.forEach(source -> {
@@ -1002,8 +1005,8 @@ public final class ConnectorConfigurationFactory {
 		String submodelEndpoint=submodelEndpoint(target.resolved().submodel().getId(),runtime,mapping,path,issues);
 		if(submodelEndpoint==null)return null;
 		if(target.resolved().element() instanceof Property && !endpoint.pollingInterval().present()
-				&& !mapping.defaultPollingInterval().present()) {
-			// Without an authored PollingInterval a Property follows the repository's change events.
+				&& pollingMillis(mapping,new ArrayList<>()).isEmpty()) {
+			// Without a usable PollingInterval (none, or a default of 0) a Property follows the repository's change events.
 			String idShortPath=AasReferenceResolver.idShortPath(Aas.keys(endpoint.reference()));
 			AasEventDataSourceConfiguration source=new AasEventDataSourceConfiguration(entityId(mapping,"source",position),
 					target.resolved().submodel().getId(),idShortPath,submodelEndpoint+"/submodel-elements/"
