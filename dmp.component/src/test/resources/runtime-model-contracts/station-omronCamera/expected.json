@@ -1,0 +1,80 @@
+{
+ "compilerContext": {
+  "aas_id": "https://smartproductionlab.aau.dk/aas/omronCameraSystemAAS",
+  "aas_id_short": "omronCameraSystemAAS",
+  "aas_base_url": "http://aas-server:8081"
+ },
+ "authoredMappings": [
+  {
+   "index": 0,
+   "idShort": null,
+   "sourceIds": [
+    "StationState"
+   ],
+   "sinkIds": [
+    "PackMLState",
+    "OccupationState"
+   ]
+  },
+  {
+   "index": 1,
+   "idShort": null,
+   "sourceIds": [
+    "Halt"
+   ],
+   "sinkIds": [
+    "Halt"
+   ]
+  },
+  {
+   "index": 2,
+   "idShort": null,
+   "sourceIds": [
+    "Occupy"
+   ],
+   "sinkIds": [
+    "Occupy"
+   ]
+  },
+  {
+   "index": 3,
+   "idShort": null,
+   "sourceIds": [
+    "Release"
+   ],
+   "sinkIds": [
+    "Release"
+   ]
+  },
+  {
+   "index": 4,
+   "idShort": null,
+   "sourceIds": [
+    "Capture"
+   ],
+   "sinkIds": [
+    "Capture"
+   ]
+  },
+  {
+   "index": 5,
+   "idShort": null,
+   "sourceIds": [
+    "Image"
+   ],
+   "sinkIds": [
+    "Image"
+   ]
+  },
+  {
+   "index": 6,
+   "idShort": null,
+   "sourceIds": [
+    "QualityResult"
+   ],
+   "sinkIds": [
+    "QualityResult"
+   ]
+  }
+ ]
+}

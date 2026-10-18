@@ -1,86 +1,12 @@
 {
-  "embeddedDataSpecifications": [
-    {
-      "dataSpecification": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "a/submodels/Runtime"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-          {
-            "language": "en",
-            "text": "class"
-          }
-        ],
-        "value": "FixtureSubmodel_afd50b82b5"
-      }
-    },
-    {
-      "dataSpecification": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "State"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-          {
-            "language": "en",
-            "text": "attribute"
-          }
-        ],
-        "value": "State"
-      }
-    },
-    {
-      "dataSpecification": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "State"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-          {
-            "language": "en",
-            "text": "default"
-          }
-        ],
-        "value": "State"
-      }
-    }
-  ],
-  "id": "a/submodels/Runtime",
-  "idShort": "Runtime",
-  "modelType": "Submodel",
-  "semanticId": {
-    "keys": [
-      {
-        "type": "GlobalReference",
-        "value": "urn:contract-fixture:submodel:Runtime"
-      }
-    ],
-    "type": "ExternalReference"
-  },
-  "submodelElements": [
-    {
-      "idShort": "State",
-      "modelType": "Property",
-      "valueType": "xs:string"
-    }
-  ]
+ "idShort": "Runtime",
+ "modelType": "Submodel",
+ "id": "a/submodels/Runtime",
+ "submodelElements": [
+  {
+   "idShort": "State",
+   "modelType": "Property",
+   "valueType": "xs:string"
+  }
+ ]
 }

@@ -1,2884 +1,3320 @@
 {
-  "description": [
-    {
-      "language": "en",
-      "text": "Definition of the Submodel Asset Interfaces Description identified by its semanticId. The Submodel idShort can be picked freely."
-    }
-  ],
-  "embeddedDataSpecifications": [
-    {
-      "dataSpecification": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "a/submodels/AID"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-          {
-            "language": "en",
-            "text": "class"
-          }
-        ],
-        "value": "DmpAssetInterfacesDescription"
-      }
-    }
-  ],
-  "id": "a/submodels/AID",
-  "idShort": "AID",
-  "modelType": "Submodel",
-  "semanticId": {
+ "embeddedDataSpecifications": [
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
     "keys": [
-      {
-        "type": "GlobalReference",
-        "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/1/Submodel"
-      }
+     {
+      "type": "GlobalReference",
+      "value": "a/submodels/AID"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "class"
+     }
     ],
-    "type": "ExternalReference"
-  },
-  "submodelElements": [
+    "value": "DmpAssetInterfacesDescription"
+   }
+  }
+ ],
+ "idShort": "AID",
+ "description": [
+  {
+   "language": "en",
+   "text": "Definition of the Submodel Asset Interfaces Description identified by its semanticId."
+  }
+ ],
+ "modelType": "Submodel",
+ "id": "a/submodels/AID",
+ "semanticId": {
+  "type": "ExternalReference",
+  "keys": [
+   {
+    "type": "GlobalReference",
+    "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/2/Submodel"
+   }
+  ]
+ },
+ "submodelElements": [
+  {
+   "embeddedDataSpecifications": [
     {
-      "description": [
-        {
-          "language": "en",
-          "text": "Indicates entry point for MODBUS interface."
-        }
-      ],
-      "embeddedDataSpecifications": [
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "interface_modbus"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "class"
-              }
-            ],
-            "value": "DmpModbusInterface"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "title"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "title"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "title"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "default"
-              }
-            ],
-            "value": "Property"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "edaa56fcacb7563db9bb465b3c4522a3"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "created"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "71c2bdf8c72551278c659eaef3c36588"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "modified"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "2442e9ab1d7d542ab74449db85b65ff2"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "support"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "EndpointMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "EndpointMetadata"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "EndpointMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "default"
-              }
-            ],
-            "value": "SubmodelElementCollection"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "InteractionMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "InteractionMetadata"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "InteractionMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "default"
-              }
-            ],
-            "value": "SubmodelElementCollection"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "ea289015d6a95ee78a4529dedb9048dd"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "ExternalDescriptor"
-          }
-        }
-      ],
-      "idShort": "interface_modbus",
-      "modelType": "SubmodelElementCollection",
-      "semanticId": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Interface"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "supplementalSemanticIds": [
-        {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "http://www.w3.org/2011/modbus"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      ],
-      "value": [
-        {
-          "description": [
-            {
-              "language": "en",
-              "text": "Provides a human-readable title to give a human-readable context of the interface."
-            }
-          ],
-          "idShort": "title",
-          "modelType": "Property",
-          "semanticId": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://www.w3.org/2019/wot/td#title"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "value": "iface",
-          "valueType": "xs:string"
-        },
-        {
-          "description": [
-            {
-              "language": "en",
-              "text": "Provides the metadata of the asset’s endpoint (base, content type that is used for interaction, etc)"
-            }
-          ],
-          "embeddedDataSpecifications": [
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "EndpointMetadata"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "class"
-                  }
-                ],
-                "value": "ModbusEndpointMetadata"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "base"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "base"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "contentType"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "contentType"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "security"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "security"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "securityDefinitions"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "securityDefinitions"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "6a799c37f12651b49ae91913f931a025"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "modv_mostSignificantByte"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "040371dc502756cbab3e7387e4f1949e"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "modv_mostSignificantWord"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "7e1d34e8cd2a5287990945e209a5d383"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "modv_pollingTime"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "2ae40b77fd645e78880d75c7c8c052fa"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "modv_timeout"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "133e4a21c7e35541bae033bde6b1ef23"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "modv_type"
-              }
-            }
-          ],
-          "idShort": "EndpointMetadata",
-          "modelType": "SubmodelElementCollection",
-          "semanticId": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "value": [
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Defines asset connection entry point. The base pattern for HTTP is defined in Qalifier."
-                }
-              ],
-              "idShort": "base",
-              "modelType": "Property",
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/td#baseURI"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "value": "modbus+tcp://192.168.0.20:502",
-              "valueType": "xs:anyURI"
-            },
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Defines content type based on a media type (e.g., text/plain) and potential character decoding/encoding type (e.g., charset=utf-8) for the media type (see RFC2046) of the whole interface."
-                }
-              ],
-              "idShort": "contentType",
-              "modelType": "Property",
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "value": "application/json",
-              "valueType": "xs:string"
-            },
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Selects one or more of the security scheme(s) that can be applied at runtime from the collection of security schemes defines in securityDefinitions. "
-                }
-              ],
-              "idShort": "security",
-              "modelType": "SubmodelElementList",
-              "orderRelevant": true,
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "typeValueListElement": "ReferenceElement"
-            },
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Defines the security scheme according to W3C"
-                }
-              ],
-              "embeddedDataSpecifications": [
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "securityDefinitions"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "class"
-                      }
-                    ],
-                    "value": "securityDefinitions"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "30a8d808580d56169d8bdb5016b928da"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "nosec_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "f981f442ba185fe08b63c4b5bce5b9f7"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "auto_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "0166f4e3903752f4b054e9d278cce886"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "basic_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "8a266774d6e851be8de425ab31d9038b"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "combo_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "a0c83d9448e55d1a92bf3f408e0e9e2d"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "apikey_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "51c48dbe99a25ebbbfe626ac11b32428"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "psk_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "93b7f5a6e9a5543ab4ef73c0bce69788"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "digest_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "3934973eb6585b4db77d18577add0700"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "bearer_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "1c493009cdda55bd8e58225be4dc6af2"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "oauth2_sc"
-                  }
-                }
-              ],
-              "idShort": "securityDefinitions",
-              "modelType": "SubmodelElementCollection",
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/td#definesSecurityScheme"
-                  }
-                ],
-                "type": "ExternalReference"
-              }
-            }
-          ]
-        },
-        {
-          "description": [
-            {
-              "language": "en",
-              "text": "Provides the metadata of the actually interfaces such as which datapoints and functions are provided by the properties, actions, and events interaction abstraction. "
-            }
-          ],
-          "embeddedDataSpecifications": [
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "InteractionMetadata"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "class"
-                  }
-                ],
-                "value": "ModbusInteractionMetadata"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "properties"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "properties"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "properties"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "default"
-                  }
-                ],
-                "value": "SubmodelElementCollection"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "actions"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "actions"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "actions"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "default"
-                  }
-                ],
-                "value": "SubmodelElementCollection"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "6eff46171f815568b1f53c1ab519501b"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "events"
-              }
-            }
-          ],
-          "idShort": "InteractionMetadata",
-          "modelType": "SubmodelElementCollection",
-          "semanticId": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "supplementalSemanticIds": [
-            {
-              "keys": [
-                {
-                  "type": "GlobalReference",
-                  "value": "https://www.w3.org/2019/wot/td#InteractionAffordance"
-                }
-              ],
-              "type": "ExternalReference"
-            }
-          ],
-          "value": [
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Collection of asset’s datapoint definitions"
-                }
-              ],
-              "embeddedDataSpecifications": [
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "properties"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "class"
-                      }
-                    ],
-                    "value": "ModbusProperties"
-                  }
-                }
-              ],
-              "idShort": "properties",
-              "modelType": "SubmodelElementCollection",
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/td#PropertyAffordance"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "value": [
-                {
-                  "description": [
-                    {
-                      "language": "en",
-                      "text": "Defines an interaction property that covers usually a datapoint definition that can be read or subscribed to.  "
-                    }
-                  ],
-                  "embeddedDataSpecifications": [
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "SubmodelElementCollection"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "class"
-                          }
-                        ],
-                        "value": "ModbusProperty"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "1447bab9491153109429055cca63f116"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "key"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "e111472f73875b7b8c82582951d5d840"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "type"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "title"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "title"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "2ea92bcc632e5512b17558c1d7562fd0"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "observable"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "fe65a1768637503aa515c3832e622dd8"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "const"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "d727d3cf197b50e690945c8163d67046"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "enum"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "510bf148abf953c29422c924bf4872f4"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "default"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "3d4aff0bdeea58a9b2873a833c61dc13"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "unit"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "5c91bb2656f755a997ad982054409c85"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "min_max"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "dbdc22d92c305b5692fd31ef96514c87"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "lengthRange"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "b0c2678e008d54f8b65adb5ffea68e57"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "items"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "1970fc7ef3be5d3186b439c3feec0536"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "itemsRange"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "dce254c418295df0b1bfd96b0ac99f5b"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "properties"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "edcb3f1259b751189b7e570a169be9f1"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "valueSemantics"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "forms"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "attribute"
-                          }
-                        ],
-                        "value": "forms"
-                      }
-                    },
-                    {
-                      "dataSpecification": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "forms"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "dataSpecificationContent": {
-                        "modelType": "DataSpecificationIec61360",
-                        "preferredName": [
-                          {
-                            "language": "en",
-                            "text": "default"
-                          }
-                        ],
-                        "value": "SubmodelElementCollection"
-                      }
-                    }
-                  ],
-                  "idShort": "Coil1",
-                  "modelType": "SubmodelElementCollection",
-                  "semanticId": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/PropertyDefinition"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "supplementalSemanticIds": [
-                    {
-                      "keys": [
-                        {
-                          "type": "GlobalReference",
-                          "value": "https://www.w3.org/2019/wot/td#name"
-                        }
-                      ],
-                      "type": "ExternalReference"
-                    }
-                  ],
-                  "value": [
-                    {
-                      "description": [
-                        {
-                          "language": "en",
-                          "text": "Provides a human-readable title to give a human-readable context of the interface."
-                        }
-                      ],
-                      "idShort": "title",
-                      "modelType": "Property",
-                      "semanticId": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "https://www.w3.org/2019/wot/td#title"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "value": "Coil1",
-                      "valueType": "xs:string"
-                    },
-                    {
-                      "description": [
-                        {
-                          "language": "en",
-                          "text": "Contains information about datapoint resource location. Note, forms is only available at the top level {property_name}"
-                        }
-                      ],
-                      "embeddedDataSpecifications": [
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "forms"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "class"
-                              }
-                            ],
-                            "value": "ModbusForm"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "href"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "href"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "href"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "default"
-                              }
-                            ],
-                            "value": "Property"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "contentType"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "contentType"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "85e7499d7a005c6297707c0cb88f63a0"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "subprotocol"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "security"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "security"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "security"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "default"
-                              }
-                            ],
-                            "value": "SubmodelElementList"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "85458465de5257dc817f32806d176cf3"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "htv_methodName"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "bbd6be5b8df65964b4e15a997965e1b5"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "htv_headers"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "op"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "op"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "op"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "default"
-                              }
-                            ],
-                            "value": "Property"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "6fe0e7cb94945538ae09e1e37201652a"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "response"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "391fdcc140c15557a108d8387f598e55"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "modv_function"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "d269c2fabfbc50448b0e6e5205ebfa52"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "modv_entity"
-                          }
-                        },
-                        {
-                          "dataSpecification": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "fb97f551855d566b821adcbaa9f7e59c"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "dataSpecificationContent": {
-                            "modelType": "DataSpecificationIec61360",
-                            "preferredName": [
-                              {
-                                "language": "en",
-                                "text": "attribute"
-                              }
-                            ],
-                            "value": "modv_zeroBasedAddressing"
-                          }
-                        }
-                      ],
-                      "idShort": "forms",
-                      "modelType": "SubmodelElementCollection",
-                      "semanticId": {
-                        "keys": [
-                          {
-                            "type": "GlobalReference",
-                            "value": "https://www.w3.org/2019/wot/td#hasForm"
-                          }
-                        ],
-                        "type": "ExternalReference"
-                      },
-                      "value": [
-                        {
-                          "description": [
-                            {
-                              "language": "en",
-                              "text": "Indicates target IRI relative path or full IRI of asset’s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata. "
-                            }
-                          ],
-                          "idShort": "href",
-                          "modelType": "Property",
-                          "semanticId": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "value": "/2/0",
-                          "valueType": "xs:string"
-                        },
-                        {
-                          "description": [
-                            {
-                              "language": "en",
-                              "text": "Defines content type based on a media type (e.g., text/plain) and potential character decoding/encoding type (e.g., charset=utf-8) for the media type (see RFC2046) of the whole interface."
-                            }
-                          ],
-                          "idShort": "contentType",
-                          "modelType": "Property",
-                          "semanticId": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "value": "application/json",
-                          "valueType": "xs:string"
-                        },
-                        {
-                          "description": [
-                            {
-                              "language": "en",
-                              "text": "Selects one or more of the security scheme(s) that can be applied at runtime from the collection of security schemes defines in securityDefinitions. "
-                            }
-                          ],
-                          "idShort": "security",
-                          "modelType": "SubmodelElementList",
-                          "orderRelevant": true,
-                          "semanticId": {
-                            "keys": [
-                              {
-                                "type": "GlobalReference",
-                                "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
-                              }
-                            ],
-                            "type": "ExternalReference"
-                          },
-                          "typeValueListElement": "ReferenceElement"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Collection of functions that can be done on asset as action SMC"
-                }
-              ],
-              "embeddedDataSpecifications": [
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "actions"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "class"
-                      }
-                    ],
-                    "value": "ModbusActions"
-                  }
-                }
-              ],
-              "idShort": "actions",
-              "modelType": "SubmodelElementCollection",
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/td#ActionAffordance"
-                  }
-                ],
-                "type": "ExternalReference"
-              }
-            }
-          ]
-        }
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "InterfaceTemplateForMODBUS"
+       }
       ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "class"
+       }
+      ],
+      "value": "DmpModbusInterface"
+     }
     },
     {
-      "description": [
-        {
-          "language": "en",
-          "text": "Indicates entry point for MQTT interface."
-        }
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "title"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
       ],
-      "embeddedDataSpecifications": [
+      "value": "title"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "title"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "default"
+       }
+      ],
+      "value": "title"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "dcb3c5e52e004eabbe6bbb0857a2e133"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "created"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "4df6fdb3688d4ba680a130bc0943e4b7"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "modified"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "f5868238397c44ca99c7855d4f445e97"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "support"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "EndpointMetadata"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "EndpointMetadata"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "EndpointMetadata"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "default"
+       }
+      ],
+      "value": "EndpointMetadata"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "InteractionMetadata"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "InteractionMetadata"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "InteractionMetadata"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "default"
+       }
+      ],
+      "value": "InteractionMetadata"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "aaaa943af6a040d5a0acbf5affc4921e"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "ExternalDescriptor"
+     }
+    }
+   ],
+   "idShort": "interface_modbus",
+   "description": [
+    {
+     "language": "en",
+     "text": "Indicates the entry point for a particular asset interface"
+    }
+   ],
+   "modelType": "SubmodelElementCollection",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Interface"
+     }
+    ]
+   },
+   "supplementalSemanticIds": [
+    {
+     "type": "ExternalReference",
+     "keys": [
+      {
+       "type": "GlobalReference",
+       "value": "http://www.w3.org/2011/modbus"
+      }
+     ]
+    },
+    {
+     "type": "ExternalReference",
+     "keys": [
+      {
+       "type": "GlobalReference",
+       "value": "https://www.w3.org/2019/wot/td"
+      }
+     ]
+    }
+   ],
+   "value": [
+    {
+     "idShort": "title",
+     "description": [
+      {
+       "language": "en",
+       "text": "Provides a human-readable title to give a human-readable context of the interface."
+      }
+     ],
+     "modelType": "Property",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://www.w3.org/2019/wot/td#title"
+       }
+      ]
+     },
+     "value": "iface",
+     "valueType": "xs:string"
+    },
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "EndpointMetadata"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "EndpointMetadata"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "base"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "base"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "contentType"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "contentType"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "security"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "security"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "securityDefinitions"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "securityDefinitions"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "4b249bdeb4e24d5caf71e5eb64dedd59"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "protocolVersion"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "a9e7cbd620174d4593824fb84f242265"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "modv_mostSignificantByte"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "277357ac4d1d418eb2fba493042adc8e"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "modv_mostSignificantWord"
+       }
+      }
+     ],
+     "idShort": "EndpointMetadata",
+     "description": [
+      {
+       "language": "en",
+       "text": "Provides the metadata of the asset’s endpoint (base, content type that is used for interaction, etc)"
+      }
+     ],
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata"
+       }
+      ]
+     },
+     "value": [
+      {
+       "idShort": "base",
+       "description": [
         {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "interface_mqtt"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "class"
-              }
-            ],
-            "value": "MqttInterface"
-          }
+         "language": "en",
+         "text": "Defines asset connection entry point. Each protocol specifies a base pattern. Please see Annex B.1 of the AID document for more details."
+        }
+       ],
+       "modelType": "Property",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/td#baseURI"
+         }
+        ]
+       },
+       "value": "modbus+tcp://192.168.0.20:502/2/",
+       "valueType": "xs:string"
+      },
+      {
+       "idShort": "contentType",
+       "description": [
+        {
+         "language": "en",
+         "text": "Defines content type based on a media type (e.g., text/plain) and potential character decoding/encoding type (e.g., charset=utf-8) for the media type (see RFC2046) of the whole interface"
+        }
+       ],
+       "modelType": "Property",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
+         }
+        ]
+       },
+       "value": "application/json",
+       "valueType": "xs:string"
+      },
+      {
+       "idShort": "security",
+       "description": [
+        {
+         "language": "en",
+         "text": "Selects one or more of the security scheme(s) that can be applied at runtime from the collection of security schemes defines in securityDefinitions. "
+        }
+       ],
+       "modelType": "SubmodelElementList",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
+         }
+        ]
+       },
+       "orderRelevant": true,
+       "typeValueListElement": "ReferenceElement",
+       "semanticIdListElement": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/td#definesSecurityScheme"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "securityDefinitions"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "securityDefinitions"
+         }
         },
         {
-          "dataSpecification": {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "ed47269de2ed473b827d7c0584c4f4d6"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "nosec_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "0db7640d5bc543bcb46430a32bfcaea4"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "auto_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "e2c3fcfc55ca4ddcb86fdb1ca90a88c5"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "basic_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "cf3103fe40b545c58ebf3bed1436f721"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "combo_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "bfa8d669c7e7438facd98affc39dab1b"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "apikey_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "46b08fb8770a4c3a8dfa703b15bff093"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "psk_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "b6f73f39382f4a848b683ca13e014309"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "digest_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "ef61fdf5dff843f6b83b6a83b01c8530"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "bearer_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "98c0603aa977434c9b2880307610d2f7"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "oauth2_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "53bda41489794528aabbaae836629df5"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "opcua_channel_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "a0a582108729497bbf335033c54b0abd"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "opcua_authentication_sc"
+         }
+        }
+       ],
+       "idShort": "securityDefinitions",
+       "description": [
+        {
+         "language": "en",
+         "text": "Defines the security scheme according to W3C:"
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/td#definesSecurityScheme"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "InteractionMetadata"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "DmpInteractionMetadata"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "properties"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "properties"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "b2b6bc714f2e4ff19d272731ce1eb43f"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "actions"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "b491d60a56a945d386d4cee34a63f3fa"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "events"
+       }
+      }
+     ],
+     "idShort": "InteractionMetadata",
+     "description": [
+      {
+       "language": "en",
+       "text": "Provides the metadata of the actually interfaces such as which datapoints and functions are provided by the properties, actions, and events interaction abstraction. "
+      }
+     ],
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata"
+       }
+      ]
+     },
+     "supplementalSemanticIds": [
+      {
+       "type": "ExternalReference",
+       "keys": [
+        {
+         "type": "GlobalReference",
+         "value": "https://www.w3.org/2019/wot/td#InteractionAffordance"
+        }
+       ]
+      }
+     ],
+     "value": [
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "properties"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "DmpProperties"
+         }
+        }
+       ],
+       "idShort": "properties",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of asset’s datapoint definitions as property SMC "
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/td#PropertyAffordance"
+         }
+        ]
+       },
+       "value": [
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
             "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "title"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
+             {
+              "type": "GlobalReference",
+              "value": "Coil1"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
             "modelType": "DataSpecificationIec61360",
             "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpProperty"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "c42e9182aa0b42a8952cabed09b35588"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "key"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "ba21adfa93cf4510933f678b58198233"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "type"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "title"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
             ],
             "value": "title"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "title"
-              }
-            ],
-            "type": "ExternalReference"
+           }
           },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "default"
-              }
-            ],
-            "value": "Property"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "c3fe9a8870f1503482d4ebca9d2c6e32"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "created"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "6a01a69a19ff5068a7605e630b7c7462"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "modified"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "50566d2a96f550c58343dcef4886c52d"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "support"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "EndpointMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "EndpointMetadata"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "EndpointMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "default"
-              }
-            ],
-            "value": "SubmodelElementCollection"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "InteractionMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "InteractionMetadata"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "InteractionMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "default"
-              }
-            ],
-            "value": "SubmodelElementCollection"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "67514dc48f4b5af5ae054492dc22cf28"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "ExternalDescriptor"
-          }
-        }
-      ],
-      "idShort": "interface_mqtt",
-      "modelType": "SubmodelElementCollection",
-      "semanticId": {
-        "keys": [
           {
-            "type": "GlobalReference",
-            "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Interface"
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "cb496950589d443dbd50b444a85ec679"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "observable"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "53cc4168b2af40128ea1343efe0032f6"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "enum"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "7f5d6a1cc2b74df5a927858191c742d5"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "const"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "409409b1f5914f81896e0d7280c7743d"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "default"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "19ea2d006ce04e70849a2a062f310229"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "unit"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "5ea7c8ec67584463b8a22fc9a882a71f"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "min_max"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "f4627be9bcae43f69e0ed11c914d8640"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "lengthRange"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "8deb0b2e3f2a48e386e7856e96b56f71"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "items"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "a75e27336a814c8293c167975c107581"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "itemsRange"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "f21198ffba784725b4447c5671aa9d19"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "properties"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "630497194a184d2f877600a991884639"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "valueSemantics"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "forms"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "forms"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "forms"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "default"
+             }
+            ],
+            "value": "forms"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "377e9f71301f48b192463b36fe6b2ccc"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "uriVariables"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "ae056007c6dc47398ce8e6cdf88ef155"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "readOnly"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "15545d334450490e8a4c20dd85193ad1"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "writeOnly"
+           }
           }
-        ],
-        "type": "ExternalReference"
-      },
-      "supplementalSemanticIds": [
-        {
+         ],
+         "idShort": "Coil1",
+         "description": [
+          {
+           "language": "en",
+           "text": "Defines an interaction property that covers usually a datapoint definition that can be read or subscribed to.  "
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "semanticId": {
+          "type": "ExternalReference",
           "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "http://www.w3.org/2011/mqtt"
-            }
-          ],
-          "type": "ExternalReference"
-        },
-        {
-          "keys": [
-            {
-              "type": "GlobalReference",
-              "value": "https://www.w3.org/2019/wot/td"
-            }
-          ],
-          "type": "ExternalReference"
-        }
-      ],
-      "value": [
-        {
-          "description": [
-            {
-              "language": "en",
-              "text": "Provides a human-readable title to give a human-readable context of the interface."
-            }
-          ],
-          "idShort": "title",
-          "modelType": "Property",
-          "semanticId": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://www.w3.org/2019/wot/td#title"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "valueType": "xs:string"
-        },
-        {
-          "description": [
-            {
-              "language": "en",
-              "text": "Provides the metadata of the asset’s endpoint (base, content type that is used for interaction, etc)"
-            }
-          ],
-          "embeddedDataSpecifications": [
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "EndpointMetadata"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "class"
-                  }
-                ],
-                "value": "EndpointMetadata"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "base"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "base"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "contentType"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "contentType"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "security"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "security"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "securityDefinitions"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "securityDefinitions"
-              }
-            }
-          ],
-          "idShort": "EndpointMetadata",
-          "modelType": "SubmodelElementCollection",
-          "semanticId": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "value": [
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Defines asset connection entry point. The base pattern for HTTP is defined in Qalifier."
-                }
-              ],
-              "idShort": "base",
-              "modelType": "Property",
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/td#baseURI"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "valueType": "xs:anyURI"
-            },
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Defines content type based on a media type (e.g., text/plain) and potential character decoding/encoding type (e.g., charset=utf-8) for the media type (see RFC2046) of the whole interface."
-                }
-              ],
-              "idShort": "contentType",
-              "modelType": "Property",
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "valueType": "xs:string"
-            },
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Selects one or more of the security scheme(s) that can be applied at runtime from the collection of security schemes defines in securityDefinitions. "
-                }
-              ],
-              "idShort": "security",
-              "modelType": "SubmodelElementList",
-              "orderRelevant": true,
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "typeValueListElement": "ReferenceElement"
-            },
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Defines the security scheme according to W3C"
-                }
-              ],
-              "embeddedDataSpecifications": [
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "securityDefinitions"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "class"
-                      }
-                    ],
-                    "value": "securityDefinitions"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "712e396268fc511b9e46574a7d6ca32c"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "nosec_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "475298c91bc65d568eba9494b134e447"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "auto_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "301a6cc932f2598c97719d3289b2649a"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "basic_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "c48a661fd3d552d9b9fd76ec0ad4bc53"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "combo_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "0aefe19538075a208322cbf9ae198a27"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "apikey_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "9600f846a4b657c1ab97d8d5091365ae"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "psk_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "e5b2302de8cc594ab191d06fbe40bb3a"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "digest_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "42275634979d55cb8350142bd1718db8"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "bearer_sc"
-                  }
-                },
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "2126ddabb0af539faba7cbb491f5e908"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "attribute"
-                      }
-                    ],
-                    "value": "oauth2_sc"
-                  }
-                }
-              ],
-              "idShort": "securityDefinitions",
-              "modelType": "SubmodelElementCollection",
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/td#definesSecurityScheme"
-                  }
-                ],
-                "type": "ExternalReference"
-              }
-            }
+           {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/PropertyDefinition"
+           }
           ]
-        },
-        {
-          "description": [
+         },
+         "supplementalSemanticIds": [
+          {
+           "type": "ExternalReference",
+           "keys": [
             {
-              "language": "en",
-              "text": "Provides the metadata of the actually interfaces such as which datapoints and functions are provided by the properties, actions, and events interaction abstraction. "
+             "type": "GlobalReference",
+             "value": "https://www.w3.org/2019/wot/td#name"
             }
-          ],
-          "embeddedDataSpecifications": [
+           ]
+          }
+         ],
+         "value": [
+          {
+           "idShort": "title",
+           "description": [
             {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "InteractionMetadata"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "class"
-                  }
-                ],
-                "value": "MqttInteractionMetadata"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "properties"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "properties"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "properties"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "default"
-                  }
-                ],
-                "value": "SubmodelElementCollection"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "actions"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "actions"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "actions"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "default"
-                  }
-                ],
-                "value": "SubmodelElementCollection"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "b32eb0a1842f55e88973255133b12dff"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "events"
-              }
+             "language": "en",
+             "text": "Provides a human-readable title to give a human-readable context of the interface."
             }
-          ],
-          "idShort": "InteractionMetadata",
-          "modelType": "SubmodelElementCollection",
-          "semanticId": {
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
             "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata"
-              }
-            ],
-            "type": "ExternalReference"
+             {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#title"
+             }
+            ]
+           },
+           "value": "Coil1",
+           "valueType": "xs:string"
           },
-          "supplementalSemanticIds": [
+          {
+           "embeddedDataSpecifications": [
             {
+             "dataSpecification": {
+              "type": "ExternalReference",
               "keys": [
-                {
-                  "type": "GlobalReference",
-                  "value": "https://www.w3.org/2019/wot/td#InteractionAffordance"
-                }
+               {
+                "type": "GlobalReference",
+                "value": "forms"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "class"
+               }
               ],
-              "type": "ExternalReference"
-            }
-          ],
-          "value": [
-            {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Collection of asset’s datapoint definitions"
-                }
-              ],
-              "embeddedDataSpecifications": [
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "properties"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "class"
-                      }
-                    ],
-                    "value": "MqttProperties"
-                  }
-                }
-              ],
-              "idShort": "properties",
-              "modelType": "SubmodelElementCollection",
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/td#PropertyAffordance"
-                  }
-                ],
-                "type": "ExternalReference"
-              }
+              "value": "DmpForm"
+             }
             },
             {
-              "description": [
-                {
-                  "language": "en",
-                  "text": "Collection of functions that can be done on asset as action SMC"
-                }
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "href"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
               ],
-              "embeddedDataSpecifications": [
-                {
-                  "dataSpecification": {
-                    "keys": [
-                      {
-                        "type": "GlobalReference",
-                        "value": "actions"
-                      }
-                    ],
-                    "type": "ExternalReference"
-                  },
-                  "dataSpecificationContent": {
-                    "modelType": "DataSpecificationIec61360",
-                    "preferredName": [
-                      {
-                        "language": "en",
-                        "text": "class"
-                      }
-                    ],
-                    "value": "MqttActions"
-                  }
-                }
+              "value": "href"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "href"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "default"
+               }
               ],
-              "idShort": "actions",
-              "modelType": "SubmodelElementCollection",
-              "semanticId": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "https://www.w3.org/2019/wot/td#ActionAffordance"
-                  }
-                ],
-                "type": "ExternalReference"
-              }
+              "value": "href"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "contentType"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "contentType"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "eb9ba809b20a43f3bb5100696708c6a9"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "subprotocol"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "1499432dd3084d72bc4620ed7d04c5aa"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "security"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "86de3e600261447bbbe0d7cacc55a53a"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "htv_methodName"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "83a1c3817f7040b5a9a31c7bf6e53c07"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "htv_headers"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "5d418841c5b744d2a4139c76faa71c41"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "modv_function"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "f4f18feed41347c4b9b9347ff013b1c2"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "modv_entity"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "46a94e570e564578984105df55165c53"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "modv_zeroBasedAddressing"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "2a667adcc1904173bc8ca94a4d8bbe2f"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "modv_pollingTime"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "4b307935294a439086a64252d2e230cd"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "modv_timeout"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "aedbee5ca10d449ba742ce756182ec25"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "modv_type"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "5923a50c56be4db89f05ee451a86c315"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "modv_mostSignificantByte"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "0754f38870244bf1ae1f70d7e56171b1"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "modv_mostSignificantWord"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "892e7360c08d4cfa9a580c09ce75b1a2"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "mqv_retain"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "5ced7240f21348b0ac9244c650e510b4"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "mqv_controlPacket"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "877ec18c17cb4412a6b81c983de73c93"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "mqv_qos"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "e09ebaa02e8f4675b9be3b6034796087"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "uav_browsePath"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "732c58f355a8469d8af71736bb106a25"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "bacv_useService"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "e1a4279a3d964319a6a7d82cd92300c5"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "bacv_hasDataType"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "0b234af8677c4380bd28610388778890"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "iolv_method"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "ad95bc7ba505415fa687bd46f03215f2"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "iolv_accessRights"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "eaa01e6cd62c48ed9547f9ca6ed02e34"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "iolv_type"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "e3d1c95e59804fffaa5211e93f0f8cc1"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "iolv_byteOffset"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "95a70f14ea424b448ffcb13ba9053136"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "iolv_byteLength"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "cf3dd7081fd04756b4f6f1a53b28ac5c"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "iolv_bitOffset"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "4f84c755839045e9b505e1d99374d790"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "iolv_bitLength"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "aff747dbc9d0417f9e77b67745362615"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "iolv_referenceToCondition"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "3ab5d98252414ceca57980ff36523213"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "iolv_enumeratedValues"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "d85606b10a7a4d0e94bbe8962378ffc1"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "iolv_payloadMapping"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "a8a758cf699d426a8180322ad5f6f845"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "canv_offset"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "33787885f9744bbdaf0dab49c58520c4"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "canv_length"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "3cb126a10c174e79b22cc08f7b54a739"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "canv_valueOffset"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "b634cb2ec40c4b1cad151d2967722d9f"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "canv_enumeratedValues"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "8f53a700bb9b46bd9cbd95bfe5c6a801"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "canv_payloadMapping"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "14dcd1aa5a0742fdb9f8ce7ef9c35d33"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "op"
+             }
             }
-          ]
+           ],
+           "idShort": "forms",
+           "description": [
+            {
+             "language": "en",
+             "text": "Contains information about datapoint resource location. "
+            }
+           ],
+           "modelType": "SubmodelElementCollection",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://www.w3.org/2019/wot/td#hasForm"
+             }
+            ]
+           },
+           "value": [
+            {
+             "idShort": "href",
+             "description": [
+              {
+               "language": "en",
+               "text": "Target IRI relative path or full IRI of asset’s datapoint. The relative endpoint definition in href is always relative to base defined in EndpointMetadata"
+              }
+             ],
+             "modelType": "Property",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/hypermedia#hasTarget"
+               }
+              ]
+             },
+             "value": "0",
+             "valueType": "xs:string"
+            },
+            {
+             "idShort": "contentType",
+             "description": [
+              {
+               "language": "en",
+               "text": "Defines content type based on a media type (e.g., text/plain) and potential character decoding/encoding type (e.g., charset=utf-8) for the media type (see RFC2046) of the whole interface"
+              }
+             ],
+             "modelType": "Property",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
+               }
+              ]
+             },
+             "value": "application/json",
+             "valueType": "xs:string"
+            }
+           ]
+          }
+         ]
         }
-      ]
+       ]
+      }
+     ]
     }
-  ]
+   ]
+  },
+  {
+   "embeddedDataSpecifications": [
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "interface_mqtt"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "class"
+       }
+      ],
+      "value": "MqttInterface"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "title"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "title"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "title"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "default"
+       }
+      ],
+      "value": "title"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "43e2ffe72e5c45b2ac8198aa4a97687f"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "created"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "e32848433cc9411d92548dc7dfeacc5a"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "modified"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "ed12661b2e264aa09f83f96af4d9b017"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "support"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "EndpointMetadata"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "EndpointMetadata"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "EndpointMetadata"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "default"
+       }
+      ],
+      "value": "EndpointMetadata"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "InteractionMetadata"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "InteractionMetadata"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "InteractionMetadata"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "default"
+       }
+      ],
+      "value": "InteractionMetadata"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "b23581c4464d43218457c2d356a0fc45"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "ExternalDescriptor"
+     }
+    }
+   ],
+   "idShort": "interface_mqtt",
+   "description": [
+    {
+     "language": "en",
+     "text": "Indicates the entry point for a particular asset interface"
+    }
+   ],
+   "modelType": "SubmodelElementCollection",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Interface"
+     }
+    ]
+   },
+   "supplementalSemanticIds": [
+    {
+     "type": "ExternalReference",
+     "keys": [
+      {
+       "type": "GlobalReference",
+       "value": "http://www.w3.org/2011/mqtt"
+      }
+     ]
+    },
+    {
+     "type": "ExternalReference",
+     "keys": [
+      {
+       "type": "GlobalReference",
+       "value": "https://www.w3.org/2019/wot/td"
+      }
+     ]
+    }
+   ],
+   "value": [
+    {
+     "idShort": "title",
+     "description": [
+      {
+       "language": "en",
+       "text": "Provides a human-readable title to give a human-readable context of the interface."
+      }
+     ],
+     "modelType": "Property",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://www.w3.org/2019/wot/td#title"
+       }
+      ]
+     },
+     "valueType": "xs:string"
+    },
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "EndpointMetadata"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "EndpointMetadata"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "base"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "base"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "contentType"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "contentType"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "security"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "security"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "securityDefinitions"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "securityDefinitions"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "94fde69ceddf440298d6695dff400c19"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "protocolVersion"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "51477f1ea1fa451dabbbc3147b70732c"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "modv_mostSignificantByte"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "2b5a0eb6efc142568233595666ace611"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "modv_mostSignificantWord"
+       }
+      }
+     ],
+     "idShort": "EndpointMetadata",
+     "description": [
+      {
+       "language": "en",
+       "text": "Provides the metadata of the asset’s endpoint (base, content type that is used for interaction, etc)"
+      }
+     ],
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata"
+       }
+      ]
+     },
+     "value": [
+      {
+       "idShort": "base",
+       "description": [
+        {
+         "language": "en",
+         "text": "Defines asset connection entry point. Each protocol specifies a base pattern. Please see Annex B.1 of the AID document for more details."
+        }
+       ],
+       "modelType": "Property",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/td#baseURI"
+         }
+        ]
+       },
+       "valueType": "xs:string"
+      },
+      {
+       "idShort": "contentType",
+       "description": [
+        {
+         "language": "en",
+         "text": "Defines content type based on a media type (e.g., text/plain) and potential character decoding/encoding type (e.g., charset=utf-8) for the media type (see RFC2046) of the whole interface"
+        }
+       ],
+       "modelType": "Property",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
+         }
+        ]
+       },
+       "valueType": "xs:string"
+      },
+      {
+       "idShort": "security",
+       "description": [
+        {
+         "language": "en",
+         "text": "Selects one or more of the security scheme(s) that can be applied at runtime from the collection of security schemes defines in securityDefinitions. "
+        }
+       ],
+       "modelType": "SubmodelElementList",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
+         }
+        ]
+       },
+       "orderRelevant": true,
+       "typeValueListElement": "ReferenceElement",
+       "semanticIdListElement": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/td#definesSecurityScheme"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "securityDefinitions"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "securityDefinitions"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "fbe54686eead43a7896276222681ed2b"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "nosec_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "2a440481f2314ca6a1b7fb3d2c6d3107"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "auto_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "b1323d514fef4b878f5bbb3f1e561301"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "basic_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "8cf8bd8314444e7aa8ad756de50fc20c"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "combo_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "eede2988261f4bf680753d5e301072a6"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "apikey_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "de04113b96414718a4d0a7ac848884d5"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "psk_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "cd998e8b971a499ea9af42c4c1a75558"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "digest_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "1ca0f5a5410545599798fd8fae03313c"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "bearer_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "3996591f4e67475684b8bbc72915f807"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "oauth2_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "97359cf1fb5b4f30938b7ff080c854b2"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "opcua_channel_sc"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "fd1a8f01dac64b99bcba6aaf457c0449"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "opcua_authentication_sc"
+         }
+        }
+       ],
+       "idShort": "securityDefinitions",
+       "description": [
+        {
+         "language": "en",
+         "text": "Defines the security scheme according to W3C:"
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://www.w3.org/2019/wot/td#definesSecurityScheme"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "InteractionMetadata"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "MqttInteractionMetadata"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "0b3469efad45489482226cf720471248"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "properties"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "49712b09903a4a10b22e0fd702bb10a8"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "actions"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "84f605962b754d3787a94127ff492aa4"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "events"
+       }
+      }
+     ],
+     "idShort": "InteractionMetadata",
+     "description": [
+      {
+       "language": "en",
+       "text": "Provides the metadata of the actually interfaces such as which datapoints and functions are provided by the properties, actions, and events interaction abstraction. "
+      }
+     ],
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata"
+       }
+      ]
+     },
+     "supplementalSemanticIds": [
+      {
+       "type": "ExternalReference",
+       "keys": [
+        {
+         "type": "GlobalReference",
+         "value": "https://www.w3.org/2019/wot/td#InteractionAffordance"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
 }

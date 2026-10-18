@@ -1,1064 +1,784 @@
 {
-  "acceptanceScope": "captured structural vocabulary only; not a Java semantic validation allowlist",
-  "acceptedSemanticIds": [
-    "http://opcfoundation.org/UA/WoT-Binding/componentOf",
-    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata",
-    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata",
-    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Interface",
-    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/PropertyDefinition",
-    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/key",
-    "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/minMaxRange",
-    "https://admin-shell.io/idta/AssetInterfacesDescription/1/1/Submodel",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/1/0/MappingConfigurations",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/DefaultPollingInterval",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/Sink",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/SinkId",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sinks",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/PollingInterval",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/Source",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Source/SourceId",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sources",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Transformation",
-    "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/Submodel",
-    "https://smartproductionlab.aau.dk/aid/ActionDefinition/1/0",
-    "https://smartproductionlab.aau.dk/aid/MqttResponseTopic/1/0",
-    "https://smartproductionlab.aau.dk/aimc/ExecutionSemantics/1/0",
-    "https://smartproductionlab.aau.dk/aimc/ExecutionSemantics/TriggerSourceIds/1/0",
-    "https://smartproductionlab.aau.dk/aimc/ResponseSink/Sink/1/0",
-    "https://smartproductionlab.aau.dk/aimc/ResponseSink/SinkId/1/0",
-    "https://smartproductionlab.aau.dk/aimc/ResponseSinks/1/0",
-    "https://smartproductionlab.aau.dk/aimc/ResponseSource/Source/1/0",
-    "https://smartproductionlab.aau.dk/aimc/ResponseSource/SourceId/1/0",
-    "https://smartproductionlab.aau.dk/aimc/ResponseSources/1/0",
-    "https://smartproductionlab.aau.dk/aimc/ResponseTransformation/1/0",
-    "https://www.w3.org/1999/02/22-rdf-syntax-ns#type",
-    "https://www.w3.org/2011/http#methodName",
-    "https://www.w3.org/2019/wot/hypermedia#forContentType",
-    "https://www.w3.org/2019/wot/hypermedia#hasOperationType",
-    "https://www.w3.org/2019/wot/hypermedia#hasTarget",
-    "https://www.w3.org/2019/wot/hypermedia#returns",
-    "https://www.w3.org/2019/wot/json-schema#enum",
-    "https://www.w3.org/2019/wot/json-schema#items",
-    "https://www.w3.org/2019/wot/json-schema#properties",
-    "https://www.w3.org/2019/wot/json-schema#propertyName",
-    "https://www.w3.org/2019/wot/json-schema#required",
-    "https://www.w3.org/2019/wot/mqtt#hasQoSFlag",
-    "https://www.w3.org/2019/wot/mqtt#hasRetainFlag",
-    "https://www.w3.org/2019/wot/td#ActionAffordance",
-    "https://www.w3.org/2019/wot/td#PropertyAffordance",
-    "https://www.w3.org/2019/wot/td#baseURI",
-    "https://www.w3.org/2019/wot/td#definesSecurityScheme",
-    "https://www.w3.org/2019/wot/td#hasForm",
-    "https://www.w3.org/2019/wot/td#hasInputSchema",
-    "https://www.w3.org/2019/wot/td#hasOutputSchema",
-    "https://www.w3.org/2019/wot/td#hasSecurityConfiguration",
-    "https://www.w3.org/2019/wot/td#isObservable",
-    "https://www.w3.org/2019/wot/td#isSynchronous",
-    "https://www.w3.org/2019/wot/td#title"
-  ],
-  "acceptedSupplementalSemanticIds": [
-    "http://opcfoundation.org/UA/WoT-Binding/",
-    "http://www.w3.org/2011/http",
-    "http://www.w3.org/2011/modbus",
-    "http://www.w3.org/2011/mqtt",
-    "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/command.schema.json",
-    "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/commandResponse.schema.json",
-    "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/parameterCommand.schema.json",
-    "https://aausmartproductionlab.github.io/AP2030-UNS/MQTTSchemas/stationState.schema.json",
-    "https://www.w3.org/2019/wot/json-schema#maximum",
-    "https://www.w3.org/2019/wot/json-schema#minimum",
-    "https://www.w3.org/2019/wot/td",
-    "https://www.w3.org/2019/wot/td#InteractionAffordance",
-    "https://www.w3.org/2019/wot/td#name"
-  ],
-  "cases": [
+ "formatVersion": 2,
+ "generator": "aas-model/scripts/dmp_contract_fixtures.py",
+ "note": "generated; do not edit. Regenerate from aas-model and review every changed compile outcome.",
+ "cases": [
+  {
+   "name": "aas-property-event",
+   "description": "an AAS Property source, observed through change events",
+   "aimc": "aas-property-event/aimc.json",
+   "aid": "aas-property-event/aid.json",
+   "expected": "aas-property-event/expected.json",
+   "dependencies": [
     {
-      "aid": "stoppering/aid.json",
-      "aimc": "stoppering/aimc.json",
-      "caseClass": "unsupported-contract",
-      "connectorCompileOutcome": "reject-retired-declaration",
-      "dependencies": [
-        {
-          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/ControlComponentInstance",
-          "path": "dependencies/0.json"
-        },
-        {
-          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/Nameplate",
-          "path": "dependencies/1.json"
-        },
-        {
-          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/Parameters",
-          "path": "dependencies/2.json"
-        },
-        {
-          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/Variables",
-          "path": "dependencies/3.json"
-        }
-      ],
-      "expected": "stoppering/expected.json",
-      "expectedOutcome": "reject-retired-declaration",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "stoppering",
-      "owner": "stoppering/owner.json",
-      "owners": [],
-      "ownership": "relevant serialized station submodels only; no owner shell is captured",
-      "runtimeComplete": true
+     "id": "a/submodels/Runtime",
+     "path": "dependencies/0.json"
     },
     {
-      "aid": "opcua-method/aid.json",
-      "aimc": "opcua-method/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [
-        {
-          "id": "a/submodels/ControlComponentInstance",
-          "path": "dependencies/0.json"
-        }
-      ],
-      "expected": "opcua-method/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "opcua-method",
-      "owner": "opcua-method/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID",
-            "a/submodels/ControlComponentInstance"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "http-operation/aid.json",
-      "aimc": "http-operation/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [
-        {
-          "id": "a/submodels/ControlComponentInstance",
-          "path": "dependencies/0.json"
-        }
-      ],
-      "expected": "http-operation/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "http-operation",
-      "owner": "http-operation/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID",
-            "a/submodels/ControlComponentInstance"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "plc4x/aid.json",
-      "aimc": "plc4x/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [],
-      "expected": "plc4x/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "plc4x",
-      "owner": "plc4x/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "aas-property-event/aid.json",
-      "aimc": "aas-property-event/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [
-        {
-          "id": "a/submodels/Runtime",
-          "path": "dependencies/0.json"
-        },
-        {
-          "id": "contractAAS/submodels/KPI",
-          "path": "dependencies/1.json"
-        }
-      ],
-      "expected": "aas-property-event/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "aas-property-event",
-      "owner": "aas-property-event/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID",
-            "a/submodels/Runtime"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC",
-            "contractAAS/submodels/KPI"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "aas-property-poll/aid.json",
-      "aimc": "aas-property-poll/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [
-        {
-          "id": "a/submodels/Runtime",
-          "path": "dependencies/0.json"
-        },
-        {
-          "id": "contractAAS/submodels/KPI",
-          "path": "dependencies/1.json"
-        }
-      ],
-      "expected": "aas-property-poll/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "aas-property-poll",
-      "owner": "aas-property-poll/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID",
-            "a/submodels/Runtime"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC",
-            "contractAAS/submodels/KPI"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "aas-collection-poll/aid.json",
-      "aimc": "aas-collection-poll/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [
-        {
-          "id": "a/submodels/Runtime",
-          "path": "dependencies/0.json"
-        },
-        {
-          "id": "contractAAS/submodels/KPI",
-          "path": "dependencies/1.json"
-        }
-      ],
-      "expected": "aas-collection-poll/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "aas-collection-poll",
-      "owner": "aas-collection-poll/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID",
-            "a/submodels/Runtime"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC",
-            "contractAAS/submodels/KPI"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "opcua-read/aid.json",
-      "aimc": "opcua-read/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "reject-missing-opcua-node-information",
-      "dependencies": [
-        {
-          "id": "contractAAS/submodels/KPI",
-          "path": "dependencies/0.json"
-        }
-      ],
-      "expected": "opcua-read/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "opcua-read",
-      "owner": "opcua-read/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC",
-            "contractAAS/submodels/KPI"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "http-poll/aid.json",
-      "aimc": "http-poll/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [
-        {
-          "id": "contractAAS/submodels/KPI",
-          "path": "dependencies/0.json"
-        }
-      ],
-      "expected": "http-poll/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "http-poll",
-      "owner": "http-poll/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC",
-            "contractAAS/submodels/KPI"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "fine-path/aid.json",
-      "aimc": "fine-path/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [],
-      "expected": "fine-path/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "fine-path",
-      "owner": "fine-path/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "grouped-action/aid.json",
-      "aimc": "grouped-action/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [
-        {
-          "id": "contractAAS/submodels/ControlComponentInstance",
-          "path": "dependencies/0.json"
-        }
-      ],
-      "expected": "grouped-action/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "grouped-action",
-      "owner": "grouped-action/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC",
-            "contractAAS/submodels/ControlComponentInstance"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "fine-protocols/aid.json",
-      "aimc": "fine-protocols/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [],
-      "expected": "fine-protocols/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "fine-protocols",
-      "owner": "fine-protocols/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "fan-in-out/aid.json",
-      "aimc": "fan-in-out/aimc.json",
-      "caseClass": "descriptor-contract",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [
-        {
-          "id": "contractAAS/submodels/KPI",
-          "path": "dependencies/0.json"
-        }
-      ],
-      "expected": "fan-in-out/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "fan-in-out",
-      "owner": "fan-in-out/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC",
-            "contractAAS/submodels/KPI"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "projection-extensions/aid.json",
-      "aimc": "projection-extensions/aimc.json",
-      "caseClass": "projection-extension",
-      "connectorCompileOutcome": "unsupported-response-extension-contract",
-      "dependencies": [
-        {
-          "id": "a/submodels/ControlComponentInstance",
-          "path": "dependencies/0.json"
-        },
-        {
-          "id": "contractAAS/submodels/KPI",
-          "path": "dependencies/1.json"
-        },
-        {
-          "id": "contractAAS/submodels/Variables",
-          "path": "dependencies/2.json"
-        },
-        {
-          "id": "remoteAAS/submodels/Response",
-          "path": "dependencies/3.json"
-        }
-      ],
-      "expected": "projection-extensions/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "projection-extensions",
-      "owner": "projection-extensions/owner.json",
-      "owners": [
-        {
-          "id": "a",
-          "idShort": "a",
-          "ownedSubmodelIds": [
-            "a/submodels/AID",
-            "a/submodels/ControlComponentInstance"
-          ]
-        },
-        {
-          "id": "contractAAS",
-          "idShort": "contract",
-          "ownedSubmodelIds": [
-            "contractAAS/submodels/AIMC",
-            "contractAAS/submodels/KPI",
-            "contractAAS/submodels/Variables"
-          ]
-        },
-        {
-          "id": "remoteAAS",
-          "idShort": "remoteAAS",
-          "ownedSubmodelIds": [
-            "remoteAAS/submodels/Response"
-          ]
-        }
-      ],
-      "ownership": "fixture AAS owners authored from model references",
-      "runtimeComplete": true
-    },
-    {
-      "aid": "stoppering-new-build/aid.json",
-      "aimc": "stoppering-new-build/aimc.json",
-      "caseClass": "cci-uuid-inout-compatibility",
-      "connectorCompileOutcome": "route-configured",
-      "dependencies": [
-        {
-          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingCandidate/submodels/ControlComponentInstance",
-          "path": "dependencies/0.json"
-        },
-        {
-          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingCandidate/submodels/Nameplate",
-          "path": "dependencies/1.json"
-        },
-        {
-          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingCandidate/submodels/Parameters",
-          "path": "dependencies/2.json"
-        },
-        {
-          "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingCandidate/submodels/Variables",
-          "path": "dependencies/3.json"
-        }
-      ],
-      "expected": "stoppering-new-build/expected.json",
-      "expectedOutcome": "resolve",
-      "mappingIdentity": "authored idShort retained in expected.authoredMappings; wire SML items have no idShort after authoring serialization",
-      "missingStructure": [],
-      "name": "stoppering-new-build",
-      "owner": "stoppering-new-build/owner.json",
-      "owners": [],
-      "ownership": "relevant serialized station submodels only; no owner shell is captured",
-      "runtimeComplete": true
+     "id": "contractAAS/submodels/KPI",
+     "path": "dependencies/1.json"
     }
-  ],
-  "descriptorContractCaseCount": 12,
-  "formatVersion": 1,
-  "fullR1Validation": true,
-  "javaConsumedProjectionValidated": true,
-  "javaProjection": "WireProjection.aimc/aid for supported submodel cases; current Stoppering submodels reject retired declarations; station candidate and dependencies are parsed without synthesizing an owner shell",
-  "missingR1Coverage": [],
-  "projectionExtensionCaseCount": 1,
-  "provenance": {
-    "authoringPackage": {
-      "name": "aas-model",
-      "version": "0.2.0"
-    },
-    "generator": "management-node/tests/test_runtime_contract_fixtures.py --raw-models",
-    "generatorStatus": "management-node was removed in commit 8fe9c46; these fixtures are no longer regenerated (see PLAN.md C4)",
-    "modelSchemaSha256": {
-      "DmpAimc": "0eceb0510861ceb9b1f6734294ae08f0403fc7514ba3ce5aa18ecb26e8c0ed93",
-      "DmpAssetInterfacesDescription": "a5b39d4587af9c50d60c446c761ebad000cf1b81e5ff6d928418ada2a23c5130"
-    },
-    "pythonImplementation": "CPython",
-    "pythonVersion": "3.12.7",
-    "serializationPreparation": "authoring copy only: set DataSchema input/output element idShorts to their field names and unique temporary names for duplicate SML items; temporary list names removed before wire export",
-    "serializer": "convert_model_to_aas + strip_temp_id_short_attributes + object_store_to_json",
-    "serializerPackage": {
-      "name": "basyx-python-sdk",
-      "version": "2.1.0"
-    },
-    "sources": {
-      "AASDescriptions/Resource/configs/syntegonStoppering.main.json": "ee0b6513259c5322dcdc8c076870aad3e08df383fd119b74aac015f261679aa2",
-      "aas-camel-dmp/management-node/tests/data/syntegon_stoppering_aid.json": "2554530540b756f3b6aaed94f2bf8cbf0dd6a32c132972e0398712300480b41d",
-      "aas-camel-dmp/management-node/tests/data/syntegon_stoppering_aimc.json": "f0b0ed3d4be156f9315d565d67b43aad4cf746504b006eb4f87c0d77a504a1e7",
-      "aas-camel-dmp/management-node/tests/test_descriptor.py": "b6cb6e7cc24aad8b1939095f2fb64ef6755479c0bf2f86fc9b1eb50815914525",
-      "aas-camel-dmp/management-node/tests/test_fine_resolution.py": "bb6522a186cdc6d43739b8b8b6b8a8b35b21c513cf07683da68c29cd8eaf69fb",
-      "aas-camel-dmp/management-node/tests/test_runtime_contract_fixtures.py": "9e2aa8e1183237630788324edc327724410585675a7ae9242d03fba8930b6594",
-      "aas-camel-dmp/management-node/tests/test_usecase2.py": "c5a8d6288ee1df3744448790188a112e0b0340e675e5ab7c0c5d8c305bf42842",
-      "aas-model/src/aas_model/builder.py": "8980ed1e3a11146abf15d1359ebbd092173093695476318f86e70e3beb2d9e7a",
-      "aas-model/src/aas_model/id_injector.py": "023fa7925fffed9d5e5d1b719a3d684656a456703774b4e2394d379be9ab3012",
-      "aas-model/src/aas_model/json_schema_aid.py": "2f372e6ef5298decfd6a8ee90183a896c12a62872cde4e8d45343dd1e9b201e9",
-      "aas-model/src/aas_model/resource_template/asset.py": "07f32ef70ef38d384301c6baf87b1acdc0918ac1a7e5013bcb1ae3bf05428fde",
-      "aas-model/src/aas_model/resource_template/asset_interfaces_mapping_configuration.py": "ff9b25c5fc0ab2e743d71be07df5e13287f1f2eeaf23d3b5e75c9099e2037c53",
-      "aas-model/src/aas_model/testing.py": "e0709da519f632e5a441a78aea499d3bf627ef9af6d8ad48cacf9470a722dbae",
-      "aas-model/src/aas_pydantic/convert_pydantic_model.py": "002971ee79e9873b752229bb1ae459eaadf58bf952d629939ab860ada3f44e7d",
-      "aas-model/src/aas_pydantic/convert_util.py": "df96d456b2f2687f8e059b8b69e6773bf2127b3f74569b282c068b3494408767",
-      "external/python/basyx/aas/adapter/json/json_serialization.py": "a3fbf780a1b30014a547e595be09e33ef0ca4cef58623ab96c43649d03277c29"
-    },
-    "stationSubmodelsSourceOnly": "AASDescriptions/Resource/configs/syntegonStoppering.main.json; the raw contract contains submodels only, not a synthesized owner shell",
-    "uuidAllocation": "UUIDv5(NAMESPACE_URL, runtime-model-contracts/{case}/{allocation-index}) during converter execution only",
-    "migrations": [
-      {
-        "date": "2026-10-18",
-        "tool": "one-off migration, not kept (aas-model docs/aid-extension.md §5)",
-        "rules": [
-          "action and event members: semanticId ActionDefinition/EventDefinition, supplemental td#name",
-          "input/output/safe/idempotent/synchronous: TD 1.1 IRIs (td#hasInputSchema, td#isSynchronous, ...)",
-          "form op: a list of lower-cased operation types, dropped where it is the affordance's default",
-          "MQTT: mqv_control_packet and mqv_request_reply dropped, mqv_retain/mqv_qos as AID terms (false retain dropped), mqv_response_topic or response.href as mqv_responseTopic, response reduced to contentType",
-          "htv_* terms dropped from forms of non-HTTP interfaces",
-          "MQTT/HTTP/Modbus: a base path ends with / and its hrefs are relative (RFC 3986 resolution, same topics and URLs)"
-        ],
-        "cases": [
-          "fan-in-out",
-          "fine-path",
-          "fine-protocols",
-          "grouped-action",
-          "http-operation",
-          "opcua-method",
-          "opcua-read",
-          "plc4x",
-          "projection-extensions",
-          "stoppering",
-          "stoppering-new-build"
-        ],
-        "recapture": "expected.json elements.aid re-captured from the migrated aid.json; compile outcomes unchanged"
-      }
-    ]
+   ],
+   "compiles": true
   },
-  "resources": {
-    "aas-collection-poll/aid.json": {
-      "byteLength": 30720,
-      "sha256": "b447421e1a10c32b2b5da2cba3495be507664957453a2749a2d34947f286c66a"
-    },
-    "aas-collection-poll/aimc.json": {
-      "byteLength": 24175,
-      "sha256": "dd72b11603d60de0d46a6c36f235e9b898d2fa84a31b05988b32f1f0887d256a"
-    },
-    "aas-collection-poll/dependencies/0.json": {
-      "byteLength": 2400,
-      "sha256": "c45eaf6dee9cc57eb23b1f7625768e5d1a126882f369a6902348099ef3cda850"
-    },
-    "aas-collection-poll/dependencies/1.json": {
-      "byteLength": 2392,
-      "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
-    },
-    "aas-collection-poll/expected.json": {
-      "byteLength": 12361,
-      "sha256": "620be903f9ccf5ee5590ec3620af823fec60e1032c4951774a8317e0a6c980be"
-    },
-    "aas-collection-poll/owner.json": {
-      "byteLength": 4727,
-      "sha256": "548e031ee01f82b0cbecb20cee4b73dba430fa373ba2898742318be5391a1289"
-    },
-    "aas-property-event/aid.json": {
-      "byteLength": 30720,
-      "sha256": "53ac0227797d46fbec32b4d98cad9a9f7dcc70b05de79efab9afc903e878fb9f"
-    },
-    "aas-property-event/aimc.json": {
-      "byteLength": 23144,
-      "sha256": "4f09e1fde2a813febacc866fd119e089fe2cfaf1b965bbcc2a401708ec22a082"
-    },
-    "aas-property-event/dependencies/0.json": {
-      "byteLength": 1818,
-      "sha256": "6a4ceb2f7abb312ee2baee16b1af79106398b62dfe7a90ead859cc67d5b51ba4"
-    },
-    "aas-property-event/dependencies/1.json": {
-      "byteLength": 2392,
-      "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
-    },
-    "aas-property-event/expected.json": {
-      "byteLength": 11926,
-      "sha256": "97bfe2cabc6a1d75532880787ee6a06dd09c44ada5c3464a6ebde6e43ec72147"
-    },
-    "aas-property-event/owner.json": {
-      "byteLength": 4727,
-      "sha256": "548e031ee01f82b0cbecb20cee4b73dba430fa373ba2898742318be5391a1289"
-    },
-    "aas-property-poll/aid.json": {
-      "byteLength": 30720,
-      "sha256": "8c3090436288772d6a3f23681a3e8d76f501f00a0e70f86242168afa2a2b4667"
-    },
-    "aas-property-poll/aimc.json": {
-      "byteLength": 24141,
-      "sha256": "a33257635ba09cca8d393c8a9a73a85eaf6a9eb03f6e153f5da7b7e86bd800dc"
-    },
-    "aas-property-poll/dependencies/0.json": {
-      "byteLength": 1818,
-      "sha256": "6a4ceb2f7abb312ee2baee16b1af79106398b62dfe7a90ead859cc67d5b51ba4"
-    },
-    "aas-property-poll/dependencies/1.json": {
-      "byteLength": 2392,
-      "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
-    },
-    "aas-property-poll/expected.json": {
-      "byteLength": 12327,
-      "sha256": "676ba74adc4e16726790f6e5abdbb203a5c96d5f815eb9b730edf51b1886700d"
-    },
-    "aas-property-poll/owner.json": {
-      "byteLength": 4727,
-      "sha256": "548e031ee01f82b0cbecb20cee4b73dba430fa373ba2898742318be5391a1289"
-    },
-    "fan-in-out/aid.json": {
-      "byteLength": 105346,
-      "sha256": "19b815b8b345acd96b8c1e95e7a58075218938d2d82106749fe61c150444f95a"
-    },
-    "fan-in-out/aimc.json": {
-      "byteLength": 35797,
-      "sha256": "1cf89bc581e219d28fb13f84b21da53af7d3ca3cf7222df4eda17b0fda0d97af"
-    },
-    "fan-in-out/dependencies/0.json": {
-      "byteLength": 3981,
-      "sha256": "69b052f4ceed353445a0e012eb668620737420e89d08ebfc2e0dd49530d75c2b"
-    },
-    "fan-in-out/expected.json": {
-      "byteLength": 20994,
-      "sha256": "39ca216971a092c185335b7671eb8a51854d0cd58c7218de44cbfe89b645e8c5"
-    },
-    "fan-in-out/owner.json": {
-      "byteLength": 3989,
-      "sha256": "60fa191bfff1c9bb7e6cfb667269cc06312a1b6c80c2e0717e7f1b8f4d61592b"
-    },
-    "fine-path/aid.json": {
-      "byteLength": 91416,
-      "sha256": "8349a6eb21036645d86942b5d15a376f8fdd0ed21b6d570eec5542b1783d073e"
-    },
-    "fine-path/aimc.json": {
-      "byteLength": 24546,
-      "sha256": "516dce1a36b28958d3d1e54a4f8855ddae3a2bc59fc63ae7ffeffd7103eb48c8"
-    },
-    "fine-path/expected.json": {
-      "byteLength": 19150,
-      "sha256": "0ef52b0e94fa84955b41038357281e1265ad84590d892b29b96cc044ec0fc865"
-    },
-    "fine-path/owner.json": {
-      "byteLength": 3249,
-      "sha256": "a7f9bb58e2ed75907eb23c8579acec534efed3dae859b4f3267d087c8d1a7e38"
-    },
-    "fine-protocols/aid.json": {
-      "byteLength": 192437,
-      "sha256": "69cc643120ad13a189a9c7349ccfb9e54e5b8b749723359ba482f00b07101ddd"
-    },
-    "fine-protocols/aimc.json": {
-      "byteLength": 37560,
-      "sha256": "dc55e04103dfe244924d2bdd451bc7250cc298f665dd1262c526408061a71013"
-    },
-    "fine-protocols/expected.json": {
-      "byteLength": 37823,
-      "sha256": "7181deffd5ccc9c94bed69892976414d6521e1cb1b7a104cedc80c299f58d8d2"
-    },
-    "fine-protocols/owner.json": {
-      "byteLength": 3249,
-      "sha256": "a7f9bb58e2ed75907eb23c8579acec534efed3dae859b4f3267d087c8d1a7e38"
-    },
-    "grouped-action/aid.json": {
-      "byteLength": 162161,
-      "sha256": "6054ae9d08eac3d6f21de7232b547e42ac1b2b2f4ef9b98f9f2d136a8dfce969"
-    },
-    "grouped-action/aimc.json": {
-      "byteLength": 30461,
-      "sha256": "4f8f8ab4154a6c298c19edd6e277a414c17d8988b1b246a2a839327a3278251e"
-    },
-    "grouped-action/dependencies/0.json": {
-      "byteLength": 5766,
-      "sha256": "af89ef71416aaf8527df76c6a1688e24b0461e0b4b6e055347f5600e333355ac"
-    },
-    "grouped-action/expected.json": {
-      "byteLength": 26269,
-      "sha256": "922ee9431938904196480983e7e972c847ce19e87b4589909fed37c7a8c37505"
-    },
-    "grouped-action/owner.json": {
-      "byteLength": 4031,
-      "sha256": "1308676092d1a4cb006617c8173ec04cab8eed195903462acb592f118c9b734c"
-    },
-    "http-operation/aid.json": {
-      "byteLength": 84742,
-      "sha256": "9e326bb717d56829684f9c8c952603cfa9ca8bcfef36121db29e10e6f2d42d87"
-    },
-    "http-operation/aimc.json": {
-      "byteLength": 24030,
-      "sha256": "998788c772ca33beb2fa0f800ff5fb1ba5635499ac7d34aaba51c9920cd13cd4"
-    },
-    "http-operation/dependencies/0.json": {
-      "byteLength": 5764,
-      "sha256": "fbb94a43c69c5733ccc567ac72743d6c23b1acbfd9b1a78384a84c874d1a71fe"
-    },
-    "http-operation/expected.json": {
-      "byteLength": 20463,
-      "sha256": "61c827e19c336fd4e219c4b0d0385be59bdfb5089bfd13ed83a941b0afd1c759"
-    },
-    "http-operation/owner.json": {
-      "byteLength": 4021,
-      "sha256": "b02931035a3da2aa1bd303878fbb9055417e3292063c7a9e352735c8bb505e35"
-    },
-    "http-poll/aid.json": {
-      "byteLength": 83062,
-      "sha256": "d444159016b25cdea4cf6b23437f1c6c13d95106fc0b4237bee3aac25e993c14"
-    },
-    "http-poll/aimc.json": {
-      "byteLength": 24690,
-      "sha256": "5458bdcc4032164d1c8bc1957cc43da6141d4049443671d60484ef775e7de89c"
-    },
-    "http-poll/dependencies/0.json": {
-      "byteLength": 2392,
-      "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
-    },
-    "http-poll/expected.json": {
-      "byteLength": 19509,
-      "sha256": "f6c37922776000248a798674c2a460f4bd837d59d7b84c295f85544b05f5e46e"
-    },
-    "http-poll/owner.json": {
-      "byteLength": 3989,
-      "sha256": "60fa191bfff1c9bb7e6cfb667269cc06312a1b6c80c2e0717e7f1b8f4d61592b"
-    },
-    "opcua-method/aid.json": {
-      "byteLength": 90699,
-      "sha256": "f5f7ad51f6c6ebecaa57324fe452c47836f05ec732351a1af0c7b5fa2eaa3dae"
-    },
-    "opcua-method/aimc.json": {
-      "byteLength": 24045,
-      "sha256": "7031dd349cfcef2128a02071cc794f69c51285dbdbd89cb97607ed210b5f452d"
-    },
-    "opcua-method/dependencies/0.json": {
-      "byteLength": 5776,
-      "sha256": "c4faae0e2b28d70551acf4d2b5525037be01261f4890f827e3d5d30faf48dfd8"
-    },
-    "opcua-method/expected.json": {
-      "byteLength": 20507,
-      "sha256": "d1adf79a5cc013d4874c2ceee5fcd80b00dd313d935459539d48ff4bc56efeab"
-    },
-    "opcua-method/owner.json": {
-      "byteLength": 4021,
-      "sha256": "b02931035a3da2aa1bd303878fbb9055417e3292063c7a9e352735c8bb505e35"
-    },
-    "opcua-read/aid.json": {
-      "byteLength": 94345,
-      "sha256": "266f2dc85f0f47522baafce55d1b305083acfdaa70d5c09ccc1ef372dd85965d"
-    },
-    "opcua-read/aimc.json": {
-      "byteLength": 24692,
-      "sha256": "456c7d6f3549075d7561bae346a43d7eae6fe7466b9fb61c097d1597d6b35807"
-    },
-    "opcua-read/dependencies/0.json": {
-      "byteLength": 2392,
-      "sha256": "0efe19fe45e19cebe83c6782e3aa3e51df5b22c370dd974eab90f50a4d0d8aae"
-    },
-    "opcua-read/expected.json": {
-      "byteLength": 20326,
-      "sha256": "4a61a48be16a617cc6dcd5911ab29a5d4a590404a7ee676b6969b22f462d8d94"
-    },
-    "opcua-read/owner.json": {
-      "byteLength": 3989,
-      "sha256": "60fa191bfff1c9bb7e6cfb667269cc06312a1b6c80c2e0717e7f1b8f4d61592b"
-    },
-    "plc4x/aid.json": {
-      "byteLength": 97334,
-      "sha256": "7b39bad4ef4e823b4e6f55d25214edb8e54861dfe22e239e6618d26c3fc26588"
-    },
-    "plc4x/aimc.json": {
-      "byteLength": 25205,
-      "sha256": "96d8f0ecca1f7d161b639b5079f07579e1ee2836b23bc8ec4c61159dce71aaf8"
-    },
-    "plc4x/expected.json": {
-      "byteLength": 20651,
-      "sha256": "c7af3622d589a28f37d1dbbe5d121f0cbeae4e3b58d70aed9a62890706a4391a"
-    },
-    "plc4x/owner.json": {
-      "byteLength": 3249,
-      "sha256": "a7f9bb58e2ed75907eb23c8579acec534efed3dae859b4f3267d087c8d1a7e38"
-    },
-    "projection-extensions/aid.json": {
-      "byteLength": 103165,
-      "sha256": "a72d9449199e8a4cb216bed2a70e3cd8ebbde1a11b5a669255f91171cceab8eb"
-    },
-    "projection-extensions/aimc.json": {
-      "byteLength": 40111,
-      "sha256": "415c47bede726e4733fac0079cc0df08b78724c4befbc8e88d1797acf5ef51c6"
-    },
-    "projection-extensions/dependencies/0.json": {
-      "byteLength": 5746,
-      "sha256": "9a7183f9502429f2eabe5f1ab4116cbd1259209dee218bac7e999e0b7ec22c9a"
-    },
-    "projection-extensions/dependencies/1.json": {
-      "byteLength": 1812,
-      "sha256": "63d481b5cda3b453006ec7d5723c76a0078503d53c2bb191aee9d5ed081156d5"
-    },
-    "projection-extensions/dependencies/2.json": {
-      "byteLength": 1861,
-      "sha256": "874231dcbeae35eb3e95799e956148960cdc54a4f79ab4aca356df09d5c52648"
-    },
-    "projection-extensions/dependencies/3.json": {
-      "byteLength": 1868,
-      "sha256": "9c7e710a2ec0826cbcc971d9eaa33e348688746e44231d65a16ab00545fa9c4b"
-    },
-    "projection-extensions/expected.json": {
-      "byteLength": 24013,
-      "sha256": "2c1a8e1a7e4a1a5d4816d93b7437b65800516ccf3c469e5b51cc1e0ff888c5ab"
-    },
-    "projection-extensions/owner.json": {
-      "byteLength": 7143,
-      "sha256": "b8f93d15a36d9da047618a6e62505246323b7bfd0d64f732a1fb5ec3f49ad91a"
-    },
-    "stoppering-new-build/aid.json": {
-      "byteLength": 689788,
-      "sha256": "0f245bcf0fe8615948a93e5d2ba8293320b944c0075c0580f02ae75a342cc78c"
-    },
-    "stoppering-new-build/aimc.json": {
-      "byteLength": 95177,
-      "sha256": "066963b5ce46e21ea647dcd679e186cf779885f8fcd873aeac2bfff18ee4d70d"
-    },
-    "stoppering-new-build/dependencies/0.json": {
-      "byteLength": 74280,
-      "sha256": "00a1a7dc453a3ae2e5feb167aeac5851e17f5026b5d968f19d1e44fdc5466ecf"
-    },
-    "stoppering-new-build/dependencies/1.json": {
-      "byteLength": 21282,
-      "sha256": "0ab1a976d47522ebd1123ce604c66941936d58abeaecbdf7fe7225d5ce1e5bd8"
-    },
-    "stoppering-new-build/dependencies/2.json": {
-      "byteLength": 24591,
-      "sha256": "e2ffc5136829e9834ef05ec90dad5a93cff8c040c68d0615648979910d52ad71"
-    },
-    "stoppering-new-build/dependencies/3.json": {
-      "byteLength": 2769,
-      "sha256": "793fae1cadc7c245b54c054a40d42076c647c3028d01388a313887e3b95ec679"
-    },
-    "stoppering-new-build/expected.json": {
-      "byteLength": 105136,
-      "sha256": "461e6d1b4be2709700da122493115d7cd2f8a104320482ba341df0a8e6662eb5"
-    },
-    "stoppering-new-build/owner.json": {
-      "byteLength": 38,
-      "sha256": "87c5c7374745e6857b4e95162ce6293c6422a01ef91552039ee4a882dd61eaa5"
-    },
-    "stoppering/aid.json": {
-      "byteLength": 1144462,
-      "sha256": "13a2f5784743a2993c400b342a84e60c652ae17d0d3d70e5d01e457ccff92d33"
-    },
-    "stoppering/aimc.json": {
-      "byteLength": 169445,
-      "sha256": "414dea6b7795f1dc7cc158e5e31c5a2440acad77cbc9d433ffe0db3e537a89cf"
-    },
-    "stoppering/dependencies/0.json": {
-      "byteLength": 97604,
-      "sha256": "a4bc764402ac948af9530d50104bb6c6dfdc20b50c568c5a8999d3a5bed52891"
-    },
-    "stoppering/dependencies/1.json": {
-      "byteLength": 24648,
-      "sha256": "1d731069f4c542ba0208446a745c112304569421520ddfff91df326d4026dc78"
-    },
-    "stoppering/dependencies/2.json": {
-      "byteLength": 24582,
-      "sha256": "123b666717592941ee454b6b68c3f2c2b17630372f1adf9ac0ee65da2c4c5ffa"
-    },
-    "stoppering/dependencies/3.json": {
-      "byteLength": 6317,
-      "sha256": "8df8e9671e70c650822a2a66b32f0794595d6e76cd553da43d57cdd398df87d3"
-    },
-    "stoppering/expected.json": {
-      "byteLength": 169039,
-      "sha256": "b45f9ba4cd64d6acc4f45761d465e2a39163aa8109e271562487ccd836bca02b"
-    },
-    "stoppering/owner.json": {
-      "byteLength": 38,
-      "sha256": "87c5c7374745e6857b4e95162ce6293c6422a01ef91552039ee4a882dd61eaa5"
-    }
-  },
-  "scope": "r1-relevant-asset-submodels-validated",
-  "uncapturedExistingNegativeCases": [
+  {
+   "name": "aas-property-poll",
+   "description": "an AAS Property source, polled",
+   "aimc": "aas-property-poll/aimc.json",
+   "aid": "aas-property-poll/aid.json",
+   "expected": "aas-property-poll/expected.json",
+   "dependencies": [
     {
-      "expectedError": "observation capability is not assumed",
-      "name": "aas-collection-event",
-      "status": "external Python descriptor option, not a serialized AIMC/AID submodel declaration; intentionally outside the relevant-asset-submodel contract"
+     "id": "a/submodels/Runtime",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "contractAAS/submodels/KPI",
+     "path": "dependencies/1.json"
     }
-  ],
-  "unsupportedContractCaseCount": 1,
-  "cciUuidInoutCompatibilityCaseCount": 1
+   ],
+   "compiles": true
+  },
+  {
+   "name": "aas-collection-poll",
+   "description": "an AAS SubmodelElementCollection source, polled",
+   "aimc": "aas-collection-poll/aimc.json",
+   "aid": "aas-collection-poll/aid.json",
+   "expected": "aas-collection-poll/expected.json",
+   "dependencies": [
+    {
+     "id": "a/submodels/Runtime",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "contractAAS/submodels/KPI",
+     "path": "dependencies/1.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "opcua-read",
+   "description": "a polled OPC UA variable",
+   "aimc": "opcua-read/aimc.json",
+   "aid": "opcua-read/aid.json",
+   "expected": "opcua-read/expected.json",
+   "dependencies": [
+    {
+     "id": "contractAAS/submodels/KPI",
+     "path": "dependencies/0.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "http-poll",
+   "description": "a polled HTTP resource",
+   "aimc": "http-poll/aimc.json",
+   "aid": "http-poll/aid.json",
+   "expected": "http-poll/expected.json",
+   "dependencies": [
+    {
+     "id": "contractAAS/submodels/KPI",
+     "path": "dependencies/0.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "plc4x",
+   "description": "a Modbus coil read and written through PLC4X",
+   "aimc": "plc4x/aimc.json",
+   "aid": "plc4x/aid.json",
+   "expected": "plc4x/expected.json",
+   "dependencies": [],
+   "compiles": true
+  },
+  {
+   "name": "fine-path",
+   "description": "a reference into an MQTT payload's schema",
+   "aimc": "fine-path/aimc.json",
+   "aid": "fine-path/aid.json",
+   "expected": "fine-path/expected.json",
+   "dependencies": [],
+   "compiles": true
+  },
+  {
+   "name": "fine-protocols",
+   "description": "references into HTTP and OPC UA schemas",
+   "aimc": "fine-protocols/aimc.json",
+   "aid": "fine-protocols/aid.json",
+   "expected": "fine-protocols/expected.json",
+   "dependencies": [],
+   "compiles": true
+  },
+  {
+   "name": "fan-in-out",
+   "description": "two MQTT sources into two AAS sinks",
+   "aimc": "fan-in-out/aimc.json",
+   "aid": "fan-in-out/aid.json",
+   "expected": "fan-in-out/expected.json",
+   "dependencies": [
+    {
+     "id": "contractAAS/submodels/KPI",
+     "path": "dependencies/0.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "opcua-method",
+   "description": "an Operation bound to an OPC UA Method",
+   "aimc": "opcua-method/aimc.json",
+   "aid": "opcua-method/aid.json",
+   "expected": "opcua-method/expected.json",
+   "dependencies": [
+    {
+     "id": "a/submodels/ControlComponentInstance",
+     "path": "dependencies/0.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "http-operation",
+   "description": "an Operation bound to an HTTP action",
+   "aimc": "http-operation/aimc.json",
+   "aid": "http-operation/aid.json",
+   "expected": "http-operation/expected.json",
+   "dependencies": [
+    {
+     "id": "a/submodels/ControlComponentInstance",
+     "path": "dependencies/0.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "grouped-action",
+   "description": "an Operation whose sinks fill members of one MQTT 5 request/reply action",
+   "aimc": "grouped-action/aimc.json",
+   "aid": "grouped-action/aid.json",
+   "expected": "grouped-action/expected.json",
+   "dependencies": [
+    {
+     "id": "contractAAS/submodels/ControlComponentInstance",
+     "path": "dependencies/0.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "projection-extensions",
+   "description": "the AIMC extensions project; an Operation sinking into an AAS Property is not a bridge the DMP compiles",
+   "aimc": "projection-extensions/aimc.json",
+   "aid": "projection-extensions/aid.json",
+   "expected": "projection-extensions/expected.json",
+   "dependencies": [
+    {
+     "id": "a/submodels/ControlComponentInstance",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "contractAAS/submodels/KPI",
+     "path": "dependencies/1.json"
+    }
+   ],
+   "compiles": false
+  },
+  {
+   "name": "stoppering",
+   "description": "the syntegonStoppering resource of aas-model",
+   "aimc": "stoppering/aimc.json",
+   "aid": "stoppering/aid.json",
+   "expected": "stoppering/expected.json",
+   "dependencies": [
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/Variables",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/ControlComponentInstance",
+     "path": "dependencies/1.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "station-cytivaCapping",
+   "description": "the cytivaCapping resource of aas-model",
+   "aimc": "station-cytivaCapping/aimc.json",
+   "aid": "station-cytivaCapping/aid.json",
+   "expected": "station-cytivaCapping/expected.json",
+   "dependencies": [
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/Variables",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/ControlComponentInstance",
+     "path": "dependencies/1.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "station-imaDispensing",
+   "description": "the imaDispensing resource of aas-model",
+   "aimc": "station-imaDispensing/aimc.json",
+   "aid": "station-imaDispensing/aid.json",
+   "expected": "station-imaDispensing/expected.json",
+   "dependencies": [
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/imaDispensingSystemAAS/submodels/Variables",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/imaDispensingSystemAAS/submodels/ControlComponentInstance",
+     "path": "dependencies/1.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "station-imaLoadingSystem",
+   "description": "the imaLoadingSystem resource of aas-model",
+   "aimc": "station-imaLoadingSystem/aimc.json",
+   "aid": "station-imaLoadingSystem/aid.json",
+   "expected": "station-imaLoadingSystem/expected.json",
+   "dependencies": [
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/imaLoadingSystemAAS/submodels/Variables",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/imaLoadingSystemAAS/submodels/ControlComponentInstance",
+     "path": "dependencies/1.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "station-optimaUnloading",
+   "description": "the optimaUnloading resource of aas-model",
+   "aimc": "station-optimaUnloading/aimc.json",
+   "aid": "station-optimaUnloading/aid.json",
+   "expected": "station-optimaUnloading/expected.json",
+   "dependencies": [
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/optimaUnloadingSystemAAS/submodels/Variables",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/optimaUnloadingSystemAAS/submodels/ControlComponentInstance",
+     "path": "dependencies/1.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "station-omronCamera",
+   "description": "the omronCamera resource of aas-model",
+   "aimc": "station-omronCamera/aimc.json",
+   "aid": "station-omronCamera/aid.json",
+   "expected": "station-omronCamera/expected.json",
+   "dependencies": [
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/omronCameraSystemAAS/submodels/Variables",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/omronCameraSystemAAS/submodels/ControlComponentInstance",
+     "path": "dependencies/1.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "station-planarShuttle1",
+   "description": "the planarShuttle1 resource of aas-model",
+   "aimc": "station-planarShuttle1/aimc.json",
+   "aid": "station-planarShuttle1/aid.json",
+   "expected": "station-planarShuttle1/expected.json",
+   "dependencies": [
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/planarTableShuttle1AAS/submodels/Variables",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/planarTableShuttle1AAS/submodels/ControlComponentInstance",
+     "path": "dependencies/1.json"
+    },
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/planarTableShuttle1AAS/submodels/Parameters",
+     "path": "dependencies/2.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "station-planarTable",
+   "description": "the planarTable resource of aas-model",
+   "aimc": "station-planarTable/aimc.json",
+   "aid": "station-planarTable/aid.json",
+   "expected": "station-planarTable/expected.json",
+   "dependencies": [
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/planarTableAAS/submodels/ControlComponentInstance",
+     "path": "dependencies/0.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "station-orchestrator",
+   "description": "the orchestrator resource of aas-model",
+   "aimc": "station-orchestrator/aimc.json",
+   "aid": "station-orchestrator/aid.json",
+   "expected": "station-orchestrator/expected.json",
+   "dependencies": [
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/orchestratorAAS/submodels/ControlComponentInstance",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/orchestratorAAS/submodels/Variables",
+     "path": "dependencies/1.json"
+    }
+   ],
+   "compiles": true
+  },
+  {
+   "name": "station-productionPlanner",
+   "description": "the productionPlanner resource of aas-model",
+   "aimc": "station-productionPlanner/aimc.json",
+   "aid": "station-productionPlanner/aid.json",
+   "expected": "station-productionPlanner/expected.json",
+   "dependencies": [
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/productionPlannerAAS/submodels/ControlComponentInstance",
+     "path": "dependencies/0.json"
+    },
+    {
+     "id": "https://smartproductionlab.aau.dk/aas/productionPlannerAAS/submodels/Variables",
+     "path": "dependencies/1.json"
+    }
+   ],
+   "compiles": true
+  }
+ ],
+ "resources": {
+  "aas-collection-poll/aid.json": {
+   "byteLength": 25053,
+   "sha256": "bb4c237dd0f2acabdb3be1e38fbe9a9a7ce30d8001fa70ac5150f8ee498687a5"
+  },
+  "aas-collection-poll/aimc.json": {
+   "byteLength": 18929,
+   "sha256": "23f37b2a672fe6a71fcf3d2fd1d09017c7e7923af1e1494ed1b218302c2c171a"
+  },
+  "aas-collection-poll/dependencies/0.json": {
+   "byteLength": 184,
+   "sha256": "8cea92a672f54abdbace99465f905e85790f7e6a18b40cf846b6b07368b3eb6c"
+  },
+  "aas-collection-poll/dependencies/1.json": {
+   "byteLength": 184,
+   "sha256": "71480e93c852f9abc725a5659bd153696a7ca96728627022546318678aede91f"
+  },
+  "aas-collection-poll/expected.json": {
+   "byteLength": 266,
+   "sha256": "18634efc4ae031aa0bde79f2f540d3caa4a432aa53e666446bf924f1c5123ef0"
+  },
+  "aas-property-event/aid.json": {
+   "byteLength": 25053,
+   "sha256": "83a82ec3f8ba9764e1a9e3e8498f74faa50d8eb38ebd3a4a395cf62147b2bf2b"
+  },
+  "aas-property-event/aimc.json": {
+   "byteLength": 18078,
+   "sha256": "79c39149f72999bae874f92abda3cf44930ec38f3f8b347f2d6eed5c6d761ec7"
+  },
+  "aas-property-event/dependencies/0.json": {
+   "byteLength": 196,
+   "sha256": "dae1229d0a4103ace33ab5eada37a2e053297d2c2f625489b78ecff484991f76"
+  },
+  "aas-property-event/dependencies/1.json": {
+   "byteLength": 184,
+   "sha256": "71480e93c852f9abc725a5659bd153696a7ca96728627022546318678aede91f"
+  },
+  "aas-property-event/expected.json": {
+   "byteLength": 266,
+   "sha256": "18634efc4ae031aa0bde79f2f540d3caa4a432aa53e666446bf924f1c5123ef0"
+  },
+  "aas-property-poll/aid.json": {
+   "byteLength": 25053,
+   "sha256": "9c3734a3dc258d6cc81807d12600ca45885e8a69bae9c3eb7cdcafa3b2b259a5"
+  },
+  "aas-property-poll/aimc.json": {
+   "byteLength": 18912,
+   "sha256": "8300176c19d39d982ff30d85d9bcfb32820e53f5f9ce8ee7866c3d672b5b1f4e"
+  },
+  "aas-property-poll/dependencies/0.json": {
+   "byteLength": 196,
+   "sha256": "dae1229d0a4103ace33ab5eada37a2e053297d2c2f625489b78ecff484991f76"
+  },
+  "aas-property-poll/dependencies/1.json": {
+   "byteLength": 184,
+   "sha256": "71480e93c852f9abc725a5659bd153696a7ca96728627022546318678aede91f"
+  },
+  "aas-property-poll/expected.json": {
+   "byteLength": 266,
+   "sha256": "18634efc4ae031aa0bde79f2f540d3caa4a432aa53e666446bf924f1c5123ef0"
+  },
+  "fan-in-out/aid.json": {
+   "byteLength": 103106,
+   "sha256": "c4ef395bde9c6a3a6b13ab3992aff97477bcf37661a1432f5545a35c346d0200"
+  },
+  "fan-in-out/aimc.json": {
+   "byteLength": 27121,
+   "sha256": "c5290b940c0b9b699b36b25d1f5229008387d04e51468ebeb1b5a4851e144d4a"
+  },
+  "fan-in-out/dependencies/0.json": {
+   "byteLength": 261,
+   "sha256": "bea3b89b754306786e02876c288cb4176b3e904655a73a0320896fbc04dce204"
+  },
+  "fan-in-out/expected.json": {
+   "byteLength": 292,
+   "sha256": "847dcf1263a73c81c526c105fec0c467ae0fbc93d4c0ec557ae3419aeaaaa3c5"
+  },
+  "fine-path/aid.json": {
+   "byteLength": 78138,
+   "sha256": "fe6b0bc3cd469c584e7a52b16cefb0767e1a07fdf5d221c919e3bcf61b908b3a"
+  },
+  "fine-path/aimc.json": {
+   "byteLength": 19060,
+   "sha256": "07b3fc3ce4d071f283f40a441aa419aa95cc88ccfb630a253b67347f2b13b0b0"
+  },
+  "fine-path/expected.json": {
+   "byteLength": 269,
+   "sha256": "c040841b99bb10a1a52eb5b7a4d51d3c54d51fcac42ade45e64a37fd9d7828b0"
+  },
+  "fine-protocols/aid.json": {
+   "byteLength": 174418,
+   "sha256": "1bc5c8b667cdb59bccfb93be33a59f7bb6febcf702a91204fbf7580f988b11f4"
+  },
+  "fine-protocols/aimc.json": {
+   "byteLength": 28358,
+   "sha256": "fdf6afa6460c2535ed7effb3da14187fb9cf7c23e3ac2cea96025b2de2237bb4"
+  },
+  "fine-protocols/expected.json": {
+   "byteLength": 306,
+   "sha256": "be93957d8db5ee56d4d33206df8bbb038f1e03815cdd16f8ceb905460fb5a48f"
+  },
+  "grouped-action/aid.json": {
+   "byteLength": 136066,
+   "sha256": "8c823fe6bd4a8e460b90fe91dcf305be448631af97d5b6216ba9f4fb86f3b805"
+  },
+  "grouped-action/aimc.json": {
+   "byteLength": 23230,
+   "sha256": "5403608d54bc02c315e578ffa81879de211a5c0370e515e8fb4eafe1e53b2ca1"
+  },
+  "grouped-action/dependencies/0.json": {
+   "byteLength": 616,
+   "sha256": "681a87b6eaa0da876ff6881a03803794a70c5cf3986859fe81f0a57b230b7e83"
+  },
+  "grouped-action/expected.json": {
+   "byteLength": 274,
+   "sha256": "c8229a8f1ffffbd0fac25cb606bf8d27e9adfe0bfbf26024108561fa9af410a0"
+  },
+  "http-operation/aid.json": {
+   "byteLength": 79532,
+   "sha256": "7014208ad5b484a5b300e4c1f47701146909398c9c381ee28efe705e7c657ea2"
+  },
+  "http-operation/aimc.json": {
+   "byteLength": 18706,
+   "sha256": "9e763e15ac07b560db279d01375e841cbe302f08bb1197e6cf8941c2b7f60238"
+  },
+  "http-operation/dependencies/0.json": {
+   "byteLength": 609,
+   "sha256": "5eeffaed2a933efb776b03e1579e519795826d9e8415015aa33dbf9a611bf8d6"
+  },
+  "http-operation/expected.json": {
+   "byteLength": 272,
+   "sha256": "50cbdee25f7091fa528b8245d5c336cc9e811b92f4b00222f62f4066624760c0"
+  },
+  "http-poll/aid.json": {
+   "byteLength": 83976,
+   "sha256": "6deadc67fb99c39b4d76acde911fdbc304c73755d1293a4e02fe5da6131b6a2e"
+  },
+  "http-poll/aimc.json": {
+   "byteLength": 19305,
+   "sha256": "f6207a37ea96d0d720f104b2b9d6d806fc506a2bfc39abcd2627afe42d4e1989"
+  },
+  "http-poll/dependencies/0.json": {
+   "byteLength": 184,
+   "sha256": "71480e93c852f9abc725a5659bd153696a7ca96728627022546318678aede91f"
+  },
+  "http-poll/expected.json": {
+   "byteLength": 269,
+   "sha256": "e931e78e2b7fa851be20abbfb4a59e52e7d7a30ce63707167bcd9b57eafd04a9"
+  },
+  "opcua-method/aid.json": {
+   "byteLength": 80156,
+   "sha256": "a5ffcf18601a398f52bd62601337326d4525b1109b5ed1a28feff7fa71ed2474"
+  },
+  "opcua-method/aimc.json": {
+   "byteLength": 18725,
+   "sha256": "353a5827e15263de66c3e82865bd2423d1369d1b549f48cbf443a07460d63122"
+  },
+  "opcua-method/dependencies/0.json": {
+   "byteLength": 611,
+   "sha256": "e2abe08c1406da9f872867323f4006aa28a286676726629cf16d1ca02d7d83c1"
+  },
+  "opcua-method/expected.json": {
+   "byteLength": 276,
+   "sha256": "81d7f9f944a9c17bed737b2e2adc38fdd9b6ee504fe37964a7d8be3484fd97db"
+  },
+  "opcua-read/aid.json": {
+   "byteLength": 84022,
+   "sha256": "902063ac974ece5fb5f5cabc7b53d3e7484e3958eef87c1dd975e0363b49c280"
+  },
+  "opcua-read/aimc.json": {
+   "byteLength": 19306,
+   "sha256": "df9b8420617246eab4b5727f9c6504110b44cb560fc117aad84127458fde9015"
+  },
+  "opcua-read/dependencies/0.json": {
+   "byteLength": 184,
+   "sha256": "71480e93c852f9abc725a5659bd153696a7ca96728627022546318678aede91f"
+  },
+  "opcua-read/expected.json": {
+   "byteLength": 269,
+   "sha256": "e931e78e2b7fa851be20abbfb4a59e52e7d7a30ce63707167bcd9b57eafd04a9"
+  },
+  "plc4x/aid.json": {
+   "byteLength": 83975,
+   "sha256": "87221bba5dc1c2fa31572fdfa69a53bd3b0977a55e0460cac4ec1fcba8163223"
+  },
+  "plc4x/aimc.json": {
+   "byteLength": 19658,
+   "sha256": "f4a184a8fdf43043bcae45f6553be6f26d9c4c6901d3eeb702c7f6436fcdef3f"
+  },
+  "plc4x/expected.json": {
+   "byteLength": 266,
+   "sha256": "d7c108d3ad29270fd8cbc5cb9e4ae206dfe634596161dff9af01a05a215315a7"
+  },
+  "projection-extensions/aid.json": {
+   "byteLength": 58933,
+   "sha256": "abf5049c9e8bbc3ad771824424a69bbbd0baf991d4b99e84160636662b5cf7c1"
+  },
+  "projection-extensions/aimc.json": {
+   "byteLength": 21719,
+   "sha256": "4fecb4234820d59ee1431945f02ce4b6ca96a55fcee903d8d109689f64d6d816"
+  },
+  "projection-extensions/dependencies/0.json": {
+   "byteLength": 606,
+   "sha256": "4a1610509f8573b5a4fab0044cf789912f119737cc8f8159a4ec8a985ed7cf5a"
+  },
+  "projection-extensions/dependencies/1.json": {
+   "byteLength": 196,
+   "sha256": "56f4855d135aa7aef78da28a837cb6d78efe433562a95e50d1e2f743793b02ef"
+  },
+  "projection-extensions/expected.json": {
+   "byteLength": 271,
+   "sha256": "7137e74acb6797a40c690bfe8408c7663b3a29fe05999b169fb04f606265e3ce"
+  },
+  "station-cytivaCapping/aid.json": {
+   "byteLength": 625897,
+   "sha256": "d608de356cd69c4e2a45547276015d07679d97d8948852db1af840599432c35f"
+  },
+  "station-cytivaCapping/aimc.json": {
+   "byteLength": 92384,
+   "sha256": "ce503b9d969e05be274911bcc662c65a2996a270741f5049eb8613ad4d5455a0"
+  },
+  "station-cytivaCapping/dependencies/0.json": {
+   "byteLength": 2377,
+   "sha256": "acc84fc6fe499f6359006316af85b577e047259c2da8f358fe71b3fea90be7f0"
+  },
+  "station-cytivaCapping/dependencies/1.json": {
+   "byteLength": 72275,
+   "sha256": "22ef73d832a57d0f2be94544a8ff2d0eff3edfc1ea93573dd67d985b7afb5a17"
+  },
+  "station-cytivaCapping/expected.json": {
+   "byteLength": 827,
+   "sha256": "9899e028cf43c2a55d5f77ae3959cfa70dde22f735ba6cf836c1db5d120f7152"
+  },
+  "station-imaDispensing/aid.json": {
+   "byteLength": 692893,
+   "sha256": "e279654af4c408e9727abf6359103ad4f872f27d96919ced1fd11d79b8cbfb85"
+  },
+  "station-imaDispensing/aimc.json": {
+   "byteLength": 109349,
+   "sha256": "5a813fe66ccb9a0c382a62204018380f5e4602d6b2c7a6700e7d303562b21f4c"
+  },
+  "station-imaDispensing/dependencies/0.json": {
+   "byteLength": 3070,
+   "sha256": "e23183f5c05e6e8fe5364722efd1745bbefbe2e8c0f7a33b53baf9ed51c9da3b"
+  },
+  "station-imaDispensing/dependencies/1.json": {
+   "byteLength": 72296,
+   "sha256": "4042f5f30d7831f154d147e39ab6ac53395a63a99a6f36c1cd7c18bc03e75222"
+  },
+  "station-imaDispensing/expected.json": {
+   "byteLength": 948,
+   "sha256": "49a388fb9e1a1fa42fa94039f82c9427ef26d7072b1badfd21a58772d67920b7"
+  },
+  "station-imaLoadingSystem/aid.json": {
+   "byteLength": 625889,
+   "sha256": "5f2afd829d07d163c58fa35fc239bc8cd4694dd0d786055e4617792b46f3a53b"
+  },
+  "station-imaLoadingSystem/aimc.json": {
+   "byteLength": 92345,
+   "sha256": "e0b106765f311de65a7ea9c43e105683b4300be56ed878feff04381d50f52872"
+  },
+  "station-imaLoadingSystem/dependencies/0.json": {
+   "byteLength": 2371,
+   "sha256": "445ed2cf32c1de96446b1f7e5cb037e23c910edb2ebf0669d523c7730fb173ad"
+  },
+  "station-imaLoadingSystem/dependencies/1.json": {
+   "byteLength": 72220,
+   "sha256": "18af7a97fc3e3d639bb351d151ac168b2d89e2b362eb66a279a58b15a2b4fca9"
+  },
+  "station-imaLoadingSystem/expected.json": {
+   "byteLength": 821,
+   "sha256": "ecaf75146d09258c914566e8ea1abaac84c3c0b11f21a908356ae9bb1633cd27"
+  },
+  "station-omronCamera/aid.json": {
+   "byteLength": 797803,
+   "sha256": "963f68b7cefa3ea377cbf2a78bf977f0aba36de4b5ebdcf8cbf0a6031e74484b"
+  },
+  "station-omronCamera/aimc.json": {
+   "byteLength": 126276,
+   "sha256": "81609f75ed2e9801f63969c3516e27087b6f595651caeb06ed5fea31c3f46803"
+  },
+  "station-omronCamera/dependencies/0.json": {
+   "byteLength": 3733,
+   "sha256": "3810d2db77ea2ad2249e5a7c71af7d83262f533529a75f53b503f523c03c3ad4"
+  },
+  "station-omronCamera/dependencies/1.json": {
+   "byteLength": 72237,
+   "sha256": "5d3b722a51de522ffc0799477a5703745e47197f3e6193ed15b0d1302ab903db"
+  },
+  "station-omronCamera/expected.json": {
+   "byteLength": 1065,
+   "sha256": "7e5c827c4e4402a39d0827c0dc95cfd3505b1c4b78f009f64004548457ed6e28"
+  },
+  "station-optimaUnloading/aid.json": {
+   "byteLength": 753182,
+   "sha256": "80195caba7ef7c811203f371c88ea35005b1812ab8332540bfd0214418cd21f1"
+  },
+  "station-optimaUnloading/aimc.json": {
+   "byteLength": 109626,
+   "sha256": "7f68940bf48f0bb9bed1762c9630daf3c3a379d1c4ecd09a8e20b33c7732c809"
+  },
+  "station-optimaUnloading/dependencies/0.json": {
+   "byteLength": 2381,
+   "sha256": "5a6ae866020cc1c8215beb1cf8485a52b0afac0f63d2629a642475944961ebc3"
+  },
+  "station-optimaUnloading/dependencies/1.json": {
+   "byteLength": 89322,
+   "sha256": "7a315df441146d253ad2ef54fd57ddd92f9050b34e4bf459d6cc3d368e1d93c1"
+  },
+  "station-optimaUnloading/expected.json": {
+   "byteLength": 948,
+   "sha256": "857a7a1950337efcbffd9c03b3f1c0e21dd23c9be8cb9f62b08ecf53a510a0db"
+  },
+  "station-orchestrator/aid.json": {
+   "byteLength": 1265363,
+   "sha256": "08f05ce50d6650e56c53b49bd96e5686eabebbb80f1676c955c163bb8addf9e7"
+  },
+  "station-orchestrator/aimc.json": {
+   "byteLength": 105626,
+   "sha256": "f609cf59865cdf79a186d154e25c0c1d51f509e4b55c6a963fe638f65400cead"
+  },
+  "station-orchestrator/dependencies/0.json": {
+   "byteLength": 89618,
+   "sha256": "81179487ba69317f36eb02e98a657c5e18f3383a0a494f2a7c0cf7254c6cf2cd"
+  },
+  "station-orchestrator/dependencies/1.json": {
+   "byteLength": 1416,
+   "sha256": "1bbd38c69b72ba960cce780393309e995705c3594b90059276231ca4a938cd59"
+  },
+  "station-orchestrator/expected.json": {
+   "byteLength": 898,
+   "sha256": "0208e1532b0540437a3dba98fc3031ba74e31437077918546a37fb00e3e53e7e"
+  },
+  "station-planarShuttle1/aid.json": {
+   "byteLength": 808237,
+   "sha256": "6c90e4428d0944567958103b369ca14c597e55330718e97eec98b1e80da38431"
+  },
+  "station-planarShuttle1/aimc.json": {
+   "byteLength": 146204,
+   "sha256": "bda9fe30ac62d5191b4deef1d1f6e252b30d75c8f175fe34668ea20fac6e6015"
+  },
+  "station-planarShuttle1/dependencies/0.json": {
+   "byteLength": 6677,
+   "sha256": "10a71e6db0fd562b7ce37b667d1e559719963a92db5ca2a8eb99c6921496dad7"
+  },
+  "station-planarShuttle1/dependencies/1.json": {
+   "byteLength": 74238,
+   "sha256": "42d39a48f19026cd3e8abc5e9171dd3140e55e9ccdef4dec012c3ef1d2d99b0d"
+  },
+  "station-planarShuttle1/dependencies/2.json": {
+   "byteLength": 14343,
+   "sha256": "2316a8ffc012a71a957fd0cc4aeff7449b0b50e3d8cf15503412cc5e8298b910"
+  },
+  "station-planarShuttle1/expected.json": {
+   "byteLength": 1181,
+   "sha256": "b1b171be8105e008b3364a261a571d28964fd533ef7b7e825cc99c03a9ed31e9"
+  },
+  "station-planarTable/aid.json": {
+   "byteLength": 152525,
+   "sha256": "75e095c1a327f670eb548d49187e25ea96a05fdb9c8728b0b6376b58c9915a68"
+  },
+  "station-planarTable/aimc.json": {
+   "byteLength": 19851,
+   "sha256": "c177dd199c401e55f4407859dbb17d55fdbce70cdc547995a42f69a0a440bf8c"
+  },
+  "station-planarTable/dependencies/0.json": {
+   "byteLength": 22153,
+   "sha256": "bf10b28c324c7cc6af914b0ca9738ed80b979f7e16b470240b0ae01e5f566886"
+  },
+  "station-planarTable/expected.json": {
+   "byteLength": 313,
+   "sha256": "9d64ce9d56c7ab386882b763d2a1d5e8ad9cf331c1426ebf443a29429e59b52d"
+  },
+  "station-productionPlanner/aid.json": {
+   "byteLength": 449285,
+   "sha256": "dffbd51aa9b4cc8274d4107d46a2cdcc484b2d50746338a35cfa80d0794f8da2"
+  },
+  "station-productionPlanner/aimc.json": {
+   "byteLength": 36938,
+   "sha256": "fa86138b100684285a075140f62c505a152d7f63308fba3df321c322e8c69bf0"
+  },
+  "station-productionPlanner/dependencies/0.json": {
+   "byteLength": 25280,
+   "sha256": "6b124ac1632ebb02595e95307d56514619142645b5ce6088cddcf001618f19ef"
+  },
+  "station-productionPlanner/dependencies/1.json": {
+   "byteLength": 1426,
+   "sha256": "8b6aa605256c4d16c242456d2ab9af8ccdedf2a0c458df12431b878745323a00"
+  },
+  "station-productionPlanner/expected.json": {
+   "byteLength": 451,
+   "sha256": "089368d33253674f532ccfacecf7be56ff5e5fb7581911a35fd4af7d8a2f79be"
+  },
+  "stoppering/aid.json": {
+   "byteLength": 625931,
+   "sha256": "14208aa347d5bd0cc8769c6e5eb9ace1e63690df69594d7365db1428d3f3d736"
+  },
+  "stoppering/aimc.json": {
+   "byteLength": 92478,
+   "sha256": "f56bf2cc5e48d2f2cb86864d82876abaff0853b4a9f4be27777e215384aa244e"
+  },
+  "stoppering/dependencies/0.json": {
+   "byteLength": 2387,
+   "sha256": "314dce789a171c1d1c2b026d3ec53c15584493017befcb8170f7634bcf767dbc"
+  },
+  "stoppering/dependencies/1.json": {
+   "byteLength": 72393,
+   "sha256": "fc0d74f54ac9e37c146e84e56a33e99a0f9d473c1ea1a351d7c783278ea70647"
+  },
+  "stoppering/expected.json": {
+   "byteLength": 843,
+   "sha256": "77f9984f15c6c8f926de631651e7512e6e5df36ec77c93066acf33a24cc5d232"
+  }
+ }
 }

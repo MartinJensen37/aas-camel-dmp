@@ -1,0 +1,29 @@
+{
+ "compilerContext": {
+  "aas_id": "https://smartproductionlab.aau.dk/aas/productionPlannerAAS",
+  "aas_id_short": "productionPlannerAAS",
+  "aas_base_url": "http://aas-server:8081"
+ },
+ "authoredMappings": [
+  {
+   "index": 0,
+   "idShort": null,
+   "sourceIds": [
+    "Plan"
+   ],
+   "sinkIds": [
+    "Plan"
+   ]
+  },
+  {
+   "index": 1,
+   "idShort": null,
+   "sourceIds": [
+    "StationState"
+   ],
+   "sinkIds": [
+    "PackMLState"
+   ]
+  }
+ ]
+}

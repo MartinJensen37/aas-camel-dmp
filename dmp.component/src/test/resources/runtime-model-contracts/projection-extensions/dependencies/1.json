@@ -1,86 +1,12 @@
 {
-  "embeddedDataSpecifications": [
-    {
-      "dataSpecification": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "contractAAS/submodels/KPI"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-          {
-            "language": "en",
-            "text": "class"
-          }
-        ],
-        "value": "FixtureSubmodel_92b69a9024"
-      }
-    },
-    {
-      "dataSpecification": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "Out"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-          {
-            "language": "en",
-            "text": "attribute"
-          }
-        ],
-        "value": "Out"
-      }
-    },
-    {
-      "dataSpecification": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "Out"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-          {
-            "language": "en",
-            "text": "default"
-          }
-        ],
-        "value": "Out"
-      }
-    }
-  ],
-  "id": "contractAAS/submodels/KPI",
-  "idShort": "KPI",
-  "modelType": "Submodel",
-  "semanticId": {
-    "keys": [
-      {
-        "type": "GlobalReference",
-        "value": "urn:contract-fixture:submodel:KPI"
-      }
-    ],
-    "type": "ExternalReference"
-  },
-  "submodelElements": [
-    {
-      "idShort": "Out",
-      "modelType": "Property",
-      "valueType": "xs:string"
-    }
-  ]
+ "idShort": "KPI",
+ "modelType": "Submodel",
+ "id": "contractAAS/submodels/KPI",
+ "submodelElements": [
+  {
+   "idShort": "Out",
+   "modelType": "Property",
+   "valueType": "xs:string"
+  }
+ ]
 }

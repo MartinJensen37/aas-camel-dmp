@@ -1,227 +1,32 @@
 {
-  "embeddedDataSpecifications": [
-    {
-      "dataSpecification": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "a/submodels/ControlComponentInstance"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-          {
-            "language": "en",
-            "text": "class"
-          }
-        ],
-        "value": "FixtureSubmodel_b22fc6c775"
-      }
-    },
-    {
-      "dataSpecification": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "Skills"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-          {
-            "language": "en",
-            "text": "attribute"
-          }
-        ],
-        "value": "Skills"
-      }
-    },
-    {
-      "dataSpecification": {
-        "keys": [
-          {
-            "type": "GlobalReference",
-            "value": "Skills"
-          }
-        ],
-        "type": "ExternalReference"
-      },
-      "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-          {
-            "language": "en",
-            "text": "default"
-          }
-        ],
-        "value": "Skills"
-      }
-    }
-  ],
-  "id": "a/submodels/ControlComponentInstance",
-  "idShort": "ControlComponentInstance",
-  "modelType": "Submodel",
-  "semanticId": {
-    "keys": [
-      {
-        "type": "GlobalReference",
-        "value": "https://admin-shell.io/idta/ControlComponent/Instance/2/0"
-      }
-    ],
-    "type": "ExternalReference"
-  },
-  "submodelElements": [
-    {
-      "embeddedDataSpecifications": [
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "Skills"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "class"
-              }
-            ],
-            "value": "FixtureElement_66d0f523a3"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "Restart"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "attribute"
-              }
-            ],
-            "value": "Restart"
-          }
-        },
-        {
-          "dataSpecification": {
-            "keys": [
-              {
-                "type": "GlobalReference",
-                "value": "Restart"
-              }
-            ],
-            "type": "ExternalReference"
-          },
-          "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-              {
-                "language": "en",
-                "text": "default"
-              }
-            ],
-            "value": "Restart"
-          }
-        }
-      ],
-      "idShort": "Skills",
-      "modelType": "SubmodelElementCollection",
-      "value": [
-        {
-          "embeddedDataSpecifications": [
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "Restart"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "class"
-                  }
-                ],
-                "value": "FixtureElement_6b983a81e5"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "operation"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "attribute"
-                  }
-                ],
-                "value": "operation"
-              }
-            },
-            {
-              "dataSpecification": {
-                "keys": [
-                  {
-                    "type": "GlobalReference",
-                    "value": "operation"
-                  }
-                ],
-                "type": "ExternalReference"
-              },
-              "dataSpecificationContent": {
-                "modelType": "DataSpecificationIec61360",
-                "preferredName": [
-                  {
-                    "language": "en",
-                    "text": "default"
-                  }
-                ],
-                "value": "operation"
-              }
-            }
-          ],
-          "idShort": "Restart",
-          "modelType": "SubmodelElementCollection",
-          "value": [
-            {
-              "idShort": "operation",
-              "modelType": "Operation"
-            }
-          ]
-        }
-      ]
-    }
+ "idShort": "ControlComponentInstance",
+ "modelType": "Submodel",
+ "id": "a/submodels/ControlComponentInstance",
+ "semanticId": {
+  "type": "ExternalReference",
+  "keys": [
+   {
+    "type": "GlobalReference",
+    "value": "https://admin-shell.io/idta/ControlComponent/Instance/2/0"
+   }
   ]
+ },
+ "submodelElements": [
+  {
+   "idShort": "Skills",
+   "modelType": "SubmodelElementCollection",
+   "value": [
+    {
+     "idShort": "Restart",
+     "modelType": "SubmodelElementCollection",
+     "value": [
+      {
+       "idShort": "operation",
+       "modelType": "Operation"
+      }
+     ]
+    }
+   ]
+  }
+ ]
 }

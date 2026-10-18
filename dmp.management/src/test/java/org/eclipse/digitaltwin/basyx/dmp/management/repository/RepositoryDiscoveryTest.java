@@ -24,14 +24,14 @@ class RepositoryDiscoveryTest {
 
 	@Test
 	void bootstrapListsAimcsBySemanticIdAndReadsOnlyWhatTheirEndpointsReference() throws Exception {
-		JsonObject fixture = caseFixture("stoppering-new-build");
+		JsonObject fixture = caseFixture("stoppering");
 		try (var repository = new FakeAasRepository()) {
 			repository.put(resource(fixture.get("aimc").getAsString())).put(resource(fixture.get("aid").getAsString()));
 			for (var dependency : fixture.getAsJsonArray("dependencies"))
-				repository.put(resource("stoppering-new-build/" + dependency.getAsJsonObject().get("path").getAsString()));
+				repository.put(resource("stoppering/" + dependency.getAsJsonObject().get("path").getAsString()));
 			repository.put(submodel("urn:unrelated", "urn:semantic:nameplate", "[]"));
 			String aimcId = JsonParser.parseString(resource(fixture.get("aimc").getAsString())).getAsJsonObject().get("id").getAsString();
-			JsonObject expected = JsonParser.parseString(resource("stoppering-new-build/expected.json")).getAsJsonObject();
+			JsonObject expected = JsonParser.parseString(resource("stoppering/expected.json")).getAsJsonObject();
 			var discovery = discovery(repository);
 			var scan = discovery.scan();
 			assertTrue(scan.complete());
@@ -39,7 +39,7 @@ class RepositoryDiscoveryTest {
 			assertTrue(scan.failures().isEmpty(), scan.failures().toString());
 			assertEquals(expected.getAsJsonArray("authoredMappings").size(), scan.mappings().size());
 			assertTrue(scan.mappings().values().stream().allMatch(candidate -> candidate.desired().valid()),
-					"scalar CCI InOut Operations compile like every other authored mapping");
+					"the station's mappings compile");
 			String aidId = JsonParser.parseString(resource(fixture.get("aid").getAsString())).getAsJsonObject().get("id").getAsString();
 			assertFalse(scan.reverseDependencies().get(aidId).isEmpty());
 			assertFalse(scan.reverseDependencies().get(aimcId).isEmpty());

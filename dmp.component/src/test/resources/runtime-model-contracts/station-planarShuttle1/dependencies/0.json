@@ -1,0 +1,297 @@
+{
+ "embeddedDataSpecifications": [
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/aas/planarTableShuttle1AAS/submodels/Variables"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "class"
+     }
+    ],
+    "value": "OperationalVariables"
+   }
+  }
+ ],
+ "idShort": "Variables",
+ "description": [
+  {
+   "language": "en",
+   "text": "Asset variable definitions with semantic concepts and live-data interface references."
+  }
+ ],
+ "modelType": "Submodel",
+ "id": "https://smartproductionlab.aau.dk/aas/planarTableShuttle1AAS/submodels/Variables",
+ "semanticId": {
+  "type": "ExternalReference",
+  "keys": [
+   {
+    "type": "GlobalReference",
+    "value": "https://smartproductionlab.aau.dk/submodels/Variables/1/0"
+   }
+  ]
+ },
+ "submodelElements": [
+  {
+   "idShort": "PackMLState",
+   "description": [
+    {
+     "language": "en",
+     "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+    }
+   ],
+   "modelType": "Property",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+     }
+    ]
+   },
+   "supplementalSemanticIds": [
+    {
+     "type": "ExternalReference",
+     "keys": [
+      {
+       "type": "GlobalReference",
+       "value": "https://w3id.org/2026/apex/semantic/state/operational"
+      }
+     ]
+    }
+   ],
+   "valueType": "xs:string"
+  },
+  {
+   "idShort": "OccupationState",
+   "description": [
+    {
+     "language": "en",
+     "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+    }
+   ],
+   "modelType": "Property",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+     }
+    ]
+   },
+   "supplementalSemanticIds": [
+    {
+     "type": "ExternalReference",
+     "keys": [
+      {
+       "type": "GlobalReference",
+       "value": "https://w3id.org/2026/apex/semantic/state/occupied"
+      }
+     ]
+    }
+   ],
+   "valueType": "xs:string"
+  },
+  {
+   "embeddedDataSpecifications": [
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "Location"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "class"
+       }
+      ],
+      "value": "VariableItem"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "71b5e569f9564060bb302cd30001bd9a"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "interface_reference"
+     }
+    }
+   ],
+   "idShort": "Location",
+   "description": [
+    {
+     "language": "en",
+     "text": "A group of variables that belong together."
+    }
+   ],
+   "modelType": "SubmodelElementCollection",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/variables/VariableItem/1/0"
+     }
+    ]
+   },
+   "value": [
+    {
+     "idShort": "x",
+     "description": [
+      {
+       "language": "en",
+       "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+      }
+     ],
+     "modelType": "Property",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+       }
+      ]
+     },
+     "value": "0.0",
+     "valueType": "xs:double"
+    },
+    {
+     "idShort": "y",
+     "description": [
+      {
+       "language": "en",
+       "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+      }
+     ],
+     "modelType": "Property",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+       }
+      ]
+     },
+     "value": "0.0",
+     "valueType": "xs:double"
+    },
+    {
+     "idShort": "yaw",
+     "description": [
+      {
+       "language": "en",
+       "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+      }
+     ],
+     "modelType": "Property",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+       }
+      ]
+     },
+     "value": "0.0",
+     "valueType": "xs:double"
+    }
+   ]
+  },
+  {
+   "idShort": "PositionX",
+   "description": [
+    {
+     "language": "en",
+     "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+    }
+   ],
+   "modelType": "Property",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+     }
+    ]
+   },
+   "value": "0.0",
+   "valueType": "xs:double"
+  },
+  {
+   "idShort": "PositionY",
+   "description": [
+    {
+     "language": "en",
+     "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+    }
+   ],
+   "modelType": "Property",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+     }
+    ]
+   },
+   "value": "0.0",
+   "valueType": "xs:double"
+  },
+  {
+   "idShort": "ProductID",
+   "description": [
+    {
+     "language": "en",
+     "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+    }
+   ],
+   "modelType": "Property",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+     }
+    ]
+   },
+   "valueType": "xs:string"
+  }
+ ]
+}

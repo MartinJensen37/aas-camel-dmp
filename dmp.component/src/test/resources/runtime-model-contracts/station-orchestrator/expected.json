@@ -1,0 +1,69 @@
+{
+ "compilerContext": {
+  "aas_id": "https://smartproductionlab.aau.dk/aas/orchestratorAAS",
+  "aas_id_short": "orchestratorAAS",
+  "aas_base_url": "http://aas-server:8081"
+ },
+ "authoredMappings": [
+  {
+   "index": 0,
+   "idShort": null,
+   "sourceIds": [
+    "Start"
+   ],
+   "sinkIds": [
+    "Start"
+   ]
+  },
+  {
+   "index": 1,
+   "idShort": null,
+   "sourceIds": [
+    "Stop"
+   ],
+   "sinkIds": [
+    "Stop"
+   ]
+  },
+  {
+   "index": 2,
+   "idShort": null,
+   "sourceIds": [
+    "Suspend"
+   ],
+   "sinkIds": [
+    "Suspend"
+   ]
+  },
+  {
+   "index": 3,
+   "idShort": null,
+   "sourceIds": [
+    "Unsuspend"
+   ],
+   "sinkIds": [
+    "Unsuspend"
+   ]
+  },
+  {
+   "index": 4,
+   "idShort": null,
+   "sourceIds": [
+    "Reset"
+   ],
+   "sinkIds": [
+    "Reset"
+   ]
+  },
+  {
+   "index": 5,
+   "idShort": null,
+   "sourceIds": [
+    "State"
+   ],
+   "sinkIds": [
+    "PackMLState"
+   ]
+  }
+ ]
+}

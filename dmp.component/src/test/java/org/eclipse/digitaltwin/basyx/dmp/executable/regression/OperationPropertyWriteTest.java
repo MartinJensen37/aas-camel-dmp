@@ -234,10 +234,17 @@ class OperationPropertyWriteTest {
 		JsonObject aid = json(resource("opcua-method/aid.json")).getAsJsonObject();
 		JsonObject opcua = child(aid, "interface_opcua");
 		child(child(opcua, "EndpointMetadata"), "base").addProperty("value", "opc.tcp://127.0.0.1:" + devicePort);
-		JsonObject pressure = child(child(child(child(json(resource("opcua-read/aid.json")).getAsJsonObject(), "interface_opcua"),
-				"InteractionMetadata"), "properties"), "Pressure");
-		JsonObject properties = child(child(opcua, "InteractionMetadata"), "properties");
-		if (!properties.has("value")) properties.add("value", new JsonArray());
+		JsonObject readProperties = child(child(child(json(resource("opcua-read/aid.json")).getAsJsonObject(), "interface_opcua"),
+				"InteractionMetadata"), "properties");
+		JsonObject pressure = child(readProperties, "Pressure");
+		// The Method interface has no properties yet: give it the container, empty.
+		JsonObject interaction = child(opcua, "InteractionMetadata");
+		if (interaction.getAsJsonArray("value").asList().stream().noneMatch(e -> "properties".equals(e.getAsJsonObject().get("idShort").getAsString()))) {
+			JsonObject container = readProperties.deepCopy();
+			container.add("value", new JsonArray());
+			interaction.getAsJsonArray("value").add(container);
+		}
+		JsonObject properties = child(interaction, "properties");
 		JsonObject variable = pressure.deepCopy();
 		variable.addProperty("idShort", "Setpoint");
 		child(variable, "title").addProperty("value", "Setpoint");

@@ -1,0 +1,85 @@
+{
+ "compilerContext": {
+  "aas_id": "https://smartproductionlab.aau.dk/aas/planarTableShuttle1AAS",
+  "aas_id_short": "planarTableShuttle1AAS",
+  "aas_base_url": "http://aas-server:8081"
+ },
+ "authoredMappings": [
+  {
+   "index": 0,
+   "idShort": null,
+   "sourceIds": [
+    "StationState"
+   ],
+   "sinkIds": [
+    "PackMLState",
+    "OccupationState"
+   ]
+  },
+  {
+   "index": 1,
+   "idShort": null,
+   "sourceIds": [
+    "Halt"
+   ],
+   "sinkIds": [
+    "Halt"
+   ]
+  },
+  {
+   "index": 2,
+   "idShort": null,
+   "sourceIds": [
+    "Occupy"
+   ],
+   "sinkIds": [
+    "Occupy"
+   ]
+  },
+  {
+   "index": 3,
+   "idShort": null,
+   "sourceIds": [
+    "Release"
+   ],
+   "sinkIds": [
+    "Release"
+   ]
+  },
+  {
+   "index": 4,
+   "idShort": null,
+   "sourceIds": [
+    "MoveToPosition"
+   ],
+   "sinkIds": [
+    "MoveToPosition"
+   ]
+  },
+  {
+   "index": 5,
+   "idShort": null,
+   "sourceIds": [
+    "Location"
+   ],
+   "sinkIds": [
+    "Location_x",
+    "Location_y",
+    "Location_yaw",
+    "PositionX",
+    "PositionY"
+   ]
+  },
+  {
+   "index": 6,
+   "idShort": null,
+   "sourceIds": [
+    "ProductID"
+   ],
+   "sinkIds": [
+    "ProductID",
+    "ProductIDParameter"
+   ]
+  }
+ ]
+}

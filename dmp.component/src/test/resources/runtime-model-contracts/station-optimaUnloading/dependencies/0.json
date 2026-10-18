@@ -1,0 +1,107 @@
+{
+ "embeddedDataSpecifications": [
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/aas/optimaUnloadingSystemAAS/submodels/Variables"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "class"
+     }
+    ],
+    "value": "OperationalVariables"
+   }
+  }
+ ],
+ "idShort": "Variables",
+ "description": [
+  {
+   "language": "en",
+   "text": "Asset variable definitions with semantic concepts and live-data interface references."
+  }
+ ],
+ "modelType": "Submodel",
+ "id": "https://smartproductionlab.aau.dk/aas/optimaUnloadingSystemAAS/submodels/Variables",
+ "semanticId": {
+  "type": "ExternalReference",
+  "keys": [
+   {
+    "type": "GlobalReference",
+    "value": "https://smartproductionlab.aau.dk/submodels/Variables/1/0"
+   }
+  ]
+ },
+ "submodelElements": [
+  {
+   "idShort": "PackMLState",
+   "description": [
+    {
+     "language": "en",
+     "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+    }
+   ],
+   "modelType": "Property",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+     }
+    ]
+   },
+   "supplementalSemanticIds": [
+    {
+     "type": "ExternalReference",
+     "keys": [
+      {
+       "type": "GlobalReference",
+       "value": "https://w3id.org/2026/apex/semantic/state/operational"
+      }
+     ]
+    }
+   ],
+   "valueType": "xs:string"
+  },
+  {
+   "idShort": "OccupationState",
+   "description": [
+    {
+     "language": "en",
+     "text": "Live value of this variable; its ontology concept rides as a supplemental semantic id."
+    }
+   ],
+   "modelType": "Property",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/variables/VariableSemanticId/1/0"
+     }
+    ]
+   },
+   "supplementalSemanticIds": [
+    {
+     "type": "ExternalReference",
+     "keys": [
+      {
+       "type": "GlobalReference",
+       "value": "https://w3id.org/2026/apex/semantic/state/occupied"
+      }
+     ]
+    }
+   ],
+   "valueType": "xs:string"
+  }
+ ]
+}

@@ -1,0 +1,3068 @@
+{
+ "embeddedDataSpecifications": [
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/ControlComponentInstance"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "class"
+     }
+    ],
+    "value": "OperationalControlComponent"
+   }
+  },
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "Endpoints"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "attribute"
+     }
+    ],
+    "value": "Endpoints"
+   }
+  },
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "Endpoints"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "default"
+     }
+    ],
+    "value": "Endpoints"
+   }
+  },
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "Skills"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "attribute"
+     }
+    ],
+    "value": "Skills"
+   }
+  },
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "Skills"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "default"
+     }
+    ],
+    "value": "Skills"
+   }
+  },
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "Type"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "attribute"
+     }
+    ],
+    "value": "Type"
+   }
+  },
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "Type"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "default"
+     }
+    ],
+    "value": "Type"
+   }
+  }
+ ],
+ "idShort": "ControlComponentInstance",
+ "description": [
+  {
+   "language": "en",
+   "text": "A ControlComponentInstance Submodel."
+  }
+ ],
+ "modelType": "Submodel",
+ "id": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/ControlComponentInstance",
+ "semanticId": {
+  "type": "ExternalReference",
+  "keys": [
+   {
+    "type": "GlobalReference",
+    "value": "https://admin-shell.io/idta/ControlComponent/Instance/2/0"
+   }
+  ]
+ },
+ "submodelElements": [
+  {
+   "embeddedDataSpecifications": [
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "Endpoints"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "class"
+       }
+      ],
+      "value": "ResourceEndpoints"
+     }
+    }
+   ],
+   "idShort": "Endpoints",
+   "description": [
+    {
+     "language": "en",
+     "text": "Collection of references to control endpoints supported by the instance of the component"
+    }
+   ],
+   "modelType": "SubmodelElementCollection",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://admin-shell.io/idta/ControlComponent/Instance/Endpoints/2/0"
+     }
+    ]
+   },
+   "value": [
+    {
+     "idShort": "Halt",
+     "description": [
+      {
+       "language": "en",
+       "text": "This skill has this native interface in the AID submodel."
+      }
+     ],
+     "modelType": "RelationshipElement",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/NativeInterface/1/0"
+       }
+      ]
+     },
+     "first": {
+      "type": "ModelReference",
+      "keys": [
+       {
+        "type": "Submodel",
+        "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/ControlComponentInstance"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Skills"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Halt"
+       }
+      ]
+     },
+     "second": {
+      "type": "ModelReference",
+      "keys": [
+       {
+        "type": "Submodel",
+        "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/AssetInterfacesDescription"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "interface_mqtt"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "InteractionMetadata"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "actions"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Halt"
+       }
+      ]
+     }
+    },
+    {
+     "idShort": "Occupy",
+     "description": [
+      {
+       "language": "en",
+       "text": "This skill has this native interface in the AID submodel."
+      }
+     ],
+     "modelType": "RelationshipElement",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/NativeInterface/1/0"
+       }
+      ]
+     },
+     "first": {
+      "type": "ModelReference",
+      "keys": [
+       {
+        "type": "Submodel",
+        "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/ControlComponentInstance"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Skills"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Occupy"
+       }
+      ]
+     },
+     "second": {
+      "type": "ModelReference",
+      "keys": [
+       {
+        "type": "Submodel",
+        "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/AssetInterfacesDescription"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "interface_mqtt"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "InteractionMetadata"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "actions"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Occupy"
+       }
+      ]
+     }
+    },
+    {
+     "idShort": "Release",
+     "description": [
+      {
+       "language": "en",
+       "text": "This skill has this native interface in the AID submodel."
+      }
+     ],
+     "modelType": "RelationshipElement",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/NativeInterface/1/0"
+       }
+      ]
+     },
+     "first": {
+      "type": "ModelReference",
+      "keys": [
+       {
+        "type": "Submodel",
+        "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/ControlComponentInstance"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Skills"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Release"
+       }
+      ]
+     },
+     "second": {
+      "type": "ModelReference",
+      "keys": [
+       {
+        "type": "Submodel",
+        "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/AssetInterfacesDescription"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "interface_mqtt"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "InteractionMetadata"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "actions"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Release"
+       }
+      ]
+     }
+    },
+    {
+     "idShort": "Capping",
+     "description": [
+      {
+       "language": "en",
+       "text": "This skill has this native interface in the AID submodel."
+      }
+     ],
+     "modelType": "RelationshipElement",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/NativeInterface/1/0"
+       }
+      ]
+     },
+     "first": {
+      "type": "ModelReference",
+      "keys": [
+       {
+        "type": "Submodel",
+        "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/ControlComponentInstance"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Skills"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Capping"
+       }
+      ]
+     },
+     "second": {
+      "type": "ModelReference",
+      "keys": [
+       {
+        "type": "Submodel",
+        "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/AssetInterfacesDescription"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "interface_mqtt"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "InteractionMetadata"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "actions"
+       },
+       {
+        "type": "SubmodelElementCollection",
+        "value": "Capping"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "embeddedDataSpecifications": [
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "Skills"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "class"
+       }
+      ],
+      "value": "ExtendedSkills"
+     }
+    }
+   ],
+   "idShort": "Skills",
+   "description": [
+    {
+     "language": "en",
+     "text": "Collection of skills offered by the component instance"
+    }
+   ],
+   "modelType": "SubmodelElementCollection",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/ControlComponent/Skills/2/0"
+     }
+    ]
+   },
+   "value": [
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Halt"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "ExtendedSkill"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Disabled"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Disabled"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Disabled"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Disabled"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Modes"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Modes"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Modes"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Modes"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Parameters"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Parameters"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Parameters"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Parameters"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Errors"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Errors"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Errors"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Errors"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Uses"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Uses"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Uses"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Uses"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "interface_reference"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "interface_reference"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "interface_reference"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "ReferenceElement"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "operation"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "operation"
+       }
+      }
+     ],
+     "idShort": "Halt",
+     "description": [
+      {
+       "language": "en",
+       "text": "Contains the basic information to call (request the execution of) a skill, e.g. its signature"
+      }
+     ],
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/2/0"
+       }
+      ]
+     },
+     "value": [
+      {
+       "idShort": "Disabled",
+       "description": [
+        {
+         "language": "en",
+         "text": "Boolean property that defines if the skill is (currently) disabled, e.g. not licensed, tested, suitable."
+        }
+       ],
+       "modelType": "Property",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Disabled/2/0"
+         }
+        ]
+       },
+       "valueType": "xs:boolean"
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Modes"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Modes"
+         }
+        }
+       ],
+       "idShort": "Modes",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of operation, operating, operational or execution modes (depending on the standard), in which the skill is available/allowed to execute."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Modes/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Parameters"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Parameters"
+         }
+        }
+       ],
+       "idShort": "Parameters",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of parameters used for the configuration of the skill."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Parameters/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Errors"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Errors"
+         }
+        }
+       ],
+       "idShort": "Errors",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of references to the error codes of the component that may be raised by this skill."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Errors/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Uses"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Uses"
+         }
+        }
+       ],
+       "idShort": "Uses",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of references to other skills, that this skill uses."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Uses/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "idShort": "interface_reference",
+       "description": [
+        {
+         "language": "en",
+         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+        }
+       ],
+       "modelType": "ReferenceElement",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/1/0"
+         }
+        ]
+       },
+       "value": {
+        "type": "ModelReference",
+        "keys": [
+         {
+          "type": "Submodel",
+          "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/AssetInterfacesDescription"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "interface_mqtt"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "InteractionMetadata"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "actions"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "Halt"
+         }
+        ]
+       }
+      },
+      {
+       "idShort": "operation",
+       "description": [
+        {
+         "language": "en",
+         "text": "Operation to invoke this skill (delegated via operation delegation)."
+        }
+       ],
+       "modelType": "Operation",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/Operation/2/0"
+         }
+        ]
+       },
+       "qualifiers": [
+        {
+         "value": "http://dmp:8080/operations/cytivaCappingSystemAAS/Halt",
+         "kind": "ConceptQualifier",
+         "valueType": "xs:string",
+         "type": "invocationDelegation"
+        },
+        {
+         "value": "true",
+         "kind": "ConceptQualifier",
+         "valueType": "xs:string",
+         "type": "Synchronous"
+        }
+       ],
+       "outputVariables": [
+        {
+         "value": {
+          "idShort": "State",
+          "description": [
+           {
+            "language": "en",
+            "text": "The state of the command being executed"
+           }
+          ],
+          "modelType": "Property",
+          "semanticId": {
+           "type": "ExternalReference",
+           "keys": [
+            {
+             "type": "GlobalReference",
+             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
+            }
+           ]
+          },
+          "valueType": "xs:string"
+         }
+        }
+       ],
+       "inoutputVariables": [
+        {
+         "value": {
+          "idShort": "Uuid",
+          "description": [
+           {
+            "language": "en",
+            "text": "The UUID of the command"
+           }
+          ],
+          "modelType": "Property",
+          "semanticId": {
+           "type": "ExternalReference",
+           "keys": [
+            {
+             "type": "GlobalReference",
+             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
+            }
+           ]
+          },
+          "valueType": "xs:string"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Occupy"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "ExtendedSkill"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Disabled"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Disabled"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Disabled"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Disabled"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Modes"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Modes"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Modes"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Modes"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Parameters"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Parameters"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Parameters"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Parameters"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Errors"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Errors"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Errors"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Errors"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Uses"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Uses"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Uses"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Uses"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "interface_reference"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "interface_reference"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "interface_reference"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "ReferenceElement"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "operation"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "operation"
+       }
+      }
+     ],
+     "idShort": "Occupy",
+     "description": [
+      {
+       "language": "en",
+       "text": "Contains the basic information to call (request the execution of) a skill, e.g. its signature"
+      }
+     ],
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/2/0"
+       }
+      ]
+     },
+     "value": [
+      {
+       "idShort": "Disabled",
+       "description": [
+        {
+         "language": "en",
+         "text": "Boolean property that defines if the skill is (currently) disabled, e.g. not licensed, tested, suitable."
+        }
+       ],
+       "modelType": "Property",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Disabled/2/0"
+         }
+        ]
+       },
+       "valueType": "xs:boolean"
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Modes"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Modes"
+         }
+        }
+       ],
+       "idShort": "Modes",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of operation, operating, operational or execution modes (depending on the standard), in which the skill is available/allowed to execute."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Modes/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Parameters"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Parameters"
+         }
+        }
+       ],
+       "idShort": "Parameters",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of parameters used for the configuration of the skill."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Parameters/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Errors"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Errors"
+         }
+        }
+       ],
+       "idShort": "Errors",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of references to the error codes of the component that may be raised by this skill."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Errors/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Uses"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Uses"
+         }
+        }
+       ],
+       "idShort": "Uses",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of references to other skills, that this skill uses."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Uses/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "idShort": "interface_reference",
+       "description": [
+        {
+         "language": "en",
+         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+        }
+       ],
+       "modelType": "ReferenceElement",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/1/0"
+         }
+        ]
+       },
+       "value": {
+        "type": "ModelReference",
+        "keys": [
+         {
+          "type": "Submodel",
+          "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/AssetInterfacesDescription"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "interface_mqtt"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "InteractionMetadata"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "actions"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "Occupy"
+         }
+        ]
+       }
+      },
+      {
+       "idShort": "operation",
+       "description": [
+        {
+         "language": "en",
+         "text": "Operation to invoke this skill (delegated via operation delegation)."
+        }
+       ],
+       "modelType": "Operation",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/Operation/2/0"
+         }
+        ]
+       },
+       "qualifiers": [
+        {
+         "value": "http://dmp:8080/operations/cytivaCappingSystemAAS/Occupy",
+         "kind": "ConceptQualifier",
+         "valueType": "xs:string",
+         "type": "invocationDelegation"
+        },
+        {
+         "value": "true",
+         "kind": "ConceptQualifier",
+         "valueType": "xs:string",
+         "type": "Synchronous"
+        }
+       ],
+       "outputVariables": [
+        {
+         "value": {
+          "idShort": "State",
+          "description": [
+           {
+            "language": "en",
+            "text": "The state of the command being executed"
+           }
+          ],
+          "modelType": "Property",
+          "semanticId": {
+           "type": "ExternalReference",
+           "keys": [
+            {
+             "type": "GlobalReference",
+             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
+            }
+           ]
+          },
+          "valueType": "xs:string"
+         }
+        }
+       ],
+       "inoutputVariables": [
+        {
+         "value": {
+          "idShort": "Uuid",
+          "description": [
+           {
+            "language": "en",
+            "text": "The UUID of the command"
+           }
+          ],
+          "modelType": "Property",
+          "semanticId": {
+           "type": "ExternalReference",
+           "keys": [
+            {
+             "type": "GlobalReference",
+             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
+            }
+           ]
+          },
+          "valueType": "xs:string"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Release"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "ExtendedSkill"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Disabled"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Disabled"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Disabled"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Disabled"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Modes"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Modes"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Modes"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Modes"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Parameters"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Parameters"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Parameters"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Parameters"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Errors"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Errors"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Errors"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Errors"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Uses"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Uses"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Uses"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Uses"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "interface_reference"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "interface_reference"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "interface_reference"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "ReferenceElement"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "operation"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "operation"
+       }
+      }
+     ],
+     "idShort": "Release",
+     "description": [
+      {
+       "language": "en",
+       "text": "Contains the basic information to call (request the execution of) a skill, e.g. its signature"
+      }
+     ],
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/2/0"
+       }
+      ]
+     },
+     "value": [
+      {
+       "idShort": "Disabled",
+       "description": [
+        {
+         "language": "en",
+         "text": "Boolean property that defines if the skill is (currently) disabled, e.g. not licensed, tested, suitable."
+        }
+       ],
+       "modelType": "Property",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Disabled/2/0"
+         }
+        ]
+       },
+       "valueType": "xs:boolean"
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Modes"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Modes"
+         }
+        }
+       ],
+       "idShort": "Modes",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of operation, operating, operational or execution modes (depending on the standard), in which the skill is available/allowed to execute."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Modes/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Parameters"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Parameters"
+         }
+        }
+       ],
+       "idShort": "Parameters",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of parameters used for the configuration of the skill."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Parameters/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Errors"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Errors"
+         }
+        }
+       ],
+       "idShort": "Errors",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of references to the error codes of the component that may be raised by this skill."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Errors/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Uses"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Uses"
+         }
+        }
+       ],
+       "idShort": "Uses",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of references to other skills, that this skill uses."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Uses/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "idShort": "interface_reference",
+       "description": [
+        {
+         "language": "en",
+         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+        }
+       ],
+       "modelType": "ReferenceElement",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/1/0"
+         }
+        ]
+       },
+       "value": {
+        "type": "ModelReference",
+        "keys": [
+         {
+          "type": "Submodel",
+          "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/AssetInterfacesDescription"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "interface_mqtt"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "InteractionMetadata"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "actions"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "Release"
+         }
+        ]
+       }
+      },
+      {
+       "idShort": "operation",
+       "description": [
+        {
+         "language": "en",
+         "text": "Operation to invoke this skill (delegated via operation delegation)."
+        }
+       ],
+       "modelType": "Operation",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/Operation/2/0"
+         }
+        ]
+       },
+       "qualifiers": [
+        {
+         "value": "http://dmp:8080/operations/cytivaCappingSystemAAS/Release",
+         "kind": "ConceptQualifier",
+         "valueType": "xs:string",
+         "type": "invocationDelegation"
+        },
+        {
+         "value": "true",
+         "kind": "ConceptQualifier",
+         "valueType": "xs:string",
+         "type": "Synchronous"
+        }
+       ],
+       "outputVariables": [
+        {
+         "value": {
+          "idShort": "State",
+          "description": [
+           {
+            "language": "en",
+            "text": "The state of the command being executed"
+           }
+          ],
+          "modelType": "Property",
+          "semanticId": {
+           "type": "ExternalReference",
+           "keys": [
+            {
+             "type": "GlobalReference",
+             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
+            }
+           ]
+          },
+          "valueType": "xs:string"
+         }
+        }
+       ],
+       "inoutputVariables": [
+        {
+         "value": {
+          "idShort": "Uuid",
+          "description": [
+           {
+            "language": "en",
+            "text": "The UUID of the command"
+           }
+          ],
+          "modelType": "Property",
+          "semanticId": {
+           "type": "ExternalReference",
+           "keys": [
+            {
+             "type": "GlobalReference",
+             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
+            }
+           ]
+          },
+          "valueType": "xs:string"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Capping"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "ExtendedSkill"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Disabled"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Disabled"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Disabled"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Disabled"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Modes"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Modes"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Modes"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Modes"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Parameters"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Parameters"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Parameters"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Parameters"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Errors"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Errors"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Errors"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Errors"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Uses"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Uses"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Uses"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "Uses"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "interface_reference"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "interface_reference"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "interface_reference"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "default"
+         }
+        ],
+        "value": "ReferenceElement"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "operation"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "operation"
+       }
+      }
+     ],
+     "idShort": "Capping",
+     "description": [
+      {
+       "language": "en",
+       "text": "Contains the basic information to call (request the execution of) a skill, e.g. its signature"
+      }
+     ],
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/2/0"
+       }
+      ]
+     },
+     "value": [
+      {
+       "idShort": "Disabled",
+       "description": [
+        {
+         "language": "en",
+         "text": "Boolean property that defines if the skill is (currently) disabled, e.g. not licensed, tested, suitable."
+        }
+       ],
+       "modelType": "Property",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Disabled/2/0"
+         }
+        ]
+       },
+       "valueType": "xs:boolean"
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Modes"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Modes"
+         }
+        }
+       ],
+       "idShort": "Modes",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of operation, operating, operational or execution modes (depending on the standard), in which the skill is available/allowed to execute."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Modes/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Parameters"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Parameters"
+         }
+        }
+       ],
+       "idShort": "Parameters",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of parameters used for the configuration of the skill."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Parameters/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Errors"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Errors"
+         }
+        }
+       ],
+       "idShort": "Errors",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of references to the error codes of the component that may be raised by this skill."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Errors/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Uses"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "Uses"
+         }
+        }
+       ],
+       "idShort": "Uses",
+       "description": [
+        {
+         "language": "en",
+         "text": "Collection of references to other skills, that this skill uses."
+        }
+       ],
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/ControlComponent/Skill/Uses/2/0"
+         }
+        ]
+       }
+      },
+      {
+       "idShort": "interface_reference",
+       "modelType": "ReferenceElement",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/1/0"
+         }
+        ]
+       },
+       "value": {
+        "type": "ModelReference",
+        "keys": [
+         {
+          "type": "Submodel",
+          "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/AssetInterfacesDescription"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "interface_mqtt"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "InteractionMetadata"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "actions"
+         },
+         {
+          "type": "SubmodelElementCollection",
+          "value": "Capping"
+         }
+        ]
+       }
+      },
+      {
+       "idShort": "operation",
+       "description": [
+        {
+         "language": "en",
+         "text": "Operation to invoke this skill (delegated via operation delegation)."
+        }
+       ],
+       "modelType": "Operation",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/Operation/2/0"
+         }
+        ]
+       },
+       "qualifiers": [
+        {
+         "value": "http://dmp:8080/operations/cytivaCappingSystemAAS/Capping",
+         "kind": "ConceptQualifier",
+         "valueType": "xs:string",
+         "type": "invocationDelegation"
+        },
+        {
+         "value": "true",
+         "kind": "ConceptQualifier",
+         "valueType": "xs:string",
+         "type": "Synchronous"
+        }
+       ],
+       "outputVariables": [
+        {
+         "value": {
+          "idShort": "State",
+          "description": [
+           {
+            "language": "en",
+            "text": "The state of the command being executed"
+           }
+          ],
+          "modelType": "Property",
+          "semanticId": {
+           "type": "ExternalReference",
+           "keys": [
+            {
+             "type": "GlobalReference",
+             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
+            }
+           ]
+          },
+          "valueType": "xs:string"
+         }
+        },
+        {
+         "value": {
+          "idShort": "Outcome",
+          "description": [
+           {
+            "language": "en",
+            "text": "An operation variable of the skill's operation."
+           }
+          ],
+          "modelType": "Property",
+          "semanticId": {
+           "type": "ExternalReference",
+           "keys": [
+            {
+             "type": "GlobalReference",
+             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
+            }
+           ]
+          },
+          "value": "0",
+          "valueType": "xs:integer"
+         }
+        }
+       ],
+       "inoutputVariables": [
+        {
+         "value": {
+          "idShort": "Uuid",
+          "description": [
+           {
+            "language": "en",
+            "text": "The UUID of the command"
+           }
+          ],
+          "modelType": "Property",
+          "semanticId": {
+           "type": "ExternalReference",
+           "keys": [
+            {
+             "type": "GlobalReference",
+             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
+            }
+           ]
+          },
+          "valueType": "xs:string"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "idShort": "Type",
+   "description": [
+    {
+     "language": "en",
+     "text": "Reference between the component instance and its respective ControlComponentType Submodel."
+    }
+   ],
+   "modelType": "ReferenceElement",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://admin-shell.io/idta/ControlComponent/Instance/Type/2/0"
+     }
+    ]
+   },
+   "value": {
+    "type": "ModelReference",
+    "keys": [
+     {
+      "type": "Submodel",
+      "value": "https://smartproductionlab.aau.dk/aas/cytivaCappingSystemAAS/submodels/ControlComponentType"
+     }
+    ]
+   }
+  }
+ ]
+}
