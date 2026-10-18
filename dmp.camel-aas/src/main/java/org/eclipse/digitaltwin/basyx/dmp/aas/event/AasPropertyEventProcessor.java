@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
+import org.eclipse.digitaltwin.basyx.dmp.aas.AasValues;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SourceEventAdapter;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer;
@@ -114,7 +115,8 @@ final class AasPropertyEventProcessor implements Processor {
 			}
 		}
 
-		Object decoded = toJava(value);
+		// The element's value, typed by its valueType as polled reads deliver it (SPEC §5.3).
+		Object decoded = AasValues.elementValue(toJava(value));
 		exchange.getMessage().setBody(decoded);
 		org.eclipse.digitaltwin.basyx.dmp.aas.AasAudit.event(submodelId, watched, decoded, eventType, eventId,
 				(String) exchange.getMessage().getHeader(EVENT_TIME_HEADER));
@@ -180,11 +182,8 @@ final class AasPropertyEventProcessor implements Processor {
 			if (!expectedType.equals(text(property, "modelType"))) {
 				return null;
 			}
-			if (!"Property".equals(expectedType)) {
+			if (!"Property".equals(expectedType) || property.has("value")) {
 				return property;
-			}
-			if (property.has("value")) {
-				return property.get("value");
 			}
 		}
 		return null;
@@ -222,10 +221,7 @@ final class AasPropertyEventProcessor implements Processor {
 		if (!expectedType.equals(text(element, "modelType")) || !element.has("value")) {
 			return null;
 		}
-		if (!"Property".equals(expectedType)) {
-			return element;
-		}
-		return element.get("value");
+		return element;
 	}
 
 	private JsonElement findChild(JsonElement parent, String idShort) {
@@ -260,10 +256,7 @@ final class AasPropertyEventProcessor implements Processor {
 					+ response.statusCode());
 		}
 		JsonElement body = JsonParser.parseString(response.body());
-		if (body.isJsonObject() && body.getAsJsonObject().has("value")) {
-			return body.getAsJsonObject().get("value");
-		}
-		return body;
+		return body.isJsonObject() && body.getAsJsonObject().has("value") ? body : null;
 	}
 
 	private static JsonObject eventObject(Object body) {

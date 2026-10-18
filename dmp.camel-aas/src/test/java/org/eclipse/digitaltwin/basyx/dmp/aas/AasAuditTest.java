@@ -21,14 +21,14 @@ class AasAuditTest {
 
 	@Test
 	void readElementsAreLoggedAsTheirValues() {
-		assertEquals(42L, AasAudit.elementValue(Map.of("modelType", "Property", "valueType", "xs:int", "value", "42")));
-		assertEquals(Map.of("x", 1.5, "on", true), AasAudit.elementValue(Map.of("modelType", "SubmodelElementCollection",
+		assertEquals(42L, AasValues.elementValue(Map.of("modelType", "Property", "valueType", "xs:int", "value", "42")));
+		assertEquals(Map.of("x", 1.5, "on", true), AasValues.elementValue(Map.of("modelType", "SubmodelElementCollection",
 				"value", List.of(Map.of("modelType", "Property", "idShort", "x", "valueType", "xs:double", "value", "1.5"),
 						Map.of("modelType", "Property", "idShort", "on", "valueType", "xs:boolean", "value", "true")))));
-		assertEquals(List.of("a", "b"), AasAudit.elementValue(Map.of("modelType", "SubmodelElementList",
+		assertEquals(List.of("a", "b"), AasValues.elementValue(Map.of("modelType", "SubmodelElementList",
 				"value", List.of(Map.of("modelType", "Property", "valueType", "xs:string", "value", "a"),
 						Map.of("modelType", "Property", "valueType", "xs:string", "value", "b")))));
 		Object range = Map.of("modelType", "Range", "min", "1");
-		assertEquals(range, AasAudit.elementValue(range), "other element types are logged whole");
+		assertEquals(range, AasValues.elementValue(range), "other element types are logged whole");
 	}
 }

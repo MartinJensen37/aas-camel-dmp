@@ -3,13 +3,8 @@
 package org.eclipse.digitaltwin.basyx.dmp.aas;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
-import org.eclipse.digitaltwin.basyx.dmp.aas.operation.OperationPayloads;
 import org.eclipse.digitaltwin.basyx.dmp.core.audit.AuditLog;
 import org.eclipse.digitaltwin.basyx.dmp.core.audit.AuditPoint;
 
@@ -21,7 +16,7 @@ public final class AasAudit {
 	static void read(AASEndpoint endpoint, Object element, long startedNanos, Throwable failure) {
 		AuditLog.emit(() -> {
 			AuditPoint point = point("aas_read", endpoint, startedNanos, failure);
-			return failure == null ? point.value(elementValue(element)) : point;
+			return failure == null ? point.value(AasValues.elementValue(element)) : point;
 		});
 	}
 
@@ -51,32 +46,6 @@ public final class AasAudit {
 			return new String(Base64.getUrlDecoder().decode(encoded.replace("=", "")), StandardCharsets.UTF_8);
 		} catch (IllegalArgumentException notBase64) {
 			return encoded;
-		}
-	}
-
-	/** The plain value of an AAS element read as JSON: typed for Properties, maps and lists for containers. */
-	static Object elementValue(Object element) {
-		if (!(element instanceof Map<?, ?> map) || !(map.get("modelType") instanceof String modelType)) return element;
-		switch (modelType) {
-		case "Property": {
-			Object value = map.get("value");
-			return value == null ? null : OperationPayloads.coerceTyped(value, String.valueOf(map.get("valueType")));
-		}
-		case "SubmodelElementCollection": {
-			Map<String, Object> values = new LinkedHashMap<>();
-			if (map.get("value") instanceof List<?> children)
-				for (Object child : children)
-					if (child instanceof Map<?, ?> childMap && childMap.get("idShort") != null)
-						values.put(String.valueOf(childMap.get("idShort")), elementValue(child));
-			return values;
-		}
-		case "SubmodelElementList": {
-			List<Object> values = new ArrayList<>();
-			if (map.get("value") instanceof List<?> children) for (Object child : children) values.add(elementValue(child));
-			return values;
-		}
-		default:
-			return element;
 		}
 	}
 }

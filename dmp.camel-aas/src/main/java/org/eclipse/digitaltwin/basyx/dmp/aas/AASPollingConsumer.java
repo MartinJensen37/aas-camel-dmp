@@ -86,9 +86,11 @@ public class AASPollingConsumer extends PollingConsumerSupport {
         try {
 			// Camel's PollingConsumer timeout is in milliseconds. A failed read
 			// must return no exchange: an empty string would enter the fan-in cache.
-			Object decodedValue = timeout == WAIT_INDEFINITELY
+			Object element = timeout == WAIT_INDEFINITELY
 					? responseFuture.get() : responseFuture.get(timeout, TimeUnit.MILLISECONDS);
-			AasAudit.read(endpoint, decodedValue, started, null);
+			AasAudit.read(endpoint, element, started, null);
+			// Lua receives the element's value, typed as the value feed delivers it (SPEC §5.3).
+			Object decodedValue = AasValues.elementValue(element);
 			if (decodedValue == null) {
 				return null;
 			}

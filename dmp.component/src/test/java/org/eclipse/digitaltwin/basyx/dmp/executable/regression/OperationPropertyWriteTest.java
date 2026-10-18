@@ -75,8 +75,8 @@ import com.sun.net.httpserver.HttpServer;
  */
 class OperationPropertyWriteTest {
 	private static final String REQUEST_LUA =
-			// A polled AAS source carries the element as the repository serves it (value as lexical text).
-			"function aimc_main(sources) return { Setpoint = sources.Calibrate.Setpoint + tonumber(sources.Offset.value) } end";
+			// A fanned-in AAS Property arrives as its value, typed by its valueType (SPEC §5.3).
+			"function aimc_main(sources) return { Setpoint = sources.Calibrate.Setpoint + sources.Offset } end";
 	private static final String RESPONSE_LUA =
 			"function aimc_main(sources) return { Calibrate = {}, LastSetpoint = sources.Written } end";
 

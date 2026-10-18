@@ -106,7 +106,7 @@ class AasPropertyEventProcessorTest extends CamelTestSupport {
 	}
 
 	@Test
-	void collectionEventKeepsTheCompleteElementJson() throws Exception {
+	void collectionEventDeliversItsValueKeyedByIdShort() throws Exception {
 		MockEndpoint matched = getMockEndpoint("mock:smc-matched");
 		matched.expectedMessageCount(1);
 
@@ -114,13 +114,12 @@ class AasPropertyEventProcessorTest extends CamelTestSupport {
 				{"type":"SME_UPDATED","id":"urn:test:sm",
 				 "smElementPath":"Runtime.State",
 				 "smElement":{"modelType":"SubmodelElementCollection",
-				              "idShort":"State","value":[{"idShort":"Mode","value":"READY"}]}}
+				              "idShort":"State","value":[
+				                {"idShort":"Mode","modelType":"Property","valueType":"xs:string","value":"READY"},
+				                {"idShort":"Speed","modelType":"Property","valueType":"xs:double","value":"1.5"}]}}
 				""");
 
 		matched.assertIsSatisfied();
-		Map<?, ?> element = matched.getExchanges().get(0).getMessage().getBody(Map.class);
-		assertEquals("SubmodelElementCollection", element.get("modelType"));
-		assertEquals("State", element.get("idShort"));
-		assertEquals(java.util.List.of(Map.of("idShort", "Mode", "value", "READY")), element.get("value"));
+		assertEquals(Map.of("Mode", "READY", "Speed", 1.5), matched.getExchanges().get(0).getMessage().getBody(Map.class));
 	}
 }
