@@ -381,7 +381,21 @@ public final class WireProjection {
 		SubmodelElement items = directChild(e, "items", p);
 		Presence<DataSchema> item = items == null ? Presence.absent() : Presence.of(dataSchema(items, p + "/items"));
 		Presence<List<String>> required = stringArrayField(e, "required", p);
+		for (SubmodelElement child : children(e)) {
+			String term = child.getIdShort();
+			if (term != null && UNSUPPORTED_SCHEMA_TERMS.contains(term))
+				throw error(p + "/" + term, "the DMP does not support the schema term " + term);
+		}
+		String declaredType = e instanceof SubmodelElementCollection && directChild(e, "type", p) instanceof Property t ? t.getValue() : null;
+		if (declaredType != null && !SCHEMA_TYPES.contains(declaredType))
+			throw error(p + "/type", "unsupported schema type " + declaredType + " (expected one of " + SCHEMA_TYPES + ")");
 		Map<String,Object> constraints = new LinkedHashMap<>();
+		// AID writes bounds as Ranges (minimum/maximum as min_max, …) and const as a typed Property.
+		range(e, "min_max", "minimum", "maximum", false, constraints, p);
+		range(e, "lengthRange", "minLength", "maxLength", true, constraints, p);
+		range(e, "itemsRange", "minItems", "maxItems", true, constraints, p);
+		if (directChild(e, "const", p) instanceof Property constant && constant.getValue() != null)
+			constraints.put("const", typedConstant(constant.getValue(), declaredType, p));
 		for (String key : List.of("minimum","maximum","exclusiveMinimum","exclusiveMaximum","minLength","maxLength","pattern",
 				"minItems","maxItems","uniqueItems","enum","format","valueFormat")) {
 			SubmodelElement c = directChild(e, key, p);
@@ -422,6 +436,52 @@ public final class WireProjection {
 		}
 		return new DataSchema(stringField(e, "valueType", p), stringField(e, "contentType", p), stringField(e, "valueFormat", p),
 				stringField(e, "type", p), properties, item, required, constraints, e);
+	}
+
+	/** JSON-schema terms whose meaning the DMP cannot honour; an AID using them is rejected, not misread. */
+	private static final java.util.Set<String> UNSUPPORTED_SCHEMA_TERMS = java.util.Set.of("oneOf", "anyOf", "allOf", "not",
+			"if", "then", "else", "$ref", "prefixItems", "additionalProperties", "patternProperties", "contentEncoding", "contentMediaType");
+	private static final List<String> SCHEMA_TYPES = List.of("boolean", "integer", "number", "string", "object", "array", "null");
+
+	/** An AID Range ({@code min_max}, {@code lengthRange}, {@code itemsRange}) as its two JSON-schema bounds. */
+	private static void range(SubmodelElement schema, String term, String lower, String upper, boolean count,
+			Map<String,Object> constraints, String p) {
+		SubmodelElement element = directChild(schema, term, p);
+		if (element == null) return;
+		if (!(element instanceof Range range)) throw error(p + "/" + term, term + " must be a Range");
+		try {
+			if (range.getMin() != null && !range.getMin().isBlank()) constraints.put(lower, bound(range.getMin(), count));
+			if (range.getMax() != null && !range.getMax().isBlank()) constraints.put(upper, bound(range.getMax(), count));
+		} catch (IllegalArgumentException invalid) {
+			throw error(p + "/" + term, "invalid " + term + " bound");
+		}
+	}
+
+	private static Object bound(String text, boolean count) {
+		if (count) {
+			long value = Long.parseLong(text.trim());
+			if (value < 0) throw new IllegalArgumentException();
+			return value;
+		}
+		double value = Double.parseDouble(text.trim());
+		if (!Double.isFinite(value)) throw new IllegalArgumentException();
+		return JsonCodec.normalizeNumbers(value);
+	}
+
+	/** A const as the JSON value of the schema's type (AID keeps it as text). */
+	private static Object typedConstant(String text, String type, String p) {
+		try {
+			return switch (type == null ? "" : type) {
+				case "integer", "number" -> JsonCodec.normalizeNumbers(Double.parseDouble(text.trim()));
+				case "boolean" -> {
+					if (!text.equalsIgnoreCase("true") && !text.equalsIgnoreCase("false")) throw new IllegalArgumentException();
+					yield Boolean.valueOf(text.trim());
+				}
+				default -> text;
+			};
+		} catch (IllegalArgumentException invalid) {
+			throw error(p + "/const", "const does not fit the schema type " + type);
+		}
 	}
 
 	private static List<SubmodelElement> requiredList(SubmodelElementCollection mapping, String id, int index) {

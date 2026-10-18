@@ -28,6 +28,7 @@ import org.eclipse.digitaltwin.basyx.dmp.aas.model.Aas;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.eclipse.digitaltwin.aas4j.v3.model.Submodel;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class WireProjectionTest {
@@ -219,6 +220,46 @@ class WireProjectionTest {
 		String unknown=valid.replace("http://www.w3.org/2011/http","urn:unsupported:binding")
 				.replace("http://www.w3.org/2011/mqtt","urn:another:binding");
 		assertThrows(WireProjectionException.class,()->WireProjection.aid(sm(unknown)));
+	}
+
+	@Test void projectsAidRangesAndConstAsJsonSchemaConstraints() {
+		var schema=schemaWith("""
+				{"modelType":"Property","idShort":"type","valueType":"xs:string","value":"integer"},
+				{"modelType":"Range","idShort":"min_max","valueType":"xs:int","min":"0","max":"100"},
+				{"modelType":"Property","idShort":"const","valueType":"xs:int","value":"42"},
+				{"modelType":"Property","idShort":"unit","valueType":"xs:string","value":"rpm"}""");
+		assertEquals(Map.of("minimum",0L,"maximum",100L,"const",42L),schema.constraints());
+		var text=schemaWith("""
+				{"modelType":"Property","idShort":"type","valueType":"xs:string","value":"string"},
+				{"modelType":"Range","idShort":"lengthRange","valueType":"xs:int","min":"1"}""");
+		assertEquals(Map.of("minLength",1L),text.constraints(),"an open bound is left out");
+		var list=schemaWith("""
+				{"modelType":"Property","idShort":"type","valueType":"xs:string","value":"array"},
+				{"modelType":"Range","idShort":"itemsRange","valueType":"xs:int","min":"2","max":"3"}""");
+		assertEquals(Map.of("minItems",2L,"maxItems",3L),list.constraints());
+	}
+
+	@Test void rejectsSchemaTermsAndTypesTheDmpCannotHonour() {
+		for(String children:java.util.List.of(
+				"{\"modelType\":\"SubmodelElementList\",\"idShort\":\"oneOf\",\"value\":[]}",
+				"{\"modelType\":\"Property\",\"idShort\":\"$ref\",\"valueType\":\"xs:string\",\"value\":\"#/x\"}",
+				"{\"modelType\":\"Property\",\"idShort\":\"type\",\"valueType\":\"xs:string\",\"value\":\"date\"}",
+				"{\"modelType\":\"Property\",\"idShort\":\"type\",\"valueType\":\"xs:string\",\"value\":\"boolean\"},"
+				+ "{\"modelType\":\"Property\",\"idShort\":\"const\",\"valueType\":\"xs:string\",\"value\":\"maybe\"}"))
+			assertThrows(WireProjectionException.class,()->schemaWith(children),children);
+	}
+
+	/** The projected DataSchema of an HTTP interface whose only schema has these children. */
+	private static WireModel.DataSchema schemaWith(String children) {
+		String aid=submodel(AID_SEMANTIC,"""
+				[{"modelType":"SubmodelElementCollection","idShort":"http",
+				  "semanticId":{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"%s"}]},
+				  "supplementalSemanticIds":[{"type":"ExternalReference","keys":[{"type":"GlobalReference","value":"http://www.w3.org/2011/http"}]}],
+				  "value":[{"modelType":"SubmodelElementCollection","idShort":"InteractionMetadata","value":[
+				    {"modelType":"SubmodelElementCollection","idShort":"DataSchema","value":[%s]}
+				  ]}]}]
+				""".formatted(AID_INTERFACE_SEMANTIC,children));
+		return WireProjection.aid(sm(aid)).interfaces().get(0).schemas().get(0);
 	}
 
 	@Test void preservesTypeLessSchemasAndUnusualIdentifiers() {
