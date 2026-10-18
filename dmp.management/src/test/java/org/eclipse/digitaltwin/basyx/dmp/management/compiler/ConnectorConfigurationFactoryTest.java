@@ -22,6 +22,8 @@ import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASPollingDataSourceC
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.ProtocolBridgeRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpDataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpObserveDataSourceConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.snmp.configuration.SnmpDataSinkConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.snmp.configuration.SnmpDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.LuaTransformerConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.paho.configuration.MqttDataSinkConfiguration;
@@ -323,6 +325,30 @@ class ConnectorConfigurationFactoryTest {
 				"event".equals(kind)?List.of(affordance):List.of(),Presence.of(endpointMetadata),
 				Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent());
 		return new AidTarget(new AasReferenceResolver.AidTarget(iface,affordance,Presence.absent(),List.of()));
+	}
+
+	@Test
+	void snmpFormsCompileToCheckedGetsAndTypedSets() {
+		var read=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://10.0.0.5:161/","1.3.6.1.2.1.1.3.0",Map.of(),null));
+		var write=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://private@10.0.0.5",
+				"/1.3.6.1.4.1.9999.1.0",Map.of("snmpv_pduType","snmpv:SetRequestPDU","snmpv_version","SNMPv1"),null));
+		var result=factory.create(new Plan(List.of(mappingWithEndpoints(read,write))),"route");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var source=assertInstanceOf(SnmpDataSourceConfiguration.class,result.configuration().getDatasources().values().iterator().next());
+		assertEquals("dmp-snmp:10.0.0.5:161?oid=1.3.6.1.2.1.1.3.0&version=SNMPv2c",source.getConnectionURI());
+		assertEquals("sync",source.getDelivery());
+		var sink=assertInstanceOf(SnmpDataSinkConfiguration.class,result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("dmp-snmp:10.0.0.5:161?oid=1.3.6.1.4.1.9999.1.0&version=SNMPv1&community=RAW(private)",sink.getConnectionURI());
+
+		for(var rejected:List.of(
+				Map.entry(protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://10.0.0.5/","sysDescr",Map.of(),null),"snmp://{address}:{port}/{oid}"),
+				Map.entry(protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://10.0.0.5/","1.3.6.1.2.1.1.3.0",
+						Map.of("snmpv_pduType","SetRequestPDU"),null),"does not serve this mapping role"),
+				Map.entry(protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://10.0.0.5/","1.3.6.1.2.1.1.3.0",
+						Map.of("snmpv_version","SNMPv3"),null),"not supported"))) {
+			var failed=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",rejected.getKey()),write))),"route");
+			assertTrue(failed.issues().stream().anyMatch(issue -> issue.message().contains(rejected.getValue())),failed.issues().toString());
+		}
 	}
 
 	@Test

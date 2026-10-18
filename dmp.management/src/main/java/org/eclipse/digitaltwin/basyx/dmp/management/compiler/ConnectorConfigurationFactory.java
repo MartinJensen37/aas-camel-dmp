@@ -32,6 +32,8 @@ import org.eclipse.digitaltwin.basyx.dmp.aas.operation.OperationVariableValues;
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.ProtocolBridgeRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpDataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpObserveDataSourceConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.snmp.configuration.SnmpDataSinkConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.snmp.configuration.SnmpDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.lua.configuration.LuaTransformerConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaCompiledSource;
@@ -654,6 +656,7 @@ public final class ConnectorConfigurationFactory {
 			Set<String> terms=switch(family) {
 				case MQTT -> Set.of("mqv_qos","mqv_retain","mqv_controlPacket","mqv_responseTopic");
 				case OPCUA -> Set.of("uav_browsePath");
+				case SNMP -> Set.of("snmpv_pduType","snmpv_version");
 				case MODBUS -> Set.of("modv_entity","modv_function","modv_type","modv_zeroBasedAddressing","modv_mostSignificantByte",
 						"modv_mostSignificantWord","modv_pollingTime","modv_timeout");
 				default -> Set.of();
@@ -877,6 +880,9 @@ public final class ConnectorConfigurationFactory {
 		if (families.equals(List.of(WireModel.ProtocolFamily.BACNET))) {
 			return plc4xSource(endpoint,mapping,position,target,issues);
 		}
+		if (families.equals(List.of(WireModel.ProtocolFamily.SNMP))) {
+			return snmpSource(endpoint,mapping,position,target,issues);
+		}
 		if (!families.equals(List.of(WireModel.ProtocolFamily.HTTP))
 				&& !families.equals(List.of(WireModel.ProtocolFamily.IOLINK))) {
 			issue(issues,mapping,path,"unsupported or ambiguous source protocol family "+families);
@@ -969,6 +975,9 @@ public final class ConnectorConfigurationFactory {
 		}
 		if (families.equals(List.of(WireModel.ProtocolFamily.BACNET))) {
 			return plc4xSink(endpoint,mapping,position,target,issues);
+		}
+		if (families.equals(List.of(WireModel.ProtocolFamily.SNMP))) {
+			return snmpSink(endpoint,mapping,position,target,issues);
 		}
 		if (!families.equals(List.of(WireModel.ProtocolFamily.HTTP))
 				&& !families.equals(List.of(WireModel.ProtocolFamily.IOLINK))) {
@@ -1200,6 +1209,76 @@ public final class ConnectorConfigurationFactory {
 	}
 
 	private static Form selectedForm(AidTarget target) { return target.resolved().affordance().forms().get(0); }
+
+	/** An SNMP object as the AID 1.2 SNMP binding (Annex E.1) addresses it. */
+	private record SnmpForm(String host, int port, String oid, String version, String community) { }
+
+	private static DataSourceConfiguration snmpSource(EndpointPlan endpoint, MappingPlan mapping, int position,
+			AidTarget target, List<Issue> issues) {
+		String path=endpointPath(mapping,"Sources",position);
+		SnmpForm form=snmpForm(target,true,mapping,path,issues);
+		if(form==null)return null;
+		// SNMP has no observation in the binding: a source is read (GET) at its polling interval.
+		SnmpDataSourceConfiguration source=new SnmpDataSourceConfiguration(entityId(mapping,"source",position),
+				form.host(),form.port(),form.oid(),form.version(),form.community());
+		source.setSourceId(endpoint.id());
+		source.setSchema(schemaForAidTarget(target,mapping,path,issues));
+		setValuePath(source,target);
+		if(endpoint.pollingInterval().present()) {
+			OptionalLong interval=endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues);
+			if(interval.isPresent())source.setPollingIntervalMs(interval.getAsLong());
+		}
+		return hasIssue(issues,mapping)?null:source;
+	}
+
+	private static DataSinkConfiguration snmpSink(EndpointPlan endpoint, MappingPlan mapping, int position,
+			AidTarget target, List<Issue> issues) {
+		String path=endpointPath(mapping,"Sinks",position);
+		SnmpForm form=snmpForm(target,false,mapping,path,issues);
+		if(form==null)return null;
+		SnmpDataSinkConfiguration sink=new SnmpDataSinkConfiguration(entityId(mapping,"sink",position),
+				form.host(),form.port(),form.oid(),form.version(),form.community());
+		sink.setSinkId(endpoint.id());
+		sink.setSchema(schemaForAidTarget(target,mapping,path,issues));
+		setValuePath(sink,target);
+		return hasIssue(issues,mapping)?null:sink;
+	}
+
+	/**
+	 * The resolved form {@code snmp://{address}:{port}/{oid}} (port 161 by default), {@code snmpv_pduType}
+	 * (GetRequestPDU to read, SetRequestPDU to write; the binding's defaults) and {@code snmpv_version}
+	 * (SNMPv1 or SNMPv2c, default SNMPv2c). The community is the URI's user information, else {@code public}.
+	 */
+	private static SnmpForm snmpForm(AidTarget target, boolean read, MappingPlan mapping, String path, List<Issue> issues) {
+		if(target.resolved().affordance().forms().size()!=1) {
+			issue(issues,mapping,path+"/forms","expected exactly one authored form; missing or ambiguous forms are rejected");return null;
+		}
+		Form form=selectedForm(target);
+		URI uri=formUri(target,form,mapping,path,issues);
+		if(uri==null)return null;
+		String oid=uri.getPath()==null?"":uri.getPath().replaceFirst("^/","");
+		if(!"snmp".equalsIgnoreCase(uri.getScheme()) || uri.getHost()==null || !oid.matches("\\d+(\\.\\d+)+")) {
+			issue(issues,mapping,path+"/forms/href","an SNMP form resolves to snmp://{address}:{port}/{oid}");return null;
+		}
+		String pdu=snmpTerm(form,"snmpv_pduType");
+		String expected=read?"GetRequestPDU":"SetRequestPDU";
+		if(pdu!=null && !expected.equalsIgnoreCase(pdu)) {
+			issue(issues,mapping,path+"/forms/snmpv_pduType","snmpv_pduType "+pdu+" does not serve this mapping role (expected "+expected+")");return null;
+		}
+		String version=snmpTerm(form,"snmpv_version");
+		if(version==null)version="SNMPv2c";
+		if(!List.of("snmpv1","snmpv2c").contains(version.toLowerCase(java.util.Locale.ROOT))) {
+			issue(issues,mapping,path+"/forms/snmpv_version","SNMP version "+version+" is not supported (SNMPv1, SNMPv2c)");return null;
+		}
+		return new SnmpForm(uri.getHost(),uri.getPort()>0?uri.getPort():161,oid,version,
+				uri.getUserInfo()==null || uri.getUserInfo().isBlank()?null:uri.getUserInfo());
+	}
+
+	/** An SNMP form term, without the {@code snmpv:} prefix a value may carry. */
+	private static String snmpTerm(Form form, String name) {
+		String value=form.bindingTerms().get(name);
+		return value==null || value.isBlank()?null:value.trim().replaceFirst("^snmpv:","");
+	}
 
 	/** The form's WoT {@code subprotocol} (longpoll, sse, websub), lower case; null when absent. */
 	private static String httpSubprotocol(Form form) {

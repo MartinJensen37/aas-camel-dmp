@@ -71,7 +71,9 @@ public final class WireProjection {
 			"http://www.w3.org/2011/modbus",ProtocolFamily.MODBUS,
 			"http://opcfoundation.org/UA/WoT-Binding/",ProtocolFamily.OPCUA,
 			"http://www.w3.org/2022/bacnet",ProtocolFamily.BACNET,
-			"https://admin-shell.io/idta/AssetInterfacesDescription/1/1/IO-Link",ProtocolFamily.IOLINK);
+			"https://admin-shell.io/idta/AssetInterfacesDescription/1/1/IO-Link",ProtocolFamily.IOLINK,
+			"https://admin-shell.io/idta/AssetInterfacesDescription/1/2/SNMP",ProtocolFamily.SNMP,
+			"https://admin-shell.io/idta/AssetInterfacesDescription/1/2/CAN",ProtocolFamily.CAN);
 	private static final String AID_ENDPOINT = "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata";
 	private static final String AID_INTERACTION = "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata";
 	private static final String WOT_FORM = "https://www.w3.org/2019/wot/td#hasForm";
@@ -85,7 +87,7 @@ public final class WireProjection {
 	private static final Set<String> MAPPING_FIELDS = Set.of("Sources","Sinks","DefaultPollingInterval","Transformation",
 			"ResponseSources","ResponseSinks","ResponseTransformation","ExecutionSemantics");
 	private static final Set<String> RETIRED_ID_SHORTS = Set.of("executionpolicy","writedelegation","luamode","transformengine","jsonata","querylanguage");
-	private static final List<String> BINDING_PREFIXES = List.of("mqv_","uav_","modv_","bacv_","iolv_","canv_");
+	private static final List<String> BINDING_PREFIXES = List.of("mqv_","uav_","modv_","bacv_","iolv_","canv_","snmpv_");
 	private WireProjection() { }
 
 	public static boolean isAimc(Submodel submodel) { return hasExactSemantic(submodel, AIMC); }

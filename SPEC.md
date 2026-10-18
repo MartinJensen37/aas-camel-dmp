@@ -14,7 +14,7 @@ Administration Shells. It:
    AAS v3 repository and the AID (Asset Interfaces Description) and other
    submodels they reference;
 2. compiles each mapping into Camel routes that acquire values from sources
-   (MQTT, OPC UA, HTTP, Modbus via PLC4X, AAS elements), transform them
+   (MQTT, OPC UA, HTTP, Modbus via PLC4X, SNMP, AAS elements), transform them
    with a sandboxed Lua script, and write them to sinks;
 3. serves AAS Operation invocations delegated by BaSyx and forwards them to the
    device over HTTP, OPC UA Methods or MQTT 5 request/reply, or as a property
@@ -70,7 +70,7 @@ flowchart LR
 | `dmp.core` | Route model, execution-policy route creator, fan-in/fan-out, payload assembly, affordance validation, bundle lifecycle |
 | `dmp.camel-lua` | `lua:` component and sandbox |
 | `dmp.camel-aas` | AAS element read/write, `aas-event:` source, Operation bridge |
-| `dmp.camel-paho`, `-opcua`, `-http`, `-plc4x` | Connectors reachable from AID bindings, including the DMP Camel components (§9) |
+| `dmp.camel-paho`, `-opcua`, `-http`, `-plc4x`, `-snmp` | Connectors reachable from AID bindings, including the DMP Camel components (§9) |
 | `dmp.component` | Executable, settings, `/health`, `/management/status`, image |
 
 ## 4. Discovery and lifecycle
@@ -137,8 +137,8 @@ to devices. Such a source has no value until its first change event.
 
 Accepted template versions: AIMC 2.0 and its bug-fix release 2.1 (same
 semantic ID; 2.1 list members carry no idShort, so an unnamed mapping is
-identified by its position), and AID 1.1 and 1.2 (1.2 adds the SNMP and CAN
-bindings, not yet supported (PLAN), and optional fields such as
+identified by its position), and AID 1.1 and 1.2 (1.2 adds the SNMP binding,
+supported, and the CAN binding, not yet (PLAN), and optional fields such as
 `EndpointMetadata/protocolVersion`, which the DMP ignores). Other versions
 block the mappings that reference them.
 
@@ -336,6 +336,24 @@ OPC UA follows OPC 10101 (the OPC UA binding for WoT):
   and a field the event lacks is `null`. `PollingInterval` sets the
   publishing interval.
 
+SNMP follows the AID 1.2 SNMP binding (Annex E.1), v1 and v2c:
+
+- The resolved `href` is `snmp://{address}:{port}/{oid}` (port 161 by
+  default; the base `snmp://{address}:{port}/` and the OID as a relative href
+  resolve to the same). The community is the URI's user information
+  (`snmp://community@host`), else `public`.
+- `snmpv_pduType` is `snmpv:GetRequestPDU` to read (the default of
+  readproperty) and `snmpv:SetRequestPDU` to write (writeproperty); a PDU type
+  that contradicts the mapping role blocks it. `snmpv_version` is
+  `snmpv:SNMPv1` or `snmpv:SNMPv2c` (default).
+- A source is read with GET at its polling interval (SNMP has no
+  observation); a sink is a SET of the object's own SMI type, learned from a
+  GET. An error status, a missing object or no answer within 1.5 s (one retry)
+  fails the read or write.
+- Values: INTEGER, Counter32/64, Gauge32 and TimeTicks are numbers, an OCTET
+  STRING its text when printable and hex otherwise, an IpAddress and an OBJECT
+  IDENTIFIER their dotted text. Actions, events and traps are not supported.
+
 Event affordances of every binding carry the WoT EventAffordance terms
 (`subscription`, `data`, `dataResponse`, `cancellation`); the DMP consumes
 `data` and rejects the other three, since MQTT and OPC UA subscriptions carry
@@ -522,6 +540,7 @@ end
 | MQTT 5 | Observe (subscribe), Write (publish), Invoke (request/reply) | Read; MQTT 3.1.1 |
 | HTTP | Read (poll), Observe and events (`longpoll`, `sse`), Write, Invoke | `websub`, `htv_headers`, inbound requests other than Operations |
 | PLC4X (Modbus) | Read, acknowledged Write of one tag per affordance | Invoke (Modbus has no actions) |
+| SNMP (v1, v2c) | Read (GET, polled), Write (SET) | Traps, SNMPv3, tables |
 | BACnet | — (rejected: the PLC4X 0.13.1 `bacnet-ip` driver neither reads nor writes; it only listens for COV notifications) | Read, Write, Observe |
 
 Data-plane MQTT clients are one per endpoint; their credentials are bound in
@@ -536,6 +555,7 @@ any component, and the upstream component stays usable unchanged:
 | --- | --- | --- |
 | `dmp-plc4x:` | camel-plc4x | acknowledged writes and checked reads (failures raise instead of being logged or read as `{}`); the body is the tag value |
 | `dmp-milo-client:` | camel-milo client | a Method producer that answers with the Call's result (camel-milo 4.22 drops it); a consumer whose monitored item has its own subscription and a sample queue (camel-milo shares one subscription per server, created with the first endpoint's publishing interval, and keeps only the latest sample); event monitored items with an EventFilter (options `eventFields`, `eventType`; camel-milo has only data-change filters); a Write producer that waits for the server, fails on a Bad status and writes scalars as the variable's DataType (camel-milo ignores the status); structures decoded and encoded with the server's DataTypes (§5.2) |
+| `dmp-snmp:` | camel-snmp (SNMP4J) | checked GET (error status, missing object and timeout raise) and SET of the object's own SMI type; camel-snmp has no SET |
 | `paho-mqtt5-inout:` | camel-paho-mqtt5 | MQTT 5 request/reply with correlation; owns its reply consumer and publish producer |
 | `dmp-http-observe:` | — (camel-http has no consumer) | observing an HTTP resource by long polling or server-sent events (§5.2) |
 
