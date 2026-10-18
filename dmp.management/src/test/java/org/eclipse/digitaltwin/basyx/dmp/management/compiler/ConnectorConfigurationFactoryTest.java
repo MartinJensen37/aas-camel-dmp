@@ -352,6 +352,50 @@ class ConnectorConfigurationFactoryTest {
 	}
 
 	@Test
+	void staticHttpHeadersAreBoundAndInvalidOnesRejected() {
+		var poll=endpointPlan("read",httpWithHeaders("GET",null,header("X-Api-Key","s3cret")));
+		var write=endpointPlan("write",httpWithHeaders("PUT",null,header("Authorization","Bearer token-1")));
+		var result=factory.create(new Plan(List.of(mappingWithEndpoints(poll,write))),"route");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var source=assertInstanceOf(HttpPollingDataSourceConfiguration.class,result.configuration().getDatasources().values().iterator().next());
+		assertTrue(source.getConnectionURI().contains("httpClientConfigurer=#bean:dmp-http-headers-"),source.getConnectionURI());
+		assertFalse(source.getConnectionURI().contains("s3cret"));
+		var sink=assertInstanceOf(HttpDataSinkConfiguration.class,result.configuration().getDatasinks().values().iterator().next());
+		assertFalse(sink.getConnectionURI().contains("token-1"));
+
+		for(var rejected:List.of(
+				Map.entry(httpWithHeaders("GET",null,header("Content-Type","text/plain")),"set by the connector"),
+				Map.entry(httpWithHeaders("GET",null,header("Bad Name","x")),"valid htv_fieldName"),
+				Map.entry(httpWithHeaders("GET",null,header("X-A","1"),header("x-a","2")),"declared twice"),
+				Map.entry(httpWithHeaders("GET","sse",header("Accept","text/plain")),"set by its subprotocol"))) {
+			var failed=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",rejected.getKey()),write))),"route");
+			assertTrue(failed.issues().stream().anyMatch(issue -> issue.message().contains(rejected.getValue())),failed.issues().toString());
+		}
+	}
+
+	private static SubmodelElement header(String name,String value) {
+		return AasFixtures.collection(null,property("htv_fieldName",name),property("htv_fieldValue",value));
+	}
+
+	/** An observable HTTP property on http://api.example:8080/value whose form carries htv_headers (and a subprotocol). */
+	private static AidTarget httpWithHeaders(String method,String subprotocol,SubmodelElement... headers) {
+		var list=new org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultSubmodelElementList.Builder().idShort("htv_headers")
+				.typeValueListElement(org.eclipse.digitaltwin.aas4j.v3.model.AasSubmodelElements.SUBMODEL_ELEMENT_COLLECTION)
+				.value(List.of(headers)).build();
+		SubmodelElement formElement=subprotocol==null?AasFixtures.collection(null,list)
+				:AasFixtures.collection(null,list,property("subprotocol",subprotocol));
+		var form=new WireModel.Form(Presence.of("value"),Presence.absent(),List.of(),Presence.of(method),Map.of(),Presence.absent(),
+				Map.of(),formElement);
+		var affordance=new WireModel.Affordance("property",Presence.of("value"),Presence.absent(),List.of(form),
+				Presence.absent(),Presence.absent(),Presence.absent(),AasFixtures.collection("value",property("observable","true")));
+		SubmodelElement endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base","http://api.example:8080/"));
+		var iface=new WireModel.Interface("interface-semantic","interface_http",List.of("http"),List.of(WireModel.ProtocolFamily.HTTP),
+				emptyElement(),List.of(form),List.of(),List.of(affordance),List.of(),List.of(),Presence.of(endpointMetadata),
+				Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent());
+		return new AidTarget(new AasReferenceResolver.AidTarget(iface,affordance,Presence.absent(),List.of()));
+	}
+
+	@Test
 	void theFormMustServeTheMappingRole() {
 		var endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base","mqtt://broker.example:1883/"));
 		var readOnly=new WireModel.Affordance("property",Presence.of("State"),Presence.absent(),List.of(mqttForm("state","0",null)),

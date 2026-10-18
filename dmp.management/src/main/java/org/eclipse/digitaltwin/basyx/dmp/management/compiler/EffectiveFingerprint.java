@@ -204,6 +204,7 @@ public final class EffectiveFingerprint {
 		if (name == null) return false;
 		String key = name.toLowerCase(java.util.Locale.ROOT);
 		return key.contains("password") || key.contains("credential") || key.contains("username")
-				|| key.contains("secret") || key.contains("token") || key.contains("authorization") || key.equals("query");
+				|| key.contains("secret") || key.contains("token") || key.contains("authorization") || key.equals("query")
+				|| key.equals("htv_fieldvalue"); // a static HTTP header may carry an API key
 	}
 }

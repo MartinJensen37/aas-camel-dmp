@@ -16,15 +16,17 @@ final class DmpHttpObserveEndpoint extends DefaultEndpoint {
 	private final String contentType;
 	private final String username;
 	private final String password;
+	private final java.util.Map<String, String> headers;
 
 	DmpHttpObserveEndpoint(String uri, DmpHttpObserveComponent component, DmpHttpObserveComponent.Subprotocol subprotocol,
-			URI url, String contentType, String username, String password) {
+			URI url, String contentType, String username, String password, java.util.Map<String, String> headers) {
 		super(uri, component);
 		this.subprotocol = subprotocol;
 		this.url = url;
 		this.contentType = contentType;
 		this.username = username;
 		this.password = password;
+		this.headers = java.util.Map.copyOf(headers);
 	}
 
 	@Override public Producer createProducer() {
@@ -42,4 +44,5 @@ final class DmpHttpObserveEndpoint extends DefaultEndpoint {
 	String contentType() { return contentType; }
 	String username() { return username; }
 	String password() { return password; }
+	java.util.Map<String, String> headers() { return headers; }
 }

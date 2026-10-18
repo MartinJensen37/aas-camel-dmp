@@ -44,6 +44,10 @@ public final class DmpHttpObserveComponent extends DefaultComponent {
 		String contentType = getAndRemoveParameter(parameters, "contentType", String.class, "application/json");
 		String username = getAndRemoveParameter(parameters, "authUsername", String.class);
 		String password = getAndRemoveParameter(parameters, "authPassword", String.class);
-		return new DmpHttpObserveEndpoint(uri, this, subprotocol, target, contentType, username, password);
+		// The form's static htv_headers, bound in the registry and only named in the URI.
+		Map<?, ?> headers = getAndRemoveOrResolveReferenceParameter(parameters, "headers", Map.class);
+		Map<String, String> fields = new java.util.LinkedHashMap<>();
+		if (headers != null) headers.forEach((name, value) -> fields.put(String.valueOf(name), String.valueOf(value)));
+		return new DmpHttpObserveEndpoint(uri, this, subprotocol, target, contentType, username, password, fields);
 	}
 }

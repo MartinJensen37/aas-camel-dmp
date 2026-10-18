@@ -211,12 +211,20 @@ cannot honour reject the AID: `oneOf`, `anyOf`, `allOf`, `not`,
 `patternProperties`, `contentEncoding`, `contentMediaType`, and any other `type`.
 
 An `op` value outside the WoT operation types, an unrepresented form term
-(e.g. `htv_headers`, subprotocol `websub`, a form `security` selection) or a
+(e.g. subprotocol `websub`, a form `security` selection) or a
 binding term of another protocol blocks the mapping.
 
 **HTTP.** The method is `htv_methodName` (mandatory in AID), else the WoT
 default: GET to read, PUT to write, POST to invoke. A read is a GET poll; a
-write is PUT, POST or PATCH. Bodies are JSON.
+write is PUT, POST or PATCH. Bodies are JSON. A form's static `htv_headers`
+(`htv_fieldName`/`htv_fieldValue` pairs) go with every request of the form:
+polls, observations, writes and invocations. Names must be HTTP tokens and
+unique, values one line; headers the connector sets (`Content-Type`,
+`Content-Length`, `Host`, `Connection`, `Transfer-Encoding`, …) are rejected, so
+is `Accept` on an observed form and `Authorization` next to credentials in the
+href. Header values may be secrets: they are bound in the Camel registry and
+never appear in endpoint URIs or the exported fingerprint. HTTP requests are
+not retried automatically.
 
 A form with a `subprotocol` (AID 2.24.1, WoT HTTP binding) observes: it must
 serve `observeproperty` (a property, e.g. `observable` true) or
@@ -539,7 +547,7 @@ end
 | AAS | Read, Observe (events), Write, Accept invocation | Operation sinks |
 | OPC UA (Milo) | Read (Read service), Observe (monitored items), Events (event monitored items, DMP extension), Write, Invoke (Method); structures, unions and enumerations the server describes | Encodings the server does not describe, pre-1.04 DataTypeDictionaries, condition refresh and acknowledgement |
 | MQTT 5 | Observe (subscribe), Write (publish), Invoke (request/reply) | Read; MQTT 3.1.1 |
-| HTTP | Read (poll), Observe and events (`longpoll`, `sse`), Write, Invoke | `websub`, `htv_headers`, inbound requests other than Operations |
+| HTTP | Read (poll), Observe and events (`longpoll`, `sse`), Write, Invoke; static headers | `websub`, inbound requests other than Operations |
 | PLC4X (Modbus) | Read, acknowledged Write of one tag per affordance | Invoke (Modbus has no actions) |
 | SNMP (v1, v2c) | Read (GET, polled), Write (SET) | Traps, SNMPv3, tables |
 | BACnet | — (rejected: the PLC4X 0.13.1 `bacnet-ip` driver neither reads nor writes; it only listens for COV notifications) | Read, Write, Observe |

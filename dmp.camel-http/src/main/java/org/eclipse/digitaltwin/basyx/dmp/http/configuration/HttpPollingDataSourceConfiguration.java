@@ -31,10 +31,27 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSourceCon
  * @author n14s - Niklas Mertens
  *
  */
-public class HttpPollingDataSourceConfiguration extends DataSourceConfiguration {
+public class HttpPollingDataSourceConfiguration extends DataSourceConfiguration
+		implements org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource {
 	public HttpPollingDataSourceConfiguration() {}
 	private	String authUsername;
 	private String authPassword;
+	/** The form's static htv_headers; bound in the registry while the bundle lives. */
+	private StaticHttpHeaders headers;
+
+	public void setHeaders(java.util.Map<String, String> headers) {
+		this.headers = headers == null || headers.isEmpty() ? null : new StaticHttpHeaders(headers);
+	}
+
+	@Override
+	public void bind(org.apache.camel.CamelContext context) {
+		if (headers != null) headers.bind(context);
+	}
+
+	@Override
+	public void close() {
+		if (headers != null) headers.close();
+	}
 	
 	public HttpPollingDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String authUsername, String authPassword) {
 		super(uniqueId, serverUrl, serverPort);
@@ -44,12 +61,11 @@ public class HttpPollingDataSourceConfiguration extends DataSourceConfiguration 
 
 	@Override
 	public String getConnectionURI() {
-
+		String uri = getServerUrl();
 		if(!(authUsername == null || authPassword == null)) {
-			String dataSourceServerUrl = getServerUrl();
-			return dataSourceServerUrl + (dataSourceServerUrl.contains("?")? "&" : "?") + "authUsername=" + authUsername + "&authPassword=" + authPassword+"&authMethod=Basic&authenticationPreemptive=true";
+			uri = uri + (uri.contains("?")? "&" : "?") + "authUsername=" + authUsername + "&authPassword=" + authPassword+"&authMethod=Basic&authenticationPreemptive=true";
 		}
-
-		return getServerUrl();
+		if (headers != null) uri = uri + (uri.contains("?") ? "&" : "?") + headers.clientConfigurerOption();
+		return uri;
 	}
 }

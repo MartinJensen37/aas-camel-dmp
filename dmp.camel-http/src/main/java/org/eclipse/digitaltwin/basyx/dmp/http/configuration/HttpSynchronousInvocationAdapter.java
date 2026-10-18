@@ -91,9 +91,11 @@ public final class HttpSynchronousInvocationAdapter implements SynchronousInvoca
 
 	/** The action client never retries and gives up after the action's timeout. */
 	private static String invocationUri(String endpointUri, long timeoutMillis) {
-		return endpointUri + (endpointUri.contains("?") ? "&" : "?")
-				+ "httpClientConfigurer=#class:" + NoRetryHttpClientConfigurer.class.getName()
-				+ "&responseTimeout=" + timeoutMillis + "&connectTimeout=" + timeoutMillis;
+		// A form with static headers names its own configurer, which also disables retries.
+		String configurer = endpointUri.contains("httpClientConfigurer=") ? ""
+				: "httpClientConfigurer=#class:" + NoRetryHttpClientConfigurer.class.getName() + "&";
+		return endpointUri + (endpointUri.contains("?") ? "&" : "?") + configurer
+				+ "responseTimeout=" + timeoutMillis + "&connectTimeout=" + timeoutMillis;
 	}
 
 	private static long timeoutMillis(InvocationSchema schema) {

@@ -35,7 +35,25 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfi
  * @author rana
  *
  */
-public class HttpDataSinkConfiguration extends DataSinkConfiguration{
+public class HttpDataSinkConfiguration extends DataSinkConfiguration
+		implements org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource {
+	/** The form's static htv_headers; bound in the registry while the bundle lives. */
+	private StaticHttpHeaders headers;
+
+	public void setHeaders(java.util.Map<String, String> headers) {
+		this.headers = headers == null || headers.isEmpty() ? null : new StaticHttpHeaders(headers);
+	}
+
+	@Override
+	public void bind(org.apache.camel.CamelContext context) {
+		if (headers != null) headers.bind(context);
+	}
+
+	@Override
+	public void close() {
+		if (headers != null) headers.close();
+	}
+
 	
 	private String scheme;
 	private String serverUrl;
@@ -113,6 +131,7 @@ public class HttpDataSinkConfiguration extends DataSinkConfiguration{
 		uriBuilder.setPath(getPath());
 		// httpMethod is a Camel endpoint option: Camel consumes it and does not send it to the device.
 		String options = method == null || method.isBlank() ? null : "httpMethod=" + method;
+		if (headers != null) options = options == null ? headers.clientConfigurerOption() : options + "&" + headers.clientConfigurerOption();
 		String fullQuery = query == null || query.isBlank() ? options : options == null ? query : query + "&" + options;
 		if (fullQuery != null) {
 			uriBuilder.setCustomQuery(fullQuery);

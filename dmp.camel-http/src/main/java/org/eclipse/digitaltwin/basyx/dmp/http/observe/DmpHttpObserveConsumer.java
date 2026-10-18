@@ -141,6 +141,7 @@ final class DmpHttpObserveConsumer extends DefaultConsumer {
 
 	private HttpRequest.Builder request() {
 		HttpRequest.Builder builder = HttpRequest.newBuilder(endpoint.url());
+		endpoint.headers().forEach(builder::setHeader);
 		if (endpoint.username() != null && endpoint.password() != null)
 			builder.header("Authorization", "Basic " + Base64.getEncoder().encodeToString(
 					(endpoint.username() + ":" + endpoint.password()).getBytes(StandardCharsets.UTF_8)));

@@ -489,6 +489,7 @@ public final class ConnectorConfigurationFactory {
 			if(uri.getUserInfo()!=null) { issue(issues,mapping,path+"/forms/href","HTTP operation targets have no credentials field");return null; }
 			HttpDataSinkConfiguration sink=new HttpDataSinkConfiguration(uniqueId,uri.getScheme(),uri.getHost(),uri.getPath(),effectivePort(uri));
 			sink.setQuery(uri.getQuery());sink.setSinkId(action);sink.setSchema(schemaOptional(input));
+			sink.setHeaders(httpHeaders(form,false,false,mapping,path,issues));
 			targetOptions.put("httpMethod",method);targetOptions.put("timeoutSeconds",30);
 			return sink;
 		}
@@ -657,6 +658,7 @@ public final class ConnectorConfigurationFactory {
 				case MQTT -> Set.of("mqv_qos","mqv_retain","mqv_controlPacket","mqv_responseTopic");
 				case OPCUA -> Set.of("uav_browsePath");
 				case SNMP -> Set.of("snmpv_pduType","snmpv_version");
+				case HTTP, IOLINK -> Set.of("htv_headers");
 				case MODBUS -> Set.of("modv_entity","modv_function","modv_type","modv_zeroBasedAddressing","modv_mostSignificantByte",
 						"modv_mostSignificantWord","modv_pollingTime","modv_timeout");
 				default -> Set.of();
@@ -676,8 +678,6 @@ public final class ConnectorConfigurationFactory {
 						else if(!read)
 							issue(issues,mapping,path+"/forms/subprotocol","a subprotocol form observes; it cannot be a writable destination or an action");
 					}
-					else if("htv_headers".equals(name) && authored)
-						issue(issues,mapping,path+"/forms/htv_headers","HTTP message headers are not sent yet");
 					else if("response".equals(name) && !"action".equals(kind))
 						issue(issues,mapping,path+"/forms/response","an expected response belongs to an action form");
 					else if(!Set.of("href","contentType","op","htv_methodName","security","response").contains(name)
@@ -912,6 +912,7 @@ public final class ConnectorConfigurationFactory {
 					form.contentType().present() && form.contentType().value() != null ? form.contentType().value() : "application/json",
 					username, password);
 			observed.setSourceId(endpoint.id());
+			observed.setHeaders(httpHeaders(form, true, username != null, mapping, path, issues));
 			observed.setSchema(schemaForAidTarget(target,mapping,path,issues));
 			setValuePath(observed,target);
 			return observed;
@@ -919,6 +920,7 @@ public final class ConnectorConfigurationFactory {
 		HttpPollingDataSourceConfiguration result = new HttpPollingDataSourceConfiguration(
 				entityId(mapping, "source", position), credentialFreeUri.toString(), effectivePort(uri), username, password);
 		result.setSourceId(endpoint.id());
+		result.setHeaders(httpHeaders(form, false, username != null, mapping, path, issues));
 		result.setSchema(schemaForAidTarget(target,mapping,path,issues));
 		result.setDelivery("sync");
 		setValuePath(result,target);
@@ -999,6 +1001,7 @@ public final class ConnectorConfigurationFactory {
 				uri.getScheme(), uri.getHost(), uri.getPath(), effectivePort(uri));
 		result.setQuery(uri.getQuery());
 		result.setMethod(method);
+		result.setHeaders(httpHeaders(form, false, false, mapping, path, issues));
 		result.setSinkId(endpoint.id());
 		result.setSchema(schemaForAidTarget(target,mapping,path,issues));
 		setValuePath(result,target);
@@ -1278,6 +1281,49 @@ public final class ConnectorConfigurationFactory {
 	private static String snmpTerm(Form form, String name) {
 		String value=form.bindingTerms().get(name);
 		return value==null || value.isBlank()?null:value.trim().replaceFirst("^snmpv:","");
+	}
+
+	/** Headers the connector sets itself: authoring them would break the request's framing or content. */
+	private static final Set<String> MANAGED_HTTP_HEADERS=Set.of("content-type","content-length","host","transfer-encoding",
+			"connection","expect","upgrade","te","trailer","keep-alive","proxy-connection");
+	private static final java.util.regex.Pattern HTTP_TOKEN=java.util.regex.Pattern.compile("[!#$%&'*+.^_`|~0-9A-Za-z-]+");
+
+	/**
+	 * The form's static {@code htv_headers} (WoT HTTP binding; AID: a list of {@code htv_fieldName}/{@code htv_fieldValue}
+	 * collections), sent with every request of the form. Names must be HTTP tokens and unique; values one line.
+	 * Headers the connector manages are rejected, so is {@code Accept} on an observed form (the subprotocol needs
+	 * its own) and {@code Authorization} next to credentials in the href. Empty when absent; null after an issue.
+	 */
+	private static Map<String,String> httpHeaders(Form form, boolean observed, boolean credentials, MappingPlan mapping,
+			String path, List<Issue> issues) {
+		SubmodelElement list=Aas.child(form.element(),"htv_headers");
+		Map<String,String> headers=new LinkedHashMap<>();
+		if(list==null || Aas.children(list).isEmpty())return headers;
+		String at=path+"/forms/htv_headers";
+		if(!(list instanceof org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementList)) {
+			issue(issues,mapping,at,"htv_headers is a list of htv_fieldName/htv_fieldValue collections");return null;
+		}
+		Set<String> seen=new java.util.HashSet<>();
+		for(SubmodelElement header:Aas.children(list)) {
+			SubmodelElement nameElement=Aas.child(header,"htv_fieldName"), valueElement=Aas.child(header,"htv_fieldValue");
+			String name=nameElement==null?null:Aas.value(nameElement), value=valueElement==null?null:Aas.value(valueElement);
+			if(name==null || !HTTP_TOKEN.matcher(name.trim()).matches()) {
+				issue(issues,mapping,at,"an HTTP header needs a valid htv_fieldName, not "+name);return null;
+			}
+			name=name.trim();
+			String key=name.toLowerCase(java.util.Locale.ROOT);
+			if(value==null || value.indexOf('\r')>=0 || value.indexOf('\n')>=0) {
+				issue(issues,mapping,at,"HTTP header "+name+" needs a one-line htv_fieldValue");return null;
+			}
+			if(MANAGED_HTTP_HEADERS.contains(key)) { issue(issues,mapping,at,"HTTP header "+name+" is set by the connector");return null; }
+			if(observed && key.equals("accept")) { issue(issues,mapping,at,"an observed form's Accept header is set by its subprotocol");return null; }
+			if(credentials && key.equals("authorization")) {
+				issue(issues,mapping,at,"an Authorization header next to credentials in the href");return null;
+			}
+			if(!seen.add(key)) { issue(issues,mapping,at,"HTTP header "+name+" is declared twice");return null; }
+			headers.put(name,value);
+		}
+		return headers;
 	}
 
 	/** The form's WoT {@code subprotocol} (longpoll, sse, websub), lower case; null when absent. */
