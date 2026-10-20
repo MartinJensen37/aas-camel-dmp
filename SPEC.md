@@ -131,7 +131,8 @@ value from it, so batch updates reach event-sourced sources too.
   the swap receive "unavailable". Device actions are never retried or replayed.
 - A mapping that cannot compile is `blocked` with a category; it does not affect
   siblings. `/management/status` reports per-mapping state (`installed`,
-  `blocked`, `stale`, `failed`), generation and fingerprints; repository IDs
+  `blocked`, `stale`, `failed`), generation, a per-mapping revision (installations
+  since start; display only, not a fence) and fingerprints; repository IDs
   appear only as SHA-256 tokens.
 - `/health` is 200 once the initial scan completed and the event transport is
   connected (Kafka: assigned on every control topic).

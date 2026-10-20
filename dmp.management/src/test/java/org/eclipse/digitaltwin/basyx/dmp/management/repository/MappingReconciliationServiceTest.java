@@ -37,6 +37,7 @@ class MappingReconciliationServiceTest {
 		try {
 			var first = service.reconcileNow();
 			assertEquals(1, first.installedOrUpdated());
+			assertEquals(1, first.mappings().get(0).revision(), "the first installation is revision 1");
 			var original = runtime.managedBundle(BUNDLE);
 			assertNotNull(original);
 			assertTrue(original.active());
@@ -44,16 +45,19 @@ class MappingReconciliationServiceTest {
 			var unchanged = service.reconcileNow();
 			assertEquals(1, unchanged.unchanged());
 			assertSame(original, runtime.managedBundle(BUNDLE), "unchanged effective state does not restart routes");
+			assertEquals(1, unchanged.mappings().get(0).revision(), "an unchanged mapping keeps its revision");
 
 			service.invalidate("urn:dependency");
 			var valueOnly = service.reconcileNow();
 			assertEquals(1, valueOnly.unchanged(), "telemetry invalidation with the same effective fingerprint is a no-op");
 			assertSame(original, runtime.managedBundle(BUNDLE));
+			assertEquals(1, valueOnly.mappings().get(0).revision(), "a value-only invalidation does not count as a revision");
 
 			desired.set(scan(invalid(AasRepositoryClient.Status.TRANSIENT_FAILURE), true));
 			var stale = service.reconcileNow();
 			assertEquals(MappingReconciliationService.State.STALE, stale.mappings().get(0).state());
 			assertSame(original, runtime.managedBundle(BUNDLE), "transient dependency failure retains last-valid routes");
+			assertEquals(1, stale.mappings().get(0).revision(), "a stale mapping still reports the running revision");
 
 			desired.set(scan(valid("changed"), true));
 			var changed = service.reconcileNow();
@@ -61,6 +65,7 @@ class MappingReconciliationServiceTest {
 			var replacement = runtime.managedBundle(BUNDLE);
 			assertNotSame(original, replacement);
 			assertTrue(replacement.generation() > original.generation());
+			assertEquals(2, changed.mappings().get(0).revision(), "a replacement is the next revision of the mapping");
 
 			desired.set(scan(invalid(AasRepositoryClient.Status.NOT_FOUND), true));
 			var missing = service.reconcileNow();
@@ -74,7 +79,8 @@ class MappingReconciliationServiceTest {
 			assertNull(runtime.managedBundle(BUNDLE));
 
 			desired.set(scan(valid("recreate"), true));
-			service.reconcileNow();
+			var recreatedReport = service.reconcileNow();
+			assertEquals(1, recreatedReport.mappings().get(0).revision(), "a removed and recreated mapping starts over");
 			var recreated = runtime.managedBundle(BUNDLE);
 			desired.set(scan(null, false));
 			var incomplete = service.reconcileNow();

@@ -125,8 +125,10 @@ The container listens on port 8080 for operation calls, `/health` and
   event transport is connected (Kafka: the control consumer is assigned on every
   topic), otherwise 503.
 - `/management/status` reports convergence and, per mapping, its state
-  (`installed`, `blocked`, `stale`, `failed`), generation, desired/installed
-  fingerprints and a failure category. Repository IDs appear only as SHA-256
+  (`installed`, `blocked`, `stale`, `failed`), generation (the bundle fence, from
+  a sequence shared by all mappings), revision (this mapping's installations
+  since start: 1, then +1 per redeploy), desired/installed fingerprints and a
+  failure category. Repository IDs appear only as SHA-256
   tokens. Blocked mappings can coexist with a ready process; `converged`
   distinguishes the two.
 

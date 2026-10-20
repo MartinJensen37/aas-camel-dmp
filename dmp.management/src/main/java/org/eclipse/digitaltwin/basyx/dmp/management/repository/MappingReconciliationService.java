@@ -43,8 +43,13 @@ public final class MappingReconciliationService implements AutoCloseable {
 	/** Supplies complete authoritative desired state; repository scans also revalidate installed membership. */
 	@FunctionalInterface public interface ScanProvider { Scan scan(); }
 	@FunctionalInterface public interface DefinitionFactory { Supplier<RoutesConfiguration> freshDefinition(MappingCandidate candidate); }
+	/**
+	 * One mapping's reconciliation state. {@code generation} is the installed bundle's fence, drawn from a sequence
+	 * shared by all bundles; {@code revision} counts this mapping's installations since the DMP started (1 for the
+	 * first, +1 per replacement) and is for display only.
+	 */
 	public record MappingStatus(MappingKey key, State state, String desiredFingerprint,
-			String installedFingerprint, long generation, String category) { }
+			String installedFingerprint, long generation, String category, long revision) { }
 	public record Report(boolean complete, boolean superseded, int installedOrUpdated,
 			int unchanged, int removed, List<MappingStatus> mappings, List<String> categories) {
 		public Report { mappings = List.copyOf(mappings); categories = List.copyOf(categories); }
@@ -65,6 +70,8 @@ public final class MappingReconciliationService implements AutoCloseable {
 	private final long retryMillis;
 	private final Map<MappingKey, Active> active = new LinkedHashMap<>();
 	private final Map<MappingKey, MutableStatus> statuses = new LinkedHashMap<>();
+	/** Installations per mapping since start; dropped with the mapping's status. Not a fence. */
+	private final Map<MappingKey, Long> revisions = new LinkedHashMap<>();
 	private volatile Map<String, Set<String>> activeBundleDependencies = Map.of();
 	private final Map<String, Long> dependencyEpochs = new LinkedHashMap<>();
 	private long fullRescanEpoch;
@@ -219,7 +226,7 @@ public final class MappingReconciliationService implements AutoCloseable {
 					continue;
 				}
 				if (!scan.mappings().containsKey(key)) {
-					if (retire(entry.getValue())) { active.remove(key); statuses.remove(key); refreshReverseDependencies(); removed++; }
+					if (retire(entry.getValue())) { active.remove(key); statuses.remove(key); revisions.remove(key); refreshReverseDependencies(); removed++; }
 					else {
 						mark(key, State.STALE, null, entry.getValue().fingerprint().exported(),
 								entry.getValue().handle().generation(), "bundle-removal-failed");
@@ -229,8 +236,10 @@ public final class MappingReconciliationService implements AutoCloseable {
 			}
 			for (MappingKey key : new ArrayList<>(statuses.keySet())) {
 				if (!active.containsKey(key) && !superseded(epoch, key, Set.of())
-						&& !scan.failedAimcIds().contains(key.aimcId()) && !scan.mappings().containsKey(key))
+						&& !scan.failedAimcIds().contains(key.aimcId()) && !scan.mappings().containsKey(key)) {
 					statuses.remove(key);
+					revisions.remove(key);
+				}
 			}
 			overflowMappings = 0;
 			for (MappingCandidate candidate : scan.mappings().values()) {
@@ -309,6 +318,7 @@ public final class MappingReconciliationService implements AutoCloseable {
 					active.put(candidate.key(), new Active(candidate.key(), bundleId, installed, desiredFingerprint,
 							dependencyIds(candidate)));
 					refreshReverseDependencies();
+					revisions.merge(candidate.key(), 1L, Long::sum);
 					mark(candidate.key(), State.INSTALLED, desiredFingerprint.exported(), desiredFingerprint.exported(), generation, "");
 					changed++;
 				} catch (RuntimeException failure) {
@@ -344,7 +354,7 @@ public final class MappingReconciliationService implements AutoCloseable {
 		synchronized (lock) {
 			return statuses.entrySet().stream().map(entry -> new MappingStatus(entry.getKey(), entry.getValue().state(),
 					entry.getValue().desired(), entry.getValue().installed(), entry.getValue().generation(),
-					entry.getValue().category())).toList();
+					entry.getValue().category(), revisions.getOrDefault(entry.getKey(), 0L))).toList();
 		}
 	}
 

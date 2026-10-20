@@ -67,7 +67,7 @@ class ManagedRuntimeStatusTest {
 				"private-aimc", "private-mapping", 0);
 		ManagedRuntimeStatus.publish(new MappingReconciliationService.Report(true, false, 0, 0, 0,
 				List.of(new MappingReconciliationService.MappingStatus(key, MappingReconciliationService.State.STALE,
-						"new-digest", "old-digest", 7, "mapping-resolution-transient_failure")),
+						"new-digest", "old-digest", 7, "mapping-resolution-transient_failure", 3)),
 				List.of("mapping-resolution-transient_failure")));
 		assertEquals(ManagedRuntimeStatus.State.DEGRADED, ManagedRuntimeStatus.snapshot().state());
 		assertFalse(ManagedRuntimeStatus.snapshot().ready());
@@ -75,6 +75,7 @@ class ManagedRuntimeStatusTest {
 		assertEquals(false, status.get("converged"));
 		var details = (java.util.Map<?, ?>) ((List<?>) status.get("mappings")).get(0);
 		assertEquals(7L, details.get("generation"));
+		assertEquals(3L, details.get("revision"));
 		assertEquals("old-digest", details.get("installedFingerprint"));
 		assertFalse(status.toString().contains("private-"));
 	}

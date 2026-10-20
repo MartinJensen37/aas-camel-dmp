@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 class MappingAuditTest {
 	private static Report report(State state, String fingerprint) {
 		return new Report(true, false, 0, 0, 0, List.of(new MappingStatus(new MappingKey("urn:aimc", "mapping_0", 0),
-				state, fingerprint, state == State.INSTALLED ? fingerprint : null, 1, "")), List.of());
+				state, fingerprint, state == State.INSTALLED ? fingerprint : null, 1, "", 1)), List.of());
 	}
 
 	@Test

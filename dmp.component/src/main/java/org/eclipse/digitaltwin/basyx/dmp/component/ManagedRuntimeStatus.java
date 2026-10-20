@@ -148,7 +148,8 @@ public final class ManagedRuntimeStatus {
 		result.put("mappings", report == null ? java.util.List.of() : report.mappings().stream().map(mapping -> Map.of(
 				"aimcToken", token(mapping.key().aimcId()),
 				"mappingToken", token(mapping.key().mappingIdentity()),
-				"generation", mapping.generation(), "state", mapping.state().name().toLowerCase(java.util.Locale.ROOT),
+				"generation", mapping.generation(), "revision", mapping.revision(),
+				"state", mapping.state().name().toLowerCase(java.util.Locale.ROOT),
 				"desiredFingerprint", mapping.desiredFingerprint() == null ? "" : mapping.desiredFingerprint(),
 				"installedFingerprint", mapping.installedFingerprint() == null ? "" : mapping.installedFingerprint(),
 				"category", sanitize(mapping.category()))).toList());

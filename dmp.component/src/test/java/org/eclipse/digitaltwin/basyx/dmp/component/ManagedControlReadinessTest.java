@@ -163,7 +163,7 @@ class ManagedControlReadinessTest {
 			var key = new org.eclipse.digitaltwin.basyx.dmp.management.repository.RepositoryDiscovery.MappingKey("aimc", "mapping", 0);
 			ManagedRuntimeStatus.publish(new MappingReconciliationService.Report(true, false, 0, 0, 0,
 					List.of(new MappingReconciliationService.MappingStatus(key, MappingReconciliationService.State.BLOCKED,
-							"desired", "", 1, "unsupported-capability")), List.of("unsupported-capability")));
+							"desired", "", 1, "unsupported-capability", 0)), List.of("unsupported-capability")));
 			assertTrue(ManagedRuntimeStatus.snapshot().ready());
 			assertEquals(false, ManagedRuntimeStatus.asMap().get("converged"));
 		}
