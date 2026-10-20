@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 import org.eclipse.digitaltwin.aas4j.v3.model.Key;
+import org.eclipse.digitaltwin.aas4j.v3.model.Operation;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.Submodel;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
@@ -55,7 +56,10 @@ public final class AasReferenceResolver {
 	/** A resolved mapping endpoint: an element of an ordinary submodel, or an AID affordance. */
 	public sealed interface Resolution permits ResolvedElement, AidTarget { }
 	/** {@code submodel} carries the submodel's identity and semantics; its elements may be absent. */
-	public record ResolvedElement(Submodel submodel, SubmodelElement element) implements Resolution { }
+	public record ResolvedElement(Submodel submodel, SubmodelElement element,
+			Operation operation, String operationPath) implements Resolution {
+		public ResolvedElement(Submodel submodel, SubmodelElement element) { this(submodel, element, null, null); }
+	}
 	public record AidTarget(WireModel.Interface owner, WireModel.Affordance affordance,
 			Presence<WireModel.DataSchema> schema, List<String> schemaPath, String submodelId) implements Resolution {
 		public AidTarget(WireModel.Interface owner,WireModel.Affordance affordance,Presence<WireModel.DataSchema> schema,List<String> schemaPath) {
@@ -77,7 +81,10 @@ public final class AasReferenceResolver {
 		for (Reference reference : references) {
 			List<Key> keys = Aas.keys(reference);
 			if (!Aas.isModelReference(reference) || keys.size() < 2 || !"Submodel".equals(Aas.keyType(keys.get(0)))) continue;
-			paths.computeIfAbsent(keys.get(0).getValue(), ignored -> new ArrayList<>()).add(idShortPath(keys));
+			List<String> wanted = paths.computeIfAbsent(keys.get(0).getValue(), ignored -> new ArrayList<>());
+			wanted.add(idShortPath(keys));
+			int operation = operationKeyIndex(keys);
+			if (operation >= 1) wanted.add(idShortPath(keys.subList(0, operation + 1)));
 		}
 		List<CompletableFuture<?>> loads = new ArrayList<>();
 		paths.forEach((id, wanted) -> loads.add(CompletableFuture.runAsync(() -> load(id, wanted), executor)));
@@ -103,7 +110,15 @@ public final class AasReferenceResolver {
 		if (!element.found()) return propagate(element);
 		try { WireProjection.validate(element.value().element(), "/" + idShortPath(keys)); }
 		catch (IllegalArgumentException retired) { return invalid("referenced element is not consumable: " + retired.getMessage()); }
-		return found(element.value());
+		int operationIndex = operationKeyIndex(keys);
+		if (operationIndex < 1) return found(element.value());
+		List<Key> operationKeys = keys.subList(0, operationIndex + 1);
+		var operationElement = entry.full() != null ? resolveElement(operationKeys, entry.full()) : resolvePartial(operationKeys, entry);
+		if (!operationElement.found()) return propagate(operationElement);
+		if (!(operationElement.value().element() instanceof Operation operation))
+			return invalid("Operation ancestor does not resolve to an AAS Operation");
+		return found(new ResolvedElement(element.value().submodel(), element.value().element(), operation,
+				idShortPath(operationKeys)));
 	}
 
 	/** The cached AID behind a submodel ID, read if needed. */
@@ -167,6 +182,12 @@ public final class AasReferenceResolver {
 			else { if (i > 1) path.append('.'); path.append(keys.get(i).getValue()); }
 		}
 		return path.toString();
+	}
+
+	/** The index of the first Operation key below the submodel, or -1 when the reference is outside an Operation. */
+	public static int operationKeyIndex(List<Key> keys) {
+		for (int i = 1; i < keys.size(); i++) if ("Operation".equals(Aas.keyType(keys.get(i)))) return i;
+		return -1;
 	}
 
 	/** True when {@code path} is {@code ancestor} or lies below it. */

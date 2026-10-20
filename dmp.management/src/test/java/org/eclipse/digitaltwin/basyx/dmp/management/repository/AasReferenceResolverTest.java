@@ -108,6 +108,35 @@ class AasReferenceResolverTest {
 	}
 
 	@Test
+	void operationVariableReferencesShareOneResolvedOperationAncestor() throws Exception {
+		var position=AasFixtures.collection("Position",AasFixtures.property("x","xs:int","0"),
+				AasFixtures.property("y","xs:int","0"));
+		var operation=AasFixtures.operation("operation",List.of(AasFixtures.variable(position)),List.of(),List.of());
+		String id="urn:asset/submodels/CCI";
+		var submodel=AasFixtures.submodel(id,"CCI",AasFixtures.collection("Skills",
+				AasFixtures.collection("Move",operation)));
+		var x=AasFixtures.reference("Submodel",id,"SubmodelElementCollection","Skills",
+				"SubmodelElementCollection","Move","Operation","operation",
+				"SubmodelElementCollection","Position","Property","x");
+		var y=AasFixtures.reference("Submodel",id,"SubmodelElementCollection","Skills",
+				"SubmodelElementCollection","Move","Operation","operation",
+				"SubmodelElementCollection","Position","Property","y");
+		try (var repository=new FakeAasRepository().put(Aas.write(submodel))) {
+			var resolver=new AasReferenceResolver(repository.client());
+			resolver.prefetch(List.of(x,y),Runnable::run);
+			var first=(AasReferenceResolver.ResolvedElement)resolver.resolve(x).value();
+			var second=(AasReferenceResolver.ResolvedElement)resolver.resolve(y).value();
+			assertEquals("x",first.element().getIdShort());
+			assertEquals("y",second.element().getIdShort());
+			assertEquals(operation,first.operation());
+			assertEquals(first.operation(),second.operation());
+			assertEquals("Skills.Move.operation",first.operationPath());
+			assertEquals(List.of(path(id)+"/$metadata",path(id)+"/submodel-elements/Skills.Move.operation"),
+					repository.requests(),"the Operation subtree should be fetched once for all member endpoints");
+		}
+	}
+
+	@Test
 	void retiredDeclarationsOutsideTheReferencedSubtreeDoNotBlockIt() throws Exception {
 		try (var repository = new FakeAasRepository().put(operationalData())) {
 			var resolver = new AasReferenceResolver(repository.client());
