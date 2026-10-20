@@ -24,6 +24,7 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.policy;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -80,8 +81,9 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 	public void addRouteToRouteBuilder(RouteConfiguration routeConfig) {
 		String routeId = routeConfig.getRouteId() != null ? routeConfig.getRouteId() : "<unnamed-policy>";
 
-		String[] dataSourceEndpoints = RouteCreatorHelper.getDataSourceEndpoints(
-				routesConfiguration, routeConfig.getDatasources(), routeId);
+		for (String endpointId : routeConfig.getDatasources()) {
+			RouteCreatorHelper.getDataSourceEndpoint(routesConfiguration, endpointId, routeId);
+		}
 		String[] dataSinkEndpoints = RouteCreatorHelper.getDataSinkEndpoints(
 				routesConfiguration, routeConfig.getDatasinks(), routeId);
 		String[] dataTransformerEndpoints = RouteCreatorHelper.getDataTransformerEndpoints(
@@ -109,28 +111,31 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 		FanOut.apply(cycle, routesConfiguration, routeConfig,
 				dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
 
-		for (int i = 0; i < routeConfig.getDatasources().size(); i++) {
-			String endpointId = routeConfig.getDatasources().get(i);
+		Map<Acquisition, List<String>> acquisitions = new LinkedHashMap<>();
+		for (String endpointId : routeConfig.getDatasources()) {
 			DataSourceConfiguration config = routesConfiguration.getDatasources().get(endpointId);
-			String sourceId = FanIn.resolveSourceId(routesConfiguration, endpointId);
+			acquisitions.computeIfAbsent(Acquisition.of(config), ignored -> new java.util.ArrayList<>()).add(endpointId);
+		}
+		for (List<String> endpointIds : acquisitions.values()) {
+			String endpointId = endpointIds.get(0);
+			DataSourceConfiguration config = routesConfiguration.getDatasources().get(endpointId);
+			List<String> sourceIds = endpointIds.stream()
+					.map(id -> FanIn.resolveSourceId(routesConfiguration, id)).toList();
 			if (config != null && "sync".equalsIgnoreCase(config.getDelivery())) {
 				// Sync sources issue a fresh Read when the connector has a read
 				// adapter; consumer-only sources retain their polling consumer path.
-				long periodMs = config.getPollingIntervalMs();
-				if (periodMs <= 0) {
-					periodMs = DEFAULT_DEVICE_POLL_MS;
-				}
-				LOGGER.info("route {}: sync source {} polled every {} ms", routeId, sourceId, periodMs);
+				long periodMs = effectivePollingIntervalMs(config);
+				LOGGER.info("route {}: {} sync source(s) polled every {} ms", routeId, endpointIds.size(), periodMs);
 				String pollRouteId = routeId + "-poll-" + endpointId;
 				registerRouteId(pollRouteId);
 				registerIngressRouteId(pollRouteId);
 				ProcessorDefinition<?> poll = routeBuilder
 						.from("timer:" + timerName(routeId, endpointId) + "?period=" + periodMs)
 						.routeId(pollRouteId);
-				RouteCreatorHelper.configureSyncRead(poll, dataSourceEndpoints[i], SYNC_POLL_TIMEOUT_MS);
+				RouteCreatorHelper.configureSyncRead(poll, config.getConnectionURI(), SYNC_POLL_TIMEOUT_MS);
 				poll.filter(exchange -> exchange.getMessage().getBody() != null)
-						.setHeader(FanIn.SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceId))
-						.process(fanIn.disassemble(endpointId))
+						.setHeader(FanIn.SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceIds.get(0)))
+						.process(fanIn.disassemble(endpointIds))
 						.filter(fanIn::contributed)
 						.filter(exchange -> fanIn.selectedTrigger(exchange, triggerSourceIds))
 						.to(collectUri);
@@ -146,8 +151,8 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 						;
 				sourceRoute = RouteCreatorHelper.normalizeSourceEvents(sourceRoute, config, routeId);
 				sourceRoute
-						.setHeader(FanIn.SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceId))
-						.process(fanIn.disassemble(endpointId))
+						.setHeader(FanIn.SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceIds.get(0)))
+						.process(fanIn.disassemble(endpointIds))
 						.filter(fanIn::contributed)
 						.filter(exchange -> fanIn.selectedTrigger(exchange, triggerSourceIds))
 						.to(collectUri);
@@ -175,5 +180,27 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 
 	private static String timerName(String routeId, String endpointId) {
 		return ("policy-" + routeId + "-" + endpointId).replaceAll("[^A-Za-z0-9_.-]", "-");
+	}
+
+	private static long effectivePollingIntervalMs(DataSourceConfiguration config) {
+		long authored = config.getPollingIntervalMs();
+		return authored > 0 ? authored : DEFAULT_DEVICE_POLL_MS;
+	}
+
+	/**
+	 * What makes two sources share one acquisition: the same consumer or poll, delivered
+	 * and normalized the same way. The normalizer is built from the group's first source,
+	 * so its sources must also agree on whether their schema decodes the payload as JSON.
+	 */
+	private record Acquisition(Class<?> type, String uri, String delivery, long pollingIntervalMs,
+			String sourceKind, String mode, Map<String, Object> eventFilter, boolean jsonSchema) {
+		static Acquisition of(DataSourceConfiguration config) {
+			if (config == null) return new Acquisition(null, null, null, 0, null, null, null, false);
+			String delivery = config.getDelivery() == null ? null : config.getDelivery().toLowerCase(java.util.Locale.ROOT);
+			long pollingIntervalMs = "sync".equals(delivery) ? effectivePollingIntervalMs(config) : 0;
+			return new Acquisition(config.getClass(), config.getConnectionURI(), delivery, pollingIntervalMs,
+					config.getSourceKind(), config.getMode(), config.getEventFilter(),
+					FanIn.jsonSchema(config.getSchema()));
+		}
 	}
 }

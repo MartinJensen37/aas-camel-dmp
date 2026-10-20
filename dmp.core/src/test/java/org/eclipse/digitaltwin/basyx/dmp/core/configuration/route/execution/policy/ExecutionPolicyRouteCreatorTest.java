@@ -26,6 +26,7 @@ package org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.execution.pol
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -103,6 +104,18 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 			public void configure() {
 				FixedSource nullable = new FixedSource("nullSource", "Nullable", "async", "direct:inNull");
 				nullable.setValuePath("$.value");
+				FixedSource sharedLeft = new FixedSource("sharedLeft", "Left", "sync", "seda:inShared");
+				sharedLeft.setValuePath("$.left");
+				FixedSource sharedRight = new FixedSource("sharedRight", "Right", "sync", "seda:inShared");
+				sharedRight.setValuePath("$.right");
+				FixedSource fastCadence = new FixedSource("fastCadence", "Fast", "sync", "seda:inDifferentCadence");
+				FixedSource slowCadence = new FixedSource("slowCadence", "Slow", "sync", "seda:inDifferentCadence");
+				slowCadence.setPollingIntervalMs(200);
+				FixedSource eventLeft = new FixedSource("eventLeft", "EventLeft", "async", "seda:inSharedEvents");
+				eventLeft.setValuePath("$.left");
+				FixedSource eventRight = new FixedSource("eventRight", "EventRight", "async", "seda:inSharedEvents");
+				eventRight.setValuePath("$.right");
+				eventRight.setPollingIntervalMs(300);
 				RoutesConfiguration routes = new RoutesConfiguration(
 						Arrays.asList(
 								// single-async route
@@ -114,6 +127,12 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 								// periodic-style route: async cache + sync poller
 								new FixedSource("pAsync", "PAsync", "async", "seda:inPAsync"),
 								new FixedSource("pSync", "PSync", "sync", "seda:inPSync"),
+								sharedLeft,
+								sharedRight,
+								fastCadence,
+								slowCadence,
+								eventLeft,
+								eventRight,
 								// sync-only route: the poller drives everything
 								new FixedSource("sOnly", "S", "sync", "seda:inSOnly")),
 						List.of(),
@@ -121,6 +140,8 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 								new FixedSink("outNull", "mock:nullOut"),
 								new FixedSink("outAll", "mock:allOut"),
 								new FixedSink("outPeriodic", "mock:periodicOut"),
+								new FixedSink("outShared", "mock:sharedOut"),
+								new FixedSink("outSharedEvents", "mock:sharedEventsOut"),
 								new FixedSink("outSyncOnly", "mock:syncOnlyOut")),
 						List.of());
 
@@ -128,6 +149,9 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 				add(route("onNull", List.of("nullSource"), List.of("outNull")), routes);
 				add(route("onAll", List.of("stateB", "modeB"), List.of("outAll")), routes);
 				add(route("periodic", List.of("pAsync", "pSync"), List.of("outPeriodic")), routes);
+				add(route("shared", List.of("sharedLeft", "sharedRight"), List.of("outShared")), routes);
+				add(route("differentCadence", List.of("fastCadence", "slowCadence"), List.of()), routes);
+				add(route("sharedEvents", List.of("eventLeft", "eventRight"), List.of("outSharedEvents")), routes);
 				add(route("syncOnly", List.of("sOnly"), List.of("outSyncOnly")), routes);
 			}
 
@@ -222,6 +246,50 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 
 		Map<?, ?> sources = sourcesOf(out.getExchanges().get(0).getMessage().getBody());
 		assertEquals("POLLED", sources.get("S"));
+	}
+
+	@Test
+	void identicalAcquisitionsAreReadOnceAndProjectedToEverySourceId() throws Exception {
+		MockEndpoint out = getMockEndpoint("mock:sharedOut");
+		out.expectedMessageCount(1);
+		template.sendBody("seda:inShared", Map.of("left", "L", "right", "R"));
+		out.assertIsSatisfied(3000);
+		Map<?, ?> sources = sourcesOf(out.getExchanges().get(0).getMessage().getBody());
+		assertEquals("L", sources.get("Left"));
+		assertEquals("R", sources.get("Right"));
+	}
+
+	@Test
+	void sameUriWithDifferentSyncCadencesKeepsSeparatePollRoutes() {
+		var fast = context.getRouteDefinition("differentCadence-poll-fastCadence");
+		var slow = context.getRouteDefinition("differentCadence-poll-slowCadence");
+		assertNotNull(fast);
+		assertNotNull(slow);
+		assertTrue(fast.getInput().getEndpointUri().endsWith("?period=100"), fast.getInput().getEndpointUri());
+		assertTrue(slow.getInput().getEndpointUri().endsWith("?period=200"), slow.getInput().getEndpointUri());
+	}
+
+	@Test
+	void identicalSubscriptionsFanOneEventOutToEverySourceId() throws Exception {
+		MockEndpoint out = getMockEndpoint("mock:sharedEventsOut");
+		out.expectedMessageCount(1);
+		template.sendBody("seda:inSharedEvents", Map.of("left", "L", "right", "R"));
+		out.assertIsSatisfied(3000);
+		Map<?, ?> sources = sourcesOf(out.getExchanges().get(0).getMessage().getBody());
+		assertEquals("L", sources.get("EventLeft"));
+		assertEquals("R", sources.get("EventRight"));
+	}
+
+	@Test
+	void aSourceThatCannotReadAnEventDoesNotStopTheOthersOfItsAcquisition() throws Exception {
+		MockEndpoint out = getMockEndpoint("mock:sharedEventsOut");
+		out.expectedMessageCount(2);
+		template.sendBody("seda:inSharedEvents", Map.of("left", "L", "right", "R"));
+		template.sendBody("seda:inSharedEvents", Map.of("left", "L2"));
+		out.assertIsSatisfied(3000);
+		Map<?, ?> sources = sourcesOf(out.getExchanges().get(1).getMessage().getBody());
+		assertEquals("L2", sources.get("EventLeft"));
+		assertEquals("R", sources.get("EventRight"), "the last value of the source that could not read the event");
 	}
 
 	@Test

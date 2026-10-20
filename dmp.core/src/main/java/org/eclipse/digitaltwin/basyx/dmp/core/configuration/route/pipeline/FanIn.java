@@ -49,6 +49,7 @@ public final class FanIn implements ManagedRouteResource {
 	/** Exchange property flagging a source that actually contributed a value. */
 	public static final String CONTRIBUTION_PROPERTY = SourceEventAdapter.CONTRIBUTION_PROPERTY;
 	private static final String ACCEPTED_SNAPSHOT_PROPERTY = FanIn.class.getName() + ".acceptedSnapshot";
+	private static final String CONTRIBUTING_SOURCE_IDS_PROPERTY = FanIn.class.getName() + ".contributingSourceIds";
 
 	private final RoutesConfiguration routesConfiguration;
 	private final Map<String, String> sourceIdByEndpoint = new LinkedHashMap<>();
@@ -121,6 +122,46 @@ public final class FanIn implements ManagedRouteResource {
 		};
 	}
 
+	/**
+	 * One acquired payload may contribute independently to several authored sources. A
+	 * source whose value cannot be read from it (an unresolved {@code valuePath}, a schema
+	 * mismatch) contributes nothing without keeping the others from contributing; the
+	 * payload fails only when no source could read it.
+	 */
+	public Processor disassemble(List<String> dataSourceIds) {
+		List<Processor> disassemblers = dataSourceIds.stream().map(this::disassemble).toList();
+		return exchange -> {
+			bufferStream(exchange);
+			List<String> contributing = new ArrayList<>();
+			RuntimeException firstFailure = null;
+			for (int i = 0; i < disassemblers.size(); i++) {
+				try {
+					disassemblers.get(i).process(exchange);
+				} catch (RuntimeException e) {
+					if (firstFailure == null) firstFailure = e;
+					LOGGER.warn("source {} did not contribute: {}", dataSourceIds.get(i), e.getMessage());
+					exchange.setProperty(CONTRIBUTION_PROPERTY, false);
+				}
+				if (contributed(exchange)) contributing.add(dataSourceIds.get(i));
+			}
+			if (contributing.isEmpty() && firstFailure != null) throw firstFailure;
+			exchange.setProperty(CONTRIBUTING_SOURCE_IDS_PROPERTY, List.copyOf(contributing));
+			exchange.setProperty(CONTRIBUTION_PROPERTY, !contributing.isEmpty());
+		};
+	}
+
+	/** Reads a one-shot stream body once, so every source of the group sees the payload. */
+	private static void bufferStream(Exchange exchange) {
+		Object body = exchange.getMessage().getBody();
+		if (body instanceof java.io.InputStream stream && !(body instanceof org.apache.camel.StreamCache)) {
+			try {
+				exchange.getMessage().setBody(stream.readAllBytes());
+			} catch (java.io.IOException e) {
+				throw new IllegalArgumentException("could not read incoming source payload", e);
+			}
+		}
+	}
+
 	/** Route filter: only a contributing exchange is worth collecting. */
 	public boolean contributed(Exchange exchange) {
 		return Boolean.TRUE.equals(exchange.getProperty(CONTRIBUTION_PROPERTY));
@@ -129,6 +170,11 @@ public final class FanIn implements ManagedRouteResource {
 	/** True when this contribution is selected to trigger evaluation. */
 	public boolean selectedTrigger(Exchange exchange, List<String> selectedSourceIds) {
 		if (selectedSourceIds == null) return true;
+		Object grouped = exchange.getProperty(CONTRIBUTING_SOURCE_IDS_PROPERTY);
+		if (grouped instanceof List<?> ids) {
+			return ids.stream().map(String::valueOf).map(sourceIdByEndpoint::get)
+					.anyMatch(selectedSourceIds::contains);
+		}
 		Object sourceId = exchange.getMessage().getHeader(SOURCE_ID_HEADER);
 		return sourceId != null && selectedSourceIds.contains(String.valueOf(sourceId));
 	}
@@ -291,7 +337,8 @@ public final class FanIn implements ManagedRouteResource {
 		return "application/json".equals(mediaType) || mediaType.endsWith("+json");
 	}
 
-	private static boolean jsonSchema(Object rawSchema) {
+	/** Whether a source's schema makes its payload decode as JSON regardless of content type. */
+	public static boolean jsonSchema(Object rawSchema) {
 		if (!(rawSchema instanceof Map<?, ?> schema)) return false;
 		Object type = schema.get("type");
 		if ("object".equals(type) || "array".equals(type)) return true;
