@@ -235,8 +235,8 @@ public final class CamelOpcUaMethodMetadataProvider implements OpcUaMethodMetada
 			// The Method's NodeId, or its AID browse path.
 			var methodId = org.eclipse.digitaltwin.basyx.dmp.opcua.component.OpcUaBrowsePaths.resolve(client, endpoint.getMethod());
 			UaMethodNode method = (UaMethodNode) client.getAddressSpace().getNode(methodId);
-			org.eclipse.milo.opcua.stack.core.types.structured.Argument[] inputs = method.readInputArgumentsAsync().join();
-			org.eclipse.milo.opcua.stack.core.types.structured.Argument[] outputs = method.readOutputArgumentsAsync().join();
+			org.eclipse.milo.opcua.stack.core.types.structured.Argument[] inputs = arguments(method.readInputArgumentsAsync());
+			org.eclipse.milo.opcua.stack.core.types.structured.Argument[] outputs = arguments(method.readOutputArgumentsAsync());
 			return new MethodSignature(definitions(inputs), definitions(outputs));
 		} catch (CompletionException e) {
 			throw new IllegalStateException("Unable to read OPC UA method metadata from " + endpointUri, e);
@@ -246,6 +246,27 @@ public final class CamelOpcUaMethodMetadataProvider implements OpcUaMethodMetada
 			endpoint.releaseConnection(connection);
 		}
 	}
+
+	/**
+	 * A Method's InputArguments or OutputArguments property. OPC UA makes both optional: a
+	 * Method without arguments of a kind has no such property, which means none (not an error).
+	 */
+	static org.eclipse.milo.opcua.stack.core.types.structured.Argument[] arguments(
+			java.util.concurrent.CompletableFuture<org.eclipse.milo.opcua.stack.core.types.structured.Argument[]> read) {
+		try {
+			return read.join();
+		} catch (CompletionException failure) {
+			for (Throwable cause = failure; cause != null; cause = cause.getCause() == cause ? null : cause.getCause())
+				if (cause instanceof org.eclipse.milo.opcua.stack.core.UaException ua && ABSENT_PROPERTY.contains(ua.getStatusCode().getValue()))
+					return new org.eclipse.milo.opcua.stack.core.types.structured.Argument[0];
+			throw failure;
+		}
+	}
+
+	private static final java.util.Set<Long> ABSENT_PROPERTY = java.util.Set.of(
+			org.eclipse.milo.opcua.stack.core.StatusCodes.Bad_NotFound,
+			org.eclipse.milo.opcua.stack.core.StatusCodes.Bad_NoMatch,
+			org.eclipse.milo.opcua.stack.core.StatusCodes.Bad_NodeIdUnknown);
 
 	private static List<Argument> definitions(org.eclipse.milo.opcua.stack.core.types.structured.Argument[] args) {
 		List<Argument> definitions = new ArrayList<>(args == null ? 0 : args.length);

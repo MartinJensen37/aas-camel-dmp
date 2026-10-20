@@ -92,8 +92,8 @@ public final class OpcUaMethodMetadataService {
 			client = OpcUaClient.create(serverUrl);
 			client.connect();
 			UaMethodNode method = (UaMethodNode) client.getAddressSpace().getNode(methodNodeId);
-			Argument[] inputs = method.readInputArgumentsAsync().join();
-			Argument[] outputs = method.readOutputArgumentsAsync().join();
+			Argument[] inputs = CamelOpcUaMethodMetadataProvider.arguments(method.readInputArgumentsAsync());
+			Argument[] outputs = CamelOpcUaMethodMetadataProvider.arguments(method.readOutputArgumentsAsync());
 			return new MethodMetadata(definitions(inputs), definitions(outputs));
 		} catch (UaException | CompletionException e) {
 			throw new IllegalStateException("Unable to read OPC UA method metadata from " + serverUrl
