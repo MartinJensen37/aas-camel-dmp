@@ -1,7 +1,6 @@
 package org.eclipse.digitaltwin.basyx.dmp.aas.operation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -60,11 +59,10 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 				var routes = new RoutesConfiguration(List.of(), List.of(
 						new ProtocolBridgeRouteCreatorTest.FixedTransformer("request", "direct:r0-request"),
 						new ProtocolBridgeRouteCreatorTest.FixedTransformer("projected", "direct:r0-projected"),
-						new ProtocolBridgeRouteCreatorTest.FixedTransformer("whole", "direct:r0-whole-transform"),
-						new ProtocolBridgeRouteCreatorTest.FixedTransformer("legacy", "direct:r0-legacy-transform")),
+						new ProtocolBridgeRouteCreatorTest.FixedTransformer("whole", "direct:r0-whole-transform")),
 						List.of(new ProtocolBridgeRouteCreatorTest.FixedSink("command", "direct:r0-device"),
 								new ProtocolBridgeRouteCreatorTest.FixedSink("extra", "direct:r0-extra")), List.of());
-				for (String id : List.of("null", "missing", "duplicate", "whole", "legacy", "native")) {
+				for (String id : List.of("null", "missing", "duplicate", "whole", "native")) {
 					var bridge = new ProtocolBridgeRouteConfiguration(new RouteConfiguration(
 							"bridge", List.of(), List.of("request"), List.of("command")));
 					bridge.setRouteId("r0-" + id);
@@ -74,10 +72,14 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 					data.put("action", "Invoke");
 					data.put("operationSourceId", "Request");
 					data.put("commandSinkId", "Command");
-					data.put("callerReplySinkId", List.of("legacy", "native").contains(id) ? "Invoke" : "Reply");
-					data.put("explicitResponseMapping", !List.of("legacy", "native").contains(id));
-					if (!"native".equals(id)) data.put("responseTransformer",
-							"whole".equals(id) || "legacy".equals(id) ? id : "projected");
+					// "native" has no response mapping: the call answers with no outputs.
+					data.put("explicitResponseMapping", !"native".equals(id));
+					data.put("callerOutputOrder", "whole".equals(id) ? List.of("Reply", "sibling", "values")
+							: List.of("Optional"));
+					if (!"native".equals(id)) {
+						data.put("callerReplySinkId", "Reply");
+						data.put("responseTransformer", "whole".equals(id) ? id : "projected");
+					}
 					if (List.of("null", "missing", "duplicate").contains(id)) {
 						var bindings = new ArrayList<Map<String, Object>>();
 						bindings.add(Map.of("sourceId", "Optional", "valuePath",
@@ -85,6 +87,7 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 						if ("duplicate".equals(id)) bindings.add(Map.of("sourceId", "Optional", "valuePath", "/optional"));
 						data.put("responseSourceBindings", bindings);
 					}
+					if ("whole".equals(id)) data.put("responseSourceBindings", List.of(Map.of("sourceId", "Device")));
 					if ("whole".equals(id)) data.put("responseSinkBindings", List.of(
 							Map.of("sinkId", "First", "dataSinkId", "extra"),
 							Map.of("sinkId", "Second", "dataSinkId", "extra")));
@@ -102,7 +105,9 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 				from("direct:r0-projected").process(exchange -> {
 					responseTransforms.incrementAndGet();
 					Map<String, Object> reply = new LinkedHashMap<>();
-					reply.put("Reply", exchange.getMessage().getBody(Map.class).get("Optional"));
+					Map<String, Object> outputs = new LinkedHashMap<>();
+					outputs.put("Optional", exchange.getMessage().getBody(Map.class).get("Optional"));
+					reply.put("Reply", outputs);
 					exchange.getMessage().setBody(reply);
 				});
 				from("direct:r0-whole-transform").process(exchange -> {
@@ -116,8 +121,6 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 					responseValues.set(reply);
 					exchange.getMessage().setBody(reply);
 				});
-				from("direct:r0-legacy-transform").setBody().constant(Map.of(
-						"Invoke", Map.of("Invoke", Map.of("x", 1L), "sibling", 2L)));
 				from("direct:r0-extra").process(exchange -> {
 					sinkBodies.add(exchange.getMessage().getBody());
 					writes.countDown();
@@ -135,7 +138,9 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 	void validNullProjectionReachesCallerOnce() {
 		Exchange result = invoke("null");
 		assertEquals(200, result.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE));
-		assertNull(JsonCodec.parseJson(result.getMessage().getBody(String.class)));
+		Map<String, Object> expected = new LinkedHashMap<>();
+		expected.put("Optional", null);
+		assertEquals(expected, JsonCodec.parseJson(result.getMessage().getBody(String.class)));
 		assertEquals(1, invocations.get());
 		assertEquals(1, responseTransforms.get());
 	}
@@ -159,24 +164,12 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 	}
 
 	@Test
-	void nativeReplyWithAnActionNamedFieldReachesCallerWithoutProjection() {
+	void withoutAResponseMappingTheNativeReplyIsNotPassedThrough() {
 		Exchange result = invoke("native");
 		assertEquals(200, result.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE));
-		Map<String, Object> expected = new LinkedHashMap<>();
-		expected.put("optional", null);
-		expected.put("Invoke", Map.of("x", 1L));
-		expected.put("sibling", 2L);
-		assertEquals(expected, JsonCodec.parseJson(result.getMessage().getBody(String.class)));
+		assertEquals(Map.of(), JsonCodec.parseJson(result.getMessage().getBody(String.class)));
 		assertEquals(1, invocations.get());
 		assertEquals(0, responseTransforms.get());
-	}
-
-	@Test
-	void legacyReplySelectionHappensOnlyOnceAcrossPreparationAndCompletion() {
-		Exchange result = invoke("legacy");
-		assertEquals(200, result.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE));
-		assertEquals(Map.of("Invoke", Map.of("x", 1L), "sibling", 2L),
-				JsonCodec.parseJson(result.getMessage().getBody(String.class)));
 	}
 
 	@Test
@@ -205,8 +198,9 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 			assertEquals(2, sinkBodies.size());
 			assertEquals(3, responseValues.get().size());
 			assertEquals(Map.of("values", List.of("original")), responseValues.get().get("First"));
-			assertEquals(Map.of("x", 1L), ((Map<?, ?>) normalizedReply.get()).get("Invoke"));
-			assertEquals(2L, ((Map<?, ?>) normalizedReply.get()).get("sibling"));
+			Map<?, ?> device = (Map<?, ?>) ((Map<?, ?>) normalizedReply.get()).get("Device");
+			assertEquals(Map.of("x", 1L), device.get("Invoke"));
+			assertEquals(2L, device.get("sibling"));
 			assertEquals(1, invocations.get());
 			assertEquals(1, responseTransforms.get());
 		} finally {

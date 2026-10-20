@@ -357,14 +357,6 @@ public final class OperationPayloads {
 		return values.get(sinkId);
 	}
 
-	/** Unwraps only an outer action envelope while preserving scalar/array replies. */
-	public static Object unwrapValue(Object payload, String action) {
-		if (payload instanceof Map<?, ?> map && map.containsKey(action)) {
-			return map.get(action);
-		}
-		return payload;
-	}
-
 	/** Requires Lua to emit the authored caller-reply SinkId; never return the whole SinkId map by accident. */
 	public static Object requireSinkValue(Object payload, String sinkId) {
 		if (!(payload instanceof Map<?, ?> map) || !map.containsKey(sinkId)) {
@@ -377,7 +369,8 @@ public final class OperationPayloads {
 	/** Restricts a device reply to the caller Operation's declared output variables. */
 	public static Map<String, Object> selectCallerOutputs(Map<String, Object> values,
 			java.util.List<String> callerOrder) {
-		if (values == null || callerOrder == null || callerOrder.isEmpty()) return values;
+		if (values == null) return null;
+		if (callerOrder == null || callerOrder.isEmpty()) return new java.util.LinkedHashMap<>();
 		Map<String, Object> selected = new java.util.LinkedHashMap<>();
 		for (String name : callerOrder) {
 			if (values.containsKey(name)) selected.put(name, values.get(name));

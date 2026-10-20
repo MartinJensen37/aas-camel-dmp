@@ -38,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.eclipse.digitaltwin.basyx.dmp.executable.regression.ResponseMappings;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -190,7 +191,7 @@ class ManagedPackagedRuntimeIntegrationTest {
 				return null;
 			});
 			put(resource("aid.json").replace("http://192.168.0.60:8080/plc/api", "http://127.0.0.1:" + device.getAddress().getPort() + "/plc/api"));
-			put(PublishedModels.publish(resource("dependencies/0.json"), "contractAAS", "contract"));
+			put(PublishedModels.publish(cci(), "contractAAS", "contract"));
 			version("old");
 			JsonObject sibling = JsonParser.parseString(unit("contractBAS", "contractB")).getAsJsonObject();
 			JsonArray mappings = sibling.getAsJsonArray("submodelElements").get(0).getAsJsonObject().getAsJsonArray("value");
@@ -206,16 +207,25 @@ class ManagedPackagedRuntimeIntegrationTest {
 		 */
 		String unit(String id, String idShort) throws Exception {
 			String cci = id + "/submodels/ControlComponentInstance";
-			put(PublishedModels.publish(resource("dependencies/0.json").replace(CCI, cci), id, idShort));
+			put(PublishedModels.publish(cci().replace(CCI, cci), id, idShort));
 			String aimc = models.get(AIMC).replace("contractAAS", id).replace(CCI, cci);
 			put(aimc);
 			return aimc;
 		}
 		long reads(String id) { return repository.reads(id); }
+		/** The fixture CCI whose Restart Operation declares the output deviceReply. */
+		String cci() throws Exception {
+			JsonObject cci = JsonParser.parseString(resource("dependencies/0.json")).getAsJsonObject();
+			ResponseMappings.outputs(ResponseMappings.operation(cci, "Restart"), "deviceReply");
+			return cci.toString();
+		}
 		void version(String value) throws Exception {
 			JsonObject model = JsonParser.parseString(resource("aimc.json")).getAsJsonObject();
-			JsonArray fields = model.getAsJsonArray("submodelElements").get(0).getAsJsonObject().getAsJsonArray("value").get(0)
-					.getAsJsonObject().getAsJsonArray("value");
+			JsonObject mapping = model.getAsJsonArray("submodelElements").get(0).getAsJsonObject().getAsJsonArray("value").get(0)
+					.getAsJsonObject();
+			// The Operation answers deviceReply from the action's output (ResponseSource Restart).
+			ResponseMappings.respond(mapping, "Restart", "Restart", "");
+			JsonArray fields = mapping.getAsJsonArray("value");
 			for (String field : List.of("Transformation", "ResponseTransformation")) {
 				JsonObject blob = null;
 				for (var raw : fields) if (field.equals(raw.getAsJsonObject().get("idShort").getAsString())) blob = raw.getAsJsonObject();

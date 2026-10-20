@@ -456,6 +456,18 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    members get no idShort (AASd-120), list metadata and semantic IDs are
    copied, members the declaration lacks are dropped, and a value whose shape
    contradicts the declaration fails with `DMP_RESPONSE_MAPPING_FAILED`.
+
+   **Optional.** A variable, or a member of a collection variable, is
+   required unless it carries the qualifier `Optional` (semantic ID
+   `https://smartproductionlab.aau.dk/aas/OperationVariable/Optional/1/0`,
+   `xs:boolean` value `true`, kind `ConceptQualifier`); a list is marked as a
+   whole. The DMP recognises the qualifier by its semantic ID; a value other
+   than an `xs:boolean`, or the qualifier on a list member, blocks the
+   mapping. A required input or InOut the caller omits (absent or null) fails
+   with `DMP_OPERATION_VALIDATION_FAILED` (400) before the request Lua runs;
+   a required output or InOut the response mapping omits fails with
+   `DMP_RESPONSE_MAPPING_FAILED`. (`SMT/Cardinality` is not used: it says how
+   many elements a template instance holds, not which values a call carries.)
 3. The request Lua is mandatory and turns the caller's input variables (and
    the fanned-in AAS values, keyed by their SourceIds) into the device command
    or the value to write.
@@ -500,7 +512,9 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    `DMP_DEVICE_ERROR`/`DMP_DEVICE_TRANSPORT_ERROR` (502),
    `DMP_COMMAND_VALIDATION_FAILED`, `DMP_RESPONSE_VALIDATION_FAILED`,
    `DMP_RESPONSE_MAPPING_FAILED`, `DMP_OPERATION_VALIDATION_FAILED`,
-   `DMP_CONNECTOR_CONFIGURATION_ERROR` (500). Nothing is retried.
+   `DMP_CONNECTOR_CONFIGURATION_ERROR` (500), and
+   `DMP_OPERATION_VALIDATION_FAILED` (400) for a request that omits a required
+   input. Nothing is retried.
 
 ### 7.1 Scope: one affordance, one terminal answer
 
@@ -513,8 +527,8 @@ A bridge mapping binds the Operation 1:1 to one affordance:
   (`dmp-milo-client:` waits for it and converts a scalar to the variable's
   DataType), the HTTP response; MQTT only confirms that the broker accepted
   the publish (QoS 1/2). The reply is the written value: ResponseSources
-  select it (or members of it). Without a ResponseTransformation the call
-  answers with no outputs. A rejected write answers 502
+  select it (or members of it). Without a response mapping the call answers
+  with no outputs. A rejected write answers 502
   `DMP_DEVICE_ERROR`; nothing is fanned out.
 
 On the AAS side the mapping fans in and out:

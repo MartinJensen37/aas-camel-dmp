@@ -275,17 +275,16 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 
 	/**
 	 * The response transformation's input: the reply (an action's output, or the value a
-	 * property write wrote), projected by the ResponseSource bindings. A property write
-	 * without a response transformation answers with no outputs.
+	 * property write wrote), projected by the ResponseSource bindings. Without a response
+	 * mapping the call answers with no outputs.
 	 */
 	public void collectResponseSources(Exchange exchange) {
-		Object reply = exchange.getProperty(COMMAND_REPLY);
-		if (writesProperty() && context.responseLuaUri == null) {
+		if (!context.explicitResponseMapping) {
 			exchange.getMessage().setBody(new java.util.LinkedHashMap<String, Object>());
 			return;
 		}
-		exchange.getMessage().setBody(responseSourceBindings.isEmpty() ? reply
-				: ResponseProjectionProcessor.project(reply, responseSourceBindings));
+		exchange.getMessage().setBody(ResponseProjectionProcessor.project(exchange.getProperty(COMMAND_REPLY),
+				responseSourceBindings));
 	}
 
 	private Object normalizeReply(Exchange exchange, Object reply) {
@@ -305,7 +304,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 
 	public void prepareResponseWrites(Exchange exchange) {
 			Object result = exchange.getMessage().getBody();
-			if (context.explicitResponseMapping) {
+			if (context.explicitResponseMapping && context.callerReplySinkId != null) {
 				OperationPayloads.requireSinkValue(result, context.callerReplySinkId);
 			}
 			exchange.setProperty(CALLER_REPLY_RESULT, result);

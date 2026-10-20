@@ -112,7 +112,8 @@ public final class OperationContext {
 		this.callerOutputTemplates = callerOutputTemplates == null ? Map.of() : Map.copyOf(callerOutputTemplates);
 		this.operationSourceId = operationSourceId == null ? action : operationSourceId;
 		this.commandSinkId = commandSinkId == null ? action : commandSinkId;
-		this.callerReplySinkId = callerReplySinkId == null ? action : callerReplySinkId;
+		// Null: no ResponseSink selects the Operation, which then answers with no outputs.
+		this.callerReplySinkId = callerReplySinkId;
 		this.commandSinkIds = commandSinkIds == null ? List.of() : List.copyOf(commandSinkIds);
 		this.commandSinkValuePaths = commandSinkValuePaths == null ? Map.of() : Map.copyOf(commandSinkValuePaths);
 		this.explicitResponseMapping = explicitResponseMapping;

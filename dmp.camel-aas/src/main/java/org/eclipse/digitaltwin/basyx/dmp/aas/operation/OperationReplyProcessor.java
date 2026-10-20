@@ -36,11 +36,12 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Final step of the declarative operation-delegation route: after the
- * response-direction Lua transform, unwrap the SinkId (action) key and answer
- * the caller in the shape it invoked with — a BaSyx operation-delegation
- * caller receives the {@code OperationVariable[]} envelope built from the
- * DECLARED reply types (see {@link OperationPayloads#toOperationVariables});
- * a direct REST caller receives the reply JSON as-is.
+ * response-direction Lua transform, take the value of the ResponseSink that
+ * selects the Operation and answer the caller in the shape it invoked with — a
+ * BaSyx operation-delegation caller receives the {@code OperationVariable[]}
+ * envelope built from the DECLARED reply types (see
+ * {@link OperationPayloads#toOperationVariables}); a direct REST caller receives
+ * the outputs as a JSON object.
  *
  * @author aas-camel-dmp
  */
@@ -56,39 +57,43 @@ public class OperationReplyProcessor implements Processor {
 
 	@Override
 	public void process(Exchange exchange) {
-		Object reply = exchange.getMessage().getBody();
-		// Only a response transform/mapping creates a SinkId envelope. Native reply
-		// fields may themselves have the action's name and must not be unwrapped.
-		Object unwrapped = context.explicitResponseMapping
-				? OperationPayloads.requireSinkValue(reply, context.callerReplySinkId)
-				: context.responseLuaUri == null ? reply
-						: OperationPayloads.unwrapValue(reply, context.callerReplySinkId);
-		Map<String, Object> replyMap = null;
-		if (unwrapped instanceof Map<?, ?> map) {
-			replyMap = new LinkedHashMap<>();
-			for (var entry : map.entrySet()) {
-				replyMap.put(String.valueOf(entry.getKey()), entry.getValue());
-			}
-		}
-		replyMap = OperationPayloads.selectCallerOutputs(replyMap, context.callerOutputOrder);
+		Map<String, Object> replyMap = callerOutputs(exchange.getMessage().getBody());
 		boolean basyxDelegation = Boolean.TRUE.equals(
 				exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY, Boolean.class));
 		if (basyxDelegation) {
-			java.util.Set<String> declared = new java.util.LinkedHashSet<>(context.callerResponseTypes.keySet());
-			declared.addAll(context.callerOutputTemplates.keySet());
-			if (replyMap == null && declared.size() == 1) {
-				String name = declared.iterator().next();
-				replyMap = new java.util.LinkedHashMap<>();
-				replyMap.put(name, unwrapped);
-			}
 			exchange.getMessage().setBody(
 					OperationPayloads.toOperationVariables(coerce(replyMap), context.callerResponseTypes,
 							context.callerOutputOrder, context.callerOutputTemplates));
 			LOGGER.debug("Operation delegation reply prepared");
 		} else {
-			exchange.getMessage().setBody(replyMap == null ? unwrapped : coerce(replyMap));
+			exchange.getMessage().setBody(coerce(replyMap));
 		}
 		exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, HttpURLConnection.HTTP_OK);
+	}
+
+	/**
+	 * The caller's outputs: the response Lua's value for the ResponseSink that selects the
+	 * Operation, an object keyed by output and InOut idShort, which must answer every
+	 * variable not marked Optional. Without that sink the Operation answers with no
+	 * outputs; the device reply is never matched by name.
+	 */
+	private Map<String, Object> callerOutputs(Object result) {
+		if (!context.explicitResponseMapping || context.callerReplySinkId == null) return new LinkedHashMap<>();
+		Object outputs = OperationPayloads.requireSinkValue(result, context.callerReplySinkId);
+		if (!(outputs instanceof Map<?, ?> map)) {
+			throw new OperationValidationException("DMP_RESPONSE_MAPPING_FAILED", 500,
+					"Response Lua must give the Operation SinkId " + context.callerReplySinkId
+							+ " an object keyed by output variable idShort", java.util.List.of());
+		}
+		Map<String, Object> named = new LinkedHashMap<>();
+		map.forEach((key, value) -> named.put(String.valueOf(key), value));
+		Map<String, Object> selected = OperationPayloads.selectCallerOutputs(named, context.callerOutputOrder);
+		// Every output and InOut variable (and collection member) not marked Optional must be answered.
+		context.callerOutputTemplates.forEach((name, template) -> OptionalQualifier.requirePresent(template,
+				selected.containsKey(name), selected.get(name), name, path -> new OperationValidationException(
+						"DMP_RESPONSE_MAPPING_FAILED", 500, "Response Lua omitted the required output " + path,
+						java.util.List.of())));
+		return selected;
 	}
 
 	/**

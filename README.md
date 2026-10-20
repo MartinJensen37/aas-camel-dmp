@@ -55,8 +55,10 @@ submodel events.
 - **Synchronous actions.** BaSyx delegates an AAS Operation to the URL in its
   `invocationDelegation` qualifier; the DMP serves `POST` on that URL's path
   (by convention `/operations/{aasIdShort}/{skill}`). It invokes the device
-  action over HTTP, an OPC UA Method, or MQTT 5 request/reply, and returns the
-  typed result. Operation input, output and InOut variables may be Properties,
+  action over HTTP, an OPC UA Method, or MQTT 5 request/reply (or a one-way
+  MQTT publish for an action without output), and returns the typed result:
+  the outputs the authored response mapping makes of the device's reply,
+  never fields matched by name. Operation input, output and InOut variables may be Properties,
   SubmodelElementCollections (objects) or SubmodelElementLists (arrays),
   nested freely; Lua sees them as typed Lua values.
 

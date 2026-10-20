@@ -112,10 +112,15 @@ class ManagedProtocolOutcomeParityTest {
                 models)) {
             device.startup();
             server.startup().get(10, TimeUnit.SECONDS);
+            // The declared outputs come from the whole Method result (the ResponseSource Reply).
+            repository.respond("Reply", "Calibrate", "function aimc_main(sources) local reply = sources.Reply "
+                    + "return { Calibrate = { Calibrate = reply.Calibrate, State = reply.State, Label = reply.Label, "
+                    + "Count = reply.Count } } end");
             RoutesConfiguration plan = repository.compile();
             JsonObject fullCci = json(repository.models.get("a/submodels/ControlComponentInstance")).getAsJsonObject();
             child(child(child(fullCci, "Skills"), "Calibrate"), "operation").remove("outputVariables");
             repository.models.put("a/submodels/ControlComponentInstance", fullCci.toString());
+            repository.withoutResponse();
             RoutesConfiguration nativePlan = repository.compile();
             runtime.startComponent();
             int port = freePort();
@@ -130,8 +135,8 @@ class ManagedProtocolOutcomeParityTest {
                         .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString("{}"))
                         .build(), HttpResponse.BodyHandlers.ofString());
                 assertEquals(200, nativeReply.statusCode(), nativeReply.body());
-                assertEquals(json("{\"State\":\"001\",\"Samples\":[2,4],\"Label\":\"007\",\"Nullable\":null,\"Calibrate\":true,\"Count\":7}"),
-                        json(nativeReply.body()), "whole native values preserve arrays and null without caller projection");
+                assertEquals(json("{}"), json(nativeReply.body()),
+                        "an Operation without outputs answers nothing; the Method's outputs are not passed through");
                 assertEquals(json("{}"), device.calls.poll(2, TimeUnit.SECONDS));
                 assertEquals(1, device.sends.get());
             } finally { runtime.removeBundle(nativeOwner); }
@@ -225,6 +230,8 @@ class ManagedProtocolOutcomeParityTest {
                     + "{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Count\",\"valueType\":\"xs:integer\"}}]"));
             try (Repository repository = new Repository("http-operation", "http://127.0.0.1:"
                     + device.getAddress().getPort() + "/plc/api", Map.of(cciId, cci.toString()))) {
+                repository.respond("Reply", "Restart", "function aimc_main(sources) local reply = sources.Reply "
+                        + "return { Restart = { Uuid = reply.Uuid, State = reply.State, Count = reply.Count } } end");
                 RoutesConfiguration plan = repository.compile();
                 runtime.startComponent();
                 int port = freePort();
@@ -372,8 +379,8 @@ class ManagedProtocolOutcomeParityTest {
                         assertEquals(scenario < 2 ? 200 : 502, reply.statusCode(), reply.body());
                         JsonElement body = json(reply.body());
                         assertNotNull(body, "a caller reply, including JSON null, must remain parseable");
-                        if (scenario < 2) assertEquals(json(payload), body,
-                                "without authored response Lua the whole native reply reaches the caller");
+                        if (scenario < 2) assertEquals(json("{}"), body,
+                                "without a response mapping the Operation answers with no outputs");
                         observedCommands.add(command);
                         observedReplies.add(new Reply(reply.statusCode(), body));
                     }
@@ -534,6 +541,18 @@ class ManagedProtocolOutcomeParityTest {
             server.start();
         }
         int nonGetRequests() { return repository.writes(); }
+        /** Authors the caller response on the fixture's operation mapping. */
+        void respond(String sourceId, String callerSinkId, String lua) {
+            editMapping(mapping -> ResponseMappings.respond(mapping, sourceId, callerSinkId, lua));
+        }
+        void withoutResponse() { editMapping(ResponseMappings::none); }
+        private void editMapping(java.util.function.Consumer<JsonObject> edit) {
+            String id = models.entrySet().stream().filter(entry -> entry.getValue()
+                    .contains("AssetInterfacesMappingConfiguration/2/0/Submodel")).findFirst().orElseThrow().getKey();
+            JsonObject aimc = json(models.get(id)).getAsJsonObject();
+            edit.accept(child(aimc, "MappingConfigurations").getAsJsonArray("value").get(0).getAsJsonObject());
+            models.put(id, aimc.toString());
+        }
         RoutesConfiguration compile() throws Exception {
             var client = repository.client();
             String aimc = models.values().stream().filter(model -> json(model).getAsJsonObject().toString()

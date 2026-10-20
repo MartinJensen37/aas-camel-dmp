@@ -67,12 +67,29 @@ public class OperationRequestProcessor implements Processor {
 			exchange.setProperty(OperationPayloads.BASYX_DELEGATION_BODY, true);
 			body = OperationPayloads.flattenOperationVariables(body, inputTemplates);
 		}
+		requireInputs(body);
 		if (operationSourceId != null && !operationSourceId.isBlank()) {
 			java.util.Map<String, Object> keyed = new java.util.LinkedHashMap<>();
 			keyed.put(operationSourceId, body);
 			body = keyed;
 		}
 		exchange.getMessage().setBody(JsonCodec.copyValue(body));
+	}
+
+	/**
+	 * The caller must give every input and InOut variable (and collection member) not marked
+	 * Optional; a missing one fails before the request Lua runs and the device is called.
+	 */
+	private void requireInputs(Object body) {
+		if (inputTemplates.isEmpty()) return;
+		if (!(body instanceof java.util.Map<?, ?> values)) {
+			throw new OperationValidationException("DMP_OPERATION_VALIDATION_FAILED", 400,
+					"Operation request must be an object keyed by input variable idShort", java.util.List.of());
+		}
+		inputTemplates.forEach((name, template) -> OptionalQualifier.requirePresent(template,
+				values.containsKey(name), values.get(name), name, path -> new OperationValidationException(
+						"DMP_OPERATION_VALIDATION_FAILED", 400, "Operation request omits the required input " + path,
+						java.util.List.of(path))));
 	}
 
 	private static Object decodeRestJson(Object body) throws java.io.IOException {

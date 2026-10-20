@@ -29,6 +29,7 @@ import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASDatasinkConfigurat
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AASPollingDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.aas.configuration.AasEventDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.OperationVariableValues;
+import org.eclipse.digitaltwin.basyx.dmp.aas.operation.OptionalQualifier;
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.ProtocolBridgeRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpDataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpObserveDataSourceConfiguration;
@@ -348,7 +349,6 @@ public final class ConnectorConfigurationFactory {
 			bindings.add(binding);
 		}
 		trigger.put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_BINDINGS,List.copyOf(bindings));
-		trigger.put(ProtocolBridgeRouteConfiguration.CALLER_REPLY_SINK_ID,action);
 		trigger.put(ProtocolBridgeRouteConfiguration.PARAMETER_TYPES,parameterTypes);
 		trigger.put("parameterRequired",parameterRequired);
 		trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_TYPES,responseTypes);
@@ -362,6 +362,8 @@ public final class ConnectorConfigurationFactory {
 		Map<String,String> outputTemplates=new LinkedHashMap<>();
 		Operation cci=(Operation)((DirectTarget)operation.target()).resolved().element();
 		List<String> callerOrder=new ArrayList<>();
+		// The output and InOut variables not marked Optional: the reply must answer them.
+		List<String> requiredOutputs=new ArrayList<>();
 		Set<String> callerNames=new LinkedHashSet<>();
 		// Inputs reach the caller request; InOut variables are both request and reply, outputs reply only.
 		Map<String,List<OperationVariable>> categories=new LinkedHashMap<>();
@@ -376,12 +378,15 @@ public final class ConnectorConfigurationFactory {
 							+" supported valueTypes, or collections and lists of them");
 					continue;
 				}
+				for(String problem:OptionalQualifier.problems(value))
+					issue(issues,mapping,root+"/Sources","CCI "+category+" variable "+problem);
 				String template=Aas.write(value);
 				if(!"output".equals(category))inputTemplates.put(value.getIdShort(),template);
 				if(!"input".equals(category)) {
 					outputTemplates.put(value.getIdShort(),template);
 					if(value instanceof Property property)callerTypes.put(value.getIdShort(),Aas.xsd(property.getValueType()));
 					callerOrder.add(value.getIdShort());
+					if(!OptionalQualifier.optional(value))requiredOutputs.add(value.getIdShort());
 				}
 			}
 		});
@@ -393,12 +398,19 @@ public final class ConnectorConfigurationFactory {
 		}
 		if(!callerOrder.isEmpty())trigger.put("callerOutputOrder",List.copyOf(callerOrder));
 		if(response!=null) trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_SCHEMA,schema(Presence.of(response)));
-		boolean explicit=mapping.responseSources().present() || mapping.responseSinks().present();
+		// The caller's outputs are only what the response mapping makes of the reply; nothing is
+		// matched by name. Without a response mapping the Operation answers with no outputs, which
+		// only an Operation whose outputs are all Optional (or that has none) may do.
+		boolean explicit=mapping.responseSources().present() || mapping.responseSinks().present()
+				|| mapping.responseTransformation().present();
+		if(!explicit && !requiredOutputs.isEmpty()) {
+			issue(issues,mapping,root+"/response","the Operation's required output and InOut variables "+requiredOutputs
+					+" need ResponseSources, a ResponseTransformation and a ResponseSink selecting the Operation");return;
+		}
 		trigger.put(ProtocolBridgeRouteConfiguration.EXPLICIT_RESPONSE_MAPPING,explicit);
 		List<DataSinkConfiguration> responseDestinations=new ArrayList<>();
-		if(explicit)compileResponseBindings(mapping,operation,commandTarget,write,plan,routeId,runtime,trigger,responseDestinations,issues);
-		else if(mapping.responseTransformation().present())trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_SOURCE_BINDINGS,
-				List.of(Map.of("sourceId",action)));
+		if(explicit)compileResponseBindings(mapping,operation,commandTarget,write,!callerOrder.isEmpty(),
+				!requiredOutputs.isEmpty(),plan,routeId,runtime,trigger,responseDestinations,issues);
 		trigger.put("targetOptions",Map.copyOf(targetOptions));
 
 		List<DataTransformerConfiguration> transformers=new ArrayList<>();
@@ -420,8 +432,8 @@ public final class ConnectorConfigurationFactory {
 					mapping.identity()+":response",mapping,root+"/ResponseTransformation",issues);
 			if(issues.size()==issueStart) {
 				LuaTransformerConfiguration responseLua=(LuaTransformerConfiguration)transformers.get(transformers.size()-1);
-				responseLua.setSourceKeys(explicit?String.join(",",((List<?>)trigger.get(
-						ProtocolBridgeRouteConfiguration.RESPONSE_SOURCE_BINDINGS)).stream().map(binding -> String.valueOf(((Map<?,?>)binding).get("sourceId"))).toList()):action);
+				responseLua.setSourceKeys(String.join(",",((List<?>)trigger.get(
+						ProtocolBridgeRouteConfiguration.RESPONSE_SOURCE_BINDINGS)).stream().map(binding -> String.valueOf(((Map<?,?>)binding).get("sourceId"))).toList()));
 				responseLua.setKeyedInput(true);
 				trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_TRANSFORMER,responseTransformerId);
 			}
@@ -567,11 +579,19 @@ public final class ConnectorConfigurationFactory {
 	}
 
 	private void compileResponseBindings(MappingPlan mapping,EndpointPlan operation,AidTarget command,boolean write,
-			Plan plan,String routeId,RuntimeSettings runtime,Map<String,Object> trigger,
+			boolean callerOutputs,boolean requiredOutputs,Plan plan,String routeId,RuntimeSettings runtime,Map<String,Object> trigger,
 			List<DataSinkConfiguration> destinations,List<Issue> issues) {
 		String path="MappingConfigurations/value/"+mapping.listIndex()+"/response";
+		// ResponseSources, ResponseTransformation and ResponseSinks are one unit: the sources name
+		// the reply's values, the transformation maps them, the sinks receive the result.
 		if(!mapping.responseTransformation().present() || mapping.responseTransformation().value()==null)
-			issue(issues,mapping,path,"explicit response bindings require a ResponseTransformation");
+			issue(issues,mapping,path,"a response mapping requires a ResponseTransformation");
+		if(!mapping.responseSources().present() || mapping.responseSources().value()==null
+				|| mapping.responseSources().value().isEmpty())
+			issue(issues,mapping,path,"a response mapping requires ResponseSources naming the reply's values");
+		if(!mapping.responseSinks().present() || mapping.responseSinks().value()==null
+				|| mapping.responseSinks().value().isEmpty())
+			issue(issues,mapping,path,"a response mapping requires ResponseSinks receiving its result");
 		List<Map<String,Object>> sourceBindings=new ArrayList<>();
 		Set<String> sourcePaths=new LinkedHashSet<>();
 		if(mapping.responseSources().present()) {
@@ -590,7 +610,6 @@ public final class ConnectorConfigurationFactory {
 			}
 		}
 		if(sourcePaths.contains("") && sourcePaths.size()>1)issue(issues,mapping,path,"whole and member response sources overlap");
-		if(sourceBindings.isEmpty())sourceBindings.add(Map.of("sourceId",operation.id()));
 		trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_SOURCE_BINDINGS,List.copyOf(sourceBindings));
 		String callerId=null;
 		List<Map<String,Object>> sinkBindings=new ArrayList<>();
@@ -623,7 +642,11 @@ public final class ConnectorConfigurationFactory {
 				sinkBindings.add(binding);
 			}
 		}
-		trigger.put(ProtocolBridgeRouteConfiguration.CALLER_REPLY_SINK_ID,callerId==null?operation.id():callerId);
+		if(requiredOutputs && callerId==null)issue(issues,mapping,path,
+				"the Operation's required output and InOut variables need a ResponseSink selecting the Operation");
+		if(!callerOutputs && callerId!=null)issue(issues,mapping,path,
+				"a ResponseSink selects the Operation, which declares no output or InOut variables");
+		if(callerId!=null)trigger.put(ProtocolBridgeRouteConfiguration.CALLER_REPLY_SINK_ID,callerId);
 		trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_SINK_BINDINGS,List.copyOf(sinkBindings));
 	}
 

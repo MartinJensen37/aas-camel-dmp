@@ -387,7 +387,7 @@ class ManagedLuaReconciliationTest {
 			});
 			device.start();
 			put(resource("aid.json").replace("http://192.168.0.60:8080/plc/api", "http://127.0.0.1:" + device.getAddress().getPort() + "/plc/api"));
-			put(PublishedModels.publish(resource("dependencies/0.json"), "contractAAS", "contract"));
+			put(PublishedModels.publish(cci(), "contractAAS", "contract"));
 			URI base = repository.uri();
 			settings = new ConnectorConfigurationFactory.RuntimeSettings(base);
 			discovery = new RepositoryDiscovery(new AasRepositoryClient(base, Duration.ofSeconds(2), Duration.ofSeconds(2), 100, 4, null), settings);
@@ -417,7 +417,12 @@ class ManagedLuaReconciliationTest {
 		}
 
 		void version(String version) throws Exception {
-			put(resource("aimc.json"));
+			// The Operation answers deviceReply: the action's output is the ResponseSource Restart,
+			// the Operation the ResponseSink Restart.
+			JsonObject aimc = JsonParser.parseString(resource("aimc.json")).getAsJsonObject();
+			ResponseMappings.respond(aimc.getAsJsonArray("submodelElements").get(0).getAsJsonObject()
+					.getAsJsonArray("value").get(0).getAsJsonObject(), "Restart", "Restart", responseScript(version));
+			put(aimc.toString());
 			script("Transformation", requestScript(version));
 			script("ResponseTransformation", responseScript(version));
 		}
@@ -425,7 +430,7 @@ class ManagedLuaReconciliationTest {
 		/** A second asset with its own AIMC and CCI; BaSyx delegates its Operation to /operations/contractB/Restart. */
 		void sibling(String version) throws Exception {
 			String cci = "a/submodels/ControlComponentInstance", siblingCci = "b/submodels/ControlComponentInstance";
-			put(PublishedModels.publish(resource("dependencies/0.json").replace(cci, siblingCci), "contractBAS", "contractB"));
+			put(PublishedModels.publish(cci().replace(cci, siblingCci), "contractBAS", "contractB"));
 			String body = models.get(AIMC).replace("contractAAS", "contractBAS").replace(cci, siblingCci);
 			body = body.replace(Base64.getEncoder().encodeToString(requestScript("old").getBytes(StandardCharsets.UTF_8)),
 					Base64.getEncoder().encodeToString(requestScript(version).getBytes(StandardCharsets.UTF_8)));
@@ -489,6 +494,12 @@ class ManagedLuaReconciliationTest {
 	}
 	private static String responseScript(String version) {
 		return "function aimc_main(sources) return { Restart = { deviceReply = sources.Restart.deviceReply .. '/" + version + "' } } end";
+	}
+	/** The fixture CCI whose Restart Operation declares the output deviceReply. */
+	private static String cci() throws Exception {
+		JsonObject cci = JsonParser.parseString(resource("dependencies/0.json")).getAsJsonObject();
+		ResponseMappings.outputs(ResponseMappings.operation(cci, "Restart"), "deviceReply");
+		return cci.toString();
 	}
 	private static String resource(String name) throws Exception {
 		try (var input = ManagedLuaReconciliationTest.class.getResourceAsStream("/runtime-model-contracts/http-operation/" + name)) {

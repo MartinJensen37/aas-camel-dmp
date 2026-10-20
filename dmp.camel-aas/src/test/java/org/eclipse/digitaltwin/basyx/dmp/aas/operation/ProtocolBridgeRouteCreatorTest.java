@@ -108,7 +108,14 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 		config.getTriggerData().put(ProtocolBridgeRouteConfiguration.REST_PATH, restPath);
 		config.getTriggerData().put(ProtocolBridgeRouteConfiguration.REST_METHOD, "POST");
 		config.getTriggerData().put("action", "Restart");
+		// The authored response mapping: the reply's Restart member is the ResponseSource,
+		// the Operation (SinkId Restart) declares the output "state".
 		config.getTriggerData().put("responseTransformer", "luaResp");
+		config.getTriggerData().put(ProtocolBridgeRouteConfiguration.EXPLICIT_RESPONSE_MAPPING, true);
+		config.getTriggerData().put(ProtocolBridgeRouteConfiguration.RESPONSE_SOURCE_BINDINGS,
+				List.of(Map.of("sourceId", "Restart", "valuePath", "/Restart")));
+		config.getTriggerData().put("callerReplySinkId", "Restart");
+		config.getTriggerData().put("callerOutputOrder", List.of("state"));
 		return config;
 	}
 
@@ -117,7 +124,6 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 		ProtocolBridgeRouteConfiguration config = syncBridge(
 				"syntegonStopperingSystem_Dispensing_interaction", "/operations/x/Dispensing",
 				"luaReq", "httpCmd");
-		assertTrue(config.getCallerOutputOrder().isEmpty());
 		config.getTriggerData().put("callerOutputOrder",
 				List.of("State", "Outcome"));
 		assertEquals(List.of("State", "Outcome"), config.getCallerOutputOrder());

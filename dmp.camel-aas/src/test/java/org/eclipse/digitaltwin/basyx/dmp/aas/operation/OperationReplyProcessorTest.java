@@ -1,7 +1,6 @@
 package org.eclipse.digitaltwin.basyx.dmp.aas.operation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.LinkedHashMap;
@@ -41,42 +40,45 @@ class OperationReplyProcessorTest {
 		return exchange;
 	}
 
-	private static OperationContext context(Map<String, String> responseTypes) {
+	/** The ResponseSink selecting the Operation: its SinkId keys the caller's outputs. */
+	private static final String OUTPUTS = "Outputs";
+
+	/** A response mapping whose Operation declares {@code types} as its outputs, in that order. */
+	private static OperationContext context(Map<String, String> types) {
 		return new OperationContext("Occupy", "req.lua", "res.lua", "mock:cmd",
-				Map.of(), responseTypes);
+				Map.of(), Map.of(), List.copyOf(types.keySet()), "Occupy", "Occupy", OUTPUTS,
+				List.of("Occupy"), Map.of(), true, List.of(), List.of(), Map.of(),
+				List.of("req.lua"), Map.of(), types);
+	}
+
+	/** The response Lua's result: the outputs under the Operation's SinkId. */
+	private static Map<String, Object> outputs(Map<String, ?> outputs) {
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put(OUTPUTS, outputs);
+		return result;
 	}
 
 	@Test
 	void aNumericLookingUuidComesBackAsAString() {
 		// what the station actually sends back after a stringified Uuid
-		Exchange exchange = exchangeWith(Map.of("State", "SUCCESS", "Uuid", "1",
-				"TimeStamp", "2026-09-30T07:43:32.365Z"));
+		Exchange exchange = exchangeWith(outputs(Map.of("State", "SUCCESS", "Uuid", "1",
+				"TimeStamp", "2026-09-30T07:43:32.365Z")));
 
-		new OperationReplyProcessor(context(new LinkedHashMap<>(Map.of("State", "string"))))
-				.process(exchange);
+		Map<String, String> types = new LinkedHashMap<>();
+		types.put("Uuid", "xs:string");
+		types.put("State", "xs:string");
+		new OperationReplyProcessor(context(types)).process(exchange);
 
-		assertJson("{\"State\":\"SUCCESS\",\"Uuid\":\"1\","
-				+ "\"TimeStamp\":\"2026-09-30T07:43:32.365Z\"}", exchange.getMessage().getBody());
+		assertJson("{\"State\":\"SUCCESS\",\"Uuid\":\"1\"}", exchange.getMessage().getBody());
 		assertEquals("1", String.valueOf(((Map<?, ?>) exchange.getMessage().getBody()).get("Uuid")),
 				"a numeric-looking string Uuid must not come back as a double");
 	}
 
 	@Test
-	void aNonNumericFieldIsUnaffected() {
-		Exchange exchange = exchangeWith(Map.of("State", "SUCCESS", "Uuid", "1"));
-
-		new OperationReplyProcessor(context(new LinkedHashMap<>(Map.of("State", "string"))))
-				.process(exchange);
-
-		assertJson("{\"State\":\"SUCCESS\",\"Uuid\":\"1\"}", exchange.getMessage().getBody());
-	}
-
-	@Test
 	void anIntegralNumberStaysIntegral() {
-		Exchange exchange = exchangeWith(Map.of("count", 858383));
+		Exchange exchange = exchangeWith(outputs(Map.of("count", 858383)));
 
-		new OperationReplyProcessor(context(new LinkedHashMap<>(Map.of("count", "integer"))))
-				.process(exchange);
+		new OperationReplyProcessor(context(Map.of("count", "integer"))).process(exchange);
 
 		assertEquals(858383L, ((Number) ((Map<?, ?>) exchange.getMessage().getBody()).get("count")).longValue(),
 				"an integral count must not become 858383.0");
@@ -84,22 +86,11 @@ class OperationReplyProcessorTest {
 
 	@Test
 	void aGenuineFractionKeepsItsFractionalForm() {
-		Exchange exchange = exchangeWith(Map.of("v", 103.5585973));
+		Exchange exchange = exchangeWith(outputs(Map.of("v", 103.5585973)));
 
-		new OperationReplyProcessor(context(new LinkedHashMap<>(Map.of("v", "number"))))
-				.process(exchange);
+		new OperationReplyProcessor(context(Map.of("v", "number"))).process(exchange);
 
 		assertEquals(103.5585973, ((Number) ((Map<?, ?>) exchange.getMessage().getBody()).get("v")).doubleValue());
-	}
-
-	@Test
-	void directScalarArrayAndNullRepliesKeepTheirJsonTypes() throws Exception {
-		for (Object body : java.util.Arrays.asList("READY", List.of(1L, 2L), null)) {
-			Exchange exchange = exchangeWith(body);
-			new OperationReplyProcessor(context(new LinkedHashMap<>(Map.of("State", "string"))))
-					.process(exchange);
-			assertEquals(body, exchange.getMessage().getBody());
-		}
 	}
 
 	@Test
@@ -111,73 +102,83 @@ class OperationReplyProcessorTest {
 	}
 
 	@Test
-	void untransformedNativeReplyIsNotAnEnvelopeEvenWhenItsOnlyFieldMatchesTheAction() {
-		OperationContext ctx = new OperationContext("Invoke", "req.lua", null, "mock:cmd");
-		for (Object body : java.util.Arrays.asList(
-				Map.of("Invoke", Map.of("x", 1L), "sibling", "001"),
-				Map.of("Invoke", List.of(false, 2L, "002")),
-				Map.of("Invoke", Map.of("Invoke", true)),
-				java.util.Collections.singletonMap("Invoke", null),
-				List.of(false, 2L, "002"), "001", null)) {
-			Exchange exchange = exchangeWith(body);
+	void withoutAResponseMappingTheDeviceReplyIsNeverMatchedByName() {
+		// The reply has exactly the declared output names; it still is no caller output.
+		OperationContext ctx = new OperationContext("Occupy", "req.lua", null, "mock:cmd",
+				Map.of(), Map.of(), List.of("Uuid", "State"), "Occupy", "Occupy", null,
+				List.of("Occupy"), Map.of(), false, List.of(), List.of(), Map.of(),
+				List.of("req.lua"), Map.of(), Map.of("Uuid", "xs:string", "State", "xs:string"));
+		for (boolean basyx : List.of(false, true)) {
+			Exchange exchange = exchangeWith(Map.of("Uuid", "1", "State", "SUCCESS"));
+			exchange.setProperty(OperationPayloads.BASYX_DELEGATION_BODY, basyx);
 			new OperationReplyProcessor(ctx).process(exchange);
-			assertEquals(body, exchange.getMessage().getBody());
+			assertEquals(basyx ? List.of() : Map.of(), exchange.getMessage().getBody());
 			assertEquals(200, exchange.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE));
 		}
 	}
 
 	@Test
-	void untransformedNativeReplyKeepsActionNamedAndSiblingBasyxOutputs() {
-		OperationContext ctx = new OperationContext("Invoke", "req.lua", null, "mock:cmd",
-				Map.of(), Map.of("Invoke", "xs:string", "State", "xs:boolean"), List.of("State", "Invoke"),
-				"Request", "Command", "Invoke", List.of("Command"), Map.of(), false,
+	void anInvokeOnlyOperationAnswersWithNoOutputs() {
+		// A response mapping that only fans out (no ResponseSink selects the Operation).
+		OperationContext ctx = new OperationContext("Halt", "req.lua", "res.lua", "mock:cmd",
+				Map.of(), Map.of(), List.of(), "Halt", "Halt", null, List.of("Halt"), Map.of(), true,
 				List.of(), List.of(), Map.of());
-		Exchange exchange = exchangeWith(Map.of("Invoke", "001", "State", true));
+		Exchange exchange = exchangeWith(Map.of("LastHalt", "SUCCESS"));
 		exchange.setProperty(OperationPayloads.BASYX_DELEGATION_BODY, true);
 		new OperationReplyProcessor(ctx).process(exchange);
-		assertJson("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"State\","
-				+ "\"valueType\":\"xs:boolean\",\"value\":\"true\"}},{\"value\":{\"modelType\":\"Property\","
-				+ "\"idShort\":\"Invoke\",\"valueType\":\"xs:string\",\"value\":\"001\"}}]",
-				exchange.getMessage().getBody());
+		assertEquals(List.of(), exchange.getMessage().getBody());
 	}
 
 	@Test
-	void selectedWholeReplyPreservesMemberNamedLikeTheReplySink() {
-		for (boolean explicit : List.of(false, true)) {
-			OperationContext ctx = new OperationContext("Invoke", "req.lua", "res.lua", "mock:cmd",
-					Map.of(), Map.of(), List.of(), "Request", "Command", "Reply", List.of("Command"),
-					Map.of(), explicit, List.of(), List.of(), Map.of());
-			Map<String, Object> whole = Map.of("Reply", Map.of("x", 1L), "sibling", 2L);
-			Exchange exchange = exchangeWith(Map.of("Reply", whole, "Audit", "not caller output"));
-			new OperationReplyProcessor(ctx).process(exchange);
-			assertEquals(whole, exchange.getMessage().getBody());
-		}
+	void callerOutputsAreOnlyTheDeclaredVariables() {
+		Exchange exchange = exchangeWith(Map.of(OUTPUTS, Map.of("State", "SUCCESS", "TimeStamp", "t"),
+				"Audit", "a ResponseSink value, not a caller output"));
+		new OperationReplyProcessor(context(Map.of("State", "xs:string"))).process(exchange);
+		assertEquals(Map.of("State", "SUCCESS"), exchange.getMessage().getBody());
+	}
+
+	/** A response mapping whose Operation declares the output templates {@code outputs}. */
+	private static OperationContext withTemplates(Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> outputs) {
+		return new OperationContext("Occupy", "req.lua", "res.lua", "mock:cmd",
+				Map.of(), Map.of(), List.copyOf(outputs.keySet()), "Occupy", "Occupy", OUTPUTS,
+				List.of("Occupy"), Map.of(), true, List.of(), List.of(), Map.of(),
+				List.of("req.lua"), Map.of(), Map.of(), Map.of(), outputs);
 	}
 
 	@Test
-	void explicitNullCallerReplyIsPresentButMissingReplyFails() {
-		OperationContext ctx = new OperationContext("Invoke", "req.lua", "res.lua", "mock:cmd",
-				Map.of(), Map.of(), List.of(), "Request", "Command", "Reply", List.of("Command"),
-				Map.of(), true, List.of(), List.of(), Map.of());
-		Map<String, Object> values = new LinkedHashMap<>();
-		values.put("Reply", null);
-		Exchange exchange = exchangeWith(values);
-		new OperationReplyProcessor(ctx).process(exchange);
-		assertNull(exchange.getMessage().getBody());
+	void everyOutputNotMarkedOptionalMustBeAnswered() {
+		Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> outputs = new LinkedHashMap<>();
+		outputs.put("State", OptionalQualifierTest.property("State", null));
+		outputs.put("Outcome", OptionalQualifierTest.property("Outcome", "true"));
+		Exchange answered = exchangeWith(outputs(Map.of("State", "SUCCESS")));
+		new OperationReplyProcessor(withTemplates(outputs)).process(answered);
+		assertEquals(Map.of("State", "SUCCESS"), answered.getMessage().getBody(), "the optional Outcome may be absent");
+
+		// A Lua typo leaves out the required State: that fails instead of answering without it.
 		OperationValidationException failure = assertThrows(OperationValidationException.class,
-				() -> new OperationReplyProcessor(ctx).process(exchangeWith(Map.of("Audit", "ignored"))));
+				() -> new OperationReplyProcessor(withTemplates(outputs))
+						.process(exchangeWith(outputs(Map.of("Stat", "SUCCESS", "Outcome", 0L)))));
 		assertEquals("DMP_RESPONSE_MAPPING_FAILED", failure.getCode());
 	}
 
 	@Test
-	void basyxScalarReplyStillUsesDeclaredOutputEnvelope() {
-		Exchange exchange = exchangeWith("READY");
-		exchange.setProperty(OperationPayloads.BASYX_DELEGATION_BODY, true);
-		new OperationReplyProcessor(context(new LinkedHashMap<>(Map.of("State", "string"))))
-				.process(exchange);
-		assertJson("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"State\","
-				+ "\"valueType\":\"xs:string\",\"value\":\"READY\"}}]",
-				exchange.getMessage().getBody());
+	void callerOutputsMustBeAnObjectKeyedByOutputIdShort() {
+		for (Object value : java.util.Arrays.asList("SUCCESS", List.of("SUCCESS"), null)) {
+			Map<String, Object> result = new LinkedHashMap<>();
+			result.put(OUTPUTS, value);
+			OperationValidationException failure = assertThrows(OperationValidationException.class,
+					() -> new OperationReplyProcessor(context(Map.of("State", "xs:string")))
+							.process(exchangeWith(result)));
+			assertEquals("DMP_RESPONSE_MAPPING_FAILED", failure.getCode());
+		}
+	}
+
+	@Test
+	void aMissingOperationSinkIdFails() {
+		OperationValidationException failure = assertThrows(OperationValidationException.class,
+				() -> new OperationReplyProcessor(context(Map.of("State", "xs:string")))
+						.process(exchangeWith(Map.of("Audit", "ignored"))));
+		assertEquals("DMP_RESPONSE_MAPPING_FAILED", failure.getCode());
 	}
 
 	@Test
@@ -185,13 +186,12 @@ class OperationReplyProcessorTest {
 		Map<String, Object> reply = new LinkedHashMap<>();
 		reply.put("State", null);
 		reply.put("Uuid", "00000000-0000-0000-0000-000000000001");
-		OperationContext ctx = new OperationContext("Occupy", "req.lua", null, "mock:cmd",
-				Map.of(), Map.of(), List.of("Uuid", "State"), "Request", "Command", "Occupy",
-				List.of("Command"), Map.of(), false, List.of(), List.of(), Map.of(),
-				List.of("req.lua"), Map.of(), Map.of("Uuid", "xs:string", "State", "xs:string"));
-		Exchange exchange = exchangeWith(reply);
+		Map<String, String> types = new LinkedHashMap<>();
+		types.put("Uuid", "xs:string");
+		types.put("State", "xs:string");
+		Exchange exchange = exchangeWith(outputs(reply));
 		exchange.setProperty(OperationPayloads.BASYX_DELEGATION_BODY, true);
-		new OperationReplyProcessor(ctx).process(exchange);
+		new OperationReplyProcessor(context(types)).process(exchange);
 		assertJson("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Uuid\","
 				+ "\"valueType\":\"xs:string\",\"value\":\"00000000-0000-0000-0000-000000000001\"}},"
 				+ "{\"value\":{\"modelType\":\"Property\",\"idShort\":\"State\","
@@ -201,10 +201,9 @@ class OperationReplyProcessorTest {
 
 	@Test
 	void declaredOutputTypesStillApply() {
-		Exchange exchange = exchangeWith(Map.of("State", 1));
-		OperationContext ctx = context(new LinkedHashMap<>(Map.of("State", "string")));
+		Exchange exchange = exchangeWith(outputs(Map.of("State", 1)));
 
-		new OperationReplyProcessor(ctx).process(exchange);
+		new OperationReplyProcessor(context(Map.of("State", "string"))).process(exchange);
 
 		assertEquals(Map.of("State", "1"), exchange.getMessage().getBody(),
 				"a declared xs:string output must be stringified in the reply too");
@@ -250,15 +249,6 @@ class OperationReplyProcessorTest {
 		}
 		assertEquals(Map.of("Count", "integer", "DeviceFlag", "string"), ctx.responseTypes);
 		assertEquals(callerTypes, ctx.callerResponseTypes);
-	}
-
-	@Test
-	void scalarBasyxReplyUsesCallerOutputNameAndTypeRatherThanDeviceOutput() {
-		Exchange exchange = exchangeWith(Map.of("Reply", "true"));
-		exchange.setProperty(OperationPayloads.BASYX_DELEGATION_BODY, true);
-		new OperationReplyProcessor(separateTypes(Map.of("Flag", "boolean"), List.of("Flag"))).process(exchange);
-		assertEquals(List.of(Map.of("value", Map.of("modelType", "Property", "idShort", "Flag",
-				"valueType", "xs:boolean", "value", "true"))), envelope(exchange.getMessage().getBody()));
 	}
 
 	@Test

@@ -171,7 +171,7 @@ class OperationConnectorsTest {
 				});
 			});
 			try {
-				runtime.installBundle("action", compileMqttAction(broker));
+				runtime.installBundle("action", compileMqttAction(broker, true));
 				List<CompletableFuture<HttpResponse<String>>> replies = new ArrayList<>();
 				HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
 				for (int i = 0; i < calls; i++) replies.add(client.sendAsync(request("{\"Uuid\":\"job-" + i + "\"}"),
@@ -185,6 +185,53 @@ class OperationConnectorsTest {
 			} finally {
 				replier.shutdownNow();
 			}
+		}
+	}
+
+	@Test
+	void anOperationWithoutOutputsAnswersOnlyAfterTheActionsTerminalReply() throws Exception {
+		long delayMillis = 600;
+		try (Mqtt5TestBroker broker = new Mqtt5TestBroker()) {
+			var replier = Executors.newSingleThreadScheduledExecutor();
+			java.util.concurrent.atomic.AtomicLong repliedAt = new java.util.concurrent.atomic.AtomicLong();
+			broker.onPublish(publication -> {
+				if (!"base/CMD/Calibrate".equals(publication.topic())) return;
+				replier.schedule(() -> {
+					repliedAt.set(System.nanoTime());
+					broker.reply("base/DATA/Calibrate", publication.correlationData(),
+							"{\"Uuid\":\"ack-1\",\"State\":\"SUCCESS\",\"TimeStamp\":\"now\"}");
+					return null;
+				}, delayMillis, java.util.concurrent.TimeUnit.MILLISECONDS);
+			});
+			try {
+				// The Occupy action answers on its response topic; the Operation declares no outputs.
+				runtime.installBundle("terminal-ack", compileMqttAction(broker, false));
+				var reply = call("{\"Uuid\":\"ack-1\"}");
+				long answeredAt = System.nanoTime();
+				assertEquals(200, reply.statusCode(), reply.body());
+				assertEquals(json("{}"), json(reply.body()), "no outputs, and the reply is not passed through");
+				assertTrue(repliedAt.get() != 0 && answeredAt >= repliedAt.get(),
+						"the caller is answered only once the device's terminal reply arrived");
+			} finally {
+				replier.shutdownNow();
+			}
+		}
+	}
+
+	@Test
+	void anInvokeOnlyMqttActionIsPublishedAndAnswersWithNoOutputs() throws Exception {
+		try (Mqtt5TestBroker broker = new Mqtt5TestBroker()) {
+			List<Mqtt5TestBroker.Publication> commands = new CopyOnWriteArrayList<>();
+			broker.onPublish(publication -> {
+				if ("base/CMD/Calibrate".equals(publication.topic())) commands.add(publication);
+			});
+			runtime.installBundle("invoke-only", compileInvokeOnlyMqttAction(broker));
+			var reply = call("{\"Uuid\":\"halt-1\"}");
+			assertEquals(200, reply.statusCode(), reply.body());
+			assertEquals(json("{}"), json(reply.body()), "an action without an output answers nothing");
+			assertEquals(1, commands.size(), "the broker accepted the command before the call returned");
+			assertEquals(json("{\"Uuid\":\"halt-1\"}"), json(commands.get(0).text()));
+			assertEquals(null, commands.get(0).correlationData(), "a one-way publish carries no correlation data");
 		}
 	}
 
@@ -212,11 +259,11 @@ class OperationConnectorsTest {
 		JsonObject iface = child(aid, interfaceId);
 		child(child(iface, "EndpointMetadata"), "base").addProperty("value", base);
 		form.accept(child(child(child(child(iface, "InteractionMetadata"), "properties"), property), "forms"));
-		return compile(aid, interfaceId, "properties", property, "Setpoint", operation, lua);
+		return compile(aid, interfaceId, "properties", property, "Setpoint", operation, lua, null);
 	}
 
 	/** The Operation bound to the stoppering Occupy action (MQTT 5 request/reply), renamed Calibrate. */
-	private RoutesConfiguration compileMqttAction(Mqtt5TestBroker broker) throws Exception {
+	private RoutesConfiguration compileMqttAction(Mqtt5TestBroker broker, boolean outputs) throws Exception {
 		JsonObject occupy = child(child(child(child(json(resource("stoppering/aid.json")).getAsJsonObject(), "interface_mqtt"),
 				"InteractionMetadata"), "actions"), "Occupy").deepCopy();
 		occupy.addProperty("idShort", "Calibrate");
@@ -230,14 +277,38 @@ class OperationConnectorsTest {
 		JsonObject actions = child(child(mqtt, "InteractionMetadata"), "actions");
 		if (!actions.has("value")) actions.add("value", new JsonArray());
 		actions.getAsJsonArray("value").add(occupy);
+		String request = "function aimc_main(sources) return { Calibrate = { Uuid = sources.Calibrate.Uuid } } end";
+		if (!outputs) return compile(aid, "interface_mqtt", "actions", "Calibrate", "Calibrate", operation -> operation.add(
+				"inputVariables", json("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Uuid\",\"valueType\":\"xs:string\"}}]")),
+				request, null);
 		return compile(aid, "interface_mqtt", "actions", "Calibrate", "Calibrate", operation -> {
 			operation.add("inoutputVariables", json("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Uuid\",\"valueType\":\"xs:string\"}}]"));
 			operation.add("outputVariables", json("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"State\",\"valueType\":\"xs:string\"}}]"));
-		}, "function aimc_main(sources) return { Calibrate = { Uuid = sources.Calibrate.Uuid } } end");
+		}, request, "function aimc_main(sources) local reply = sources.Reply "
+						+ "return { Calibrate = { Uuid = reply.Uuid, State = reply.State } } end");
+	}
+
+	/** {@code responseLua}, when given, answers the Operation (SinkId {@code sinkId}) from the action's output Reply. */
+	/** The stoppering Halt action (no output, no response topic) as Calibrate, bound to an Operation with only an input. */
+	private RoutesConfiguration compileInvokeOnlyMqttAction(Mqtt5TestBroker broker) throws Exception {
+		JsonObject halt = child(child(child(child(json(resource("stoppering/aid.json")).getAsJsonObject(), "interface_mqtt"),
+				"InteractionMetadata"), "actions"), "Halt").deepCopy();
+		halt.addProperty("idShort", "Calibrate");
+		child(halt, "title").addProperty("value", "Calibrate");
+		child(child(halt, "forms"), "href").addProperty("value", "CMD/Calibrate");
+		JsonObject aid = json(resource("fan-in-out/aid.json")).getAsJsonObject();
+		JsonObject mqtt = child(aid, "interface_mqtt");
+		child(child(mqtt, "EndpointMetadata"), "base").addProperty("value", "mqtt://127.0.0.1:" + broker.port() + "/base/");
+		JsonObject actions = child(child(mqtt, "InteractionMetadata"), "actions");
+		if (!actions.has("value")) actions.add("value", new JsonArray());
+		actions.getAsJsonArray("value").add(halt);
+		return compile(aid, "interface_mqtt", "actions", "Calibrate", "Calibrate", operation -> operation.add("inputVariables",
+				json("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Uuid\",\"valueType\":\"xs:string\"}}]")),
+				"function aimc_main(sources) return { Calibrate = { Uuid = sources.Calibrate.Uuid } } end", null);
 	}
 
 	private RoutesConfiguration compile(JsonObject aid, String interfaceId, String container, String affordance, String sinkId,
-			Consumer<JsonObject> operation, String lua) throws Exception {
+			Consumer<JsonObject> operation, String lua, String responseLua) throws Exception {
 		JsonObject cci = json(resource("opcua-method/dependencies/0.json")).getAsJsonObject();
 		operation.accept(child(child(child(cci, "Skills"), "Calibrate"), "operation"));
 		JsonObject aimc = json(resource("opcua-method/aimc.json")).getAsJsonObject();
@@ -249,6 +320,7 @@ class OperationConnectorsTest {
 		keys.get(3).getAsJsonObject().addProperty("value", container);
 		keys.get(4).getAsJsonObject().addProperty("value", affordance);
 		child(sink, "SinkId").addProperty("value", sinkId);
+		if (responseLua != null) ResponseMappings.respond(mapping, "Reply", sinkId, responseLua);
 
 		if (repository != null) repository.close();
 		repository = new FakeAasRepository();

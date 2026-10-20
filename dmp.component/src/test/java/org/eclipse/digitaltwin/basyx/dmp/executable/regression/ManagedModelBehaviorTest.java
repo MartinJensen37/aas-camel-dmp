@@ -124,7 +124,6 @@ class ManagedModelBehaviorTest {
 		var repository = new FakeAasRepository();
 		repository.put(resource("http-operation/aid.json").replace("http://192.168.0.60:8080/plc/api",
 				"http://127.0.0.1:" + device.getAddress().getPort() + "/plc/api"));
-		repository.put(PublishedModels.publish(resource("http-operation/dependencies/0.json"), "contractAAS", "contract"));
 		Runtime runtime = new Runtime();
 		try {
 			var repositoryUri = repository.uri();
@@ -142,7 +141,15 @@ class ManagedModelBehaviorTest {
 			for (int scenario = 0; scenario < responseScripts.length; scenario++) {
 				deviceReply.set(scenario == 3 ? "invalid mqtt://user:secret-password@host reply" : "{\"deviceReply\":\"001\"}");
 				JsonObject aimc = JsonParser.parseString(resource("http-operation/aimc.json")).getAsJsonObject();
-				if (responseScripts[scenario] != null) addResponseScript(aimc, responseScripts[scenario]);
+				// With a response script the Operation declares the output seen; without one it has
+				// no outputs, and the device reply is not passed through.
+				JsonObject cci = JsonParser.parseString(resource("http-operation/dependencies/0.json")).getAsJsonObject();
+				if (responseScripts[scenario] != null) {
+					ResponseMappings.outputs(ResponseMappings.operation(cci, "Restart"), "seen");
+					ResponseMappings.respond(child(aimc, "MappingConfigurations").getAsJsonArray("value").get(0)
+							.getAsJsonObject(), "Restart", "Restart", responseScripts[scenario]);
+				}
+				repository.put(PublishedModels.publish(cci.toString(), "contractAAS", "contract"));
 				repository.put(aimc.toString());
 				var plan = new MappingPlanCompiler(new AasReferenceResolver(client)).compile(WireProjection.aimc(org.eclipse.digitaltwin.basyx.dmp.aas.model.Aas.read(aimc.toString(), org.eclipse.digitaltwin.aas4j.v3.model.Submodel.class)));
 				assertEquals(AasRepositoryClient.Status.FOUND, plan.status(), String.valueOf(plan));
@@ -167,7 +174,7 @@ class ManagedModelBehaviorTest {
 						assertEquals(JsonParser.parseString(payload), JsonParser.parseString(command.get()), "caller field names cannot imply internal framing");
 						assertEquals(scenario == 2 ? 500 : scenario == 3 ? 502 : 200, response.statusCode(), response.body());
 						assertFalse(response.body().contains("secret-password"), "caller diagnostics must not expose connector causes");
-						if (scenario < 2) assertEquals(JsonParser.parseString(scenario == 0 ? deviceReply.get()
+						if (scenario < 2) assertEquals(JsonParser.parseString(scenario == 0 ? "{}"
 								: "{\"seen\":\"001\"}"), JsonParser.parseString(response.body()));
 					}
 				} finally { runtime.removeBundle(installed); }
@@ -176,17 +183,6 @@ class ManagedModelBehaviorTest {
 		} finally {
 			try { runtime.stopComponent(); } finally { repository.close(); device.stop(0); }
 		}
-	}
-
-	private static void addResponseScript(JsonObject aimc, String script) {
-		JsonObject mapping = child(aimc, "MappingConfigurations").getAsJsonArray("value").get(0).getAsJsonObject();
-		JsonObject response = child(mapping, "Transformation").deepCopy();
-		response.addProperty("idShort", "ResponseTransformation");
-		response.remove("embeddedDataSpecifications");
-		response.getAsJsonObject("semanticId").getAsJsonArray("keys").get(0).getAsJsonObject().addProperty("value",
-				"https://smartproductionlab.aau.dk/aimc/ResponseTransformation/1/0");
-		response.addProperty("value", Base64.getEncoder().encodeToString(script.getBytes(StandardCharsets.UTF_8)));
-		mapping.getAsJsonArray("value").add(response);
 	}
 
 	private static JsonObject child(JsonObject parent, String id) {

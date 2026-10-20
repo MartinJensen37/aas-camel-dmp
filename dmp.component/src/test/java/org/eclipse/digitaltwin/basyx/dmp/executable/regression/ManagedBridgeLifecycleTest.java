@@ -360,6 +360,13 @@ class ManagedBridgeLifecycleTest {
 		operation.getTriggerData().put("action", "Action");
 		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_ID, "command");
 		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_IDS, List.of("command"));
+		// The whole device reply is the ResponseSource reply; it is both the Operation's output
+		// reply (caller SinkId reply) and the value written to the reply sink.
+		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.EXPLICIT_RESPONSE_MAPPING, true);
+		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.RESPONSE_SOURCE_BINDINGS,
+				List.of(Map.of("sourceId", "reply")));
+		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.CALLER_REPLY_SINK_ID, "reply");
+		operation.getTriggerData().put("callerOutputOrder", List.of("reply"));
 		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.RESPONSE_SINK_BINDINGS,
 				List.of(Map.of("sinkId", "reply", "dataSinkId", "reply")));
 		return new RoutesConfiguration(Map.of(), Map.of("request-transform", new FixedTransformer()),

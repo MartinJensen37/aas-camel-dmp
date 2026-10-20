@@ -694,6 +694,90 @@ class ConnectorConfigurationFactoryTest {
 		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("exact command ACTION anchor")));
 	}
 
+	/** The explicit response plan with its response parts replaced. */
+	private static Plan withResponse(Plan base,Presence<List<EndpointPlan>> sources,Presence<List<EndpointPlan>> sinks,
+			Presence<WireModel.Blob> transformation) {
+		var original=base.mappings().get(0);
+		return new Plan(base.aimcSubmodelId(),List.of(new MappingPlan(original.identity(),original.listIndex(),original.sources(),
+				original.sinks(),original.defaultPollingInterval(),original.transformation(),sources,sinks,transformation,
+				original.triggerSourceIds(),original.qualifiers())));
+	}
+
+	@Test void operationOutputsAreNeverMatchedByNameWithoutAResponseMapping() {
+		// The device output Count has the same name as the Operation's output Count; that is no mapping.
+		var result=factory.create(withResponse(explicitResponsePlan("aid-command"),Presence.absent(),Presence.absent(),
+				Presence.absent()),"bridge");
+		assertTrue(result.configuration().getRoutes().isEmpty());
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains(
+				"need ResponseSources, a ResponseTransformation and a ResponseSink selecting the Operation")),
+				result.issues().toString());
+	}
+
+	/** The explicit response plan whose Operation output Count carries the Optional qualifier {@code value}. */
+	private static Plan withOptionalCount(String value) {
+		var base=explicitResponsePlan("aid-command");
+		var operation=(org.eclipse.digitaltwin.aas4j.v3.model.Operation)((DirectTarget)base.mappings().get(0).sources().get(0)
+				.target()).resolved().element();
+		operation.getOutputVariables().get(0).getValue().setQualifiers(List.of(
+				new org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultQualifier.Builder().type("Optional")
+						.valueType(org.eclipse.digitaltwin.aas4j.v3.model.DataTypeDefXsd.BOOLEAN).value(value)
+						.semanticId(new org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultReference.Builder()
+								.type(org.eclipse.digitaltwin.aas4j.v3.model.ReferenceTypes.EXTERNAL_REFERENCE)
+								.keys(new org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultKey.Builder()
+										.type(org.eclipse.digitaltwin.aas4j.v3.model.KeyTypes.GLOBAL_REFERENCE)
+										.value(org.eclipse.digitaltwin.basyx.dmp.aas.operation.OptionalQualifier.SEMANTIC_ID).build())
+								.build()).build()));
+		return base;
+	}
+
+	@Test void anOperationWhoseOutputsAreAllOptionalNeedsNoResponseMapping() {
+		var result=factory.create(withResponse(withOptionalCount("true"),Presence.absent(),Presence.absent(),Presence.absent()),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
+		assertEquals(false,bridge.getTriggerData().get(ProtocolBridgeRouteConfiguration.EXPLICIT_RESPONSE_MAPPING));
+		// A response mapping that only fans out may leave out the caller's ResponseSink too.
+		var base=withOptionalCount("true");
+		var original=base.mappings().get(0);
+		var fanOutOnly=factory.create(withResponse(base,original.responseSources(),
+				Presence.of(original.responseSinks().value().subList(1,3)),original.responseTransformation()),"bridge");
+		assertTrue(fanOutOnly.issues().isEmpty(),fanOutOnly.issues().toString());
+	}
+
+	@Test void anUnreadableOptionalQualifierBlocksTheMapping() {
+		var result=factory.create(withOptionalCount("maybe"),"bridge");
+		assertTrue(result.configuration().getRoutes().isEmpty());
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains(
+				"the Optional qualifier needs an xs:boolean value")),result.issues().toString());
+	}
+
+	@Test void aResponseMappingIsAuthoredAsAWhole() {
+		var base=explicitResponsePlan("aid-command");
+		var original=base.mappings().get(0);
+		var withoutLua=factory.create(withResponse(base,original.responseSources(),original.responseSinks(),Presence.absent()),"bridge");
+		assertTrue(withoutLua.issues().stream().anyMatch(issue -> issue.message().contains("requires a ResponseTransformation")),
+				withoutLua.issues().toString());
+		var withoutSources=factory.create(withResponse(base,Presence.absent(),original.responseSinks(),
+				original.responseTransformation()),"bridge");
+		assertTrue(withoutSources.issues().stream().anyMatch(issue -> issue.message().contains("requires ResponseSources")),
+				withoutSources.issues().toString());
+		var withoutSinks=factory.create(withResponse(base,original.responseSources(),Presence.absent(),
+				original.responseTransformation()),"bridge");
+		assertTrue(withoutSinks.issues().stream().anyMatch(issue -> issue.message().contains("requires ResponseSinks")),
+				withoutSinks.issues().toString());
+		for(var result:List.of(withoutLua,withoutSources,withoutSinks))assertTrue(result.configuration().getRoutes().isEmpty());
+	}
+
+	@Test void operationOutputsNeedTheResponseSinkSelectingTheOperation() {
+		var base=explicitResponsePlan("aid-command");
+		var original=base.mappings().get(0);
+		// Only the AAS fan-out sinks X and Y, not the caller Operation.
+		var result=factory.create(withResponse(base,original.responseSources(),
+				Presence.of(original.responseSinks().value().subList(1,3)),original.responseTransformation()),"bridge");
+		assertTrue(result.configuration().getRoutes().isEmpty());
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("need a ResponseSink selecting the Operation")),
+				result.issues().toString());
+	}
+
 	@Test void methodArgumentTypesPreserveArrayRankAndTypedPropertySchemas() {
 		var base=explicitResponsePlan("aid-command");
 		var original=base.mappings().get(0);
@@ -712,9 +796,14 @@ class ConnectorConfigurationFactoryTest {
 				action.schema(),action.input(),Presence.of(output),action.element());
 		var typedTarget=new AidTarget(new AasReferenceResolver.AidTarget(target.owner(),typedAction,target.schema(),
 				target.schemaPath(),target.submodelId()));
+		// The Operation's output Count still comes from the response mapping, now on the typed action.
+		var responseSource=original.responseSources().value().get(0);
+		var typedCount=new AidTarget(new AasReferenceResolver.AidTarget(target.owner(),typedAction,Presence.of(integer),
+				List.of("Count"),target.submodelId()));
 		var mapping=new MappingPlan(original.identity(),original.listIndex(),original.sources(),
 				List.of(new EndpointPlan(sink.id(),sink.reference(),typedTarget)),original.defaultPollingInterval(),
-				original.transformation(),Presence.absent(),Presence.absent(),Presence.absent(),
+				original.transformation(),Presence.of(List.of(new EndpointPlan(responseSource.id(),responseSource.reference(),typedCount))),
+				Presence.of(List.of(original.responseSinks().value().get(0))),original.responseTransformation(),
 				original.triggerSourceIds(),original.qualifiers());
 		var result=factory.create(new Plan(base.aimcSubmodelId(),List.of(mapping)),"bridge");
 		assertTrue(result.issues().isEmpty(),result.issues().toString());

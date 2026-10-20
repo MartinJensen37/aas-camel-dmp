@@ -72,7 +72,9 @@ public class OperationFailureProcessor implements Processor {
 		// Typed failures still contain untrusted URI, device and validation text.
 		// Only these fixed categories and messages may cross the public boundary.
 		if (caught instanceof OperationValidationException validation) {
-			callerStatus = HttpURLConnection.HTTP_INTERNAL_ERROR;
+			// A request the caller got wrong (a missing required input) is the caller's 400.
+			callerStatus = validation.getStatus() == HttpURLConnection.HTTP_BAD_REQUEST
+					? HttpURLConnection.HTTP_BAD_REQUEST : HttpURLConnection.HTTP_INTERNAL_ERROR;
 			code = "DMP_OPERATION_VALIDATION_FAILED";
 			message = "Operation validation failed";
 			if ("DMP_COMMAND_VALIDATION_FAILED".equals(validation.getCode())) {
