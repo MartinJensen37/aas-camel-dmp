@@ -132,7 +132,7 @@ public class AASEndpoint extends DefaultEndpoint {
 		// Encode decoded values once at the DotAAS-V3 wire boundary.
 		long started = System.nanoTime();
 		try {
-			HTTPRequest.patchRequest(getFullProxyUrl() + API_V3_SUFFIX, MAPPER.writeValueAsString(value));
+			HTTPRequest.patchRequest(getFullProxyUrl() + API_V3_SUFFIX, MAPPER.writeValueAsString(wireValue(value)));
 		} catch (IOException | RuntimeException failure) {
 			AasAudit.write(this, value, started, failure);
 			throw failure;
@@ -140,6 +140,24 @@ public class AASEndpoint extends DefaultEndpoint {
 		AasAudit.write(this, value, started, null);
 
 		logger.info("Transferred message={}", value);
+	}
+
+	/**
+	 * A Property's {@code $value} is its lexical form as a JSON string: BaSyx
+	 * rejects a JSON number or boolean ("not as defined in the Dot AAS Part 2").
+	 * Numbers are written without exponent, so the text is valid for xs:decimal
+	 * and xs:double alike, and an integral number fits the integer types.
+	 */
+	private Object wireValue(Object value) {
+		if (!"Property".equalsIgnoreCase(elementType)) return value;
+		if (value instanceof Boolean) return value.toString();
+		if (value instanceof Number number) {
+			double asDouble = number.doubleValue();
+			if (Double.isNaN(asDouble)) return "NaN";
+			if (Double.isInfinite(asDouble)) return asDouble > 0 ? "INF" : "-INF";
+			return new java.math.BigDecimal(number.toString()).stripTrailingZeros().toPlainString();
+		}
+		return value;
 	}
 
 	/**
