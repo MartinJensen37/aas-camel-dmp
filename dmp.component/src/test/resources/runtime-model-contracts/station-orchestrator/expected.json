@@ -9,7 +9,8 @@
    "index": 0,
    "idShort": null,
    "sourceIds": [
-    "Start"
+    "Uuid",
+    "Process"
    ],
    "sinkIds": [
     "Start"
@@ -19,7 +20,7 @@
    "index": 1,
    "idShort": null,
    "sourceIds": [
-    "Stop"
+    "Uuid"
    ],
    "sinkIds": [
     "Stop"
@@ -29,7 +30,7 @@
    "index": 2,
    "idShort": null,
    "sourceIds": [
-    "Suspend"
+    "Uuid"
    ],
    "sinkIds": [
     "Suspend"
@@ -39,7 +40,8 @@
    "index": 3,
    "idShort": null,
    "sourceIds": [
-    "Unsuspend"
+    "Uuid",
+    "Process"
    ],
    "sinkIds": [
     "Unsuspend"
@@ -49,7 +51,7 @@
    "index": 4,
    "idShort": null,
    "sourceIds": [
-    "Reset"
+    "Uuid"
    ],
    "sinkIds": [
     "Reset"

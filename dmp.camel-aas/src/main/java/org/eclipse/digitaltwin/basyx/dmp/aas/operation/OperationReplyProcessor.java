@@ -27,6 +27,7 @@ package org.eclipse.digitaltwin.basyx.dmp.aas.operation;
 
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.List;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
@@ -72,18 +73,43 @@ public class OperationReplyProcessor implements Processor {
 	}
 
 	/**
-	 * The caller's outputs: the response Lua's value for the ResponseSink that selects the
-	 * Operation, an object keyed by output and InOut idShort, which must answer every
-	 * variable not marked Optional. Without that sink the Operation answers with no
-	 * outputs; the device reply is never matched by name.
+	 * Fails when the response Lua's result does not answer the caller: run before the
+	 * response writes, so an invalid reply writes nothing back to the AAS.
+	 */
+	public void validate(Object result) {
+		callerOutputs(result);
+	}
+
+	/**
+	 * The caller's outputs, from the response Lua's values for the ResponseSinks that
+	 * select the Operation: either one sink for the whole Operation, whose value is an
+	 * object keyed by output and InOut idShort, or one sink per variable, placed at its
+	 * path. Every variable not marked Optional must be answered; a per-variable sink may
+	 * be omitted when its variable is Optional. Without such sinks the Operation answers
+	 * with no outputs; the device reply is never matched by name.
 	 */
 	private Map<String, Object> callerOutputs(Object result) {
-		if (!context.explicitResponseMapping || context.callerReplySinkId == null) return new LinkedHashMap<>();
-		Object outputs = OperationPayloads.requireSinkValue(result, context.callerReplySinkId);
+		if (!context.explicitResponseMapping) return new LinkedHashMap<>();
+		Object outputs;
+		String origin;
+		if (!context.callerReplyBindings.isEmpty()) {
+			Map<String, Object> values = OperationPayloads.keyedValues(result, "response Lua");
+			List<String> present = context.callerReplyBindings.keySet().stream().filter(values::containsKey)
+					.sorted().toList();
+			outputs = present.isEmpty() ? new LinkedHashMap<>()
+					: org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.pipeline.PayloadAssembler
+							.assemble(values, present, context.callerReplyBindings);
+			origin = "the Operation variable SinkIds " + String.join(", ", present);
+		} else if (context.callerReplySinkId != null) {
+			outputs = OperationPayloads.requireSinkValue(result, context.callerReplySinkId);
+			origin = "the Operation SinkId " + context.callerReplySinkId;
+		} else {
+			return new LinkedHashMap<>();
+		}
 		if (!(outputs instanceof Map<?, ?> map)) {
 			throw new OperationValidationException("DMP_RESPONSE_MAPPING_FAILED", 500,
-					"Response Lua must give the Operation SinkId " + context.callerReplySinkId
-							+ " an object keyed by output variable idShort", java.util.List.of());
+					"Response Lua must give " + origin + " an object keyed by output variable idShort",
+					java.util.List.of());
 		}
 		Map<String, Object> named = new LinkedHashMap<>();
 		map.forEach((key, value) -> named.put(String.valueOf(key), value));

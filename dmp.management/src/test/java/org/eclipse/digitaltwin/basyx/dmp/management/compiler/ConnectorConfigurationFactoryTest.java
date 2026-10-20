@@ -778,6 +778,21 @@ class ConnectorConfigurationFactoryTest {
 				result.issues().toString());
 	}
 
+	@Test void responseSourcesMayFanOutTheSameMemberToDistinctSourceIds() {
+		var base=explicitResponsePlan("aid-command");
+		var original=base.mappings().get(0);
+		var response=original.responseSources().value().get(0);
+		var duplicate=new EndpointPlan("reply-count-copy",response.reference(),response.target());
+		var mapping=new MappingPlan(original.identity(),original.listIndex(),original.sources(),original.sinks(),
+				original.defaultPollingInterval(),original.transformation(),Presence.of(List.of(response,duplicate)),
+				original.responseSinks(),original.responseTransformation(),original.triggerSourceIds(),original.qualifiers());
+		var result=factory.create(new Plan(base.aimcSubmodelId(),List.of(mapping)),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
+		assertEquals(List.of(Map.of("sourceId","Body,&#","valuePath","$.Count"),
+				Map.of("sourceId","reply-count-copy","valuePath","$.Count")),bridge.getResponseSourceBindings());
+	}
+
 	@Test void methodArgumentTypesPreserveArrayRankAndTypedPropertySchemas() {
 		var base=explicitResponsePlan("aid-command");
 		var original=base.mappings().get(0);
@@ -882,6 +897,67 @@ class ConnectorConfigurationFactoryTest {
 				Presence.of(new WireModel.Blob("function aimc_main(sources) return {Reply={Count=tostring(sources['Body,&#'])},X=1,Y=2} end".getBytes(StandardCharsets.UTF_8),"text/x-lua")),Presence.absent(),List.of());
 		return new Plan("aimc",List.of(mapping));
 	}
+
+	@Test
+	void compilesMultipleCallerVariableSourcesAndResponseSinksAroundOneOperation() {
+		var mapping=variableOperationMapping(false);
+		var result=factory.create(new Plan("aimc",List.of(mapping)),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=assertInstanceOf(ProtocolBridgeRouteConfiguration.class,result.configuration().getRoutes().get(0));
+		assertEquals(Map.of("x-source","$.Position.x","y-source","$.Position.y"),bridge.getCallerInputSourcePaths());
+		assertEquals(Map.of("count-sink","$.Count"),bridge.getCallerReplyBindings());
+		assertEquals(List.of("x-source","y-source"),bridge.getTriggerData().get("requestSourceIds"));
+		assertEquals(1,result.configuration().getDatasinks().size(),"caller variable sinks are assembled into the one operation reply");
+	}
+
+	@Test
+	void twoResponseSinksMayNotAnswerTheSameCallerVariable() {
+		var result=factory.create(new Plan("aimc",List.of(variableOperationMapping(true))),"bridge");
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.toString().contains("only one ResponseSink may select the caller variable Count")),
+				result.issues().toString());
+	}
+
+	/** A Move Operation whose Position members are separate Sources and whose Count output is a ResponseSink. */
+	private MappingPlan variableOperationMapping(boolean duplicateCountSink) {
+		var x=property("x","0");
+		var y=property("y","0");
+		var position=AasFixtures.collection("Position",x,y);
+		var count=property("Count","0");
+		var operation=AasFixtures.operation("operation",List.of(AasFixtures.variable(position)),List.of(),
+				List.of(AasFixtures.variable(count)));
+		operation.setQualifiers(List.of(AasFixtures.delegation("http://dmp:8080/operations/asset/Move")));
+		var submodel=AasFixtures.submodel("cci","CCI",operation);
+		String operationPath="Skills.Move.operation";
+		var sourceX=new EndpointPlan("x-source",AasFixtures.reference("Submodel","cci",
+				"SubmodelElementCollection","Skills","SubmodelElementCollection","Move","Operation","operation",
+				"SubmodelElementCollection","Position","Property","x"),
+				new DirectTarget(new AasReferenceResolver.ResolvedElement(submodel,x,operation,operationPath)));
+		var sourceY=new EndpointPlan("y-source",AasFixtures.reference("Submodel","cci",
+				"SubmodelElementCollection","Skills","SubmodelElementCollection","Move","Operation","operation",
+				"SubmodelElementCollection","Position","Property","y"),
+				new DirectTarget(new AasReferenceResolver.ResolvedElement(submodel,y,operation,operationPath)));
+		var output=new EndpointPlan("count-sink",AasFixtures.reference("Submodel","cci",
+				"SubmodelElementCollection","Skills","SubmodelElementCollection","Move","Operation","operation",
+				"Property","Count"),new DirectTarget(new AasReferenceResolver.ResolvedElement(submodel,count,operation,operationPath)));
+		var base=protocolTarget(WireModel.ProtocolFamily.HTTP,"http://device.example:8080","/move",Map.of(),"POST");
+		var input=dataSchema("object",Map.of());
+		var replySchema=dataSchema("integer",Map.of());
+		var action=new WireModel.Affordance("action",Presence.of("Move"),Presence.absent(),base.resolved().affordance().forms(),
+				Presence.absent(),Presence.of(input),Presence.of(dataSchema("object",Map.of("Count",replySchema))),emptyElement());
+		var command=new AidTarget(new AasReferenceResolver.AidTarget(base.resolved().owner(),action,Presence.of(input),List.of(),"aid-command"));
+		var commandEndpoint=new EndpointPlan("Move",actionReference("aid-command","input"),command);
+		var response=new AidTarget(new AasReferenceResolver.AidTarget(base.resolved().owner(),action,
+				Presence.of(replySchema),List.of("Count"),"aid-command"));
+		var responseSource=new EndpointPlan("reply-count",actionReference("aid-command","output"),response);
+		return new MappingPlan("variable-operation",0,List.of(sourceX,sourceY),List.of(commandEndpoint),Presence.absent(),
+				Presence.of(new WireModel.Blob("function aimc_main(sources) return {Move={x=sources['x-source'],y=sources['y-source']}} end"
+						.getBytes(StandardCharsets.UTF_8),"text/x-lua")),
+				Presence.of(List.of(responseSource)),Presence.of(duplicateCountSink
+						? List.of(output,new EndpointPlan("count-sink-copy",output.reference(),output.target())) : List.of(output)),
+				Presence.of(new WireModel.Blob("function aimc_main(sources) return {['count-sink']=tostring(sources['reply-count'])} end"
+						.getBytes(StandardCharsets.UTF_8),"text/x-lua")),Presence.absent(),List.of());
+	}
+
 	private static Reference actionReference(String anchor,String direction) {
 		return AasFixtures.reference("Submodel",anchor,"SubmodelElementCollection","interface_device",
 				"SubmodelElementCollection","InteractionMetadata","SubmodelElementCollection","actions",

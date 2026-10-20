@@ -1,6 +1,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.aas.operation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.nio.charset.StandardCharsets;
@@ -112,5 +113,34 @@ class OperationRequestProcessorTest {
 		assertEquals(Map.of("Invoke", Map.of("Uuid", "00000000-0000-0000-0000-000000000001")),
 				exchange.getMessage().getBody());
 		assertEquals(true, exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY));
+	}
+
+	@Test
+	void multipleOperationVariableSourcesProjectFromOneCallerRequest() throws Exception {
+		var exchange = new DefaultExchange(new DefaultCamelContext());
+		exchange.getMessage().setBody("{\"Position\":{\"x\":1,\"y\":2}}");
+		new OperationRequestProcessor("Move", Map.of(), Map.of("source-x", "$.Position.x", "source-y", "$.Position.y"))
+				.process(exchange);
+		assertEquals(Map.of("source-x", 1L, "source-y", 2L), exchange.getMessage().getBody());
+	}
+
+	@Test
+	void wholeOperationSourceTakesTheRequestAsItIs() throws Exception {
+		var exchange = new DefaultExchange(new DefaultCamelContext());
+		exchange.getMessage().setBody("\"now\"");
+		new OperationRequestProcessor("Halt", Map.of(), Map.of("Halt", "$")).process(exchange);
+		assertEquals(Map.of("Halt", "now"), exchange.getMessage().getBody(),
+				"a request that is not an object reaches its whole-Operation source as it is");
+	}
+
+	@Test
+	void omittedOptionalInputGivesItsSourceNoValue() throws Exception {
+		var exchange = new DefaultExchange(new DefaultCamelContext());
+		exchange.getMessage().setBody("{\"Speed\":3}");
+		new OperationRequestProcessor("Move",
+				Map.of("Speed", OptionalQualifierTest.property("Speed", null),
+						"Ramp", OptionalQualifierTest.property("Ramp", "true")),
+				Map.of("speed", "$.Speed", "ramp", "$.Ramp")).process(exchange);
+		assertEquals(Map.of("speed", 3L), exchange.getMessage().getBody());
 	}
 }

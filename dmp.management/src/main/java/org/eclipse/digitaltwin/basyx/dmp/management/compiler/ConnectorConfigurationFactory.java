@@ -245,33 +245,101 @@ public final class ConnectorConfigurationFactory {
 	}
 
 	private static boolean operationMapping(MappingPlan mapping) {
-		return mapping.sources().stream().anyMatch(endpoint -> endpoint.target() instanceof DirectTarget direct
-				&& direct.resolved().element() instanceof Operation);
+		return mapping.sources().stream().anyMatch(endpoint -> operationModel(endpoint) != null);
+	}
+
+	private static SubmodelElement operationModel(EndpointPlan endpoint) {
+		if (!(endpoint.target() instanceof DirectTarget direct)) return null;
+		SubmodelElement element=direct.resolved().element();
+		return element instanceof Operation ? element : direct.resolved().operation();
+	}
+
+	private static boolean isWholeOperation(EndpointPlan endpoint) {
+		return endpoint.target() instanceof DirectTarget direct && direct.resolved().element() instanceof Operation;
+	}
+
+	/** The reference's keys up to and including its Operation, or all keys outside an Operation. */
+	private static List<Key> operationKeys(EndpointPlan endpoint) {
+		List<Key> keys=Aas.keys(endpoint.reference());
+		int operation=AasReferenceResolver.operationKeyIndex(keys);
+		return operation<0 ? keys : List.copyOf(keys.subList(0,operation+1));
+	}
+
+	private static String operationIdentity(EndpointPlan endpoint) {
+		List<Key> keys=operationKeys(endpoint);
+		String submodel=keys.isEmpty()?"":keys.get(0).getValue();
+		return submodel+"/"+keys.subList(Math.min(1,keys.size()),keys.size()).stream()
+				.map(key -> Aas.keyType(key)+":"+key.getValue()).collect(java.util.stream.Collectors.joining("/"));
+	}
+
+	/** A caller value path relative to the flattened OperationVariable map. */
+	private static String operationVariablePath(EndpointPlan endpoint) {
+		List<Key> keys=Aas.keys(endpoint.reference());
+		int operation=AasReferenceResolver.operationKeyIndex(keys);
+		if(operation<0 || operation+1>=keys.size()) return null;
+		StringBuilder path=new StringBuilder("$");
+		for(int i=operation+1;i<keys.size();i++) {
+			Key key=keys.get(i);
+			if(i>operation+1 && "SubmodelElementList".equals(Aas.keyType(keys.get(i-1)))) path.append('[').append(key.getValue()).append(']');
+			else path.append('.').append(key.getValue());
+		}
+		return path.toString();
+	}
+
+	/** The idShort of the Operation variable the reference selects or lies in. */
+	private static String operationVariableRoot(EndpointPlan endpoint) {
+		List<Key> keys=Aas.keys(endpoint.reference());
+		int operation=AasReferenceResolver.operationKeyIndex(keys);
+		return operation>=0 && operation+1<keys.size() ? keys.get(operation+1).getValue() : null;
+	}
+
+	private static Set<String> callerInputNames(SubmodelElement element) {
+		if (!(element instanceof Operation operation)) return Set.of();
+		return variableNames(operation.getInputVariables(),operation.getInoutputVariables());
+	}
+
+	private static Set<String> callerOutputNames(SubmodelElement element) {
+		if (!(element instanceof Operation operation)) return Set.of();
+		return variableNames(operation.getInoutputVariables(),operation.getOutputVariables());
+	}
+
+	@SafeVarargs
+	private static Set<String> variableNames(List<OperationVariable>... categories) {
+		Set<String> names=new LinkedHashSet<>();
+		for(List<OperationVariable> variables:categories) for(OperationVariable variable:Aas.nonNull(variables))
+			if(variable!=null && variable.getValue()!=null) names.add(variable.getValue().getIdShort());
+		return names;
 	}
 
 	private void compileBridgeMapping(MappingPlan mapping,Plan plan,String routeId,RuntimeSettings runtime,
 			RoutesConfiguration output,List<Issue> issues) {
 		int issueStart=issues.size();
 		String root="MappingConfigurations/value/"+mapping.listIndex();
-		List<EndpointPlan> operations=mapping.sources().stream().filter(endpoint -> endpoint.target() instanceof DirectTarget direct
-				&& direct.resolved().element() instanceof Operation).toList();
-		if(operations.size()!=1) {
-			issue(issues,mapping,root+"/Sources","bridge mappings require exactly one declared CCI Operation source");
+		Map<String, EndpointPlan> operationAnchors=new LinkedHashMap<>();
+		for(EndpointPlan endpoint:mapping.sources()) if(operationModel(endpoint)!=null)
+			operationAnchors.putIfAbsent(operationIdentity(endpoint),endpoint);
+		if(operationAnchors.size()!=1) {
+			issue(issues,mapping,root+"/Sources","bridge mappings require Sources from exactly one declared CCI Operation");
 			return;
 		}
-		EndpointPlan operation=operations.get(0);
+		EndpointPlan operation=operationAnchors.values().iterator().next();
+		Operation cci=(Operation)operationModel(operation);
 		// Fan-in: further AAS elements, read at invocation and passed to the request Lua with the Operation's variables.
-		List<EndpointPlan> fanIn=mapping.sources().stream().filter(endpoint -> endpoint!=operation).toList();
+		List<EndpointPlan> fanIn=mapping.sources().stream().filter(endpoint -> operationModel(endpoint)==null).toList();
 		for(EndpointPlan extra:fanIn)
-			if(!(extra.target() instanceof DirectTarget direct) || direct.resolved().element() instanceof Operation)
+			if(!(extra.target() instanceof DirectTarget))
 				issue(issues,mapping,root+"/Sources/"+extra.id(),"an operation mapping fans in AAS elements only; the device is reached through its Sinks");
 		String action=operationAction(operation.reference());
 		if(action==null || action.isBlank()) { issue(issues,mapping,root+"/Sources","Operation reference does not identify an exact parent skill/action");return; }
 		if(mapping.sinks().isEmpty()) { issue(issues,mapping,root+"/Sinks","bridge Operation requires at least one declared command binding");return; }
 		if(mapping.qualifiers().stream().anyMatch(ConnectorConfigurationFactory::behaviorQualifier)) issue(issues,mapping,root+"/qualifiers","mapping qualifiers are not represented by the bridge route schema");
-		if(mapping.triggerSourceIds().present() && (mapping.triggerSourceIds().value()==null
-				|| !mapping.triggerSourceIds().value().equals(List.of(operation.id()))))
-			issue(issues,mapping,root+"/ExecutionSemantics/TriggerSourceIds","operation trigger selection must include the exact Operation SourceId");
+		if(mapping.triggerSourceIds().present()) {
+			Set<String> operationSourceIds=mapping.sources().stream().filter(endpoint -> operationModel(endpoint)!=null)
+					.map(EndpointPlan::id).collect(java.util.stream.Collectors.toSet());
+			if(mapping.triggerSourceIds().value()==null || mapping.triggerSourceIds().value().isEmpty()
+					|| !operationSourceIds.containsAll(mapping.triggerSourceIds().value()))
+				issue(issues,mapping,root+"/ExecutionSemantics/TriggerSourceIds","operation trigger selection must select one or more SourceIds for its exact Operation");
+		}
 		// The Operation is bound 1:1 to the AID action of its skill, or to one property affordance it writes.
 		AidTarget actionTarget=null,propertyTarget=null;
 		for(EndpointPlan sink:mapping.sinks()) {
@@ -319,21 +387,34 @@ public final class ConnectorConfigurationFactory {
 		Map<String,String> responseTypes=schemaTypes(response);
 		List<String> parameterRequired=schemaRequired(input);
 		List<String> responseRequired=schemaRequired(response);
-		String restPath=delegationPath((Operation)((DirectTarget)operation.target()).resolved().element());
+		String restPath=delegationPath(cci);
 		if(restPath==null) { issue(issues,mapping,root+"/Sources","CCI Operation needs an invocationDelegation qualifier whose URL names the DMP path");return; }
 		Map<String,Object> trigger=new LinkedHashMap<>();
 		trigger.put(ProtocolBridgeRouteConfiguration.REST_PATH,restPath);
 		trigger.put(ProtocolBridgeRouteConfiguration.REST_METHOD,"POST");
 		trigger.put("action",action);
 		// The Operation's AAS identity, for the interaction log: submodel ID and idShort path.
-		List<Key> operationKeys=Aas.keys(operation.reference());
+		List<Key> operationKeys=operationKeys(operation);
 		if(!operationKeys.isEmpty()) {
 			trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_SUBMODEL_ID,operationKeys.get(0).getValue());
 			trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_PATH,String.join(".",
 					operationKeys.subList(1,operationKeys.size()).stream().map(Key::getValue).toList()));
 		}
-		trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_SOURCE_ID,operation.id());
-		List<String> requestSourceIds=new ArrayList<>(List.of(operation.id()));
+		trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_SOURCE_ID,
+				isWholeOperation(operation) ? operation.id() : action);
+		List<String> requestSourceIds=new ArrayList<>();
+		Map<String,String> callerInputSourcePaths=new LinkedHashMap<>();
+		for(EndpointPlan endpoint:mapping.sources()) if(operationModel(endpoint)!=null) {
+			if(isWholeOperation(endpoint)) callerInputSourcePaths.put(endpoint.id(), "$");
+			else {
+				String valuePath=operationVariablePath(endpoint);
+				if(valuePath==null) issue(issues,mapping,root+"/Sources/"+endpoint.id(),"Operation Source must select an input or InOut variable");
+				else callerInputSourcePaths.put(endpoint.id(),valuePath);
+			}
+		}
+		if(callerInputSourcePaths.isEmpty()) requestSourceIds.add(operation.id());
+		else requestSourceIds.addAll(callerInputSourcePaths.keySet());
+		trigger.put(ProtocolBridgeRouteConfiguration.CALLER_INPUT_SOURCE_PATHS,Map.copyOf(callerInputSourcePaths));
 		fanIn.forEach(extra -> requestSourceIds.add(extra.id()));
 		trigger.put("requestSourceIds",List.copyOf(requestSourceIds));
 		trigger.put(ProtocolBridgeRouteConfiguration.FAN_IN_SOURCES,List.copyOf(fanInBindings));
@@ -353,14 +434,12 @@ public final class ConnectorConfigurationFactory {
 		trigger.put("parameterRequired",parameterRequired);
 		trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_TYPES,responseTypes);
 		trigger.put("responseRequired",responseRequired);
-		List<String> responseOrder=operation.target() instanceof DirectTarget direct
-				&& direct.resolved().element() instanceof Operation cciOperation
-				? Aas.nonNull(cciOperation.getOutputVariables()).stream().map(variable -> variable.getValue()==null?null:variable.getValue().getIdShort())
+		List<String> responseOrder=cci!=null
+				? Aas.nonNull(cci.getOutputVariables()).stream().map(variable -> variable.getValue()==null?null:variable.getValue().getIdShort())
 						.filter(Objects::nonNull).toList() : List.of();
 		Map<String,String> callerTypes=new LinkedHashMap<>();
 		Map<String,String> inputTemplates=new LinkedHashMap<>();
 		Map<String,String> outputTemplates=new LinkedHashMap<>();
-		Operation cci=(Operation)((DirectTarget)operation.target()).resolved().element();
 		List<String> callerOrder=new ArrayList<>();
 		// The output and InOut variables not marked Optional: the reply must answer them.
 		List<String> requiredOutputs=new ArrayList<>();
@@ -370,6 +449,12 @@ public final class ConnectorConfigurationFactory {
 		categories.put("input",Aas.nonNull(cci.getInputVariables()));
 		categories.put("inoutput",Aas.nonNull(cci.getInoutputVariables()));
 		categories.put("output",Aas.nonNull(cci.getOutputVariables()));
+		Set<String> callerInputNames=callerInputNames(cci);
+		for(EndpointPlan endpoint:mapping.sources()) if(operationModel(endpoint)!=null && !isWholeOperation(endpoint)) {
+			String variable=operationVariableRoot(endpoint);
+			if(variable==null || !callerInputNames.contains(variable))
+				issue(issues,mapping,root+"/Sources/"+endpoint.id(),"Operation Sources must select a declared input or InOut variable");
+		}
 		categories.forEach((category,variables) -> {
 			for(OperationVariable variable:variables) {
 				SubmodelElement value=variable==null?null:variable.getValue();
@@ -410,7 +495,7 @@ public final class ConnectorConfigurationFactory {
 		trigger.put(ProtocolBridgeRouteConfiguration.EXPLICIT_RESPONSE_MAPPING,explicit);
 		List<DataSinkConfiguration> responseDestinations=new ArrayList<>();
 		if(explicit)compileResponseBindings(mapping,operation,commandTarget,write,!callerOrder.isEmpty(),
-				!requiredOutputs.isEmpty(),plan,routeId,runtime,trigger,responseDestinations,issues);
+				requiredOutputs,plan,routeId,runtime,trigger,responseDestinations,issues);
 		trigger.put("targetOptions",Map.copyOf(targetOptions));
 
 		List<DataTransformerConfiguration> transformers=new ArrayList<>();
@@ -579,7 +664,7 @@ public final class ConnectorConfigurationFactory {
 	}
 
 	private void compileResponseBindings(MappingPlan mapping,EndpointPlan operation,AidTarget command,boolean write,
-			boolean callerOutputs,boolean requiredOutputs,Plan plan,String routeId,RuntimeSettings runtime,Map<String,Object> trigger,
+			boolean callerOutputs,List<String> requiredOutputs,Plan plan,String routeId,RuntimeSettings runtime,Map<String,Object> trigger,
 			List<DataSinkConfiguration> destinations,List<Issue> issues) {
 		String path="MappingConfigurations/value/"+mapping.listIndex()+"/response";
 		// ResponseSources, ResponseTransformation and ResponseSinks are one unit: the sources name
@@ -604,7 +689,7 @@ public final class ConnectorConfigurationFactory {
 							:"ResponseSource must select output of the exact command ACTION anchor");continue;
 				}
 				String pointer=jsonPointer(target.resolved().schemaPath());
-				if(!sourcePaths.add(pointer==null?"":pointer))issue(issues,mapping,path,"duplicate response member path");
+				sourcePaths.add(pointer==null?"":pointer);
 				Map<String,Object> binding=new LinkedHashMap<>();binding.put("sourceId",endpoint.id());binding.put("valuePath",pointer);
 				sourceBindings.add(binding);
 			}
@@ -612,18 +697,33 @@ public final class ConnectorConfigurationFactory {
 		if(sourcePaths.contains("") && sourcePaths.size()>1)issue(issues,mapping,path,"whole and member response sources overlap");
 		trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_SOURCE_BINDINGS,List.copyOf(sourceBindings));
 		String callerId=null;
+		Map<String,String> callerBindings=new LinkedHashMap<>();
 		List<Map<String,Object>> sinkBindings=new ArrayList<>();
 		if(mapping.responseSinks().present()) {
 			if(mapping.responseSinks().value()==null)issue(issues,mapping,path,"ResponseSinks must not be null");
 			else for(int i=0;i<mapping.responseSinks().value().size();i++) {
 				EndpointPlan endpoint=mapping.responseSinks().value().get(i);
-				if(endpoint.target() instanceof DirectTarget direct && direct.resolved().element() instanceof Operation) {
-					DirectTarget original=(DirectTarget)operation.target();
-					if(!direct.resolved().submodel().getId().equals(original.resolved().submodel().getId())
-							|| !Aas.keys(endpoint.reference()).subList(1,Aas.keys(endpoint.reference()).size()).equals(
-									Aas.keys(operation.reference()).subList(1,Aas.keys(operation.reference()).size())) || callerId!=null)
-						issue(issues,mapping,path,"only one ResponseSink may select the exact caller Operation");
-					else callerId=endpoint.id();
+				if(operationModel(endpoint)!=null) {
+					if(!operationIdentity(endpoint).equals(operationIdentity(operation))) {
+						issue(issues,mapping,path,"ResponseSink must select the command's exact caller Operation");
+					} else if(isWholeOperation(endpoint)) {
+						if(callerId!=null || !callerBindings.isEmpty())
+							issue(issues,mapping,path,"whole Operation ResponseSink cannot overlap variable ResponseSinks");
+						else callerId=endpoint.id();
+					} else {
+						if(callerId!=null) issue(issues,mapping,path,"whole Operation ResponseSink cannot overlap variable ResponseSinks");
+						else {
+							String variable=operationVariableRoot(endpoint);
+							String valuePath=operationVariablePath(endpoint);
+							if(variable==null || valuePath==null || !callerOutputNames(operationModel(operation)).contains(variable))
+								issue(issues,mapping,path,"ResponseSink must select a declared output or InOut variable");
+							else if(!valuePath.equals("$."+variable))
+								issue(issues,mapping,path,"ResponseSink must select the whole output or InOut variable");
+							else if(callerBindings.containsValue(valuePath))
+								issue(issues,mapping,path,"only one ResponseSink may select the caller variable "+variable);
+							else callerBindings.put(endpoint.id(),valuePath);
+						}
+					}
 					continue;
 				}
 				DataSinkConfiguration sink=sink(endpoint,mapping,100000+i,plan,routeId,runtime,issues);
@@ -642,11 +742,12 @@ public final class ConnectorConfigurationFactory {
 				sinkBindings.add(binding);
 			}
 		}
-		if(requiredOutputs && callerId==null)issue(issues,mapping,path,
-				"the Operation's required output and InOut variables need a ResponseSink selecting the Operation");
-		if(!callerOutputs && callerId!=null)issue(issues,mapping,path,
+		if(callerId==null && requiredOutputs.stream().anyMatch(name -> !callerBindings.containsValue("$."+name)))issue(issues,mapping,path,
+				"the Operation's required output and InOut variables need a ResponseSink selecting the Operation or each required variable");
+		if(!callerOutputs && (callerId!=null || !callerBindings.isEmpty()))issue(issues,mapping,path,
 				"a ResponseSink selects the Operation, which declares no output or InOut variables");
 		if(callerId!=null)trigger.put(ProtocolBridgeRouteConfiguration.CALLER_REPLY_SINK_ID,callerId);
+		trigger.put(ProtocolBridgeRouteConfiguration.CALLER_REPLY_BINDINGS,Map.copyOf(callerBindings));
 		trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_SINK_BINDINGS,List.copyOf(sinkBindings));
 	}
 
@@ -987,8 +1088,8 @@ public final class ConnectorConfigurationFactory {
 			Plan plan, String routeId, RuntimeSettings runtime, List<Issue> issues) {
 		String path = endpointPath(mapping, "Sinks", position);
 		if (endpoint.target() instanceof DirectTarget) {
-			if(((DirectTarget)endpoint.target()).resolved().element() instanceof Operation) {
-				issue(issues,mapping,path,"AAS Operation sinks are not supported (chained actions are unsafe)");
+			if(operationModel(endpoint)!=null) {
+				issue(issues,mapping,path,"AAS Operation sinks are not supported (chained actions are unsafe); an Operation is answered through its ResponseSinks");
 				return null;
 			}
 			return aasSink(endpoint,mapping,position,(DirectTarget)endpoint.target(),runtime,issues);

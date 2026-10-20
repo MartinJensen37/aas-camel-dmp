@@ -44,6 +44,7 @@ public class OperationRequestProcessor implements Processor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(OperationRequestProcessor.class);
 	private final String operationSourceId;
 	private final java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> inputTemplates;
+	private final java.util.Map<String, String> inputSourcePaths;
 
 	public OperationRequestProcessor() {
 		this(null);
@@ -55,8 +56,15 @@ public class OperationRequestProcessor implements Processor {
 
 	public OperationRequestProcessor(String operationSourceId,
 			java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> inputTemplates) {
+		this(operationSourceId, inputTemplates, java.util.Map.of());
+	}
+
+	public OperationRequestProcessor(String operationSourceId,
+			java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> inputTemplates,
+			java.util.Map<String, String> inputSourcePaths) {
 		this.operationSourceId = operationSourceId;
 		this.inputTemplates = inputTemplates == null ? java.util.Map.of() : inputTemplates;
+		this.inputSourcePaths = inputSourcePaths == null ? java.util.Map.of() : inputSourcePaths;
 	}
 
 	@Override
@@ -68,12 +76,51 @@ public class OperationRequestProcessor implements Processor {
 			body = OperationPayloads.flattenOperationVariables(body, inputTemplates);
 		}
 		requireInputs(body);
-		if (operationSourceId != null && !operationSourceId.isBlank()) {
+		if (!inputSourcePaths.isEmpty()) {
+			body = keyedInputs(body);
+		} else if (operationSourceId != null && !operationSourceId.isBlank()) {
 			java.util.Map<String, Object> keyed = new java.util.LinkedHashMap<>();
 			keyed.put(operationSourceId, body);
 			body = keyed;
 		}
 		exchange.getMessage().setBody(JsonCodec.copyValue(body));
+	}
+
+	/**
+	 * The request keyed by SourceId: a source on the whole Operation ({@code $}) gets the
+	 * request as it is, a source on a variable gets the value at its path. A variable
+	 * marked Optional that the caller left out gives its source no value.
+	 */
+	private java.util.Map<String, Object> keyedInputs(Object body) {
+		java.util.Map<String, Object> keyed = new java.util.LinkedHashMap<>();
+		inputSourcePaths.forEach((sourceId, path) -> {
+			if ("$".equals(path)) {
+				keyed.put(sourceId, body);
+				return;
+			}
+			if (!(body instanceof java.util.Map<?, ?> values)) {
+				throw new OperationValidationException("DMP_OPERATION_VALIDATION_FAILED", 400,
+						"Operation request must be an object keyed by input variable idShort", java.util.List.of());
+			}
+			java.util.Optional<Object> selected = org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer
+					.extract(values, path);
+			if (selected.isEmpty()) {
+				if (optionalVariable(path)) return;
+				throw new OperationValidationException("DMP_OPERATION_VALIDATION_FAILED", 400,
+						"Operation request omits a referenced input value", java.util.List.of(sourceId));
+			}
+			Object value = selected.get();
+			keyed.put(sourceId, value == org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.JSON_NULL ? null : value);
+		});
+		return keyed;
+	}
+
+	/** Whether the input variable at the root of {@code path} ({@code $.Var...}) is marked Optional. */
+	private boolean optionalVariable(String path) {
+		java.util.List<String> tokens = org.eclipse.digitaltwin.basyx.dmp.core.util.JsonPointer.parse(path).tokens();
+		if (tokens.isEmpty()) return false;
+		org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement template = inputTemplates.get(tokens.get(0));
+		return template != null && OptionalQualifier.optional(template);
 	}
 
 	/**

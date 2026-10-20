@@ -52,6 +52,8 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public static final String OPERATION_SUBMODEL_ID = "operationSubmodelId";
 	public static final String OPERATION_PATH = "operationPath";
 	public static final String CALLER_OUTPUT_TEMPLATES = "callerOutputTemplates";
+	public static final String CALLER_INPUT_SOURCE_PATHS = "callerInputSourcePaths";
+	public static final String CALLER_REPLY_BINDINGS = "callerReplyBindings";
 	/** DECLARED positional reply order (CCI operation output_variable order). */
 	public static final String RESPONSE_ORDER = "responseOrder";
 	public static final String OPERATION_SOURCE_ID = "operationSourceId";
@@ -126,6 +128,17 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	/** Declared caller InOut and output variables (AAS JSON by idShort). */
 	public java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> getCallerOutputTemplates() {
 		return templates(CALLER_OUTPUT_TEMPLATES);
+	}
+
+	public java.util.Map<String, String> getCallerInputSourcePaths() { return stringMap(CALLER_INPUT_SOURCE_PATHS); }
+
+	public java.util.Map<String, String> getCallerReplyBindings() { return stringMap(CALLER_REPLY_BINDINGS); }
+
+	private java.util.Map<String, String> stringMap(String key) {
+		if (!(getTriggerData().get(key) instanceof java.util.Map<?, ?> map)) return java.util.Map.of();
+		java.util.Map<String, String> result = new java.util.LinkedHashMap<>();
+		map.forEach((name, value) -> result.put(String.valueOf(name), value == null ? null : String.valueOf(value)));
+		return java.util.Collections.unmodifiableMap(result);
 	}
 
 	private java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> templates(String key) {

@@ -336,13 +336,18 @@ public final class OperationPayloads {
 
 	/** Parses a Lua result as an authored SinkId map without guessing missing keys. */
 	public static Map<String, Object> keyedValues(Object payload) {
+		return keyedValues(payload, "request Lua");
+	}
+
+	/** The SinkId-keyed values of a Lua result; {@code origin} names the Lua in errors. */
+	public static Map<String, Object> keyedValues(Object payload, String origin) {
 		if (!(payload instanceof Map<?, ?> map)) {
-			throw new IllegalArgumentException("request Lua did not return a SinkId object");
+			throw new IllegalArgumentException(origin + " did not return a SinkId object");
 		}
 		Map<String, Object> values = new java.util.LinkedHashMap<>();
 		map.forEach((key, value) -> {
 			if (!(key instanceof String sinkId)) {
-				throw new IllegalArgumentException("request Lua SinkId keys must be strings");
+				throw new IllegalArgumentException(origin + " SinkId keys must be strings");
 			}
 			values.put(sinkId, value);
 		});

@@ -170,7 +170,8 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		String invocation = java.util.UUID.randomUUID().toString();
 		exchange.setProperty(AUDIT_INVOCATION, invocation);
 		exchange.setProperty(AUDIT_STARTED, System.nanoTime());
-		new OperationRequestProcessor(context.operationSourceId, context.callerInputTemplates).process(exchange);
+		new OperationRequestProcessor(context.operationSourceId, context.callerInputTemplates,
+				context.callerInputSourcePaths).process(exchange);
 		Object request = exchange.getMessage().getBody();
 		boolean basyx = Boolean.TRUE.equals(exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY, Boolean.class));
 		AuditLog.emit(() -> auditPoint("aas_invoke", invocation).tag("caller", basyx ? "basyx" : "rest")
@@ -304,9 +305,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 
 	public void prepareResponseWrites(Exchange exchange) {
 			Object result = exchange.getMessage().getBody();
-			if (context.explicitResponseMapping && context.callerReplySinkId != null) {
-				OperationPayloads.requireSinkValue(result, context.callerReplySinkId);
-			}
+			new OperationReplyProcessor(context).validate(result);
 			exchange.setProperty(CALLER_REPLY_RESULT, result);
 			exchange.getMessage().setBody(responseSinkTargets.isEmpty() ? java.util.List.of()
 					: responseFanOut.prepareJobs(exchange));

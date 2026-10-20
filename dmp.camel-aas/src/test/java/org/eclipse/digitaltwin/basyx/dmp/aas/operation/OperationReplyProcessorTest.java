@@ -1,6 +1,7 @@
 package org.eclipse.digitaltwin.basyx.dmp.aas.operation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.LinkedHashMap;
@@ -135,6 +136,36 @@ class OperationReplyProcessorTest {
 				"Audit", "a ResponseSink value, not a caller output"));
 		new OperationReplyProcessor(context(Map.of("State", "xs:string"))).process(exchange);
 		assertEquals(Map.of("State", "SUCCESS"), exchange.getMessage().getBody());
+	}
+
+	@Test
+	void multipleResponseSinksAssembleOneCallerOperationReply() {
+		OperationContext context = new OperationContext("Occupy", "req.lua", "res.lua", "mock:cmd",
+				Map.of(), Map.of(), List.of("Position"), "Occupy", "Occupy", null,
+				List.of("Occupy"), Map.of(), true, List.of(), List.of(), Map.of(),
+				List.of("req.lua"), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(),
+				Map.of("x-sink", "$.Position.x", "y-sink", "$.Position.y"));
+		Exchange exchange = exchangeWith(Map.of("x-sink", 1L, "y-sink", 2L));
+		new OperationReplyProcessor(context).process(exchange);
+		assertEquals(Map.of("Position", Map.of("x", 1L, "y", 2L)), exchange.getMessage().getBody());
+	}
+
+	@Test
+	void variableResponseSinkOfAnOptionalOutputMayBeOmitted() {
+		Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> outputs = new java.util.LinkedHashMap<>();
+		outputs.put("State", OptionalQualifierTest.property("State", null));
+		outputs.put("Outcome", OptionalQualifierTest.property("Outcome", "true"));
+		OperationContext context = new OperationContext("Occupy", "req.lua", "res.lua", "mock:cmd",
+				Map.of(), Map.of(), List.copyOf(outputs.keySet()), "Occupy", "Occupy", null,
+				List.of("Occupy"), Map.of(), true, List.of(), List.of(), Map.of(),
+				List.of("req.lua"), Map.of(), Map.of(), Map.of(), outputs, Map.of(),
+				Map.of("state-sink", "$.State", "outcome-sink", "$.Outcome"));
+		Exchange answered = exchangeWith(Map.of("state-sink", "SUCCESS"));
+		new OperationReplyProcessor(context).process(answered);
+		assertEquals(Map.of("State", "SUCCESS"), answered.getMessage().getBody());
+		OperationValidationException missing = assertThrows(OperationValidationException.class,
+				() -> new OperationReplyProcessor(context).process(exchangeWith(Map.of("outcome-sink", true))));
+		assertTrue(missing.getMessage().contains("State"), missing.getMessage());
 	}
 
 	/** A response mapping whose Operation declares the output templates {@code outputs}. */

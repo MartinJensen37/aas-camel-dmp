@@ -173,7 +173,8 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 				bridgeConfig.getResponseRequired(), bridgeConfig.getTargetOptions(),
 				java.util.Arrays.asList(requestTransformers),
 				authoredSinkTransformers, bridgeConfig.getCallerResponseTypes(),
-				bridgeConfig.getCallerInputTemplates(), bridgeConfig.getCallerOutputTemplates());
+				bridgeConfig.getCallerInputTemplates(), bridgeConfig.getCallerOutputTemplates(),
+				bridgeConfig.getCallerInputSourcePaths(), bridgeConfig.getCallerReplyBindings());
 		SyncOperationProcessor operation = new SyncOperationProcessor(routeBuilder.getContext(), operationContext,
 				commandValidation, new AffordanceValidation(bridgeConfig.getResponseSchema(),
 						"bridge output " + action), responseSourceBindings, responseSinkTargets, routeId);
