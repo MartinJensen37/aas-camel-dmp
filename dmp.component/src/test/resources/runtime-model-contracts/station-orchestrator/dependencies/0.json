@@ -1067,7 +1067,7 @@
        "description": [
         {
          "language": "en",
-         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+         "text": "Reference to the AID action that natively implements this skill."
         }
        ],
        "modelType": "ReferenceElement",
@@ -1142,22 +1142,7 @@
         {
          "value": {
           "idShort": "Process",
-          "description": [
-           {
-            "language": "en",
-            "text": "An operation variable of the skill's operation."
-           }
-          ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -1173,15 +1158,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -1197,15 +1173,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -1722,7 +1689,7 @@
        "description": [
         {
          "language": "en",
-         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+         "text": "Reference to the AID action that natively implements this skill."
         }
        ],
        "modelType": "ReferenceElement",
@@ -1804,15 +1771,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -1828,15 +1786,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -2353,7 +2302,7 @@
        "description": [
         {
          "language": "en",
-         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+         "text": "Reference to the AID action that natively implements this skill."
         }
        ],
        "modelType": "ReferenceElement",
@@ -2435,15 +2384,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -2459,15 +2399,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -2984,7 +2915,7 @@
        "description": [
         {
          "language": "en",
-         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+         "text": "Reference to the AID action that natively implements this skill."
         }
        ],
        "modelType": "ReferenceElement",
@@ -3059,22 +2990,7 @@
         {
          "value": {
           "idShort": "Process",
-          "description": [
-           {
-            "language": "en",
-            "text": "An operation variable of the skill's operation."
-           }
-          ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -3090,15 +3006,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -3114,15 +3021,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -3639,7 +3537,7 @@
        "description": [
         {
          "language": "en",
-         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+         "text": "Reference to the AID action that natively implements this skill."
         }
        ],
        "modelType": "ReferenceElement",
@@ -3721,15 +3619,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -3745,15 +3634,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }

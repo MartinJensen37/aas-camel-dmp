@@ -226,7 +226,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "1f98f73e3ce858dd893740527b47d893"
+          "value": "204e5323c2ac5474886ce82e94c60b9c"
          }
         ]
        },
@@ -247,7 +247,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "fb52abfefbed5e50b7e05ef99825f014"
+          "value": "25007b31c9045c7080d3e48dfcb3f0f4"
          }
         ]
        },
@@ -268,7 +268,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "2affbb0be2865c568ffd707d935f6979"
+          "value": "99bacef81f44538996a5fb25b69a385c"
          }
         ]
        },
@@ -289,7 +289,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "778be4bd328059b8b62e9c4d69400ffd"
+          "value": "dd1572081f4e57b08264b84769cd0ea3"
          }
         ]
        },
@@ -353,7 +353,7 @@
         ]
        },
        "contentType": "text/plain",
-       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpCiAgICByZXR1cm4gewogICAgICAgIFBhY2tNTFN0YXRlID0gc291cmNlcy5TdGF0aW9uU3RhdGUuU3RhdGUsCiAgICAgICAgT2NjdXBhdGlvblN0YXRlID0gc291cmNlcy5TdGF0aW9uU3RhdGUuUHJvY2Vzc1F1ZXVlLAogICAgfQplbmQK"
+       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpCiAgICBsb2NhbCBxdWV1ZSA9IHNvdXJjZXMuU3RhdGlvblN0YXRlLlByb2Nlc3NRdWV1ZSBvciB7fQogICAgcmV0dXJuIHsKICAgICAgICBQYWNrTUxTdGF0ZSA9IHNvdXJjZXMuU3RhdGlvblN0YXRlLlN0YXRlLAogICAgICAgIE9jY3VwYXRpb25TdGF0ZSA9ICgjcXVldWUgPT0gMCkgYW5kICJbXSIgb3IganNvbi5lbmNvZGUocXVldWUpLAogICAgfQplbmQK"
       },
       {
        "idShort": "Sources",
@@ -435,7 +435,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "222f4758cb7e5b2190ac5e2ec35bd11d"
+              "value": "ead04143f4a65a09ba5a54df014030bd"
              }
             ]
            },
@@ -954,7 +954,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "531a908de9455971ae5b5b64cab65c77"
+          "value": "1f3e1ff10a5d523ab033bf522880722b"
          }
         ]
        },
@@ -975,7 +975,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "ef6a110095685096a00124acb8c1645d"
+          "value": "8087b0f9990a5f9584b3e7228423564d"
          }
         ]
        },
@@ -996,7 +996,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "8321497f972a5c8caace781573213fb9"
+          "value": "f60ce9188063521c888e1ce87d009fb9"
          }
         ]
        },
@@ -1017,7 +1017,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "f8544b48b71e5946bc1e74251e89dd03"
+          "value": "ef070acef8bf5a1d8e6616b475315a2f"
          }
         ]
        },
@@ -1163,7 +1163,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "68039da9ccd05886abbf66d6c1ba084d"
+              "value": "c762ed732e9b5c66b7462e1020863525"
              }
             ]
            },
@@ -1561,7 +1561,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "a5a07a778b5f57a79872672495b14c5e"
+          "value": "ResponseTransformation"
          }
         ]
        },
@@ -1582,7 +1582,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "897757418b2256b9b3ffaee56a6d1d4a"
+          "value": "ResponseSources"
          }
         ]
        },
@@ -1603,7 +1603,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "d15abdcade7659369297ccfa4f83c014"
+          "value": "ResponseSinks"
          }
         ]
        },
@@ -1624,7 +1624,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "756779a6ed2457c1ba7a405ac25a8e50"
+          "value": "41c6026ed0dc51abade208ed97e5e294"
          }
         ]
        },
@@ -1770,7 +1770,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "74b3eed12d5a54aebcf114bee4aea58f"
+              "value": "ff03237cdd6353b992928e7919ee4af3"
              }
             ]
            },
@@ -2052,6 +2052,355 @@
          ]
         }
        ]
+      },
+      {
+       "idShort": "ResponseTransformation",
+       "description": [
+        {
+         "language": "en",
+         "text": "The response-direction transformation of an operation mapping: the action's reply, projected by the response sources, is transformed into the response sink values; the response sink selecting the Operation receives the caller's outputs. Must contain an \"aimc_main(sources)\" entrypoint function in Lua. Authored together with the response sources and sinks; without them the Operation answers with no outputs."
+        }
+       ],
+       "modelType": "Blob",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/aimc/ResponseTransformation/1/0"
+         }
+        ]
+       },
+       "contentType": "text/plain",
+       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIGxvY2FsIHJlcGx5ID0gc291cmNlcy5SZXBseSByZXR1cm4geyBPdXRwdXRzID0geyBVdWlkID0gcmVwbHkuVXVpZCwgU3RhdGUgPSByZXBseS5TdGF0ZSB9IH0gZW5k"
+      },
+      {
+       "idShort": "ResponseSources",
+       "description": [
+        {
+         "language": "en",
+         "text": "Response sources selected for the correlated response transformation."
+        }
+       ],
+       "modelType": "SubmodelElementList",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/aimc/ResponseSources/1/0"
+         }
+        ]
+       },
+       "orderRelevant": true,
+       "typeValueListElement": "SubmodelElementCollection",
+       "value": [
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Reply"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpResponseSource"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Source"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Source"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "SourceId"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SourceId"
+           }
+          }
+         ],
+         "description": [
+          {
+           "language": "en",
+           "text": "A response source: the output of the invoked action, or a member of it."
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "value": [
+          {
+           "idShort": "Source",
+           "description": [
+            {
+             "language": "en",
+             "text": "Reference to a SubmodelElement used as a correlated response source."
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSource/Source/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/omronCameraSystemAAS/submodels/AssetInterfacesDescription"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "interface_mqtt"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "InteractionMetadata"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "actions"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Occupy"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "output"
+             }
+            ]
+           }
+          },
+          {
+           "idShort": "SourceId",
+           "description": [
+            {
+             "language": "en",
+             "text": "This is a unique and non-empty identifier that facilitates data access in the Lua transformation or establishes a relationship to a corresponding sink when no transformation is given. It must only be unique with respect to the Sources-list of the parent MappingConfiguration and not globally."
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSource/SourceId/1/0"
+             }
+            ]
+           },
+           "value": "Reply",
+           "valueType": "xs:string"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "idShort": "ResponseSinks",
+       "description": [
+        {
+         "language": "en",
+         "text": "Response sinks written from the correlated response transformation."
+        }
+       ],
+       "modelType": "SubmodelElementList",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/aimc/ResponseSinks/1/0"
+         }
+        ]
+       },
+       "orderRelevant": true,
+       "typeValueListElement": "SubmodelElementCollection",
+       "value": [
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Outputs"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpResponseSink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Sink"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Sink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "SinkId"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SinkId"
+           }
+          }
+         ],
+         "description": [
+          {
+           "language": "en",
+           "text": "A correlated response sink reference and its transformation identifier."
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "value": [
+          {
+           "idShort": "Sink",
+           "description": [
+            {
+             "language": "en",
+             "text": "Reference to a SubmodelElement used as a correlated response sink."
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSink/Sink/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/omronCameraSystemAAS/submodels/ControlComponentInstance"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Skills"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Occupy"
+             },
+             {
+              "type": "Operation",
+              "value": "operation"
+             }
+            ]
+           }
+          },
+          {
+           "idShort": "SinkId",
+           "description": [
+            {
+             "language": "en",
+             "text": "This is a unique and non-empty identifier that facilitates data writing in the Lua transformation or establishes a relationship to a corresponding source when no transformation is given. It must only be unique with respect to the Sinks-list of the containing MappingConfiguration and not globally."
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSink/SinkId/1/0"
+             }
+            ]
+           },
+           "value": "Outputs",
+           "valueType": "xs:string"
+          }
+         ]
+        }
+       ]
       }
      ]
     },
@@ -2168,7 +2517,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "21facd0e8a0c54d9ae7848c0f2c12cf5"
+          "value": "ResponseTransformation"
          }
         ]
        },
@@ -2189,7 +2538,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "05e2cabed9075b7a9a0b746710ddabc4"
+          "value": "ResponseSources"
          }
         ]
        },
@@ -2210,7 +2559,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "e7f714e27e7859848e6a783592393c00"
+          "value": "ResponseSinks"
          }
         ]
        },
@@ -2231,7 +2580,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "c8412beca4405dcf91e075ccc95c69a8"
+          "value": "c782887e5ddc53ea96bcd3988ef9b660"
          }
         ]
        },
@@ -2377,7 +2726,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "8e9c2ebad7f05aee8faeb02df399dfe3"
+              "value": "07630e9d83d55ca3824bbe8d6984570d"
              }
             ]
            },
@@ -2659,6 +3008,355 @@
          ]
         }
        ]
+      },
+      {
+       "idShort": "ResponseTransformation",
+       "description": [
+        {
+         "language": "en",
+         "text": "The response-direction transformation of an operation mapping: the action's reply, projected by the response sources, is transformed into the response sink values; the response sink selecting the Operation receives the caller's outputs. Must contain an \"aimc_main(sources)\" entrypoint function in Lua. Authored together with the response sources and sinks; without them the Operation answers with no outputs."
+        }
+       ],
+       "modelType": "Blob",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/aimc/ResponseTransformation/1/0"
+         }
+        ]
+       },
+       "contentType": "text/plain",
+       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIGxvY2FsIHJlcGx5ID0gc291cmNlcy5SZXBseSByZXR1cm4geyBPdXRwdXRzID0geyBVdWlkID0gcmVwbHkuVXVpZCwgU3RhdGUgPSByZXBseS5TdGF0ZSB9IH0gZW5k"
+      },
+      {
+       "idShort": "ResponseSources",
+       "description": [
+        {
+         "language": "en",
+         "text": "Response sources selected for the correlated response transformation."
+        }
+       ],
+       "modelType": "SubmodelElementList",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/aimc/ResponseSources/1/0"
+         }
+        ]
+       },
+       "orderRelevant": true,
+       "typeValueListElement": "SubmodelElementCollection",
+       "value": [
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Reply"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpResponseSource"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Source"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Source"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "SourceId"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SourceId"
+           }
+          }
+         ],
+         "description": [
+          {
+           "language": "en",
+           "text": "A response source: the output of the invoked action, or a member of it."
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "value": [
+          {
+           "idShort": "Source",
+           "description": [
+            {
+             "language": "en",
+             "text": "Reference to a SubmodelElement used as a correlated response source."
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSource/Source/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/omronCameraSystemAAS/submodels/AssetInterfacesDescription"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "interface_mqtt"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "InteractionMetadata"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "actions"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Release"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "output"
+             }
+            ]
+           }
+          },
+          {
+           "idShort": "SourceId",
+           "description": [
+            {
+             "language": "en",
+             "text": "This is a unique and non-empty identifier that facilitates data access in the Lua transformation or establishes a relationship to a corresponding sink when no transformation is given. It must only be unique with respect to the Sources-list of the parent MappingConfiguration and not globally."
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSource/SourceId/1/0"
+             }
+            ]
+           },
+           "value": "Reply",
+           "valueType": "xs:string"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "idShort": "ResponseSinks",
+       "description": [
+        {
+         "language": "en",
+         "text": "Response sinks written from the correlated response transformation."
+        }
+       ],
+       "modelType": "SubmodelElementList",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/aimc/ResponseSinks/1/0"
+         }
+        ]
+       },
+       "orderRelevant": true,
+       "typeValueListElement": "SubmodelElementCollection",
+       "value": [
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Outputs"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpResponseSink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Sink"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Sink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "SinkId"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SinkId"
+           }
+          }
+         ],
+         "description": [
+          {
+           "language": "en",
+           "text": "A correlated response sink reference and its transformation identifier."
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "value": [
+          {
+           "idShort": "Sink",
+           "description": [
+            {
+             "language": "en",
+             "text": "Reference to a SubmodelElement used as a correlated response sink."
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSink/Sink/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/omronCameraSystemAAS/submodels/ControlComponentInstance"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Skills"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Release"
+             },
+             {
+              "type": "Operation",
+              "value": "operation"
+             }
+            ]
+           }
+          },
+          {
+           "idShort": "SinkId",
+           "description": [
+            {
+             "language": "en",
+             "text": "This is a unique and non-empty identifier that facilitates data writing in the Lua transformation or establishes a relationship to a corresponding source when no transformation is given. It must only be unique with respect to the Sinks-list of the containing MappingConfiguration and not globally."
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSink/SinkId/1/0"
+             }
+            ]
+           },
+           "value": "Outputs",
+           "valueType": "xs:string"
+          }
+         ]
+        }
+       ]
       }
      ]
     },
@@ -2775,7 +3473,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "8fd243bec62357fa8c38cabeda7b2185"
+          "value": "ResponseTransformation"
          }
         ]
        },
@@ -2796,7 +3494,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "225b05a47fc25bda884329e56c477d4f"
+          "value": "ResponseSources"
          }
         ]
        },
@@ -2817,7 +3515,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "efb3fb6f661c56b3bee02e6d3a6bf064"
+          "value": "ResponseSinks"
          }
         ]
        },
@@ -2838,7 +3536,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "e33cfceaaa0552b6a779e589496f0f46"
+          "value": "3713e734089c51f98fc399eb4778fe9d"
          }
         ]
        },
@@ -2984,7 +3682,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "d75db8db3e82529aa011a26b8938ecc4"
+              "value": "afc29391e4dc58e69d22209b5cc0fdf6"
              }
             ]
            },
@@ -3266,6 +3964,355 @@
          ]
         }
        ]
+      },
+      {
+       "idShort": "ResponseTransformation",
+       "description": [
+        {
+         "language": "en",
+         "text": "The response-direction transformation of an operation mapping: the action's reply, projected by the response sources, is transformed into the response sink values; the response sink selecting the Operation receives the caller's outputs. Must contain an \"aimc_main(sources)\" entrypoint function in Lua. Authored together with the response sources and sinks; without them the Operation answers with no outputs."
+        }
+       ],
+       "modelType": "Blob",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/aimc/ResponseTransformation/1/0"
+         }
+        ]
+       },
+       "contentType": "text/plain",
+       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIGxvY2FsIHJlcGx5ID0gc291cmNlcy5SZXBseSByZXR1cm4geyBPdXRwdXRzID0geyBVdWlkID0gcmVwbHkuVXVpZCwgU3RhdGUgPSByZXBseS5TdGF0ZSwgT3V0Y29tZSA9IHJlcGx5Lk91dGNvbWUgfSB9IGVuZA=="
+      },
+      {
+       "idShort": "ResponseSources",
+       "description": [
+        {
+         "language": "en",
+         "text": "Response sources selected for the correlated response transformation."
+        }
+       ],
+       "modelType": "SubmodelElementList",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/aimc/ResponseSources/1/0"
+         }
+        ]
+       },
+       "orderRelevant": true,
+       "typeValueListElement": "SubmodelElementCollection",
+       "value": [
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Reply"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpResponseSource"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Source"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Source"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "SourceId"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SourceId"
+           }
+          }
+         ],
+         "description": [
+          {
+           "language": "en",
+           "text": "A response source: the output of the invoked action, or a member of it."
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "value": [
+          {
+           "idShort": "Source",
+           "description": [
+            {
+             "language": "en",
+             "text": "Reference to a SubmodelElement used as a correlated response source."
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSource/Source/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/omronCameraSystemAAS/submodels/AssetInterfacesDescription"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "interface_mqtt"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "InteractionMetadata"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "actions"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Capture"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "output"
+             }
+            ]
+           }
+          },
+          {
+           "idShort": "SourceId",
+           "description": [
+            {
+             "language": "en",
+             "text": "This is a unique and non-empty identifier that facilitates data access in the Lua transformation or establishes a relationship to a corresponding sink when no transformation is given. It must only be unique with respect to the Sources-list of the parent MappingConfiguration and not globally."
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSource/SourceId/1/0"
+             }
+            ]
+           },
+           "value": "Reply",
+           "valueType": "xs:string"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "idShort": "ResponseSinks",
+       "description": [
+        {
+         "language": "en",
+         "text": "Response sinks written from the correlated response transformation."
+        }
+       ],
+       "modelType": "SubmodelElementList",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://smartproductionlab.aau.dk/aimc/ResponseSinks/1/0"
+         }
+        ]
+       },
+       "orderRelevant": true,
+       "typeValueListElement": "SubmodelElementCollection",
+       "value": [
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Outputs"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpResponseSink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Sink"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Sink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "SinkId"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SinkId"
+           }
+          }
+         ],
+         "description": [
+          {
+           "language": "en",
+           "text": "A correlated response sink reference and its transformation identifier."
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "value": [
+          {
+           "idShort": "Sink",
+           "description": [
+            {
+             "language": "en",
+             "text": "Reference to a SubmodelElement used as a correlated response sink."
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSink/Sink/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/omronCameraSystemAAS/submodels/ControlComponentInstance"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Skills"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Capture"
+             },
+             {
+              "type": "Operation",
+              "value": "operation"
+             }
+            ]
+           }
+          },
+          {
+           "idShort": "SinkId",
+           "description": [
+            {
+             "language": "en",
+             "text": "This is a unique and non-empty identifier that facilitates data writing in the Lua transformation or establishes a relationship to a corresponding source when no transformation is given. It must only be unique with respect to the Sinks-list of the containing MappingConfiguration and not globally."
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSink/SinkId/1/0"
+             }
+            ]
+           },
+           "value": "Outputs",
+           "valueType": "xs:string"
+          }
+         ]
+        }
+       ]
       }
      ]
     },
@@ -3382,7 +4429,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "febaba7f18d45bba9e013f57566553f0"
+          "value": "26dbd576396e54c4bff3eaa0870682c3"
          }
         ]
        },
@@ -3403,7 +4450,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "c30ec4e4ce7655b8b60dc2ad138bc92e"
+          "value": "8e53cd2b5bc75f8aa6295ee23f761fce"
          }
         ]
        },
@@ -3424,7 +4471,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "d4726b354e2851c98ac77cbba319aeff"
+          "value": "f33f7635aacc53f28e04fdd44544e435"
          }
         ]
        },
@@ -3445,7 +4492,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "a7e9d5ee8a6851bbaacf0e5bf162fba4"
+          "value": "c5578bcf1dda591fb17435cd93f94aeb"
          }
         ]
        },
@@ -3591,7 +4638,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "dc56705040675407b9d924a5f4f23c81"
+              "value": "1fda6ea37ec25f85809fa826c924a2e7"
              }
             ]
            },
@@ -3981,7 +5028,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "6d29a05fdbb75f27b97da76ffa389816"
+          "value": "e71e975441135adcb8cefa9696cdc958"
          }
         ]
        },
@@ -4002,7 +5049,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "7cf730087be559cc8e7df419db25270b"
+          "value": "5f8f9c8a544c5532a3e37c11a1b9e3d9"
          }
         ]
        },
@@ -4023,7 +5070,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "12825a7d92e45f9cb9877861be675286"
+          "value": "7247aeb1564551c89a5386ae76badbb4"
          }
         ]
        },
@@ -4044,7 +5091,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "42a4902f623157be860521d33aaddcf7"
+          "value": "2e664ee8abdf529f9ccec2aad57d1340"
          }
         ]
        },
@@ -4190,7 +5237,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "eaea7b13e13552fc9f41314be7ec8c1f"
+              "value": "d5239f49222656869b0e0ddd9371eb8e"
              }
             ]
            },

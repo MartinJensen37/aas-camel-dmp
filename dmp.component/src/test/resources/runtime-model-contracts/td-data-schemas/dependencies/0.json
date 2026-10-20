@@ -1,0 +1,32 @@
+{
+ "idShort": "ControlComponentInstance",
+ "modelType": "Submodel",
+ "id": "contractAAS/submodels/ControlComponentInstance",
+ "semanticId": {
+  "type": "ExternalReference",
+  "keys": [
+   {
+    "type": "GlobalReference",
+    "value": "https://admin-shell.io/idta/ControlComponent/Instance/2/0"
+   }
+  ]
+ },
+ "submodelElements": [
+  {
+   "idShort": "Skills",
+   "modelType": "SubmodelElementCollection",
+   "value": [
+    {
+     "idShort": "Inspect",
+     "modelType": "SubmodelElementCollection",
+     "value": [
+      {
+       "idShort": "operation",
+       "modelType": "Operation"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

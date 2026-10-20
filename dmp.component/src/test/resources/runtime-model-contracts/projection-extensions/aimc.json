@@ -690,7 +690,7 @@
        "description": [
         {
          "language": "en",
-         "text": "The optional response-direction transformation of an operation mapping: the response sources are transformed into the caller's reply and the response sink values. Must contain an \"aimc_main(sources, invocation)\" entrypoint function in Lua; invocation.status is \"done\" or \"failed\" after a status phase. When absent the device reply passes through unchanged."
+         "text": "The response-direction transformation of an operation mapping: the action's reply, projected by the response sources, is transformed into the response sink values; the response sink selecting the Operation receives the caller's outputs. Must contain an \"aimc_main(sources)\" entrypoint function in Lua. Authored together with the response sources and sinks; without them the Operation answers with no outputs."
         }
        ],
        "modelType": "Blob",

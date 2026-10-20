@@ -49,7 +49,7 @@
       "keys": [
        {
         "type": "GlobalReference",
-        "value": "interface_mqtt"
+        "value": "InterfaceTemplateForOPCUA"
        }
       ]
      },
@@ -61,7 +61,7 @@
         "text": "class"
        }
       ],
-      "value": "MqttInterface"
+      "value": "DmpOpcuaInterface"
      }
     },
     {
@@ -259,7 +259,7 @@
       "keys": [
        {
         "type": "GlobalReference",
-        "value": "19dcd31214895739ae46872617a221e7"
+        "value": "57ac2d15f3b1579396060976104016e3"
        }
       ]
      },
@@ -275,7 +275,7 @@
      }
     }
    ],
-   "idShort": "interface_mqtt",
+   "idShort": "interface_opcua",
    "description": [
     {
      "language": "en",
@@ -298,7 +298,7 @@
      "keys": [
       {
        "type": "GlobalReference",
-       "value": "http://www.w3.org/2011/mqtt"
+       "value": "http://opcfoundation.org/UA/WoT-Binding/"
       }
      ]
     },
@@ -331,6 +331,7 @@
        }
       ]
      },
+     "value": "iface",
      "valueType": "xs:string"
     },
     {
@@ -540,6 +541,7 @@
          }
         ]
        },
+       "value": "opc.tcp://192.168.0.10:4840/opcua/server/",
        "valueType": "xs:string"
       },
       {
@@ -560,6 +562,7 @@
          }
         ]
        },
+       "value": "application/json",
        "valueType": "xs:string"
       },
       {
@@ -887,953 +890,6 @@
           "text": "class"
          }
         ],
-        "value": "MqttInteractionMetadata"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "2763dbddd6a2565ca748de3da76957c6"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "properties"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "25572ca273425358b65746e9d42de9d6"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "actions"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "05b2ba7fcab15203841205165fa9625f"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "events"
-       }
-      }
-     ],
-     "idShort": "InteractionMetadata",
-     "description": [
-      {
-       "language": "en",
-       "text": "Provides the metadata of the actually interfaces such as which datapoints and functions are provided by the properties, actions, and events interaction abstraction. "
-      }
-     ],
-     "modelType": "SubmodelElementCollection",
-     "semanticId": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/InteractionMetadata"
-       }
-      ]
-     },
-     "supplementalSemanticIds": [
-      {
-       "type": "ExternalReference",
-       "keys": [
-        {
-         "type": "GlobalReference",
-         "value": "https://www.w3.org/2019/wot/td#InteractionAffordance"
-        }
-       ]
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "embeddedDataSpecifications": [
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "InterfaceTemplateForOPCUA"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "class"
-       }
-      ],
-      "value": "DmpOpcuaInterface"
-     }
-    },
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "title"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "attribute"
-       }
-      ],
-      "value": "title"
-     }
-    },
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "title"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "default"
-       }
-      ],
-      "value": "title"
-     }
-    },
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "188fda9a1f8c51f69ad0228f5a370c89"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "attribute"
-       }
-      ],
-      "value": "created"
-     }
-    },
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "d788c19bf28556fcabc2ae9e9e5264e7"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "attribute"
-       }
-      ],
-      "value": "modified"
-     }
-    },
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "8b1ca450960051c9a1898f789ae21c63"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "attribute"
-       }
-      ],
-      "value": "support"
-     }
-    },
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "EndpointMetadata"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "attribute"
-       }
-      ],
-      "value": "EndpointMetadata"
-     }
-    },
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "EndpointMetadata"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "default"
-       }
-      ],
-      "value": "EndpointMetadata"
-     }
-    },
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "InteractionMetadata"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "attribute"
-       }
-      ],
-      "value": "InteractionMetadata"
-     }
-    },
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "InteractionMetadata"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "default"
-       }
-      ],
-      "value": "InteractionMetadata"
-     }
-    },
-    {
-     "dataSpecification": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "b164812fcc8257bdacce2188fccb8413"
-       }
-      ]
-     },
-     "dataSpecificationContent": {
-      "modelType": "DataSpecificationIec61360",
-      "preferredName": [
-       {
-        "language": "en",
-        "text": "attribute"
-       }
-      ],
-      "value": "ExternalDescriptor"
-     }
-    }
-   ],
-   "idShort": "interface_opcua",
-   "description": [
-    {
-     "language": "en",
-     "text": "Indicates the entry point for a particular asset interface"
-    }
-   ],
-   "modelType": "SubmodelElementCollection",
-   "semanticId": {
-    "type": "ExternalReference",
-    "keys": [
-     {
-      "type": "GlobalReference",
-      "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/Interface"
-     }
-    ]
-   },
-   "supplementalSemanticIds": [
-    {
-     "type": "ExternalReference",
-     "keys": [
-      {
-       "type": "GlobalReference",
-       "value": "http://opcfoundation.org/UA/WoT-Binding/"
-      }
-     ]
-    },
-    {
-     "type": "ExternalReference",
-     "keys": [
-      {
-       "type": "GlobalReference",
-       "value": "https://www.w3.org/2019/wot/td"
-      }
-     ]
-    }
-   ],
-   "value": [
-    {
-     "idShort": "title",
-     "description": [
-      {
-       "language": "en",
-       "text": "Provides a human-readable title to give a human-readable context of the interface."
-      }
-     ],
-     "modelType": "Property",
-     "semanticId": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "https://www.w3.org/2019/wot/td#title"
-       }
-      ]
-     },
-     "value": "iface",
-     "valueType": "xs:string"
-    },
-    {
-     "embeddedDataSpecifications": [
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "EndpointMetadata"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "class"
-         }
-        ],
-        "value": "EndpointMetadata"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "base"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "base"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "contentType"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "contentType"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "security"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "security"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "securityDefinitions"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "securityDefinitions"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "d5cff6b484cc5f798dd845b1a982a97b"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "protocolVersion"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "e89605390f5f5a83900f945b84c112fb"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "modv_mostSignificantByte"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "08573d53b3495fa9a60d6562283ec056"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "modv_mostSignificantWord"
-       }
-      }
-     ],
-     "idShort": "EndpointMetadata",
-     "description": [
-      {
-       "language": "en",
-       "text": "Provides the metadata of the asset’s endpoint (base, content type that is used for interaction, etc)"
-      }
-     ],
-     "modelType": "SubmodelElementCollection",
-     "semanticId": {
-      "type": "ExternalReference",
-      "keys": [
-       {
-        "type": "GlobalReference",
-        "value": "https://admin-shell.io/idta/AssetInterfacesDescription/1/0/EndpointMetadata"
-       }
-      ]
-     },
-     "value": [
-      {
-       "idShort": "base",
-       "description": [
-        {
-         "language": "en",
-         "text": "Defines asset connection entry point. Each protocol specifies a base pattern. Please see Annex B.1 of the AID document for more details."
-        }
-       ],
-       "modelType": "Property",
-       "semanticId": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "https://www.w3.org/2019/wot/td#baseURI"
-         }
-        ]
-       },
-       "value": "opc.tcp://192.168.0.10:4840/opcua/server/",
-       "valueType": "xs:string"
-      },
-      {
-       "idShort": "contentType",
-       "description": [
-        {
-         "language": "en",
-         "text": "Defines content type based on a media type (e.g., text/plain) and potential character decoding/encoding type (e.g., charset=utf-8) for the media type (see RFC2046) of the whole interface"
-        }
-       ],
-       "modelType": "Property",
-       "semanticId": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "https://www.w3.org/2019/wot/hypermedia#forContentType"
-         }
-        ]
-       },
-       "value": "application/json",
-       "valueType": "xs:string"
-      },
-      {
-       "idShort": "security",
-       "description": [
-        {
-         "language": "en",
-         "text": "Selects one or more of the security scheme(s) that can be applied at runtime from the collection of security schemes defines in securityDefinitions. "
-        }
-       ],
-       "modelType": "SubmodelElementList",
-       "semanticId": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "https://www.w3.org/2019/wot/td#hasSecurityConfiguration"
-         }
-        ]
-       },
-       "orderRelevant": true,
-       "typeValueListElement": "ReferenceElement",
-       "semanticIdListElement": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "https://www.w3.org/2019/wot/td#definesSecurityScheme"
-         }
-        ]
-       }
-      },
-      {
-       "embeddedDataSpecifications": [
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "securityDefinitions"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "class"
-           }
-          ],
-          "value": "securityDefinitions"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "d27ee0889e44578e8e7d7d58909c0344"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "nosec_sc"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "f9d0cd1baf3c5e2f882c1a101961e09e"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "auto_sc"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "cd3811d85b055173a02c535b3504342f"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "basic_sc"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "80163aa8e4bf5d27a4a79e1b35cbcb34"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "combo_sc"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "c5cb9983f43d56d1a2a83a4037cc3fd7"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "apikey_sc"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "b5fea628bec850099ec44d4a87c2bbe9"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "psk_sc"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "f47a28736475588796c5150c160c2b89"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "digest_sc"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "44f6b7cb0d60507f8413d8fb20445727"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "bearer_sc"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "fa19ff22fcef500aa1ce2329e675be65"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "oauth2_sc"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "299518a9ed0952d4b140b92fe862c1c6"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "opcua_channel_sc"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "1244c90914135cae9984e109ce1518be"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "opcua_authentication_sc"
-         }
-        }
-       ],
-       "idShort": "securityDefinitions",
-       "description": [
-        {
-         "language": "en",
-         "text": "Defines the security scheme according to W3C:"
-        }
-       ],
-       "modelType": "SubmodelElementCollection",
-       "semanticId": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "https://www.w3.org/2019/wot/td#definesSecurityScheme"
-         }
-        ]
-       }
-      }
-     ]
-    },
-    {
-     "embeddedDataSpecifications": [
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "InteractionMetadata"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "class"
-         }
-        ],
         "value": "OpcuaInteractionMetadata"
        }
       },
@@ -1864,7 +920,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "1fb88089ade05027a07667791c4ee213"
+          "value": "9a34cbb4e83b5a57a78401eaa0e0078b"
          }
         ]
        },
@@ -1885,7 +941,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "b733b8cb567353dfaa88dd7c04c6012e"
+          "value": "65148199659257de9b15feb57b6e0304"
          }
         ]
        },
@@ -2001,7 +1057,238 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "a9eecb8cbe1c56aa83dddcd97983bd80"
+              "value": "2763dbddd6a2565ca748de3da76957c6"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "readOnly"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "25572ca273425358b65746e9d42de9d6"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "writeOnly"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "05b2ba7fcab15203841205165fa9625f"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "required"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "19dcd31214895739ae46872617a221e7"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "oneOf"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "188fda9a1f8c51f69ad0228f5a370c89"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "exclusiveMinimum"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "d788c19bf28556fcabc2ae9e9e5264e7"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "exclusiveMaximum"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "8b1ca450960051c9a1898f789ae21c63"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "multipleOf"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "d27ee0889e44578e8e7d7d58909c0344"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "pattern"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "f9d0cd1baf3c5e2f882c1a101961e09e"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "format"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "cd3811d85b055173a02c535b3504342f"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "contentEncoding"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "80163aa8e4bf5d27a4a79e1b35cbcb34"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "contentMediaType"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "c5cb9983f43d56d1a2a83a4037cc3fd7"
              }
             ]
            },
@@ -2022,7 +1309,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "97d2c77601365983be35605bd004803e"
+              "value": "b5fea628bec850099ec44d4a87c2bbe9"
              }
             ]
            },
@@ -2064,7 +1351,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "b2f846c6bf7d5a78ac324b87deff667f"
+              "value": "f47a28736475588796c5150c160c2b89"
              }
             ]
            },
@@ -2085,7 +1372,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "64639d2363665fcf9973f2cd1d44ecf4"
+              "value": "44f6b7cb0d60507f8413d8fb20445727"
              }
             ]
            },
@@ -2106,7 +1393,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "fc08488d3b8b5476aa2ee98d7a65b8c9"
+              "value": "fa19ff22fcef500aa1ce2329e675be65"
              }
             ]
            },
@@ -2127,7 +1414,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "814606218ad35daea364fd8e49283823"
+              "value": "299518a9ed0952d4b140b92fe862c1c6"
              }
             ]
            },
@@ -2148,7 +1435,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "68946dfbfe39592d926050b842a14208"
+              "value": "1244c90914135cae9984e109ce1518be"
              }
             ]
            },
@@ -2169,7 +1456,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "0cb7c544c7615a62828be95ce72a713e"
+              "value": "d5cff6b484cc5f798dd845b1a982a97b"
              }
             ]
            },
@@ -2190,7 +1477,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "ef727622c55056659d325e4e22e54d12"
+              "value": "e89605390f5f5a83900f945b84c112fb"
              }
             ]
            },
@@ -2211,7 +1498,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "515a3cdf4a0c549682d86dba326797b9"
+              "value": "08573d53b3495fa9a60d6562283ec056"
              }
             ]
            },
@@ -2232,7 +1519,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "873c17f09a11542daf82269441f55c59"
+              "value": "a9eecb8cbe1c56aa83dddcd97983bd80"
              }
             ]
            },
@@ -2253,7 +1540,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "81f5cf8d580e517da1fd294569215549"
+              "value": "97d2c77601365983be35605bd004803e"
              }
             ]
            },
@@ -2274,7 +1561,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "e6ddcdf5c2d4529e96f80275f9bcd6bf"
+              "value": "b2f846c6bf7d5a78ac324b87deff667f"
              }
             ]
            },
@@ -2337,7 +1624,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "d94b093ea2e45fd1b094461bfde77834"
+              "value": "4807e93edbb756de90177f640679802a"
              }
             ]
            },
@@ -2350,48 +1637,6 @@
              }
             ],
             "value": "uriVariables"
-           }
-          },
-          {
-           "dataSpecification": {
-            "type": "ExternalReference",
-            "keys": [
-             {
-              "type": "GlobalReference",
-              "value": "5993ab64909d51ec8c3eece9ce0b2d87"
-             }
-            ]
-           },
-           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-             {
-              "language": "en",
-              "text": "attribute"
-             }
-            ],
-            "value": "readOnly"
-           }
-          },
-          {
-           "dataSpecification": {
-            "type": "ExternalReference",
-            "keys": [
-             {
-              "type": "GlobalReference",
-              "value": "796eb6033f945e238b004c3d3bdeafff"
-             }
-            ]
-           },
-           "dataSpecificationContent": {
-            "modelType": "DataSpecificationIec61360",
-            "preferredName": [
-             {
-              "language": "en",
-              "text": "attribute"
-             }
-            ],
-            "value": "writeOnly"
            }
           }
          ],
@@ -2537,7 +1782,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "cacae0b6462e517dbae0b4c5292276fe"
+                "value": "64639d2363665fcf9973f2cd1d44ecf4"
                }
               ]
              },
@@ -2558,7 +1803,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "efa2b4958aad56ca8321e3981bb86dbc"
+                "value": "fc08488d3b8b5476aa2ee98d7a65b8c9"
                }
               ]
              },
@@ -2579,7 +1824,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "57b47b038424575c9962b43dbc65f82b"
+                "value": "814606218ad35daea364fd8e49283823"
                }
               ]
              },
@@ -2600,7 +1845,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "102cd91cd4ab5a09a35e350c4d2a8978"
+                "value": "68946dfbfe39592d926050b842a14208"
                }
               ]
              },
@@ -2621,7 +1866,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "82220c3a24aa53ffa2ded32f09595b56"
+                "value": "0cb7c544c7615a62828be95ce72a713e"
                }
               ]
              },
@@ -2642,7 +1887,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "c7adf657469654fdbf4b2a41451e5ca9"
+                "value": "ef727622c55056659d325e4e22e54d12"
                }
               ]
              },
@@ -2663,7 +1908,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "37ba08eb1d0d54b3b1aff6ce5d95ce20"
+                "value": "515a3cdf4a0c549682d86dba326797b9"
                }
               ]
              },
@@ -2684,7 +1929,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "c2a54276ae0c55849cb061eec7b39b0c"
+                "value": "873c17f09a11542daf82269441f55c59"
                }
               ]
              },
@@ -2705,7 +1950,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "fd78c1ff43c358f2a51c890156332465"
+                "value": "81f5cf8d580e517da1fd294569215549"
                }
               ]
              },
@@ -2726,7 +1971,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "5aead9bf96295dfca4e981510c8ac645"
+                "value": "e6ddcdf5c2d4529e96f80275f9bcd6bf"
                }
               ]
              },
@@ -2747,7 +1992,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "bea1d5d580ac5459b49b48fe381f2b54"
+                "value": "cacae0b6462e517dbae0b4c5292276fe"
                }
               ]
              },
@@ -2768,7 +2013,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "bb3d730e7cb35ebda41865fe683eb73a"
+                "value": "efa2b4958aad56ca8321e3981bb86dbc"
                }
               ]
              },
@@ -2789,7 +2034,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "e2d1983123e25f4b89ccf30c47a5d20c"
+                "value": "57b47b038424575c9962b43dbc65f82b"
                }
               ]
              },
@@ -2810,7 +2055,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "4cb97025032a56db83f54b7f1db17dad"
+                "value": "102cd91cd4ab5a09a35e350c4d2a8978"
                }
               ]
              },
@@ -2831,7 +2076,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "f48a8ea0aa185dd6ab6a2c8666ee1ea0"
+                "value": "82220c3a24aa53ffa2ded32f09595b56"
                }
               ]
              },
@@ -2852,7 +2097,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "9cd5484b1f5d55a1b23e1b963d5215cd"
+                "value": "c7adf657469654fdbf4b2a41451e5ca9"
                }
               ]
              },
@@ -2873,7 +2118,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "0318e11a11f5573e90683ee75ba25a12"
+                "value": "37ba08eb1d0d54b3b1aff6ce5d95ce20"
                }
               ]
              },
@@ -2894,7 +2139,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "f802faba30be54fb82a22854719f07ac"
+                "value": "c2a54276ae0c55849cb061eec7b39b0c"
                }
               ]
              },
@@ -2915,7 +2160,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "02caf5abe1e0504ba165743a2fe07cde"
+                "value": "fd78c1ff43c358f2a51c890156332465"
                }
               ]
              },
@@ -2936,7 +2181,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "991d900ae10c5e3e9cf8b3e6b96dd31a"
+                "value": "5aead9bf96295dfca4e981510c8ac645"
                }
               ]
              },
@@ -2957,7 +2202,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "ffac173836d65078a798797335264b74"
+                "value": "bea1d5d580ac5459b49b48fe381f2b54"
                }
               ]
              },
@@ -2978,7 +2223,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "9e0af1c754d056a88b44b3f632fad68f"
+                "value": "bb3d730e7cb35ebda41865fe683eb73a"
                }
               ]
              },
@@ -2999,7 +2244,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "92e1a8cf94bf5bbbac0241542a3f13c1"
+                "value": "e2d1983123e25f4b89ccf30c47a5d20c"
                }
               ]
              },
@@ -3020,7 +2265,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "fddedf6ee6325cc78c7e4c6f69ecce2d"
+                "value": "4cb97025032a56db83f54b7f1db17dad"
                }
               ]
              },
@@ -3041,7 +2286,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "490f7506e9765cff9ee708b799d7eed4"
+                "value": "f48a8ea0aa185dd6ab6a2c8666ee1ea0"
                }
               ]
              },
@@ -3062,7 +2307,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "4807e93edbb756de90177f640679802a"
+                "value": "9cd5484b1f5d55a1b23e1b963d5215cd"
                }
               ]
              },
@@ -3083,7 +2328,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "9a34cbb4e83b5a57a78401eaa0e0078b"
+                "value": "0318e11a11f5573e90683ee75ba25a12"
                }
               ]
              },
@@ -3104,7 +2349,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "65148199659257de9b15feb57b6e0304"
+                "value": "f802faba30be54fb82a22854719f07ac"
                }
               ]
              },
@@ -3125,7 +2370,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "57ac2d15f3b1579396060976104016e3"
+                "value": "02caf5abe1e0504ba165743a2fe07cde"
                }
               ]
              },
@@ -3146,7 +2391,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "ec6ac43db2255d2e865eb7badef9bf9c"
+                "value": "991d900ae10c5e3e9cf8b3e6b96dd31a"
                }
               ]
              },
@@ -3167,7 +2412,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "3f3774a935a256808df839be1e290a6a"
+                "value": "ffac173836d65078a798797335264b74"
                }
               ]
              },
@@ -3188,7 +2433,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "f109b5ee63ad515c8bd36098202ec5f5"
+                "value": "9e0af1c754d056a88b44b3f632fad68f"
                }
               ]
              },
@@ -3209,7 +2454,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "c5ae22b96f32569a8bbc840cf12f6f32"
+                "value": "92e1a8cf94bf5bbbac0241542a3f13c1"
                }
               ]
              },
@@ -3230,7 +2475,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "29fc0e3710685a88966d640a18a40252"
+                "value": "fddedf6ee6325cc78c7e4c6f69ecce2d"
                }
               ]
              },
@@ -3251,7 +2496,7 @@
               "keys": [
                {
                 "type": "GlobalReference",
-                "value": "79b5341f51a652de875f0a0bd19c06ec"
+                "value": "490f7506e9765cff9ee708b799d7eed4"
                }
               ]
              },
@@ -3263,28 +2508,7 @@
                 "text": "attribute"
                }
               ],
-              "value": "snmpv_pduType"
-             }
-            },
-            {
-             "dataSpecification": {
-              "type": "ExternalReference",
-              "keys": [
-               {
-                "type": "GlobalReference",
-                "value": "d04e4264310651b581c00a0a766fab41"
-               }
-              ]
-             },
-             "dataSpecificationContent": {
-              "modelType": "DataSpecificationIec61360",
-              "preferredName": [
-               {
-                "language": "en",
-                "text": "attribute"
-               }
-              ],
-              "value": "snmpv_version"
+              "value": "additionalResponses"
              }
             }
            ],

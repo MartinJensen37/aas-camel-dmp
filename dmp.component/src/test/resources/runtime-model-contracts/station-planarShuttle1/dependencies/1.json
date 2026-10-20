@@ -18,7 +18,7 @@
       "text": "class"
      }
     ],
-    "value": "OperationalControlComponent"
+    "value": "OperationalMqttControlComponent"
    }
   },
   {
@@ -1005,7 +1005,7 @@
        "description": [
         {
          "language": "en",
-         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+         "text": "Reference to the AID action that natively implements this skill."
         }
        ],
        "modelType": "ReferenceElement",
@@ -1076,31 +1076,7 @@
          "type": "Synchronous"
         }
        ],
-       "outputVariables": [
-        {
-         "value": {
-          "idShort": "State",
-          "description": [
-           {
-            "language": "en",
-            "text": "The state of the command being executed"
-           }
-          ],
-          "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
-          "valueType": "xs:string"
-         }
-        }
-       ],
-       "inoutputVariables": [
+       "inputVariables": [
         {
          "value": {
           "idShort": "Uuid",
@@ -1111,15 +1087,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -1635,7 +1602,7 @@
        "description": [
         {
          "language": "en",
-         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+         "text": "Reference to the AID action that natively implements this skill."
         }
        ],
        "modelType": "ReferenceElement",
@@ -1717,15 +1684,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -1741,15 +1699,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -2265,7 +2214,7 @@
        "description": [
         {
          "language": "en",
-         "text": "Reference to the corresponding AID action interface for MQTT topic resolution."
+         "text": "Reference to the AID action that natively implements this skill."
         }
        ],
        "modelType": "ReferenceElement",
@@ -2347,15 +2296,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -2371,15 +2311,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
@@ -2964,22 +2895,7 @@
         {
          "value": {
           "idShort": "X",
-          "description": [
-           {
-            "language": "en",
-            "text": "An operation variable of the skill's operation."
-           }
-          ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "value": "0.0",
           "valueType": "xs:double"
          }
@@ -2987,22 +2903,7 @@
         {
          "value": {
           "idShort": "Y",
-          "description": [
-           {
-            "language": "en",
-            "text": "An operation variable of the skill's operation."
-           }
-          ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "value": "0.0",
           "valueType": "xs:double"
          }
@@ -3010,22 +2911,7 @@
         {
          "value": {
           "idShort": "Theta",
-          "description": [
-           {
-            "language": "en",
-            "text": "An operation variable of the skill's operation."
-           }
-          ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "value": "0.0",
           "valueType": "xs:double"
          }
@@ -3042,37 +2928,30 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         },
         {
          "value": {
           "idShort": "Outcome",
-          "description": [
+          "modelType": "Property",
+          "qualifiers": [
            {
-            "language": "en",
-            "text": "An operation variable of the skill's operation."
+            "semanticId": {
+             "type": "ExternalReference",
+             "keys": [
+              {
+               "type": "GlobalReference",
+               "value": "https://smartproductionlab.aau.dk/aas/OperationVariable/Optional/1/0"
+              }
+             ]
+            },
+            "value": "true",
+            "kind": "ConceptQualifier",
+            "valueType": "xs:boolean",
+            "type": "Optional"
            }
           ],
-          "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "value": "0",
           "valueType": "xs:integer"
          }
@@ -3089,15 +2968,6 @@
            }
           ],
           "modelType": "Property",
-          "semanticId": {
-           "type": "ExternalReference",
-           "keys": [
-            {
-             "type": "GlobalReference",
-             "value": "https://smartproductionlab.aau.dk/ControlComponent/Skill/OperationVariable/1/0"
-            }
-           ]
-          },
           "valueType": "xs:string"
          }
         }
