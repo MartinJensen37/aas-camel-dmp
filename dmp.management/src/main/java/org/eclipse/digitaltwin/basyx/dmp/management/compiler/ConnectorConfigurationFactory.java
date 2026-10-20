@@ -680,7 +680,9 @@ public final class ConnectorConfigurationFactory {
 					}
 					else if("response".equals(name) && !"action".equals(kind))
 						issue(issues,mapping,path+"/forms/response","an expected response belongs to an action form");
-					else if(!Set.of("href","contentType","op","htv_methodName","security","response").contains(name)
+					// additionalResponses describe replies other than the regular one; the regular
+					// reply is validated against the affordance's schema, so they change nothing here.
+					else if(!Set.of("href","contentType","op","htv_methodName","security","response","additionalResponses").contains(name)
 							&& !terms.contains(name) && authored)
 						issue(issues,mapping,path+"/forms/"+name,"unknown consumed form option");
 				}
@@ -1887,31 +1889,11 @@ public final class ConnectorConfigurationFactory {
 		Object base=schema(target.resolved().schema());
 		Map<String,Object> result=new LinkedHashMap<>();
 		if(base instanceof Map<?,?> map)map.forEach((key,value) -> result.put(String.class.cast(key),value));
-		for(Qualifier qualifier:Aas.nonNull(target.resolved().affordance().element().getQualifiers())) {
-			if(!behaviorQualifier(qualifier))continue;
-			if(!"RequiredProperties".equals(qualifier.getType())) {
+		// required is a data schema element (jsonschema:required), part of the schema above;
+		// an affordance qualifier with behaviour has no meaning the DMP could honour.
+		for(Qualifier qualifier:Aas.nonNull(target.resolved().affordance().element().getQualifiers()))
+			if(behaviorQualifier(qualifier))
 				issue(issues,mapping,path+"/qualifiers/"+qualifier.getType(),"unsupported AID qualifier semantics");
-				continue;
-			}
-			if(qualifier.getValue()==null) {
-				issue(issues,mapping,path+"/qualifiers/RequiredProperties","required property list must be explicitly authored");
-				continue;
-			}
-			Object raw=qualifier.getValue();
-			if(raw instanceof String encoded && encoded.startsWith("[")) {
-				try { raw=JsonCodec.parseJson(encoded); }
-				catch(RuntimeException malformed) { issue(issues,mapping,path+"/qualifiers/RequiredProperties","invalid JSON property list");continue; }
-			}
-			if(!(raw instanceof List<?> items) || items.stream().anyMatch(item -> !(item instanceof String))) {
-				issue(issues,mapping,path+"/qualifiers/RequiredProperties","expected a list of property names");
-				continue;
-			}
-			List<String> required=new ArrayList<>();
-			Object existing=result.get("required");
-			if(existing instanceof List<?> values) for(Object value:values) if(value instanceof String name && !required.contains(name)) required.add(name);
-			for(Object item:items) if(!required.contains((String)item)) required.add((String)item);
-			if(target.resolved().schemaPath().isEmpty())result.put("required",List.copyOf(required));
-		}
 		return result.isEmpty()?null:java.util.Collections.unmodifiableMap(result);
 	}
 	private static boolean behaviorQualifier(Qualifier qualifier) {
@@ -1933,6 +1915,7 @@ public final class ConnectorConfigurationFactory {
 		}
 		if (schema.items().present() && schema.items().value() != null) out.put("items", schema(schema.items().value()));
 		if (schema.required().present()) out.put("required", schema.required().value());
+		if (!schema.oneOf().isEmpty()) out.put("oneOf", schema.oneOf().stream().map(ConnectorConfigurationFactory::schema).toList());
 		out.putAll(schema.constraints());
 		return out;
 	}

@@ -397,8 +397,8 @@ public final class WireProjection {
 		range(e, "itemsRange", "minItems", "maxItems", true, constraints, p);
 		if (directChild(e, "const", p) instanceof Property constant && constant.getValue() != null)
 			constraints.put("const", typedConstant(constant.getValue(), declaredType, p));
-		for (String key : List.of("minimum","maximum","exclusiveMinimum","exclusiveMaximum","minLength","maxLength","pattern",
-				"minItems","maxItems","uniqueItems","enum","format","valueFormat")) {
+		for (String key : List.of("minimum","maximum","exclusiveMinimum","exclusiveMaximum","multipleOf","minLength","maxLength",
+				"pattern","minItems","maxItems","uniqueItems","enum","format","contentEncoding","contentMediaType","valueFormat")) {
 			SubmodelElement c = directChild(e, key, p);
 			if (c == null) continue;
 			if ("enum".equals(key)) {
@@ -417,7 +417,7 @@ public final class WireProjection {
 			if (text == null) continue;
 			try {
 				constraints.put(key, switch (key) {
-					case "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum" -> {
+					case "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf" -> {
 						double number = Double.parseDouble(text);
 						if (!Double.isFinite(number)) throw new IllegalArgumentException();
 						yield JsonCodec.normalizeNumbers(number);
@@ -435,13 +435,26 @@ public final class WireProjection {
 				});
 			} catch (IllegalArgumentException invalid) { throw error(p + "/" + key, "invalid typed schema constraint"); }
 		}
+		// oneOf (jsonschema:oneOf): alternative data schemas, each a collection like this one.
+		List<DataSchema> oneOf = new ArrayList<>();
+		SubmodelElement alternatives = directChild(e, "oneOf", p);
+		if (alternatives != null) {
+			if (!(alternatives instanceof SubmodelElementList list) || nonNull(list.getValue()).isEmpty())
+				throw error(p + "/oneOf", "oneOf must be a non-empty SubmodelElementList of data schemas");
+			List<SubmodelElement> branches = nonNull(list.getValue());
+			for (int i = 0; i < branches.size(); i++) {
+				if (!(branches.get(i) instanceof SubmodelElementCollection))
+					throw error(p + "/oneOf/" + i, "a oneOf alternative must be a data schema collection");
+				oneOf.add(dataSchema(branches.get(i), p + "/oneOf/" + i));
+			}
+		}
 		return new DataSchema(stringField(e, "valueType", p), stringField(e, "contentType", p), stringField(e, "valueFormat", p),
-				stringField(e, "type", p), properties, item, required, constraints, e);
+				stringField(e, "type", p), properties, item, required, constraints, oneOf, e);
 	}
 
 	/** JSON-schema terms whose meaning the DMP cannot honour; an AID using them is rejected, not misread. */
-	private static final java.util.Set<String> UNSUPPORTED_SCHEMA_TERMS = java.util.Set.of("oneOf", "anyOf", "allOf", "not",
-			"if", "then", "else", "$ref", "prefixItems", "additionalProperties", "patternProperties", "contentEncoding", "contentMediaType");
+	private static final java.util.Set<String> UNSUPPORTED_SCHEMA_TERMS = java.util.Set.of("anyOf", "allOf", "not",
+			"if", "then", "else", "$ref", "prefixItems", "additionalProperties", "patternProperties");
 	private static final List<String> SCHEMA_TYPES = List.of("boolean", "integer", "number", "string", "object", "array", "null");
 
 	/** An AID Range ({@code min_max}, {@code lengthRange}, {@code itemsRange}) as its two JSON-schema bounds. */

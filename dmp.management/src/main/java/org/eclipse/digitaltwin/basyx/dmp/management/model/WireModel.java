@@ -111,12 +111,21 @@ public final class WireModel {
 		public Form { operations = List.copyOf(operations); mqttTerms = immutableMap(mqttTerms); bindingTerms = immutableMap(bindingTerms); }
 	}
 	/** A WoT data schema; typed constraint values are String, Number, Boolean or a List of enum members. */
+	/** A TD DataSchema; {@code oneOf} holds its alternative schemas (empty: none). */
 	public record DataSchema(Presence<String> valueType, Presence<String> contentType,
 			Presence<String> valueFormat, Presence<String> type, Map<String, DataSchema> properties,
 			Presence<DataSchema> items, Presence<List<String>> required, Map<String, Object> constraints,
-			SubmodelElement element) {
+			List<DataSchema> oneOf, SubmodelElement element) {
 		public DataSchema { properties = immutableMap(properties); constraints = immutableMap(constraints);
+			oneOf = oneOf == null ? List.of() : List.copyOf(oneOf);
 			if (required.present() && required.value() != null) required = Presence.of(List.copyOf(required.value())); }
+
+		public DataSchema(Presence<String> valueType, Presence<String> contentType,
+				Presence<String> valueFormat, Presence<String> type, Map<String, DataSchema> properties,
+				Presence<DataSchema> items, Presence<List<String>> required, Map<String, Object> constraints,
+				SubmodelElement element) {
+			this(valueType, contentType, valueFormat, type, properties, items, required, constraints, List.of(), element);
+		}
 	}
 
 	private static <K,V> Map<K,V> immutableMap(Map<K,V> source) {

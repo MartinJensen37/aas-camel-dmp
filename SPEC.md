@@ -204,17 +204,24 @@ the form serves:
 | Sink on a property | `writeproperty` | Write |
 | Sink on an action | `invokeaction` | Invoke (bridge mappings only) |
 
-**Data schemas.** A schema's `type` is one of the JSON types (`boolean`,
-`integer`, `number`, `string`, `object`, `array`, `null`; a leaf written as a
-typed AAS Property takes its `valueType`). `properties`, `items` and `required`
-(or the `RequiredProperties` qualifier) nest freely. Constraints are read as AID
-writes them, `min_max`, `lengthRange` and `itemsRange` (Ranges), `const` and
-`enum`, as well as the JSON-schema names (`minimum`, `maxLength`, `pattern`,
-`format`, …); they matter to affordance validation. Annotations (`title`,
-`description`, `unit`, `default`, `key`) are accepted and ignored. Terms the DMP
-cannot honour reject the AID: `oneOf`, `anyOf`, `allOf`, `not`,
+**Data schemas.** A schema is a TD DataSchema as aas-model's AID extension
+writes it (aas-model `docs/aid-extension.md` §3.6), the same at every depth.
+Its `type` is one of the JSON types (`boolean`, `integer`, `number`, `string`,
+`object`, `array`, `null`; a leaf written as a typed AAS Property takes its
+`valueType`). `properties`, `items` (a full data schema: arrays of objects and
+of arrays) and `required` (an SML of member names) nest freely, and `oneOf`
+(an SML of data schemas) gives alternatives, e.g. a nullable value. Constraints
+are read as AID writes them, `min_max`, `lengthRange` and `itemsRange`
+(Ranges), `const` and `enum`, and as the JSON-schema terms the extension adds
+(`exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `pattern`, `format`,
+`contentEncoding`, `contentMediaType`); they matter to affordance validation
+(JSON Schema 2020-12). Annotations (`title`, `description`, `unit`, `default`,
+`key`, `readOnly`/`writeOnly` below the affordance) are accepted and ignored.
+Terms the DMP cannot honour reject the AID: `anyOf`, `allOf`, `not`,
 `if`/`then`/`else`, `$ref`, `prefixItems`, `additionalProperties`,
-`patternProperties`, `contentEncoding`, `contentMediaType`, and any other `type`.
+`patternProperties`, and any other `type`. A form's `additionalResponses`
+(responses other than the regular one, each with an inline schema) are
+accepted; the regular reply is validated against the affordance's schema.
 
 An `op` value outside the WoT operation types, an unrepresented form term
 (e.g. subprotocol `websub`, a form `security` selection) or a
