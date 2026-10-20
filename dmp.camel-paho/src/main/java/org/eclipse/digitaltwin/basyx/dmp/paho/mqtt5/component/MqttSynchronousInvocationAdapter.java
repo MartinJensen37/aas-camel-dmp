@@ -9,16 +9,18 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.Connector
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.SynchronousInvocationAdapter;
 import org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec;
 
-/** MQTT 5 request/reply invocation binding and reply normalization. */
+/** MQTT 5 invocation binding: request/reply with reply normalization, or a one-way invoke-only publish. */
 public final class MqttSynchronousInvocationAdapter implements SynchronousInvocationAdapter {
 	private static final String SINK_SCHEME = "paho-mqtt5:";
+	/** A request/reply sink the compiler already built (MqttV5OperationDataSinkConfiguration). */
+	private static final String INOUT_SCHEME = "paho-mqtt5-inout:";
 	/** A sink's bound credentials, referenced as two beans; the InOut endpoint takes the binding by name. */
 	private static final java.util.regex.Pattern CREDENTIALS =
 			java.util.regex.Pattern.compile("userName=#bean:([^&]+)\\.user&password=#bean:\\1\\.password");
 
 	@Override
 	public boolean supports(String endpointUri) {
-		return endpointUri != null && endpointUri.startsWith(SINK_SCHEME);
+		return endpointUri != null && (endpointUri.startsWith(SINK_SCHEME) || endpointUri.startsWith(INOUT_SCHEME));
 	}
 
 	@Override
@@ -28,6 +30,19 @@ public final class MqttSynchronousInvocationAdapter implements SynchronousInvoca
 
 	@Override
 	public void configureInvoke(ProcessorDefinition<?> route, String endpointUri, InvocationSchema schema) {
+		if (invokeOnly(endpointUri, schema)) {
+			// No reply topic: the command is published one way; the broker's acknowledgement
+			// (QoS 1/2) ends the call, and the action has no output.
+			route.doTry()
+					.to(ExchangePattern.InOnly, endpointUri)
+					.process(exchange -> exchange.getMessage().setBody(new java.util.LinkedHashMap<String, Object>()))
+				.doCatch(Exception.class)
+					.process(exchange -> {
+						throw translateFailure(exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class));
+					})
+				.end();
+			return;
+		}
 		route.doTry()
 				.to(ExchangePattern.InOut, invocationUri(endpointUri, schema))
 				.process(exchange -> exchange.getMessage().setBody(reply(exchange.getMessage().getBody())))
@@ -51,7 +66,13 @@ public final class MqttSynchronousInvocationAdapter implements SynchronousInvoca
 		return stringMap(map);
 	}
 
+	/** An action the compiler bound without a reply topic (requestReply=false). */
+	private static boolean invokeOnly(String endpointUri, InvocationSchema schema) {
+		return endpointUri.startsWith(INOUT_SCHEME) && Boolean.FALSE.equals(schema.connectorOptions().get("requestReply"));
+	}
+
 	private static String invocationUri(String endpointUri, InvocationSchema schema) {
+		if (endpointUri.startsWith(INOUT_SCHEME)) return endpointUri;
 		Object requestReply = schema.connectorOptions().get("requestReply");
 		Object topic = schema.connectorOptions().get("responseTopic");
 		if (!Boolean.TRUE.equals(requestReply) || topic == null || String.valueOf(topic).isBlank()) {

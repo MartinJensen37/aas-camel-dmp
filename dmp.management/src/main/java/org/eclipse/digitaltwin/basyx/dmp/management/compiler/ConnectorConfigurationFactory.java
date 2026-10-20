@@ -512,19 +512,27 @@ public final class ConnectorConfigurationFactory {
 			MqttConnection base=mqttConnection(target,mapping,path,issues);if(base==null)return null;
 			String topic=mqttTopic(base,form,mapping,path,issues);if(topic==null)return null;
 			String reply=form.responseTopic().present()?form.responseTopic().value():null;
-			if(reply==null || reply.isBlank()) {
-				issue(issues,mapping,path+"/forms/mqv_responseTopic","an MQTT Operation needs the action's mqv_responseTopic (MQTT 5 request/reply)");return null;
+			// An action without an output only invokes: the command is published and the call
+			// returns once the broker accepted it (QoS 1/2). An action with an output answers
+			// through MQTT 5 request/reply on its mqv_responseTopic.
+			boolean invokeOnly=reply==null || reply.isBlank();
+			if(invokeOnly && target.resolved().affordance().output().present()) {
+				issue(issues,mapping,path+"/forms/mqv_responseTopic","an MQTT action with an output needs its mqv_responseTopic (MQTT 5 request/reply)");return null;
 			}
-			String replyTopic=mqttTopic(base,reply,mapping,path+"/forms/mqv_responseTopic",issues);
+			String replyTopic=invokeOnly?null:mqttTopic(base,reply,mapping,path+"/forms/mqv_responseTopic",issues);
 			Integer qos=mqttQos(form,mapping,path,issues);
 			Boolean retained=mqttRetain(form,mapping,path,issues);
-			if(replyTopic==null || hasIssue(issues,mapping))return null;
+			if(!invokeOnly && replyTopic==null || hasIssue(issues,mapping))return null;
+			if(invokeOnly && qos!=null && qos==0) {
+				issue(issues,mapping,path+"/forms/mqv_qos","an invoke-only MQTT action needs QoS 1 or 2 so the broker acknowledges the command");return null;
+			}
 			long timeoutSeconds=30;
 			MqttV5OperationDataSinkConfiguration sink=new MqttV5OperationDataSinkConfiguration(uniqueId,
 					"tcp://"+base.host()+":"+base.port(),topic,stableMqttClientId(plan,routeId,mapping,action,"operation"),
 					qos==null?2:qos,Boolean.TRUE.equals(retained),replyTopic,timeoutSeconds,base.username(),base.password());
 			sink.setSinkId(action);sink.setSchema(schemaOptional(input));
-			targetOptions.put("requestReply",true);targetOptions.put("responseTopic",replyTopic);
+			targetOptions.put("requestReply",!invokeOnly);
+			if(!invokeOnly)targetOptions.put("responseTopic",replyTopic);
 			targetOptions.put("timeoutSeconds",timeoutSeconds);
 			return sink;
 		}

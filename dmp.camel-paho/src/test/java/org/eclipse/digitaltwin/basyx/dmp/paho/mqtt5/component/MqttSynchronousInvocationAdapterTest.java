@@ -24,6 +24,48 @@ public class MqttSynchronousInvocationAdapterTest {
 	}
 
 	@Test
+	void compiledRequestReplyEndpointIsInvokedAsIsAndItsJsonReplyDecoded() throws Exception {
+		// The compiler's operation sinks are already paho-mqtt5-inout URIs; the reply arrives
+		// as JSON text and must reach the operation as an object, or the caller gets no outputs.
+		var adapter = new MqttSynchronousInvocationAdapter();
+		String uri = "paho-mqtt5-inout:CMD/Halt?brokerUrl=tcp://127.0.0.1:1883&clientId=c&replyTopic=DATA/Halt&replyTimeout=30";
+		var schema = new SynchronousInvocationAdapter.InvocationSchema(Map.of(), Set.of(), Map.of(), Set.of(), Map.of());
+		assertEquals(true, adapter.supports(uri));
+		assertEquals(Set.of(uri), adapter.ownedEndpointUris(uri, schema));
+		var camel = new DefaultCamelContext();
+		camel.addComponent("paho-mqtt5-inout", new org.apache.camel.support.DefaultComponent() {
+			@Override
+			protected org.apache.camel.Endpoint createEndpoint(String endpointUri, String remaining, Map<String, Object> parameters) {
+				parameters.clear();
+				return new org.apache.camel.support.DefaultEndpoint(endpointUri, this) {
+					@Override
+					public org.apache.camel.Producer createProducer() {
+						return new org.apache.camel.support.DefaultProducer(this) {
+							@Override
+							public void process(org.apache.camel.Exchange exchange) {
+								exchange.getMessage().setBody("{\"State\": \"SUCCESS\", \"Outcome\": 0, \"Uuid\": \"u-1\"}");
+							}
+						};
+					}
+
+					@Override
+					public org.apache.camel.Consumer createConsumer(org.apache.camel.Processor processor) {
+						throw new UnsupportedOperationException();
+					}
+				};
+			}
+		});
+		try {
+			Map<String, Object> reply = invoke(adapter, camel, uri, Map.of("Uuid", "u-1"), schema);
+			assertEquals("SUCCESS", reply.get("State"));
+			assertEquals("u-1", reply.get("Uuid"));
+			assertEquals(0, ((Number) reply.get("Outcome")).intValue());
+		} finally {
+			camel.stop();
+		}
+	}
+
+	@Test
 	void requiresDeclaredRequestReplyBeforePublishing() {
 		var adapter = new MqttSynchronousInvocationAdapter();
 		ConnectorInvocationException failure = assertThrows(ConnectorInvocationException.class,

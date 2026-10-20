@@ -31,7 +31,7 @@ import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataSinkConfi
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.ManagedRouteResource;
 import org.eclipse.digitaltwin.basyx.dmp.core.security.BoundCredential;
 
-/** One-operation, correlated MQTT 5 publisher configuration. */
+/** One-operation MQTT 5 publisher configuration: correlated request/reply, or one-way without a reply topic. */
 public final class MqttV5OperationDataSinkConfiguration extends DataSinkConfiguration implements ManagedRouteResource {
 	private final String brokerUrl;
 	private final String topic;
@@ -52,7 +52,8 @@ public final class MqttV5OperationDataSinkConfiguration extends DataSinkConfigur
 				|| qos<0 || qos>2 || replyTimeoutSeconds<1) {
 			throw new IllegalArgumentException("invalid MQTT 5 operation target settings");
 		}
-		if(replyTopic==null || replyTopic.isBlank() || replyTopic.contains("+") || replyTopic.contains("#"))
+		// No reply topic: an invoke-only action, published one way.
+		if(replyTopic!=null && (replyTopic.isBlank() || replyTopic.contains("+") || replyTopic.contains("#")))
 			throw new IllegalArgumentException("MQTT 5 InOut requires a concrete reply topic");
 		this.brokerUrl=brokerUrl;this.topic=topic;this.clientId=clientId;this.qos=qos;this.retained=retained;
 		this.replyTopic=replyTopic;this.replyTimeoutSeconds=replyTimeoutSeconds;this.username=username;this.password=password;
@@ -64,8 +65,8 @@ public final class MqttV5OperationDataSinkConfiguration extends DataSinkConfigur
 				.append("&clientId=").append(encodeValue(clientId))
 				.append("&qos=").append(qos)
 				.append("&retained=").append(retained)
-				.append("&replyTimeout=").append(replyTimeoutSeconds)
-				.append("&replyTopic=").append(encodeValue(replyTopic));
+				.append("&replyTimeout=").append(replyTimeoutSeconds);
+		if(replyTopic!=null)uri.append("&replyTopic=").append(encodeValue(replyTopic));
 		// The URI only names the credentials; the owning bundle binds them in the registry.
 		BoundCredential credential=boundCredential();
 		if(credential!=null)uri.append("&credentials=").append(credential.name());

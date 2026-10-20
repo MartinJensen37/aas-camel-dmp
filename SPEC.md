@@ -264,7 +264,8 @@ form whose packet contradicts the mapping role blocks it. An MQTT property is
 read by subscription, so a source needs it observable or retained
 (`mqv_retain`); a PollingInterval on it is rejected. `mqv_qos` and
 `mqv_retain` apply to the subscription and the publication. An action with
-`mqv_responseTopic` is an MQTT 5 request/reply (§7.1). Payloads are JSON.
+`mqv_responseTopic` is an MQTT 5 request/reply (§7.1); an action without it
+and without an `output` only invokes. Payloads are JSON.
 
 Modbus follows AID 1.2 and the WoT Modbus binding; the compiler translates a
 form into a PLC4X tag:
@@ -467,12 +468,30 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
      CorrelationData; the first reply on the declared reply topic that carries
      the request's correlation data is the terminal reply, whatever its
      payload. A device publishes progress or other messages without that
-     correlation data. Timeout 30 s.
+     correlation data. Timeout 30 s. An action without `mqv_responseTopic`
+     only invokes: the command is published one way and the call returns once
+     the broker accepted it (QoS 1 or 2; QoS 0 blocks the mapping). Such an
+     action has no `output`; one that declares an output needs the response
+     topic.
    - **PLC4X (Modbus)**: no actions; an Operation bound to a property writes
      its tag (§7.1).
-5. The reply is validated, optionally transformed by `ResponseTransformation`,
-   and returned to the caller as its output variables. Without response Lua a
-   native normalized reply passes through.
+5. The reply is validated against the action's `output` and mapped by the
+   response mapping: `ResponseSources` name the reply (or members of it),
+   `ResponseTransformation` maps them, and its value for the `ResponseSink`
+   that selects the Operation itself is the caller's reply, an object keyed
+   by output and InOut idShort. The three are authored together; one without
+   the others blocks the mapping. Nothing is matched by name: an Operation
+   with required output or InOut variables needs a response mapping with that
+   ResponseSink. Without a response mapping the Operation answers with no
+   outputs; only an Operation whose outputs are all Optional, or that has
+   none, may do so. Members the Operation does not declare are dropped.
+
+   The call returns when the action does: an OPC UA Call, an HTTP request and
+   an MQTT action with `mqv_responseTopic` wait for their terminal reply also
+   when the Operation has no outputs, so the caller learns that the action
+   finished (or its 502/504) and the reply is validated, then dropped. Only an
+   MQTT action without a response topic returns on the broker's
+   acknowledgement (e.g. Halt).
 6. `ResponseSinks` that address AAS elements receive their SinkId value
    asynchronously through a bounded Wire Tap (2 workers, 128 queued jobs, abort
    on overflow). These writes are best effort and never change the caller's
