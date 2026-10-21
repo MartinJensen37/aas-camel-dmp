@@ -1196,8 +1196,8 @@ public final class ConnectorConfigurationFactory {
 		if(keys.size()<2 || !"Submodel".equals(Aas.keyType(keys.get(0)))) {
 			issue(issues,mapping,path,"AAS reference must address an exact submodel element");return null;
 		}
-		return keys.subList(1,keys.size()).stream().map(Key::getValue)
-				.collect(java.util.stream.Collectors.joining("/"));
+		// The repository addresses a nested element by its idShortPath (Location.x, Items[0]).
+		return AasReferenceResolver.idShortPath(keys);
 	}
 
 	private static String submodelEndpoint(String submodelId,RuntimeSettings runtime,MappingPlan mapping,

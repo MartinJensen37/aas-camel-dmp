@@ -894,22 +894,7 @@
          "type": "Synchronous"
         }
        ],
-       "outputVariables": [
-        {
-         "value": {
-          "idShort": "State",
-          "description": [
-           {
-            "language": "en",
-            "text": "The state of the command being executed"
-           }
-          ],
-          "modelType": "Property",
-          "valueType": "xs:string"
-         }
-        }
-       ],
-       "inoutputVariables": [
+       "inputVariables": [
         {
          "value": {
           "idShort": "Uuid",

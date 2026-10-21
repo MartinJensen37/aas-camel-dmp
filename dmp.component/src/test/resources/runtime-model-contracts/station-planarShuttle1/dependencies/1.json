@@ -2970,6 +2970,36 @@
           "modelType": "Property",
           "valueType": "xs:string"
          }
+        },
+        {
+         "value": {
+          "idShort": "ProductID",
+          "description": [
+           {
+            "language": "en",
+            "text": "The product the shuttle carries"
+           }
+          ],
+          "modelType": "Property",
+          "qualifiers": [
+           {
+            "semanticId": {
+             "type": "ExternalReference",
+             "keys": [
+              {
+               "type": "GlobalReference",
+               "value": "https://smartproductionlab.aau.dk/aas/OperationVariable/Optional/1/0"
+              }
+             ]
+            },
+            "value": "true",
+            "kind": "ConceptQualifier",
+            "valueType": "xs:boolean",
+            "type": "Optional"
+           }
+          ],
+          "valueType": "xs:string"
+         }
         }
        ]
       }

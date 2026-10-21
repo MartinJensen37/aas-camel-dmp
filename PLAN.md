@@ -42,18 +42,15 @@ Do not run Maven while the IDE re-imports POMs: the IDE can rewrite
 
 ## Planned work
 
-### 1. Stations register `aas-model` exports
+### 1. Physical stations register `aas-model` exports
 
-The registration service now registers only the JSON export of an `aas-model`
-Resource (`aas-model/scripts/export_resource.py`) and builds from its pinned
-`aas-model` submodule (2026-10-18). The hand-authored overlay configs in the
-parent's `AASDescriptions/Resource/configs/` are deleted, so no simulated
-station registers until `packml_runtime` publishes its resource's export, and
-the e2e stack does not converge until then. The resources must first carry what
-the old configs added: an OPC UA interface and a `Parameter` property for
-stoppering, e2e-only mappings, and the broker and OPC UA hosts per stack as
-parameters. The DMP's fixtures already come from `aas-model`
-(`dmp_contract_fixtures.py`, testing only).
+Every simulated station registers the Resource `aas-model` authors for it
+(2026-10-21): `packml_runtime` publishes the export, with the AID base set to
+the broker or OPC UA endpoint of the stack, and writes it to
+`AASDescriptions/Resource/exports/`. Halt is served by the shared runtime and
+only invokes. The physical stations (IEC 61499 PLCs, the Planar controller)
+still register the old way; they are to publish a copy of their resource's
+export (`aas-model/scripts/export_resource.py`).
 
 ### 2. TimeSeries sinks (InfluxDB)
 

@@ -516,6 +516,24 @@ class ConnectorConfigurationFactoryTest {
 	}
 
 	@Test
+	void nestedAasSinksAreAddressedByTheirIdShortPath() {
+		var collection=AasFixtures.collection("Location",property("x","0.0"));
+		var target=new DirectTarget(new AasReferenceResolver.ResolvedElement(
+				AasFixtures.submodel("urn:owner/submodels/Variables","Variables"),collection.getValue().get(0)));
+		var reference=AasFixtures.reference("Submodel","urn:owner/submodels/Variables","SubmodelElementCollection","Location","Property","x");
+		var plan=new Plan(List.of(mappingPlan("aas-nested",0,new EndpointPlan("Location",reference,target,Presence.of("2")),
+				new EndpointPlan("Location_x",reference,target))));
+		var result=factory.create(plan,"route",new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://aas.example:8081")));
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var ds=assertInstanceOf(AASPollingDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next());
+		assertEquals("Location.x",ds.getIdShortPath());
+		var sink=assertInstanceOf(AASDatasinkConfiguration.class,
+				result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("Location.x",sink.getIdShortPath());
+	}
+
+	@Test
 	void bridgeRestPathIsTheDelegationQualifierPathAndAMissingQualifierBlocksTheMapping() {
 		var result=factory.create(explicitResponsePlan("aid-command"),"bridge",new ConnectorConfigurationFactory.RuntimeSettings(
 				URI.create("http://aas.example:8081")));
