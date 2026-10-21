@@ -393,6 +393,9 @@ no such payloads.
 | Property/collection Sink | Write (`PATCH …/$value`) |
 | Operation as Sink | Rejected (no chained actions) |
 
+An element below a submodel is addressed by its idShortPath: collection
+members joined by `.`, list items by index (`Location.x`, `Items[0]`).
+
 Lua receives every AAS element in one form, whether polled, read for
 fan-in, delivered by the value feed or passed as an Operation variable: a
 Property as its value typed by its `valueType` (integers as integers, decimals

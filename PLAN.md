@@ -74,6 +74,11 @@ generation, a compose `influxdb` service, tests with a containerised InfluxDB.
 
 - A failed PLC4X request is reported as "the device could not be reached"
   without its cause.
+- The `dmp` image copies a jar packaged beforehand (`mvn package` with
+  `dependency:copy-dependencies` into `target/lib`), so `docker compose
+  build dmp` after a pull silently ships the old DMP: on 2026-10-21 a stale
+  jar blocked every Operation mapping of the current models. Build the jar
+  in the Dockerfile (multi-stage) instead.
 
 ## Deferred (keep in mind)
 
