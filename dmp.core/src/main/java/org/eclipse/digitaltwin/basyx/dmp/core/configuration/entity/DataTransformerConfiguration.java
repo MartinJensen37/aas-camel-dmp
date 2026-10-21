@@ -31,6 +31,12 @@ package org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity;
  */
 public abstract class DataTransformerConfiguration extends RouteEntity {
 
+	/**
+	 * Exchange property: a SourceId-keyed map a transformer receives beside its sources. Set
+	 * for an Operation's response transformation: the values its request transformation received.
+	 */
+	public static final String REQUEST_SOURCES = "dmp.transformer.requestSources";
+
 	public DataTransformerConfiguration() {
 		super();
 	}

@@ -123,6 +123,36 @@ class LuaProducerCamelTest extends CamelTestSupport {
 	}
 
 	@Test
+	void requestSourcesArriveAsSecondArgument() throws Exception {
+		// An Operation's response transformation also sees what its request transformation received.
+		Path blob = tempDir.resolve("response.lua");
+		Files.writeString(blob, """
+				function aimc_main(sources, requestSources)
+				    return { Done = sources.Result.ok, At = requestSources and requestSources.Target.id }
+				end
+				""", StandardCharsets.UTF_8);
+		String uri = managedUri(blob) + "?keyedInput=true&timeoutSeconds=2";
+
+		context.getRouteDefinitions().clear();
+		context.addRoutes(new RouteBuilder() {
+			@Override
+			public void configure() throws Exception {
+				from("direct:start").to(uri).to("mock:result");
+			}
+		});
+		context.start();
+
+		template.send("direct:start", exchange -> {
+			exchange.getMessage().setBody(Map.of("Result", Map.of("ok", true)));
+			exchange.setProperty(org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataTransformerConfiguration.REQUEST_SOURCES, Map.of("Target", Map.of("id", "station-3")));
+		});
+		template.sendBody("direct:start", Map.of("Result", Map.of("ok", true)));
+		var exchanges = getMockEndpoint("mock:result").getExchanges();
+		assertEquals(Map.of("Done", true, "At", "station-3"), exchanges.get(0).getMessage().getBody(Map.class));
+		assertEquals(Map.of("Done", true), exchanges.get(1).getMessage().getBody(Map.class));
+	}
+
+	@Test
 	void malformedBlobFailsRouteWithClearError() throws Exception {
 		String script = writeBlob("nonTable.lua");
 		String uri = managedUri(script);

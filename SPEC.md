@@ -491,7 +491,12 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    response mapping: `ResponseSources` name the reply (or members of it),
    `ResponseTransformation` maps them, and its value for the `ResponseSink`
    that selects the Operation itself is the caller's reply, an object keyed
-   by output and InOut idShort. The three are authored together; one without
+   by output and InOut idShort. Its entry point is
+   `aimc_main(sources, requestSources)`: `sources` holds the ResponseSources;
+   `requestSources` holds what the request Lua received, keyed by the Sources'
+   SourceIds (the caller's values and the fanned-in AAS values). Nothing is
+   read again, so it contextualises the reply with the request, e.g. the
+   station a robot was sent to while the device only received its pose. The three are authored together; one without
    the others blocks the mapping. Nothing is matched by name: an Operation
    with required output or InOut variables needs a response mapping with that
    ResponseSink. Without a response mapping the Operation answers with no

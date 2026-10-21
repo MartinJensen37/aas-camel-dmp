@@ -28,6 +28,8 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 	private final AtomicInteger responseTransforms = new AtomicInteger();
 	private final AtomicReference<Object> normalizedReply = new AtomicReference<>();
 	private final AtomicReference<Map<String, Object>> responseValues = new AtomicReference<>();
+	private final AtomicReference<Object> contextSources = new AtomicReference<>();
+	private final AtomicReference<Object> contextRequestSources = new AtomicReference<>();
 	private final ConcurrentLinkedQueue<Object> tapBodies = new ConcurrentLinkedQueue<>();
 	private final ConcurrentLinkedQueue<Object> tapHeaders = new ConcurrentLinkedQueue<>();
 	private final ConcurrentLinkedQueue<Object> tapProperties = new ConcurrentLinkedQueue<>();
@@ -59,10 +61,11 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 				var routes = new RoutesConfiguration(List.of(), List.of(
 						new ProtocolBridgeRouteCreatorTest.FixedTransformer("request", "direct:r0-request"),
 						new ProtocolBridgeRouteCreatorTest.FixedTransformer("projected", "direct:r0-projected"),
-						new ProtocolBridgeRouteCreatorTest.FixedTransformer("whole", "direct:r0-whole-transform")),
+						new ProtocolBridgeRouteCreatorTest.FixedTransformer("whole", "direct:r0-whole-transform"),
+						new ProtocolBridgeRouteCreatorTest.FixedTransformer("context", "direct:r0-context-transform")),
 						List.of(new ProtocolBridgeRouteCreatorTest.FixedSink("command", "direct:r0-device"),
 								new ProtocolBridgeRouteCreatorTest.FixedSink("extra", "direct:r0-extra")), List.of());
-				for (String id : List.of("null", "missing", "duplicate", "whole", "native")) {
+				for (String id : List.of("null", "missing", "duplicate", "whole", "native", "context")) {
 					var bridge = new ProtocolBridgeRouteConfiguration(new RouteConfiguration(
 							"bridge", List.of(), List.of("request"), List.of("command")));
 					bridge.setRouteId("r0-" + id);
@@ -78,7 +81,7 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 							: List.of("Optional"));
 					if (!"native".equals(id)) {
 						data.put("callerReplySinkId", "Reply");
-						data.put("responseTransformer", "whole".equals(id) ? id : "projected");
+						data.put("responseTransformer", List.of("whole", "context").contains(id) ? id : "projected");
 					}
 					if (List.of("null", "missing", "duplicate").contains(id)) {
 						var bindings = new ArrayList<Map<String, Object>>();
@@ -88,6 +91,8 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 						data.put("responseSourceBindings", bindings);
 					}
 					if ("whole".equals(id)) data.put("responseSourceBindings", List.of(Map.of("sourceId", "Device")));
+					if ("context".equals(id)) data.put("responseSourceBindings", List.of(
+							Map.of("sourceId", "Optional", "valuePath", "/optional")));
 					if ("whole".equals(id)) data.put("responseSinkBindings", List.of(
 							Map.of("sinkId", "First", "dataSinkId", "extra"),
 							Map.of("sinkId", "Second", "dataSinkId", "extra")));
@@ -121,6 +126,14 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 					responseValues.set(reply);
 					exchange.getMessage().setBody(reply);
 				});
+				from("direct:r0-context-transform").process(exchange -> {
+					contextSources.set(JsonCodec.copyValue(exchange.getMessage().getBody()));
+					contextRequestSources.set(JsonCodec.copyValue(exchange.getProperty(
+							org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataTransformerConfiguration.REQUEST_SOURCES)));
+					Map<String, Object> outputs = new LinkedHashMap<>();
+					outputs.put("Optional", null);
+					exchange.getMessage().setBody(Map.of("Reply", outputs));
+				});
 				from("direct:r0-extra").process(exchange -> {
 					sinkBodies.add(exchange.getMessage().getBody());
 					writes.countDown();
@@ -143,6 +156,17 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 		assertEquals(expected, JsonCodec.parseJson(result.getMessage().getBody(String.class)));
 		assertEquals(1, invocations.get());
 		assertEquals(1, responseTransforms.get());
+	}
+
+	@Test
+	void responseTransformationReceivesTheRequestSourcesBesideItsOwn() {
+		Exchange result = invoke("context");
+		assertEquals(200, result.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE));
+		Map<String, Object> expected = new LinkedHashMap<>();
+		expected.put("Optional", null);
+		assertEquals(expected, contextSources.get());
+		assertEquals(Map.of("Request", Map.of("argument", 1L)), contextRequestSources.get());
+		assertEquals(1, invocations.get());
 	}
 
 	@Test

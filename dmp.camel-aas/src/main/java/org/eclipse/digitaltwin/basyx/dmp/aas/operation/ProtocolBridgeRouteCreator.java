@@ -49,8 +49,8 @@ import org.slf4j.LoggerFactory;
  * the REST consumer and completes the accepted Operation invocation. Target
  * request/reply behavior is delegated to registered connector adapters:
  * <pre>
- * rest → flatten → request Lua → named command → Invoke adapter [InOut]
- *      → response Lua → reply envelope (OperationVariable[] for BaSyx callers)
+ * rest → flatten → fan-in → request Lua → named command → Invoke adapter [InOut]
+ *      → response Lua (ResponseSources, requestSources) → reply envelope (OperationVariable[] for BaSyx callers)
  * </pre>
  * <p>Target connectors own endpoint addressing, request encoding,
  * correlation, reply normalization and native error/status conversion.
@@ -214,7 +214,8 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 						return original;
 					});
 		}
-		flow.to(requestTransformers)
+		flow.process(operation::keepRequestSources)
+				.to(requestTransformers)
 				.process(operation::keepRequestResult);
 		// Per-sink transformer chains run on a copy of the request result (Content Enricher).
 		operation.sinkTransformerChains().forEach((sinkId, chain) -> {

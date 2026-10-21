@@ -63,6 +63,8 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	private static final String CALLER_REPLY_RESULT = "dmp.operation.callerReplyResult";
 	private static final String AUDIT_INVOCATION = "dmp.operation.auditInvocation";
 	private static final String AUDIT_STARTED = "dmp.operation.auditStarted";
+	/** The request transformation's input keyed by SourceId. */
+	private static final String REQUEST_SOURCES = "dmp.operation.requestSources";
 	/** The request transformation's result keyed by SinkId. */
 	private static final String REQUEST_RESULT = "dmp.operation.requestResult";
 	private static final String COMMAND_REPLY = "dmp.operation.commandReply";
@@ -179,6 +181,16 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 						? keyed.get(context.operationSourceId) : request));
 	}
 
+	/**
+	 * Before the request transformation: keeps its input (the caller's values and fanned-in
+	 * AAS values, keyed by SourceId) for the response transformation's {@code requestSources}.
+	 */
+	public void keepRequestSources(Exchange exchange) {
+		if (!context.explicitResponseMapping) return;
+		exchange.setProperty(REQUEST_SOURCES, org.eclipse.digitaltwin.basyx.dmp.core.util.JsonCodec
+				.copyValue(exchange.getMessage().getBody()));
+	}
+
 	/** After the request transformation: keeps its result for the command. */
 	public void keepRequestResult(Exchange exchange) {
 		exchange.setProperty(REQUEST_RESULT, exchange.getMessage().getBody());
@@ -276,14 +288,17 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 
 	/**
 	 * The response transformation's input: the reply (an action's output, or the value a
-	 * property write wrote), projected by the ResponseSource bindings. Without a response
-	 * mapping the call answers with no outputs.
+	 * property write wrote), projected by the ResponseSource bindings. Its second argument,
+	 * {@code requestSources}, is what the request transformation received; nothing is read
+	 * again. Without a response mapping the call answers with no outputs.
 	 */
 	public void collectResponseSources(Exchange exchange) {
 		if (!context.explicitResponseMapping) {
 			exchange.getMessage().setBody(new java.util.LinkedHashMap<String, Object>());
 			return;
 		}
+		exchange.setProperty(org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataTransformerConfiguration.REQUEST_SOURCES,
+				exchange.getProperty(REQUEST_SOURCES));
 		exchange.getMessage().setBody(ResponseProjectionProcessor.project(exchange.getProperty(COMMAND_REPLY),
 				responseSourceBindings));
 	}

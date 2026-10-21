@@ -34,6 +34,7 @@ import org.eclipse.digitaltwin.basyx.dmp.lua.sandbox.LuaTimeoutHook;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
+import org.eclipse.digitaltwin.basyx.dmp.core.configuration.entity.DataTransformerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,7 +93,10 @@ public class LuaProducer extends DefaultProducer {
 
 		LuaValue result;
 		try {
-			result = aimcMain.invoke(sources).arg1();
+			// An Operation's response transformation: aimc_main(sources, requestSources).
+			Object requestSources = exchange.getProperty(DataTransformerConfiguration.REQUEST_SOURCES);
+			result = requestSources == null ? aimcMain.invoke(sources).arg1()
+					: aimcMain.invoke(sources, LuaJsonCodec.toLua(requestSources)).arg1();
 		} catch (LuaError e) {
 			throw new RuntimeException("Lua transformation '" + endpoint.getDiagnosticIdentity() + "' failed: "
 					+ e.getMessage(), e);
