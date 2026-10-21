@@ -54,15 +54,66 @@ only invokes. The physical stations (IEC 61499 PLCs, the Planar controller)
 still register the old way; they are to publish a copy of their resource's
 export (`aas-model/scripts/export_resource.py`).
 
-### 2. TimeSeries sinks (InfluxDB)
+### 2. TimeSeries sources and sinks (InfluxDB 2)
 
-A Sink referencing a TimeSeries submodel (IDTA 02008) `LinkedSegment` writes
-only to InfluxDB (measurement `timeseries`, tags `submodel`, `segment`); a Sink
-referencing a Property writes the AAS as today. The segment's
-`Endpoint`/`Query` are authored by `aas-model` (the DMP never writes models);
-the compiler blocks the mapping if the endpoint does not match the configured
-InfluxDB. Work: the sink in the compiler and connector, `aas-model` TimeSeries
-generation, a compose `influxdb` service, tests with a containerised InfluxDB.
+Agreed design (2026-10-21); InfluxDB only, Internal/External segments out of
+scope.
+
+**Model (`aas-model`).** `Variables` holds the groups `State`, `Measurements`
+and `Log`. A group holds TimeSeries SMCs, or plain elements for data that is
+not a time series (lists such as a process queue, files, images). A TimeSeries
+SMC carries this project's semanticId with the IDTA TimeSeries id as a
+supplemental id; everything inside it (`Metadata/Record`, `Segments`,
+`LinkedSegment`, `Endpoint`, `Query`) keeps the IDTA 02008 ids. A TimeSeries
+groups what is sampled together (one row = one sample), not one variable each.
+The LinkedSegment carries a DMP extension `DmpTarget`: `Bucket`,
+`Measurement` and `Tags`. The tags name the AAS that owns the series (an AIMC
+writing another resource's series targets that resource's segment). Each
+Record field carries an explicit `Column`, generated once equal to its idShort
+and kept on rename; the DMP never derives a column from a name. `Query` is
+generated from the same values for the web UI.
+
+**Measurements.** One measurement per Record schema (`station_state`,
+`dispensing_weight`, `operation_occupy`), assets told apart by tag. Tags have
+low cardinality (never an invocation id or UUID). The compiler blocks Records
+with different columns or types under one measurement; aas-model generating
+them from templates is the real guarantee.
+
+**DMP.** A Source or Sink targets a LinkedSegment; the DMP reads its
+TimeSeries container (Record, `DmpTarget`), which counts as referenced for
+events and fingerprints. Lua sees the row as a table keyed by Record idShort
+(groups nested, `Position.X`); a missing field is not written, an unknown one
+or a wrong type fails the sink. `Time` is optional: a Lua value is the point's
+time, otherwise the evaluation time. Only UtcTime records can be written. A
+Sink writes one point per evaluation; a Source is a Read with
+`PollingInterval` returning the latest row (`last()` over a lookback range).
+The Record never holds a current value.
+
+**Logging.** Only what is authored: `Log` series written by ordinary sinks or
+ResponseSinks. aas-model generates one typed series per Operation (Time,
+Outcome, DurationMs and the Operation's variables). The response
+transformation also runs on failure, with the error in its input; Lua gets a
+read-only `meta` table (invocation id, duration, caller, outcome). SPEC §10,
+`InfluxAuditLog`, `LineProtocol` and `DMP_AUDIT_INFLUX_*` are removed;
+DMP-internal diagnostics go to the application log and `/management/status`.
+
+**Camel.** `dmp-influxdb2:` extends `camel-influxdb2` 4.22 (producer only,
+asynchronous `makeWriteApi()`, auto-creates buckets and orgs): writes through
+`WriteApiBlocking` so failures fail the exchange, builds typed points from the
+Lua row, reads the latest row with Flux, never creates buckets or orgs. One
+`InfluxDBClient` per endpoint, credentials from the environment. One request
+per row; batching only with per-batch acknowledgement.
+
+**Web UI.** The TimeSeries plugin reads a TimeSeries submodel or SMC (children
+from `value`, the group's idShortPath as prefix) and uses `Column` when
+present.
+
+**Work, in order:** `aas-model` (Variables groups, TimeSeries SMC,
+`DmpTarget`, `Column`, Operation log series); the DMP (discovery of the
+container, segment source/sink, `dmp-influxdb2:`, Lua `meta` and failure
+responses, removal of §10, SPEC); a compose `influxdb` service; the web UI
+plugin; migrating stations, BT_Controller, `stationctl`, the e2e tests and
+kg-bridge to the new paths.
 
 ### 3. Parent workspace
 
@@ -93,6 +144,13 @@ generation, a compose `influxdb` service, tests with a containerised InfluxDB.
   AID does not describe are sent as 0. PLC4X 0.13.1 could carry the frames
   (generic CAN driver over SocketCAN, a virtual CAN transport for tests) but
   decodes only whole-byte types, so the bit fields are the DMP's to decode.
+- **TimescaleDB** as a second TimeSeries dialect (InfluxDB only for now).
+  Advantages: the latest value is an indexed `ORDER BY time DESC LIMIT 1`
+  with no lookback window (InfluxDB `last()` needs a `range()`, so a state
+  unchanged for longer than the window is not found, and `range(start: 0)`
+  slows as history grows); a Record maps one to one onto a hypertable with
+  typed columns. Costs: the tables need DDL from the Record, and the web UI
+  plugin speaks only Flux (needs a REST layer such as PostgREST).
 - **HTTP `websub`.** Rejected: it needs an inbound callback endpoint the
   device posts to. `longpoll`, `sse` and static `htv_headers` are done.
 - **BACnet.** Rejected by the compiler: the PLC4X 0.13.1 `bacnet-ip` driver
