@@ -68,9 +68,8 @@ generation, a compose `influxdb` service, tests with a containerised InfluxDB.
 
 - The main and e2e stacks (`compose/`) run the `dmp` service; DataBridge
   residue and the `labServer` setup are gone (2026-10-18).
-- The Python `OperationDelegation` service is what the DMP replaces; retire it
-  once its operations run through the DMP. ARSO is a side project and out of
-  scope.
+- The Python `OperationDelegation` service is removed (2026-10-21); every
+  operation runs through the DMP. ARSO is a side project and out of scope.
 
 ### 4. Small fixes
 
