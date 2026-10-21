@@ -71,7 +71,7 @@ flowchart LR
 | `dmp.camel-lua` | `lua:` component and sandbox |
 | `dmp.camel-aas` | AAS element read/write, `aas-event:` source, Operation bridge |
 | `dmp.camel-paho`, `-opcua`, `-http`, `-plc4x`, `-snmp` | Connectors reachable from AID bindings, including the DMP Camel components (§9) |
-| `dmp.component` | Executable, settings, `/health`, `/management/status`, image |
+| `dmp.component` | Executable, settings, `/health`, `/management/status`; the root `Dockerfile` builds it into the image |
 
 ## 4. Discovery and lifecycle
 

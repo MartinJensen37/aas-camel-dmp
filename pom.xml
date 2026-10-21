@@ -49,11 +49,6 @@
 		<!-- JUnit tags skipped by a plain "mvn test": real Kafka/process tests (-Pintegration) and the
 		     stress test (-Pcapacity). -->
 		<dmp.test.excludedGroups>integration,capacity</dmp.test.excludedGroups>
-		<docker.provenance />
-		<docker.namespace>eclipsebasyx</docker.namespace>
-		<docker.image.name>NOT_DEFINED_IN_MODULE</docker.image.name>
-		<docker.image.tag>${revision}</docker.image.tag>
-		<docker.target.platforms>linux/amd64, linux/arm64</docker.target.platforms>
 		<camel.version>4.22.0</camel.version>
 	</properties>
 
@@ -113,66 +108,6 @@
 					<configuration>
 						<excludedGroups>${dmp.test.excludedGroups}</excludedGroups>
 					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>io.fabric8</groupId>
-					<artifactId>docker-maven-plugin</artifactId>
-					<version>0.45.1</version>
-					<configuration>
-						<images>
-							<image>
-								<name>
-									${docker.namespace}/${docker.image.name}:${docker.image.tag}</name>
-								<registry>docker.io</registry>
-								<build>
-									<contextDir>${project.basedir}</contextDir>
-									<args>
-									</args>
-									<labels>
-										<maven.version>${project.version}</maven.version>
-										<maven.build.timestamp>
-											${maven.build.timestamp}</maven.build.timestamp>
-									</labels>
-									<noCache>true</noCache>
-									<buildx>
-										<platforms>
-											${docker.target.platforms}
-										</platforms>
-									</buildx>
-								</build>
-							</image>
-						</images>
-						<verbose>true</verbose>
-					</configuration>
-					<executions>
-						<execution>
-							<id>build-docker</id>
-							<phase>package</phase>
-							<goals>
-								<goal>build</goal>
-							</goals>
-						</execution>
-						<execution>
-							<id>push-docker</id>
-							<phase>deploy</phase>
-							<goals>
-								<goal>build</goal>
-								<goal>push</goal>
-							</goals>
-							<configuration>
-								<images>
-									<image>
-										<build>
-											<buildx>
-												<platforms>
-													${docker.target.platforms}</platforms>
-											</buildx>
-										</build>
-									</image>
-								</images>
-							</configuration>
-						</execution>
-					</executions>
 				</plugin>
 			</plugins>
 		</pluginManagement>
@@ -300,23 +235,9 @@
 			</properties>
 		</profile>
 		<profile>
-			<id>docker-push</id>
+			<id>license-check</id>
 			<build>
 				<plugins>
-					<plugin>
-						<groupId>io.fabric8</groupId>
-						<artifactId>docker-maven-plugin</artifactId>
-						<executions>
-							<execution>
-								<id>push-docker</id>
-								<phase>package</phase>
-								<goals>
-									<goal>build</goal>
-									<goal>push</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
 					<plugin>
 						<groupId>org.eclipse.dash</groupId>
 						<artifactId>license-tool-plugin</artifactId>

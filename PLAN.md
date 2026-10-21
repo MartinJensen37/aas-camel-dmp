@@ -34,6 +34,8 @@ mvn -o clean test -Pintegration    # plus real Kafka, SASL/TLS and packaged-proc
 mvn -o test -pl dmp.component -Pcapacity   # stress test only; size with -Ddmp.stress.capacity
 ```
 
+The image (`Dockerfile` at the root, built locally as `dmp:java`) builds the
+jar from the sources, so `docker compose build dmp` needs no Maven step.
 Tests tagged `integration` or `capacity` are skipped by a plain `mvn test`,
 also when selected with `-Dtest`; use the profile. All tests start embedded
 brokers (KRaft Kafka, MQTT 5) and need no external services.
@@ -74,11 +76,6 @@ generation, a compose `influxdb` service, tests with a containerised InfluxDB.
 
 - A failed PLC4X request is reported as "the device could not be reached"
   without its cause.
-- The `dmp` image copies a jar packaged beforehand (`mvn package` with
-  `dependency:copy-dependencies` into `target/lib`), so `docker compose
-  build dmp` after a pull silently ships the old DMP: on 2026-10-21 a stale
-  jar blocked every Operation mapping of the current models. Build the jar
-  in the Dockerfile (multi-stage) instead.
 
 ## Deferred (keep in mind)
 

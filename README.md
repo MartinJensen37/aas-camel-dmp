@@ -85,9 +85,11 @@ to read and `PATCH …/$value` to write. BaSyx v1 is not supported.
 ## Running
 
 ```bash
-mvn clean install
-docker build -t aas-camel-dmp dmp.component   # after mvn package -Pdocker-push copies target/lib
+docker build -t dmp:java .   # builds the jar from these sources inside the image
 ```
+
+The image is built locally only (the parent workspace's Compose stacks build
+it as `dmp:java`); a local `mvn` build is needed only for tests.
 
 The container listens on port 8080 for operation calls, `/health` and
 `/management/status`.

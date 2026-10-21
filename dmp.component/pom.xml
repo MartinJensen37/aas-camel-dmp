@@ -18,7 +18,6 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
 		<basyx.dmp.executable>org.eclipse.digitaltwin.basyx.dmp.component.DmpExecutable</basyx.dmp.executable>
-		<docker.image.name>databridge</docker.image.name>
 		<!-- caller may override with -DargLine=... (e.g. test health-port offsets) -->
 		<argLine></argLine>
 	</properties>
@@ -205,49 +204,4 @@
 		</dependency>
 	</dependencies>
 
-	<profiles>
-		<profile>
-			<!-- "Docker" profile - do not build & install docker images by default 
-				Run "mvn install -Pdocker" in order to include docker -->
-			<id>docker-push</id>
-			<build>
-				<plugins>
-
-					<!-- Copy the dependencies necessary to run the jar -->
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-dependency-plugin</artifactId>
-						<executions>
-							<execution>
-								<id>copy-dependencies</id>
-								<phase>prepare-package</phase>
-								<goals>
-									<goal>copy-dependencies</goal>
-								</goals>
-								<configuration>
-									<includeScope>compile</includeScope>
-									<outputDirectory>${project.build.directory}/lib/</outputDirectory>
-								</configuration>
-							</execution>
-						</executions>
-					</plugin>
-
-					<!-- Build the docker image -->
-					<plugin>
-						<groupId>io.fabric8</groupId>
-						<artifactId>docker-maven-plugin</artifactId>
-						<executions>
-							<execution>
-								<id>build-docker</id>
-							</execution>
-							<execution>
-								<id>push-docker</id>
-							</execution>
-						</executions>
-					</plugin>
-
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
 </project>
