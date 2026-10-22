@@ -83,8 +83,9 @@ generated from the same values for the web UI.
 **Measurements.** One measurement per Record schema (`station_state`,
 `dispensing_weight`, `operation_occupy`), assets told apart by tag. Tags have
 low cardinality (never an invocation id or UUID). aas-model generating the
-Records from templates keeps one measurement's fields consistent; the
-compiler's cross-mapping check is open (below).
+Records from templates keeps one measurement's fields consistent, and the
+reconciler holds back mappings that declare one field with different types
+(`timeseries-type-conflict`, SPEC §5.5).
 
 **DMP.** A Source or Sink targets a LinkedSegment; the DMP reads its
 TimeSeries container (Record, `InfluxDb2Target`), which counts as referenced for
@@ -130,12 +131,9 @@ web UI's TimeSeries plugin (TimeSeries SMCs, nested groups, and an
 nginx query proxy that keeps the token server-side, `INFLUXDB_PROXY_*`).
 
 **Open, in order:**
-1. The compiler blocks Records that write different fields or types under
-   one measurement (InfluxDB fixes a field's type per measurement); today only
-   aas-model's templates keep them consistent.
-2. Station models: State and Measurements series, Operation log series
+1. Station models: State and Measurements series, Operation log series
    attached to each skill; then their AIMC mappings target the segments.
-3. Consumers: BT_Controller (it reads `Variables` today, partly at stale
+2. Consumers: BT_Controller (it reads `Variables` today, partly at stale
    paths, and must poll InfluxDB for current values), `stationctl`, the e2e
    tests and kg-bridge; then the flat `Variables.variable` map is removed.
 

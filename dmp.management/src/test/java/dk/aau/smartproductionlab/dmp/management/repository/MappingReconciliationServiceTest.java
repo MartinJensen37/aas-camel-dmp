@@ -136,6 +136,45 @@ class MappingReconciliationServiceTest {
 	}
 
 	@Test
+	void aTimeSeriesFieldWithConflictingTypesHoldsBackEveryMappingInvolved() {
+		Runtime runtime = new Runtime();
+		var longs = seriesCandidate("urn:aimc:a", "bundle-a", "station_state", "xs:long");
+		var doubles = seriesCandidate("urn:aimc:b", "bundle-b", "station_state", "xs:double");
+		var service = service(runtime, () -> scan(longs, doubles), candidate -> () -> candidate.desired().bundle().configuration());
+		runtime.startComponent();
+		try {
+			var report = service.reconcileNow();
+			assertTrue(report.mappings().stream().allMatch(status -> status.state() == MappingReconciliationService.State.BLOCKED),
+					String.valueOf(report.mappings()));
+			assertTrue(report.categories().contains("timeseries-type-conflict"));
+			assertNull(runtime.managedBundle("bundle-a"));
+		} finally {
+			service.close();
+			runtime.stopComponent();
+		}
+	}
+
+	@Test
+	void sameInfluxTypesOrOtherMeasurementsDoNotConflict() {
+		Runtime runtime = new Runtime();
+		var doubles = seriesCandidate("urn:aimc:a", "bundle-a", "station_state", "xs:double");
+		var floats = seriesCandidate("urn:aimc:b", "bundle-b", "station_state", "xs:float");
+		var elsewhere = seriesCandidate("urn:aimc:c", "bundle-c", "dosing", "xs:long");
+		var service = service(runtime, () -> scan(doubles, floats, elsewhere),
+				candidate -> () -> candidate.desired().bundle().configuration());
+		runtime.startComponent();
+		try {
+			var report = service.reconcileNow();
+			assertFalse(report.categories().contains("timeseries-type-conflict"), String.valueOf(report.categories()));
+			assertTrue(report.mappings().stream().allMatch(status -> status.state() == MappingReconciliationService.State.INSTALLED),
+					String.valueOf(report.mappings()));
+		} finally {
+			service.close();
+			runtime.stopComponent();
+		}
+	}
+
+	@Test
 	void duplicateOperationBindingsAreRejectedBeforeEitherBundleStarts() {
 		Runtime runtime = new Runtime();
 		var first = restCandidate("urn:aimc:a", "map-a", "bundle-a", "/operations/shared");
@@ -476,6 +515,25 @@ class MappingReconciliationServiceTest {
 		var desiredBundle = new DesiredBundle(desired, bundle, List.of(), fingerprint);
 		var key = new RepositoryDiscovery.MappingKey(aimc, identity, 0);
 		return new RepositoryDiscovery.MappingCandidate(key, desiredBundle);
+	}
+
+	/** A mapping writing the field Count of {@code measurement} as {@code valueType}. */
+	private static RepositoryDiscovery.MappingCandidate seriesCandidate(String aimc, String bundleId, String measurement,
+			String valueType) {
+		var sink = new dk.aau.smartproductionlab.dmp.influxdb2.configuration.InfluxDb2DataSinkConfiguration("sink-" + bundleId,
+				measurement, "ap2030", "Time", Map.of(), List.of(new dk.aau.smartproductionlab.dmp.influxdb2.RecordColumn("Count", valueType)));
+		RouteConfiguration route = new RouteConfiguration("execution-policy", List.of(), List.of(), List.of());
+		route.setRouteId(bundleId);
+		RoutesConfiguration configuration = new RoutesConfiguration(Map.of(),
+				Map.of(), Map.of(sink.getUniqueId(), sink), List.of(route));
+		var fingerprint = fingerprint(configuration);
+		var bundle = new CompiledBundle(bundleId, 0, bundleId, bundleId, configuration, fingerprint);
+		var plan = new MappingPlan(bundleId, 0, List.of(), List.of(), WireModel.Presence.absent(),
+				WireModel.Presence.absent(), WireModel.Presence.absent(), WireModel.Presence.absent(),
+				WireModel.Presence.absent(), WireModel.Presence.absent(), List.of());
+		var desired = new DesiredMapping(bundleId, 0, plan, List.of(), Set.of());
+		var key = new RepositoryDiscovery.MappingKey(aimc, bundleId, 0);
+		return new RepositoryDiscovery.MappingCandidate(key, new DesiredBundle(desired, bundle, List.of(), fingerprint));
 	}
 
 	private static RoutesConfiguration configuration(String routeId) {

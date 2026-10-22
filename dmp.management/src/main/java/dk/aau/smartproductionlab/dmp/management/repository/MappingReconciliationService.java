@@ -19,10 +19,17 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.function.Consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import dk.aau.smartproductionlab.dmp.core.component.DmpComponent;
 import dk.aau.smartproductionlab.dmp.core.component.DmpComponent.ManagedBundle;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RoutesConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteConfiguration;
+import dk.aau.smartproductionlab.dmp.influxdb2.InfluxValues;
+import dk.aau.smartproductionlab.dmp.influxdb2.RecordColumn;
+import dk.aau.smartproductionlab.dmp.influxdb2.configuration.InfluxDb2DataSinkConfiguration;
+import dk.aau.smartproductionlab.dmp.influxdb2.configuration.InfluxDb2DataSourceConfiguration;
 import dk.aau.smartproductionlab.dmp.management.compiler.ConnectorConfigurationFactory;
 import dk.aau.smartproductionlab.dmp.management.compiler.ConnectorConfigurationFactory.DesiredBundle;
 import dk.aau.smartproductionlab.dmp.management.compiler.ConnectorConfigurationFactory.RuntimeSettings;
@@ -39,6 +46,7 @@ import dk.aau.smartproductionlab.dmp.management.repository.RepositoryDiscovery.S
  * trigger targeted refreshes. A pass with transient failures is retried with backoff.
  */
 public final class MappingReconciliationService implements AutoCloseable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(MappingReconciliationService.class);
 	public enum State { INSTALLED, BLOCKED, STALE, FAILED, REMOVED }
 	/** Supplies complete authoritative desired state; repository scans also revalidate installed membership. */
 	@FunctionalInterface public interface ScanProvider { Scan scan(); }
@@ -215,6 +223,7 @@ public final class MappingReconciliationService implements AutoCloseable {
 			List<String> categories = new ArrayList<>();
 			scan.failures().forEach(failure -> categories.add(failure.category()));
 			Set<MappingKey> restConflicts = restConflicts(scan.mappings().values());
+			Set<MappingKey> timeSeriesConflicts = timeSeriesConflicts(scan.mappings().values());
 			for (var entry : new ArrayList<>(active.entrySet())) {
 				MappingKey key = entry.getKey();
 				if (superseded(epoch, key, entry.getValue().dependencies())) { superseded = true; continue; }
@@ -258,6 +267,14 @@ public final class MappingReconciliationService implements AutoCloseable {
 							previous == null ? null : previous.fingerprint().exported(),
 							previous == null ? 0 : previous.handle().generation(), "rest-path-conflict");
 					categories.add("rest-path-conflict");
+					continue;
+				}
+				if (timeSeriesConflicts.contains(candidate.key())) {
+					mark(candidate.key(), previous == null ? State.BLOCKED : State.STALE,
+							candidate.desired().fingerprint().exported(),
+							previous == null ? null : previous.fingerprint().exported(),
+							previous == null ? 0 : previous.handle().generation(), "timeseries-type-conflict");
+					categories.add("timeseries-type-conflict");
 					continue;
 				}
 				if (!candidate.desired().valid()) {
@@ -440,6 +457,42 @@ public final class MappingReconciliationService implements AutoCloseable {
 		}
 		Set<MappingKey> conflicts = new LinkedHashSet<>();
 		reservations.values().stream().filter(keys -> keys.size() > 1).forEach(conflicts::addAll);
+		return Set.copyOf(conflicts);
+	}
+
+	/**
+	 * Mappings that write or read one InfluxDB field (bucket, measurement, field) as different types. InfluxDB fixes
+	 * a field's type per measurement, so every mapping of such a disagreement is held back, and the declarations are
+	 * logged together.
+	 */
+	private static Set<MappingKey> timeSeriesConflicts(Iterable<MappingCandidate> candidates) {
+		Map<String, Map<String, Set<MappingKey>>> types = new LinkedHashMap<>();
+		for (MappingCandidate candidate : candidates) {
+			if (!candidate.desired().valid() || candidate.desired().bundle() == null) continue;
+			var configuration = candidate.desired().bundle().configuration();
+			List<Object> endpoints = new ArrayList<>(configuration.getDatasinks().values());
+			endpoints.addAll(configuration.getDatasources().values());
+			for (Object endpoint : endpoints) {
+				String bucket, measurement;
+				List<RecordColumn> columns;
+				if (endpoint instanceof InfluxDb2DataSinkConfiguration sink) {
+					bucket = sink.getBucket(); measurement = sink.getMeasurement(); columns = sink.getColumns();
+				} else if (endpoint instanceof InfluxDb2DataSourceConfiguration source) {
+					bucket = source.getBucket(); measurement = source.getMeasurement(); columns = source.getColumns();
+				} else continue;
+				for (var column : columns)
+					types.computeIfAbsent(bucket + "/" + measurement + "/" + column.path(), ignored -> new LinkedHashMap<>())
+							.computeIfAbsent(InfluxValues.kind(column.valueType()).name()
+									+ " (" + column.valueType() + ")", ignored -> new LinkedHashSet<>())
+							.add(candidate.key());
+			}
+		}
+		Set<MappingKey> conflicts = new LinkedHashSet<>();
+		types.forEach((field, byType) -> {
+			if (byType.keySet().stream().map(type -> type.substring(0, type.indexOf(' '))).distinct().count() < 2) return;
+			byType.values().forEach(conflicts::addAll);
+			LOGGER.warn("TimeSeries field {} is declared as {}; the mappings involved are held back", field, byType.keySet());
+		});
 		return Set.copyOf(conflicts);
 	}
 

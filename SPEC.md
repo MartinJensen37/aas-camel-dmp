@@ -482,6 +482,12 @@ submodels (a segment directly below the submodel) are not supported yet.
   to `DMP_INFLUX_LOOKBACK` only where there is no `StartTime`. The DMP never
   maintains `RecordCount`, `LastUpdate` or `Duration`: that would be an AAS
   write per point, and InfluxDB answers them itself.
+- InfluxDB fixes a field's type per measurement. Across all mappings, every
+  Source and Sink naming the same bucket, measurement and field must declare
+  the same InfluxDB type (string, integer, float, boolean; `xs:double` and
+  `xs:float` are both floats); otherwise every mapping involved is held back
+  (`timeseries-type-conflict`, an installed one is kept as `stale`) and the
+  disagreeing declarations are logged together.
 - Values are written as the field's valueType: strings (and date/time types,
   including the Gregorian `xs:gYear` … `xs:gDay`)
   as strings, integer types as InfluxDB integers, `xs:double`/`xs:float`/
