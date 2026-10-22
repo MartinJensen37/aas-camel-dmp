@@ -33,10 +33,12 @@ class DmpInfluxDb2ComponentTest {
 	private record Write(String query, String authorization, String body) { }
 
 	private static final List<RecordColumn> COLUMNS = List.of(
-			new RecordColumn("PackMLState", "PackMLState", "xs:string"),
-			new RecordColumn("Count", "count", "xs:long"),
-			new RecordColumn("Position.X", "Position.X", "xs:double"),
-			new RecordColumn("Ready", "Ready", "xs:boolean"));
+			new RecordColumn("PackMLState", "xs:string"),
+			new RecordColumn("Count", "xs:long"),
+			new RecordColumn("Position.X", "xs:double"),
+			new RecordColumn("Ready", "xs:boolean"),
+			new RecordColumn("Waypoints[0].x", "xs:double"),
+			new RecordColumn("Waypoints[1].x", "xs:double"));
 	private static final String URI_ = DmpInfluxDb2Component.uri("station_state", "ap2030", "Time",
 			Map.of("asset", "imaDispensing"), COLUMNS, null, null);
 	/** A completed segment: 2026-10-20, 06:00 to 14:00 UTC. */
@@ -100,9 +102,16 @@ class DmpInfluxDb2ComponentTest {
 		assertEquals("Token secret-token", write.authorization());
 		String line = write.body().strip();
 		assertTrue(line.startsWith("station_state,asset=imaDispensing "), line);
-		assertTrue(line.contains("PackMLState=\"EXECUTE\"") && line.contains("count=3i")
+		assertTrue(line.contains("PackMLState=\"EXECUTE\"") && line.contains("Count=3i")
 				&& line.contains("Position.X=1.5") && line.contains("Ready=true"), line);
 		assertTrue(line.endsWith(" " + Instant.parse("2026-10-21T12:00:00Z").getEpochSecond() + "000000000"), line);
+	}
+
+	@Test
+	void listMembersAreFieldsByIndex() {
+		template.requestBody(URI_, Map.of("Waypoints", List.of(Map.of("x", 1.5), Map.of("x", 2.5))));
+		String line = writes.get(0).body();
+		assertTrue(line.contains("Waypoints[0].x=1.5") && line.contains("Waypoints[1].x=2.5"), line);
 	}
 
 	@Test
@@ -110,13 +119,15 @@ class DmpInfluxDb2ComponentTest {
 		template.requestBody(URI_, Map.of("PackMLState", "IDLE"));
 		String line = writes.get(0).body();
 		assertTrue(line.contains("PackMLState=\"IDLE\""), line);
-		assertFalse(line.contains("count="), line);
+		assertFalse(line.contains("Count="), line);
 	}
 
 	@Test
 	void anUnknownFieldOrAWrongTypeRejectsTheRowBeforeAnyWrite() {
 		assertEquals("INFLUX_ROW_INVALID", failure(Map.of("Unknown", "x")).getConnectorCode());
 		assertEquals("INFLUX_ROW_INVALID", failure(Map.of("Count", "three")).getConnectorCode());
+		assertEquals("INFLUX_ROW_INVALID", failure(Map.of("Waypoints", List.of(Map.of("x", 1.0), Map.of("x", 2.0),
+				Map.of("x", 3.0)))).getConnectorCode(), "a list member the Record does not declare");
 		assertEquals("INFLUX_ROW_INVALID", failure(Map.of("Count", 1.5)).getConnectorCode());
 		assertEquals("INFLUX_ROW_INVALID", failure(Map.of("PackMLState", "IDLE", "Time", "yesterday")).getConnectorCode());
 		assertEquals("INFLUX_ROW_INVALID", failure(Map.of()).getConnectorCode());
@@ -149,16 +160,17 @@ class DmpInfluxDb2ComponentTest {
 	@Test
 	void aReadIsTheLatestRowWithTheNewestTime() {
 		answer = table("string", "PackMLState", "EXECUTE", "2026-10-21T12:00:00Z")
-				+ table("long", "count", "7", "2026-10-21T12:00:05Z")
+				+ table("long", "Count", "7", "2026-10-21T12:00:05Z")
+				+ table("double", "Waypoints[1].x", "2.5", "2026-10-21T11:00:00Z")
 				+ table("double", "Position.X", "1.5", "2026-10-21T11:00:00Z");
 		Object row = context.createConsumerTemplate().receiveBody(URI_, 1000);
 		assertEquals(Map.of("PackMLState", "EXECUTE", "Count", 7L, "Position", Map.of("X", 1.5),
-				"Time", "2026-10-21T12:00:05Z"), row);
+				"Waypoints", java.util.Arrays.asList(null, Map.of("x", 2.5)), "Time", "2026-10-21T12:00:05Z"), row);
 		String query = queries.get(0);
 		assertTrue(query.contains("range(start: -2592000s)"), query);
 		assertTrue(query.contains("r._measurement == \"station_state\""), query);
 		assertTrue(query.contains("r[\"asset\"] == \"imaDispensing\""), query);
-		assertTrue(query.contains("r._field == \"count\" or"), query);
+		assertTrue(query.contains("r._field == \"Count\" or"), query);
 		assertTrue(query.contains("last()"), query);
 	}
 
@@ -186,7 +198,7 @@ class DmpInfluxDb2ComponentTest {
 
 	@Test
 	void aStoredValueOfAnotherTypeFailsTheRead() {
-		answer = table("string", "count", "seven", "2026-10-21T12:00:00Z");
+		answer = table("string", "Count", "seven", "2026-10-21T12:00:00Z");
 		var thrown = assertThrows(RuntimeException.class, () -> context.createConsumerTemplate().receiveBody(URI_, 1000));
 		Throwable cause = thrown;
 		while (cause != null && !(cause instanceof ConnectorInvocationException)) cause = cause.getCause();

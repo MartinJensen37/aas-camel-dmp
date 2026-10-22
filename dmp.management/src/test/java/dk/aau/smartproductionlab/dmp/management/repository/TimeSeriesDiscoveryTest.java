@@ -24,12 +24,14 @@ import dk.aau.smartproductionlab.dmp.management.compiler.MappingPlanCompiler;
 import org.junit.jupiter.api.Test;
 
 /**
- * A Sink on a TimeSeries LinkedSegment, compiled through discovery from the Variables submodel aas-model
- * generates ({@code timeseries/variables.json}): one series {@code State.Station} with fields PackMLState, Count
- * (column {@code count}) and Position.X, owned by {@code imaDispensing}.
+ * A Sink on a TimeSeries LinkedSegment, compiled through discovery from the Variables and Parameters submodels
+ * aas-model generates ({@code timeseries/*.json}): one series {@code State.Station} with fields PackMLState, Count,
+ * Position.X and a reference to {@code Parameters/Location} (x, y), owned by {@code imaDispensing}.
  */
 class TimeSeriesDiscoveryTest {
 	private static final String VARIABLES = "https://smartproductionlab.aau.dk/aas/imaDispensing/submodels/Variables";
+	private static final String PARAMETERS = "https://smartproductionlab.aau.dk/aas/imaDispensing/submodels/Parameters";
+	private static final String SKILLS = "urn:fixture/submodels/Skills";
 	private static final String AIMC_ID = "urn:fixture/submodels/AIMC";
 	private static final String DATA_ID = "urn:fixture/submodels/Data";
 	private static final String SEGMENT = "State.Station.Segments.Live";
@@ -46,13 +48,15 @@ class TimeSeriesDiscoveryTest {
 			assertEquals("station_state", sink.getMeasurement());
 			assertEquals("ap2030", sink.getBucket());
 			assertEquals(Map.of("asset", "imaDispensing"), sink.getTags());
-			assertEquals(List.of(new RecordColumn("PackMLState", "PackMLState", "xs:string"),
-					new RecordColumn("Count", "count", "xs:long"), new RecordColumn("Position.X", "Position.X", "xs:double")),
-					sink.getColumns());
+			assertEquals(List.of(new RecordColumn("PackMLState", "xs:string"), new RecordColumn("Count", "xs:long"),
+					new RecordColumn("Position.X", "xs:double"), new RecordColumn("Location.x", "xs:double"),
+					new RecordColumn("Location.y", "xs:double")), sink.getColumns(), "a reference counts as if declared inline");
 			assertTrue(sink.getConnectionURI().startsWith("dmp-influxdb2:station_state?"), sink.getConnectionURI());
 			assertFalse(sink.getConnectionURI().contains("token"));
 			assertTrue(bundle.desired().dependencies().contains(new MappingPlanCompiler.Dependency("submodel", VARIABLES, "State.Station")),
 					bundle.desired().dependencies().toString());
+			assertTrue(bundle.desired().dependencies().contains(new MappingPlanCompiler.Dependency("submodel", PARAMETERS, "Location")),
+					"the referenced element is part of the row shape: " + bundle.desired().dependencies());
 		}
 	}
 
@@ -64,6 +68,8 @@ class TimeSeriesDiscoveryTest {
 			assertTrue(relevant(discovery, "State.Station.Metadata.Record.Count"), "the Record is the row shape");
 			assertTrue(relevant(discovery, "State.Station.Segments.Live.InfluxDb2Target.Measurement"));
 			assertFalse(relevant(discovery, "Measurements.Weight"));
+			assertTrue(discovery.relevant(AasControlEvent.parse("{\"type\":\"SME_CREATED\",\"id\":\"" + PARAMETERS
+					+ "\",\"smElementPath\":\"Location.z\"}")), "a new member of a referenced element changes the row");
 		}
 	}
 
@@ -87,20 +93,35 @@ class TimeSeriesDiscoveryTest {
 	}
 
 	@Test
-	void aRecordFieldWithoutAColumnBlocksTheMapping() throws Exception {
-		// A qualifier typed "Column" is not enough: the Column is recognised by its semanticId.
-		String withoutColumn = variables().replaceFirst("timeseries/Column/1/0", "timeseries/NotAColumn/1/0");
-		try (var repository = fixture(withoutColumn)) {
+	void anOperationAndAListAreResolvedThroughAReference() throws Exception {
+		String withSkill = reference(variables(), "Occupy", SKILLS, "SubmodelElementCollection:Occupy", "Operation:operation");
+		try (var repository = fixture(withSkill).put(skills())) {
+			DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
+			assertTrue(bundle.valid(), issues(bundle));
+			var sink = bundle.bundle().configuration().getDatasinks().values().stream()
+					.filter(InfluxDb2DataSinkConfiguration.class::isInstance).map(InfluxDb2DataSinkConfiguration.class::cast)
+					.findFirst().orElseThrow();
+			assertEquals(List.of(new RecordColumn("Occupy.Uuid", "xs:string"), new RecordColumn("Occupy.Target.x", "xs:double"),
+					new RecordColumn("Occupy.Waypoints[0]", "xs:int"), new RecordColumn("Occupy.Waypoints[1]", "xs:int"),
+					new RecordColumn("Occupy.State", "xs:string")),
+					sink.getColumns().stream().filter(column -> column.path().startsWith("Occupy.")).toList(),
+					"input, InOut and output variables in order, collections by idShort, lists by index");
+		}
+	}
+
+	@Test
+	void aReferenceToAMissingElementBlocksTheMapping() throws Exception {
+		String broken = reference(variables(), "Ghost", PARAMETERS, "SubmodelElementCollection:Nowhere");
+		try (var repository = fixture(broken)) {
 			DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
 			assertFalse(bundle.valid());
-			assertTrue(bundle.desired().failures().stream().anyMatch(failure -> failure.detail().contains("needs exactly one Column")),
-					bundle.desired().failures().toString());
+			assertTrue(issues(bundle).contains("Record reference Ghost"), issues(bundle));
 		}
 	}
 
 	@Test
 	void aSegmentSourceReadsTheLatestRowAtItsPollingInterval() throws Exception {
-		try (var repository = new FakeAasRepository().put(variables()).put(data())
+		try (var repository = new FakeAasRepository().put(variables()).put(resource("parameters")).put(data())
 				.put(aimc(segmentRef(), "2", refProperty(DATA_ID, "Value")))) {
 			DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
 			assertTrue(bundle.valid(), issues(bundle));
@@ -116,7 +137,7 @@ class TimeSeriesDiscoveryTest {
 
 	@Test
 	void aSegmentSourceWithoutAPollingIntervalIsBlocked() throws Exception {
-		try (var repository = new FakeAasRepository().put(variables()).put(data())
+		try (var repository = new FakeAasRepository().put(variables()).put(resource("parameters")).put(data())
 				.put(aimc(segmentRef(), null, refProperty(DATA_ID, "Value")))) {
 			DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
 			assertFalse(bundle.valid());
@@ -135,7 +156,7 @@ class TimeSeriesDiscoveryTest {
 
 	@Test
 	void aCompletedSegmentIsReadWithinItsPeriod() throws Exception {
-		try (var repository = new FakeAasRepository().put(segment(variables(), "Completed", "2026-10-20T06:00:00Z",
+		try (var repository = new FakeAasRepository().put(resource("parameters")).put(segment(variables(), "Completed", "2026-10-20T06:00:00Z",
 				"2026-10-20T16:00:00+02:00")).put(data()).put(aimc(segmentRef(), "2", refProperty(DATA_ID, "Value")))) {
 			DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
 			assertTrue(bundle.valid(), issues(bundle));
@@ -204,7 +225,37 @@ class TimeSeriesDiscoveryTest {
 	}
 
 	private static FakeAasRepository fixture(String variables) throws IOException {
-		return new FakeAasRepository().put(variables).put(data()).put(aimc(refProperty(DATA_ID, "Value"), segmentRef()));
+		return new FakeAasRepository().put(variables).put(resource("parameters")).put(data())
+				.put(aimc(refProperty(DATA_ID, "Value"), segmentRef()));
+	}
+
+	/** The fixture with one more Record entry: a reference named {@code idShort} to {@code submodel}'s path. */
+	private static String reference(String variables, String idShort, String submodel, String... typedPath) {
+		var model = com.google.gson.JsonParser.parseString(variables).getAsJsonObject();
+		var record = child(child(child(child(model.getAsJsonArray("submodelElements"), "State").getAsJsonArray("value"),
+				"Station").getAsJsonArray("value"), "Metadata").getAsJsonArray("value"), "Record").getAsJsonArray("value");
+		StringBuilder keys = new StringBuilder(key("Submodel", submodel));
+		for (String typed : typedPath) keys.append(',').append(key(typed.split(":")[0], typed.split(":")[1]));
+		record.add(com.google.gson.JsonParser.parseString("{\"modelType\":\"ReferenceElement\",\"idShort\":\"" + idShort
+				+ "\",\"semanticId\":{\"type\":\"ExternalReference\",\"keys\":[{\"type\":\"GlobalReference\",\"value\":"
+				+ "\"https://smartproductionlab.aau.dk/timeseries/RecordReference/1/0\"}]},"
+				+ "\"value\":{\"type\":\"ModelReference\",\"keys\":[" + keys + "]}}"));
+		return model.toString();
+	}
+
+	/** A skill whose Operation has an input, an InOut collection with a list, and an output. */
+	private static String skills() {
+		return "{\"modelType\":\"Submodel\",\"id\":\"" + SKILLS + "\",\"idShort\":\"Skills\",\"submodelElements\":["
+				+ "{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"Occupy\",\"value\":["
+				+ "{\"modelType\":\"Operation\",\"idShort\":\"operation\","
+				+ "\"inputVariables\":[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Uuid\",\"valueType\":\"xs:string\"}}],"
+				+ "\"inoutputVariables\":[{\"value\":{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"Target\",\"value\":["
+				+ "{\"modelType\":\"Property\",\"idShort\":\"x\",\"valueType\":\"xs:double\"}]}},"
+				+ "{\"value\":{\"modelType\":\"SubmodelElementList\",\"idShort\":\"Waypoints\",\"typeValueListElement\":\"Property\","
+				+ "\"valueTypeListElement\":\"xs:int\",\"value\":[{\"modelType\":\"Property\",\"valueType\":\"xs:int\"},"
+				+ "{\"modelType\":\"Property\",\"valueType\":\"xs:int\"}]}}],"
+				+ "\"outputVariables\":[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"State\",\"valueType\":\"xs:string\"}}]}"
+				+ "]}]}";
 	}
 
 	private static RepositoryDiscovery discovery(FakeAasRepository repository, InfluxSettings influx) {
@@ -227,7 +278,11 @@ class TimeSeriesDiscoveryTest {
 	}
 
 	private static String variables() throws IOException {
-		try (InputStream in = TimeSeriesDiscoveryTest.class.getResourceAsStream("/timeseries/variables.json")) {
+		return resource("variables");
+	}
+
+	private static String resource(String name) throws IOException {
+		try (InputStream in = TimeSeriesDiscoveryTest.class.getResourceAsStream("/timeseries/" + name + ".json")) {
 			return new String(in.readAllBytes(), StandardCharsets.UTF_8);
 		}
 	}

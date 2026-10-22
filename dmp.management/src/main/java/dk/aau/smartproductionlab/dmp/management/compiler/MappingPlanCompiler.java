@@ -144,8 +144,14 @@ public final class MappingPlanCompiler {
 			for(EndpointPlan endpoint:resolved) {
 				if(endpoint.target() instanceof DirectTarget target) metadataDependencies(target.resolved().element(),dependencies);
 				// The Record and InfluxDb2Target lie beside the referenced segment: the series container is read, too.
-				if(endpoint.target() instanceof SeriesTarget series)
+				if(endpoint.target() instanceof SeriesTarget series) {
 					dependencies.add(new Dependency("submodel",series.segment().submodel().getId(),series.seriesPath()));
+					// Elements the Record references are part of its row shape.
+					for(Reference referenced:series.projection().references()) {
+						List<Key> keys=Aas.keys(referenced);
+						if(keys.size()>=2) dependencies.add(new Dependency("submodel",keys.get(0).getValue(),AasReferenceResolver.idShortPath(keys)));
+					}
+				}
 			}
 			MappingPlan plan=failures.isEmpty()?new MappingPlan(identity,mapping.listIndex(),sources,sinks,mapping.defaultPollingInterval(),
 					mapping.transformation(),responseSourcesResult.value(),responseSinksResult.value(),mapping.responseTransformation(),
@@ -223,11 +229,29 @@ public final class MappingPlanCompiler {
 		SubmodelElement segments=Aas.children(container.element()).stream()
 				.filter(child -> keys.get(keys.size()-2).getValue().equals(child.getIdShort())).findFirst().orElse(null);
 		TimeSeriesProjection.Series projection;
-		try { projection=TimeSeriesProjection.project(container.element(),segments,segment.element()); }
+		try { projection=TimeSeriesProjection.project(container.element(),segments,segment.element(),this::recordReference); }
+		catch(UnresolvedReference unresolved) { return propagate(unresolved.result); }
 		catch(IllegalArgumentException invalid) { return invalid("TimeSeries "+AasReferenceResolver.idShortPath(keys)+": "+invalid.getMessage()); }
 		return found(new EndpointPlan(endpoint.id(),endpoint.reference(),
 				new SeriesTarget(segment,container.element(),AasReferenceResolver.idShortPath(seriesKeys),projection),
 				endpoint.pollingInterval()));
+	}
+
+	/** A Record's reference resolved like a mapping endpoint; a repository failure keeps its status for retries. */
+	private SubmodelElement recordReference(Reference reference) {
+		var resolved=references.resolve(reference);
+		if(!resolved.found()) {
+			if(resolved.status()==AasRepositoryClient.Status.INVALID_RESPONSE) throw new IllegalArgumentException(resolved.detail());
+			throw new UnresolvedReference(resolved);
+		}
+		if(!(resolved.value() instanceof AasReferenceResolver.ResolvedElement element))
+			throw new IllegalArgumentException("a Record reference must address an AAS element, not an AID affordance");
+		return element.element();
+	}
+
+	private static final class UnresolvedReference extends RuntimeException {
+		private final transient AasRepositoryClient.Result<?> result;
+		UnresolvedReference(AasRepositoryClient.Result<?> result) { super(result.detail(),null,false,false); this.result=result; }
 	}
 
 	private static <T> AasRepositoryClient.Result<T> found(T value) {

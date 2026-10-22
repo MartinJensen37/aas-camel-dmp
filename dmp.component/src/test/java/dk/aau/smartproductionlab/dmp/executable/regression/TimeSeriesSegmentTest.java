@@ -52,7 +52,7 @@ class TimeSeriesSegmentTest {
 	private static final String META = "function aimc_main(sources)\n"
 			+ "  return { Live = { PackMLState = meta.sinks.Live.kind, Time = meta.sources.State.time } }\n"
 			+ "end\n";
-	private static final String LATEST = table("string", "PackMLState", "EXECUTE") + table("long", "count", "7")
+	private static final String LATEST = table("string", "PackMLState", "EXECUTE") + table("long", "Count", "7")
 			+ table("double", "Position.X", "1.5");
 
 	private final List<String> lines = new CopyOnWriteArrayList<>();
@@ -77,7 +77,7 @@ class TimeSeriesSegmentTest {
 			exchange.close();
 		});
 		influx.start();
-		repository = new FakeAasRepository().put(variables()).put(data());
+		repository = new FakeAasRepository().put(variables()).put(resource("timeseries/parameters.json")).put(data());
 		runtime = new DmpComponent(new RoutesConfiguration(), Duration.ofSeconds(4)) { };
 		runtime.startComponent();
 		runtime.runtimeContext().getComponent(DmpInfluxDb2Component.SCHEME, DmpInfluxDb2Component.class).configure(settings());
@@ -97,7 +97,7 @@ class TimeSeriesSegmentTest {
 		await().atMost(Duration.ofSeconds(10)).until(() -> !lines.isEmpty());
 		String line = lines.get(0).strip();
 		assertTrue(line.startsWith("station_state,asset=imaDispensing "), line);
-		assertTrue(line.contains("PackMLState=\"IDLE\"") && line.contains("count=2i") && line.contains("Position.X=1.5"), line);
+		assertTrue(line.contains("PackMLState=\"IDLE\"") && line.contains("Count=2i") && line.contains("Position.X=1.5"), line);
 	}
 
 	@Test
@@ -105,7 +105,7 @@ class TimeSeriesSegmentTest {
 		runtime.installBundle("echo", compile(aimc(ECHO, segment())));
 		await().atMost(Duration.ofSeconds(10)).until(() -> !lines.isEmpty());
 		String line = lines.get(0).strip();
-		assertTrue(line.contains("PackMLState=\"EXECUTE\"") && line.contains("count=8i") && line.contains("Position.X=3"), line);
+		assertTrue(line.contains("PackMLState=\"EXECUTE\"") && line.contains("Count=8i") && line.contains("Position.X=3"), line);
 	}
 
 	@Test
@@ -146,8 +146,12 @@ class TimeSeriesSegmentTest {
 	}
 
 	private static String variables() throws Exception {
-		try (var input = TimeSeriesSegmentTest.class.getClassLoader().getResourceAsStream("timeseries/variables.json")) {
-			assertNotNull(input);
+		return resource("timeseries/variables.json");
+	}
+
+	private static String resource(String path) throws Exception {
+		try (var input = TimeSeriesSegmentTest.class.getClassLoader().getResourceAsStream(path)) {
+			assertNotNull(input, path);
 			return new String(input.readAllBytes(), StandardCharsets.UTF_8);
 		}
 	}

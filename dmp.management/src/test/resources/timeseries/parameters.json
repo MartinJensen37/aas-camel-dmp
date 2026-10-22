@@ -1,0 +1,173 @@
+{
+ "embeddedDataSpecifications": [
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/aas/imaDispensing/submodels/Parameters"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "class"
+     }
+    ],
+    "value": "ResourceParameters"
+   }
+  }
+ ],
+ "idShort": "Parameters",
+ "description": [
+  {
+   "language": "en",
+   "text": "Hierarchical asset parameter definitions with semantic identifiers."
+  }
+ ],
+ "modelType": "Submodel",
+ "id": "https://smartproductionlab.aau.dk/aas/imaDispensing/submodels/Parameters",
+ "semanticId": {
+  "type": "ExternalReference",
+  "keys": [
+   {
+    "type": "GlobalReference",
+    "value": "https://smartproductionlab.aau.dk/submodels/Parameters/1/0"
+   }
+  ]
+ },
+ "submodelElements": [
+  {
+   "embeddedDataSpecifications": [
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "Location"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "class"
+       }
+      ],
+      "value": "ParameterItem"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "24684646792b420a875906759895702b"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "parameter"
+     }
+    },
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "2933b17b30b141188805ca032e166d99"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "attribute"
+       }
+      ],
+      "value": "interface_reference"
+     }
+    }
+   ],
+   "idShort": "Location",
+   "description": [
+    {
+     "language": "en",
+     "text": "A group of parameter values that belong together."
+    }
+   ],
+   "modelType": "SubmodelElementCollection",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/parameters/ParameterItem/1/0"
+     }
+    ]
+   },
+   "value": [
+    {
+     "idShort": "x",
+     "description": [
+      {
+       "language": "en",
+       "text": "A description of this Parameter"
+      }
+     ],
+     "modelType": "Property",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/aparameters/ParameterSemanticId/1/0"
+       }
+      ]
+     },
+     "value": "0.0",
+     "valueType": "xs:double"
+    },
+    {
+     "idShort": "y",
+     "description": [
+      {
+       "language": "en",
+       "text": "A description of this Parameter"
+      }
+     ],
+     "modelType": "Property",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/aparameters/ParameterSemanticId/1/0"
+       }
+      ]
+     },
+     "value": "0.0",
+     "valueType": "xs:double"
+    }
+   ]
+  }
+ ]
+}

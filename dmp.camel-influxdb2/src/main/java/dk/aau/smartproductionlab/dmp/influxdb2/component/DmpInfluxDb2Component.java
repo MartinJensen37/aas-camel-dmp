@@ -19,7 +19,7 @@ import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
 
 /**
- * {@code dmp-influxdb2:<measurement>?bucket=…&time=Time&tag.<key>=…&column.<path>=…&type.<path>=…[&start=…][&stop=…]}:
+ * {@code dmp-influxdb2:<measurement>?bucket=…&time=Time&tag.<key>=…&field.<path>=<valueType>[&start=…][&stop=…]}:
  * the points of one TimeSeries LinkedSegment, within its authored period when it has one. A write is one point per row, acknowledged by InfluxDB; a rejected or failed write
  * raises. camel-influxdb2 writes through the asynchronous batching API, whose failures never reach the exchange,
  * and creates missing orgs and buckets, so the DMP ships this component (SPEC §9). All endpoints share the one
@@ -37,10 +37,8 @@ public final class DmpInfluxDb2Component extends InfluxDb2Component {
 				.append("?bucket=RAW(").append(bucket).append(')')
 				.append("&time=RAW(").append(timePath).append(')');
 		tags.forEach((key, value) -> uri.append("&tag.").append(encode(key)).append("=RAW(").append(value).append(')'));
-		for (RecordColumn column : columns) {
-			uri.append("&column.").append(encode(column.path())).append("=RAW(").append(column.column()).append(')');
-			uri.append("&type.").append(encode(column.path())).append('=').append(column.valueType());
-		}
+		for (RecordColumn column : columns)
+			uri.append("&field.").append(encode(column.path())).append('=').append(column.valueType());
 		if (start != null) uri.append("&start=RAW(").append(start).append(')');
 		if (stop != null) uri.append("&stop=RAW(").append(stop).append(')');
 		return uri.toString();
@@ -66,12 +64,8 @@ public final class DmpInfluxDb2Component extends InfluxDb2Component {
 		if (timePath == null || timePath.isBlank()) throw new IllegalArgumentException("dmp-influxdb2 endpoint requires the Record's time path");
 		Map<String, String> tags = new LinkedHashMap<>();
 		PropertiesHelper.extractProperties(parameters, "tag.").forEach((key, value) -> tags.put(key, String.valueOf(value)));
-		Map<String, Object> columnNames = PropertiesHelper.extractProperties(parameters, "column.");
-		Map<String, Object> types = PropertiesHelper.extractProperties(parameters, "type.");
-		if (!columnNames.keySet().equals(types.keySet()))
-			throw new IllegalArgumentException("dmp-influxdb2 endpoint needs a column and a type for every Record field");
-		List<RecordColumn> columns = columnNames.entrySet().stream()
-				.map(entry -> new RecordColumn(entry.getKey(), String.valueOf(entry.getValue()), String.valueOf(types.get(entry.getKey()))))
+		List<RecordColumn> columns = PropertiesHelper.extractProperties(parameters, "field.").entrySet().stream()
+				.map(entry -> new RecordColumn(entry.getKey(), String.valueOf(entry.getValue())))
 				.toList();
 		if (columns.isEmpty()) throw new IllegalArgumentException("dmp-influxdb2 endpoint needs at least one Record field");
 		Instant start = instant(getAndRemoveParameter(parameters, "start", String.class), "start");

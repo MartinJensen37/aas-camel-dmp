@@ -48,7 +48,7 @@
     "keys": [
      {
       "type": "GlobalReference",
-      "value": "d6266bd87b5c432c84c456a540714bcc"
+      "value": "6a37c4f170d3414da71c53c6f6917a38"
      }
     ]
    },
@@ -69,7 +69,7 @@
     "keys": [
      {
       "type": "GlobalReference",
-      "value": "f4b6dbb22a8541e29f58af9a9a147c4e"
+      "value": "d9f9ffd8c1d64be0957e3ebe627d50ea"
      }
     ]
    },
@@ -279,7 +279,7 @@
           "keys": [
            {
             "type": "GlobalReference",
-            "value": "95ee824763ac42c29c500dd44a7cce03"
+            "value": "8773bd0bae9445ed8c92739c43908c53"
            }
           ]
          },
@@ -462,23 +462,6 @@
              ]
             }
            ],
-           "qualifiers": [
-            {
-             "semanticId": {
-              "type": "ExternalReference",
-              "keys": [
-               {
-                "type": "GlobalReference",
-                "value": "https://smartproductionlab.aau.dk/timeseries/Column/1/0"
-               }
-              ]
-             },
-             "value": "PackMLState",
-             "kind": "ConceptQualifier",
-             "valueType": "xs:string",
-             "type": "Column"
-            }
-           ],
            "valueType": "xs:string"
           },
           {
@@ -493,23 +476,6 @@
              }
             ]
            },
-           "qualifiers": [
-            {
-             "semanticId": {
-              "type": "ExternalReference",
-              "keys": [
-               {
-                "type": "GlobalReference",
-                "value": "https://smartproductionlab.aau.dk/timeseries/Column/1/0"
-               }
-              ]
-             },
-             "value": "count",
-             "kind": "ConceptQualifier",
-             "valueType": "xs:string",
-             "type": "Column"
-            }
-           ],
            "valueType": "xs:long"
           },
           {
@@ -560,26 +526,35 @@
                }
               ]
              },
-             "qualifiers": [
-              {
-               "semanticId": {
-                "type": "ExternalReference",
-                "keys": [
-                 {
-                  "type": "GlobalReference",
-                  "value": "https://smartproductionlab.aau.dk/timeseries/Column/1/0"
-                 }
-                ]
-               },
-               "value": "Position.X",
-               "kind": "ConceptQualifier",
-               "valueType": "xs:string",
-               "type": "Column"
-              }
-             ],
              "valueType": "xs:double"
             }
            ]
+          },
+          {
+           "idShort": "Location",
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/RecordReference/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/imaDispensing/submodels/Parameters"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Location"
+             }
+            ]
+           }
           }
          ]
         }
@@ -650,7 +625,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "4dcfb3ca42194f98a599295342a05399"
+              "value": "03ef07176d534215b4c9989e085a6da6"
              }
             ]
            },
@@ -671,7 +646,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "1ac0c79924474a8890f815f8c8321748"
+              "value": "271b05f30f5d43828e4ab5fbb9f88bcc"
              }
             ]
            },
@@ -692,7 +667,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "adac228d92974d3290cd0dbd8dc369e8"
+              "value": "d5215f69fd254e2582c118eac5bb7888"
              }
             ]
            },
@@ -713,7 +688,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "aaf33e0ede784f8494ffaeced4d726da"
+              "value": "82463bd88087481eaf65abf1a892af45"
              }
             ]
            },
@@ -734,7 +709,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "601cf70961ef43f1a6c4529d74d11e06"
+              "value": "e3ae7022408d4aab848fbafdf73ee0e7"
              }
             ]
            },
@@ -755,7 +730,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "f35164035a1941229fefb21485a14d66"
+              "value": "a5d3a979d85b40fea50b973695b41ee3"
              }
             ]
            },
@@ -776,7 +751,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "f445abb31d5c42218be5ddeaee055fc1"
+              "value": "0b8537701a2c47b4b9abb5c9a4f0cae5"
              }
             ]
            },
@@ -797,7 +772,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "9ee47233328947ceaeb1dd8cca64c884"
+              "value": "a53e12a3e8d643ffb68676b17b884f6a"
              }
             ]
            },
@@ -839,7 +814,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "c940367b19b246c4a0671d22413a02ac"
+              "value": "d53bbd31b6154ee8bc53c6c334207b47"
              }
             ]
            },

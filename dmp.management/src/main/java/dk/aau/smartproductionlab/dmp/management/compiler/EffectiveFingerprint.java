@@ -20,6 +20,7 @@ import org.eclipse.digitaltwin.aas4j.v3.model.Qualifier;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
 import dk.aau.smartproductionlab.dmp.aas.model.Aas;
+import dk.aau.smartproductionlab.dmp.management.model.TimeSeriesProjection;
 import dk.aau.smartproductionlab.dmp.management.model.WireModel;
 
 /**
@@ -35,6 +36,7 @@ import dk.aau.smartproductionlab.dmp.management.model.WireModel;
 public final class EffectiveFingerprint {
 	/** An AAS element target, reduced to its submodel identity and the element's shape. */
 	private record DirectValue(String submodelId, String submodelIdShort, Reference submodelSemanticId, SubmodelElement element) { }
+	private record SeriesValue(DirectValue container, TimeSeriesProjection.Series projection) { }
 	private record EndpointValue(String id, Reference reference, WireModel.Presence<String> pollingInterval, Object target) { }
 	private record PlanValue(String identity, int listIndex, List<EndpointValue> sources, List<EndpointValue> sinks,
 			WireModel.Presence<String> defaultPollingInterval, WireModel.Presence<WireModel.Blob> transformation,
@@ -139,8 +141,9 @@ public final class EffectiveFingerprint {
 		}
 		if (target instanceof MappingPlanCompiler.SeriesTarget series) {
 			var segment = series.segment();
-			return new DirectValue(segment.submodel().getId(), segment.submodel().getIdShort(),
-					segment.submodel().getSemanticId(), series.series());
+			// The projection carries the resolved columns, so a change of a referenced element changes it, too.
+			return new SeriesValue(new DirectValue(segment.submodel().getId(), segment.submodel().getIdShort(),
+					segment.submodel().getSemanticId(), series.series()), series.projection());
 		}
 		return ((MappingPlanCompiler.AidTarget) target).resolved();
 	}

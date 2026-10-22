@@ -430,10 +430,21 @@ well; it counts as referenced for events and the fingerprint. TimeSeries
 submodels (a segment directly below the submodel) are not supported yet.
 
 - The Record is the row shape: one UtcTime (`xs:dateTime`; other time
-  semantics block the mapping) and fields, groups being RecordGroup SMCs. Every
-  field names its InfluxDB field in exactly one `Column` qualifier
-  (`…/timeseries/Column/1/0`); a missing one blocks the mapping, and columns
-  are distinct.
+  semantics block the mapping) and fields. A field's InfluxDB field is its
+  idShortPath below the Record: a Property is one field, an SMC's members
+  follow by idShort (`Position.x`), an SML's by index (`Waypoints[0].x`; never
+  by displayName), an Operation's input, InOut and output variables by idShort.
+  Renaming a field therefore starts a new InfluxDB field; its history stays
+  under the old name.
+- A ReferenceElement in the Record (or in a group of it) counts exactly as if
+  the element it references were declared at its place, under the
+  reference's idShort: `Occupy → …/Skills/Occupy/operation` gives
+  `Occupy.Uuid`, `Occupy.State`. The referenced element is read like a mapping
+  endpoint and counts as referenced for events and the fingerprint; a change
+  of its structure recompiles the mapping. References inside a referenced
+  element do not chain and block the mapping, as does a reference whose target
+  is missing. The reference lends the structure only; values come from the
+  transformation.
 - The segment's `InfluxDb2Target` (`…/timeseries/InfluxDb2Target/1/0`; each database has its own target, told apart by semanticId, and a segment carries exactly one) names `Bucket`,
   `Measurement` and `Tags` (each tag's idShort is its key). Its IDTA
   `Endpoint` must name the configured InfluxDB and org (`DMP_INFLUX_URL`,

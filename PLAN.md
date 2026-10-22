@@ -75,15 +75,16 @@ groups what is sampled together (one row = one sample), not one variable each.
 The LinkedSegment carries a DMP extension `InfluxDb2Target`: `Bucket`,
 `Measurement` and `Tags`. The tags name the AAS that owns the series (an AIMC
 writing another resource's series targets that resource's segment). Each
-Record field carries an explicit `Column`, generated once equal to its idShort
-and kept on rename; the DMP never derives a column from a name. `Query` is
+Record field's InfluxDB field is its idShortPath (decided 2026-10-22; a
+rename starts a new field), and a ReferenceElement in the Record counts as if
+the referenced element were declared inline (SPEC §5.5). `Query` is
 generated from the same values for the web UI.
 
 **Measurements.** One measurement per Record schema (`station_state`,
 `dispensing_weight`, `operation_occupy`), assets told apart by tag. Tags have
-low cardinality (never an invocation id or UUID). The compiler blocks Records
-with different columns or types under one measurement; aas-model generating
-them from templates is the real guarantee.
+low cardinality (never an invocation id or UUID). aas-model generating the
+Records from templates keeps one measurement's fields consistent; the
+compiler's cross-mapping check is open (below).
 
 **DMP.** A Source or Sink targets a LinkedSegment; the DMP reads its
 TimeSeries container (Record, `InfluxDb2Target`), which counts as referenced for
@@ -114,22 +115,27 @@ from the environment. One request per row; batching only with per-batch
 acknowledgement.
 
 **Web UI.** The TimeSeries plugin reads a TimeSeries submodel or SMC (children
-from `value`, the group's idShortPath as prefix) and uses `Column` when
-present.
+from `value`, the group's idShortPath as prefix), resolves references and
+names fields by idShortPath.
 
 **Done (2026-10-22):** `aas-model` (Variables groups, TimeSeries SMC,
-`InfluxDb2Target`, `Column`, segment periods, the `operation_log` builder); the
+`InfluxDb2Target`, segment periods, Record references, the `operation_log`
+builder on a reference to its Operation); the
 DMP (discovery of the series container, segment Sources and Sinks,
-`dmp-influxdb2:`, segment periods, SPEC §5.5); Lua's global `meta` and the
+`dmp-influxdb2:`, segment periods, Record references and lists, SPEC §5.5);
+Lua's global `meta` and the
 failure response (SPEC §7 step 8, §8); the old interaction log removed; the
 parent workspace's `influxdb` Compose service (org and bucket `ap2030`); the
-web UI's TimeSeries plugin (TimeSeries SMCs, `Column`, nested groups, and an
+web UI's TimeSeries plugin (TimeSeries SMCs, nested groups, and an
 nginx query proxy that keeps the token server-side, `INFLUXDB_PROXY_*`).
 
 **Open, in order:**
-1. Station models: State and Measurements series, Operation log series
+1. The compiler blocks Records that write different fields or types under
+   one measurement (InfluxDB fixes a field's type per measurement); today only
+   aas-model's templates keep them consistent.
+2. Station models: State and Measurements series, Operation log series
    attached to each skill; then their AIMC mappings target the segments.
-2. Consumers: BT_Controller (it reads `Variables` today, partly at stale
+3. Consumers: BT_Controller (it reads `Variables` today, partly at stale
    paths, and must poll InfluxDB for current values), `stationctl`, the e2e
    tests and kg-bridge; then the flat `Variables.variable` map is removed.
 

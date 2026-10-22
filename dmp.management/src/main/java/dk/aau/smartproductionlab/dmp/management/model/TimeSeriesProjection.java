@@ -15,20 +15,24 @@ import java.util.Set;
 
 import org.eclipse.digitaltwin.aas4j.v3.model.HasSemantics;
 import org.eclipse.digitaltwin.aas4j.v3.model.Key;
+import org.eclipse.digitaltwin.aas4j.v3.model.Operation;
+import org.eclipse.digitaltwin.aas4j.v3.model.OperationVariable;
 import org.eclipse.digitaltwin.aas4j.v3.model.Property;
-import org.eclipse.digitaltwin.aas4j.v3.model.Qualifier;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
+import org.eclipse.digitaltwin.aas4j.v3.model.ReferenceElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementCollection;
+import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementList;
 import dk.aau.smartproductionlab.dmp.aas.model.Aas;
 import dk.aau.smartproductionlab.dmp.influxdb2.InfluxValues;
 import dk.aau.smartproductionlab.dmp.influxdb2.RecordColumn;
 
 /**
  * Projects a TimeSeries LinkedSegment (IDTA 02008, this project's DMP profile) and its series container into what
- * the DMP writes and reads. Elements are recognised by semanticId only, never by idShort: the series' Record is the
- * row shape, each Record field names its InfluxDB column in a {@code Column} qualifier, and the segment's
- * {@code InfluxDb2Target} names bucket, measurement and tags. Nothing missing is filled in.
+ * the DMP writes and reads. Elements are recognised by semanticId only: the series' Record is the row shape, a field's
+ * InfluxDB field is its idShortPath below the Record ({@code Position.x}, list members by index), and the segment's
+ * {@code InfluxDb2Target} names bucket, measurement and tags. A ReferenceElement in the Record counts as if the element
+ * it references were declared at its place. Nothing missing is filled in.
  */
 public final class TimeSeriesProjection {
 	public static final String IDTA_TIME_SERIES = "https://admin-shell.io/idta/TimeSeries/1/1";
@@ -51,8 +55,6 @@ public final class TimeSeriesProjection {
 
 	private static final String BASE = "https://smartproductionlab.aau.dk";
 	public static final String SERIES = BASE + "/variables/TimeSeries/1/0";
-	public static final String RECORD_GROUP = BASE + "/timeseries/RecordGroup/1/0";
-	public static final String COLUMN = BASE + "/timeseries/Column/1/0";
 	public static final String INFLUX_TARGET = BASE + "/timeseries/InfluxDb2Target/1/0";
 	public static final String BUCKET = BASE + "/timeseries/InfluxDb2Target/Bucket/1/0";
 	public static final String MEASUREMENT = BASE + "/timeseries/InfluxDb2Target/Measurement/1/0";
@@ -65,8 +67,14 @@ public final class TimeSeriesProjection {
 	 * {@code Completed} or has an end.
 	 */
 	public record Series(URI endpoint, String bucket, String measurement, Map<String, String> tags, String timePath,
-			List<RecordColumn> columns, Instant start, Instant end, boolean open) {
-		public Series { tags = Map.copyOf(tags); columns = List.copyOf(columns); }
+			List<RecordColumn> columns, Instant start, Instant end, boolean open, List<Reference> references) {
+		public Series { tags = Map.copyOf(tags); columns = List.copyOf(columns); references = List.copyOf(references); }
+	}
+
+	/** Resolves a Record's ReferenceElement to the element it references; fails with {@link IllegalArgumentException}. */
+	@FunctionalInterface
+	public interface Resolver {
+		SubmodelElement resolve(Reference reference);
 	}
 
 	private TimeSeriesProjection() { }
@@ -82,8 +90,11 @@ public final class TimeSeriesProjection {
 				&& (Aas.hasSemantic(element, SERIES) || semanticOrSupplemental(element, IDTA_TIME_SERIES));
 	}
 
-	/** Projects a segment of {@code series}; {@code segments} is the Segments collection between them. */
-	public static Series project(SubmodelElement series, SubmodelElement segments, SubmodelElement segment) {
+	/**
+	 * Projects a segment of {@code series}; {@code segments} is the Segments collection between them. The Record's
+	 * references are resolved through {@code resolver} and listed in {@link Series#references()}.
+	 */
+	public static Series project(SubmodelElement series, SubmodelElement segments, SubmodelElement segment, Resolver resolver) {
 		if (!isSeries(series)) throw error("the segment's container is not a TimeSeries (" + SERIES + ")");
 		if (!Aas.hasSemantic(segments, IDTA_SEGMENTS) || !Aas.children(series).contains(segments)
 				|| !Aas.children(segments).contains(segment))
@@ -93,6 +104,7 @@ public final class TimeSeriesProjection {
 
 		String timePath = null;
 		List<RecordColumn> columns = new ArrayList<>();
+		List<Reference> references = new ArrayList<>();
 		for (SubmodelElement child : Aas.children(record)) {
 			if (IDTA_TIMES.stream().anyMatch(time -> Aas.hasSemantic(child, time))) {
 				if (!Aas.hasSemantic(child, IDTA_UTC_TIME))
@@ -103,13 +115,11 @@ public final class TimeSeriesProjection {
 				timePath = child.getIdShort();
 				continue;
 			}
-			fields(child, "", columns);
+			if (child.getIdShort() == null || child.getIdShort().isBlank()) throw error("a Record field has no idShort");
+			entry(child, child.getIdShort(), columns, references, resolver);
 		}
 		if (timePath == null) throw error("the Record has no UtcTime");
 		if (columns.isEmpty()) throw error("the Record has no field");
-		Set<String> seen = new LinkedHashSet<>();
-		for (RecordColumn column : columns)
-			if (!seen.add(column.column())) throw error("Record column " + column.column() + " is declared twice");
 
 		SubmodelElement target = only(Aas.children(segment), INFLUX_TARGET, "InfluxDb2Target");
 		Map<String, String> tags = new LinkedHashMap<>();
@@ -130,7 +140,7 @@ public final class TimeSeriesProjection {
 		if (IN_PROGRESS.equals(state) && end != null) throw error("an InProgress segment has no EndTime");
 		return new Series(endpoint, value(only(Aas.children(target), BUCKET, "Bucket"), "Bucket"),
 				value(only(Aas.children(target), MEASUREMENT, "Measurement"), "Measurement"), tags, timePath, columns,
-				start, end, end == null && !COMPLETED.equals(state));
+				start, end, end == null && !COMPLETED.equals(state), references);
 	}
 
 	/** The value of an optional segment property; an empty value counts as not authored. */
@@ -149,23 +159,68 @@ public final class TimeSeriesProjection {
 		catch (DateTimeParseException invalid) { throw error("the segment's " + what + " is not an xs:dateTime with an offset: " + value); }
 	}
 
-	private static void fields(SubmodelElement element, String prefix, List<RecordColumn> columns) {
-		String path = prefix + element.getIdShort();
-		if (element instanceof SubmodelElementCollection) {
-			if (!Aas.hasSemantic(element, RECORD_GROUP)) throw error("Record group " + path + " is not a RecordGroup (" + RECORD_GROUP + ")");
-			for (SubmodelElement child : Aas.children(element)) fields(child, path + ".", columns);
+	/** A Record entry at {@code path}: a reference is resolved and then counts as the element it references. */
+	private static void entry(SubmodelElement element, String path, List<RecordColumn> columns, List<Reference> references,
+			Resolver resolver) {
+		if (element instanceof ReferenceElement reference) {
+			if (reference.getValue() == null) throw error("Record reference " + path + " references nothing");
+			references.add(reference.getValue());
+			SubmodelElement referenced;
+			try { referenced = resolver.resolve(reference.getValue()); }
+			catch (IllegalArgumentException unresolved) { throw error("Record reference " + path + ": " + unresolved.getMessage()); }
+			shape(referenced, path, columns, references, null);
 			return;
 		}
-		if (!(element instanceof Property property)) throw error("Record field " + path + " is a " + Aas.modelType(element) + ", not a Property");
-		List<Qualifier> declared = Aas.nonNull(property.getQualifiers()).stream()
-				.filter(qualifier -> qualifier.getSemanticId() != null && Aas.keys(qualifier.getSemanticId()).stream()
-						.anyMatch(key -> COLUMN.equals(key.getValue())))
-				.toList();
-		if (declared.size() != 1 || declared.get(0).getValue() == null || declared.get(0).getValue().isBlank())
-			throw error("Record field " + path + " needs exactly one Column (" + COLUMN + ")");
-		String valueType = Aas.xsd(property.getValueType());
-		if (InfluxValues.kind(valueType) == null) throw error("Record field " + path + " has unsupported valueType " + valueType);
-		columns.add(new RecordColumn(path, declared.get(0).getValue(), valueType));
+		shape(element, path, columns, references, resolver);
+	}
+
+	/**
+	 * The columns of an element at {@code path}: a Property is one, a collection's members follow by idShort, a list's
+	 * by index, an Operation's input, InOut and output variables by idShort. Inside a referenced element
+	 * ({@code resolver == null}) references do not chain.
+	 */
+	private static void shape(SubmodelElement element, String path, List<RecordColumn> columns, List<Reference> references,
+			Resolver resolver) {
+		switch (element) {
+			case Property property -> {
+				String valueType = Aas.xsd(property.getValueType());
+				if (InfluxValues.kind(valueType) == null) throw error("Record field " + path + " has unsupported valueType " + valueType);
+				columns.add(new RecordColumn(path, valueType));
+			}
+			case SubmodelElementCollection collection -> {
+				for (SubmodelElement child : Aas.children(collection))
+					member(member(child, path), path + "." + child.getIdShort(), columns, references, resolver);
+			}
+			case SubmodelElementList list -> {
+				List<SubmodelElement> members = Aas.children(list);
+				for (int i = 0; i < members.size(); i++) member(members.get(i), path + "[" + i + "]", columns, references, resolver);
+			}
+			case Operation operation -> {
+				Set<String> names = new LinkedHashSet<>();
+				for (var category : List.of(Aas.nonNull(operation.getInputVariables()), Aas.nonNull(operation.getInoutputVariables()),
+						Aas.nonNull(operation.getOutputVariables())))
+					for (OperationVariable variable : category) {
+						SubmodelElement value = member(variable.getValue(), path);
+						if (!names.add(value.getIdShort())) throw error("Operation " + path + " declares " + value.getIdShort() + " twice");
+						member(value, path + "." + value.getIdShort(), columns, references, resolver);
+					}
+			}
+			case ReferenceElement nested -> throw error("a referenced element holds a reference at " + path + "; references do not chain");
+			default -> throw error("Record field " + path + " is a " + Aas.modelType(element) + ", which has no InfluxDB form");
+		}
+	}
+
+	/** A member of a structure: resolved like a Record entry inline, as plain shape inside a referenced element. */
+	private static void member(SubmodelElement element, String path, List<RecordColumn> columns, List<Reference> references,
+			Resolver resolver) {
+		if (resolver == null) shape(element, path, columns, references, null);
+		else entry(element, path, columns, references, resolver);
+	}
+
+	private static SubmodelElement member(SubmodelElement element, String parent) {
+		if (element == null || element.getIdShort() == null || element.getIdShort().isBlank())
+			throw error("an element of " + parent + " has no idShort");
+		return element;
 	}
 
 	private static SubmodelElement only(List<SubmodelElement> children, String semantic, String what) {
