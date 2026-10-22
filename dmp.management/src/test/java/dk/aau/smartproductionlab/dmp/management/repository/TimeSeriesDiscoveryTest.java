@@ -124,6 +124,85 @@ class TimeSeriesDiscoveryTest {
 		}
 	}
 
+	@Test
+	void aCompletedSegmentCannotBeWritten() throws Exception {
+		try (var repository = fixture(segment(variables(), "Completed", "2026-10-20T06:00:00Z", "2026-10-20T14:00:00Z"))) {
+			DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
+			assertFalse(bundle.valid());
+			assertTrue(issues(bundle).contains("only an open segment can be written"), issues(bundle));
+		}
+	}
+
+	@Test
+	void aCompletedSegmentIsReadWithinItsPeriod() throws Exception {
+		try (var repository = new FakeAasRepository().put(segment(variables(), "Completed", "2026-10-20T06:00:00Z",
+				"2026-10-20T16:00:00+02:00")).put(data()).put(aimc(segmentRef(), "2", refProperty(DATA_ID, "Value")))) {
+			DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
+			assertTrue(bundle.valid(), issues(bundle));
+			var source = bundle.bundle().configuration().getDatasources().values().stream()
+					.filter(InfluxDb2DataSourceConfiguration.class::isInstance).map(InfluxDb2DataSourceConfiguration.class::cast)
+					.findFirst().orElseThrow();
+			assertEquals(java.time.Instant.parse("2026-10-20T06:00:00Z"), source.getStart());
+			assertEquals(java.time.Instant.parse("2026-10-20T14:00:00Z"), source.getEnd());
+		}
+	}
+
+	@Test
+	void anOpenSegmentWithAStartTimeRejectsEarlierRowsAtRuntime() throws Exception {
+		try (var repository = fixture(segment(variables(), "InProgress", "2026-10-20T06:00:00Z", null))) {
+			DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
+			assertTrue(bundle.valid(), issues(bundle));
+			var sink = bundle.bundle().configuration().getDatasinks().values().stream()
+					.filter(InfluxDb2DataSinkConfiguration.class::isInstance).map(InfluxDb2DataSinkConfiguration.class::cast)
+					.findFirst().orElseThrow();
+			assertEquals(java.time.Instant.parse("2026-10-20T06:00:00Z"), sink.getStart());
+			assertTrue(sink.getConnectionURI().contains("start=RAW(2026-10-20T06:00:00Z)"), sink.getConnectionURI());
+		}
+	}
+
+	@Test
+	void contradictoryOrMalformedSegmentMetadataBlocksTheMapping() throws Exception {
+		for (String[] metadata : new String[][] {
+				{ "Paused", null, null, "must be InProgress or Completed" },
+				{ "InProgress", null, "2026-10-20T14:00:00Z", "an InProgress segment has no EndTime" },
+				{ "Completed", "2026-10-20T14:00:00Z", "2026-10-20T06:00:00Z", "EndTime must lie after its StartTime" },
+				{ "InProgress", "2026-10-20 06:00", null, "not an xs:dateTime with an offset" },
+				{ "InProgress", "2026-10-20T06:00:00", null, "not an xs:dateTime with an offset" } }) {
+			try (var repository = fixture(segment(variables(), metadata[0], metadata[1], metadata[2]))) {
+				DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
+				assertFalse(bundle.valid(), String.join(",", java.util.Arrays.asList(metadata)));
+				assertTrue(issues(bundle).contains(metadata[3]), issues(bundle));
+			}
+		}
+	}
+
+	/** The fixture with its Live segment's State, StartTime and EndTime set ({@code null}: not authored). */
+	private static String segment(String variables, String state, String start, String end) {
+		var model = com.google.gson.JsonParser.parseString(variables).getAsJsonObject();
+		var live = child(child(child(child(model.getAsJsonArray("submodelElements"), "State").getAsJsonArray("value"),
+				"Station").getAsJsonArray("value"), "Segments").getAsJsonArray("value"), "Live").getAsJsonArray("value");
+		for (var element : live) {
+			var object = element.getAsJsonObject();
+			if ("State".equals(object.get("idShort").getAsString())) object.addProperty("value", state);
+		}
+		if (start != null) live.add(segmentTime("StartTime", start));
+		if (end != null) live.add(segmentTime("EndTime", end));
+		return model.toString();
+	}
+
+	private static com.google.gson.JsonObject child(com.google.gson.JsonArray children, String idShort) {
+		for (var element : children)
+			if (idShort.equals(element.getAsJsonObject().get("idShort").getAsString())) return element.getAsJsonObject();
+		throw new IllegalStateException("fixture has no " + idShort);
+	}
+
+	private static com.google.gson.JsonObject segmentTime(String idShort, String value) {
+		return com.google.gson.JsonParser.parseString("{\"modelType\":\"Property\",\"idShort\":\"" + idShort
+				+ "\",\"valueType\":\"xs:string\",\"value\":\"" + value + "\",\"semanticId\":{\"type\":\"ExternalReference\","
+				+ "\"keys\":[{\"type\":\"GlobalReference\",\"value\":\"https://admin-shell.io/idta/TimeSeries/Segment/" + idShort
+				+ "/1/1\"}]}}").getAsJsonObject();
+	}
+
 	private static FakeAasRepository fixture(String variables) throws IOException {
 		return new FakeAasRepository().put(variables).put(data()).put(aimc(refProperty(DATA_ID, "Value"), segmentRef()));
 	}

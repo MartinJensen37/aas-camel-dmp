@@ -38,7 +38,10 @@ class DmpInfluxDb2ComponentTest {
 			new RecordColumn("Position.X", "Position.X", "xs:double"),
 			new RecordColumn("Ready", "Ready", "xs:boolean"));
 	private static final String URI_ = DmpInfluxDb2Component.uri("station_state", "ap2030", "Time",
-			Map.of("asset", "imaDispensing"), COLUMNS);
+			Map.of("asset", "imaDispensing"), COLUMNS, null, null);
+	/** A completed segment: 2026-10-20, 06:00 to 14:00 UTC. */
+	private static final String BATCH = DmpInfluxDb2Component.uri("station_state", "ap2030", "Time",
+			Map.of("asset", "imaDispensing"), COLUMNS, Instant.parse("2026-10-20T06:00:00Z"), Instant.parse("2026-10-20T14:00:00Z"));
 
 	private final List<Write> writes = new CopyOnWriteArrayList<>();
 	private final List<String> queries = new CopyOnWriteArrayList<>();
@@ -157,6 +160,22 @@ class DmpInfluxDb2ComponentTest {
 		assertTrue(query.contains("r[\"asset\"] == \"imaDispensing\""), query);
 		assertTrue(query.contains("r._field == \"count\" or"), query);
 		assertTrue(query.contains("last()"), query);
+	}
+
+	@Test
+	void aSegmentsPeriodBoundsTheReadInsteadOfTheLookback() {
+		answer = table("string", "PackMLState", "IDLE", "2026-10-20T13:59:00Z");
+		assertEquals("IDLE", ((Map<?, ?>) context.createConsumerTemplate().receiveBody(BATCH, 1000)).get("PackMLState"));
+		String query = queries.get(0);
+		assertTrue(query.contains("range(start: 2026-10-20T06:00:00Z, stop: 2026-10-20T14:00:00.000000001Z)"), query);
+	}
+
+	@Test
+	void aRowOutsideTheSegmentsPeriodIsRejected() {
+		CamelExecutionException thrown = assertThrows(CamelExecutionException.class, () -> template.requestBody(BATCH,
+				Map.of("PackMLState", "IDLE", "Time", "2026-10-20T05:00:00Z")));
+		assertEquals("INFLUX_ROW_INVALID", assertInstanceOf(ConnectorInvocationException.class, thrown.getCause()).getConnectorCode());
+		assertTrue(writes.isEmpty());
 	}
 
 	@Test

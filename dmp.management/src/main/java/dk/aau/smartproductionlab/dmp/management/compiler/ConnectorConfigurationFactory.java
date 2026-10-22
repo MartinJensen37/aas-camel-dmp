@@ -1157,8 +1157,12 @@ public final class ConnectorConfigurationFactory {
 		String path=endpointPath(mapping,"Sinks",position);
 		if(!seriesOnConfiguredInflux(target,mapping,path,runtime,issues))return null;
 		TimeSeriesProjection.Series series=target.projection();
+		if(!series.open()) {
+			issue(issues,mapping,path,"the segment is Completed or has an EndTime; only an open segment can be written");return null;
+		}
 		InfluxDb2DataSinkConfiguration sink=new InfluxDb2DataSinkConfiguration(entityId(mapping,"sink",position),
 				series.measurement(),series.bucket(),series.timePath(),series.tags(),series.columns());
+		sink.setPeriod(series.start(),series.end());
 		sink.setSinkId(endpoint.id());
 		return sink;
 	}
@@ -1181,6 +1185,7 @@ public final class ConnectorConfigurationFactory {
 		URI influx=runtime.influx().url();
 		InfluxDb2DataSourceConfiguration source=new InfluxDb2DataSourceConfiguration(entityId(mapping,"source",position),
 				influx.getHost(),effectivePort(influx),series.measurement(),series.bucket(),series.timePath(),series.tags(),series.columns());
+		source.setPeriod(series.start(),series.end());
 		source.setSourceId(endpoint.id());
 		source.setPollingIntervalMs(interval.getAsLong());
 		return hasIssue(issues,mapping)?null:source;

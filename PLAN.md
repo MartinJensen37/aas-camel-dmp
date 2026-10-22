@@ -87,7 +87,8 @@ or a wrong type fails the sink. `Time` is optional: a Lua value is the point's
 time, otherwise the evaluation time. Only UtcTime records can be written. A
 Sink writes one point per evaluation; a Source is a Read with
 `PollingInterval` returning the latest row (`last()` over a lookback range).
-The Record never holds a current value.
+The Record never holds a current value. The segment's StartTime/EndTime/State
+bound reads and gate writes (implemented 2026-10-22, SPEC §5.5).
 
 **Logging.** Only what is authored: `Log` series written by ordinary sinks or
 ResponseSinks. aas-model generates one typed series per Operation (Time,

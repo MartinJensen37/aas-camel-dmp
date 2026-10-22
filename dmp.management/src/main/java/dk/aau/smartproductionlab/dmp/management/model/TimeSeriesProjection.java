@@ -3,6 +3,9 @@
 package dk.aau.smartproductionlab.dmp.management.model;
 
 import java.net.URI;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -35,6 +38,12 @@ public final class TimeSeriesProjection {
 	public static final String IDTA_LINKED_SEGMENT = "https://admin-shell.io/idta/TimeSeries/Segments/LinkedSegment/1/1";
 	public static final String IDTA_ENDPOINT = "https://admin-shell.io/idta/TimeSeries/Endpoint/1/1";
 	public static final String IDTA_UTC_TIME = "https://admin-shell.io/idta/TimeSeries/UtcTime/1/1";
+	public static final String IDTA_START_TIME = "https://admin-shell.io/idta/TimeSeries/Segment/StartTime/1/1";
+	public static final String IDTA_END_TIME = "https://admin-shell.io/idta/TimeSeries/Segment/EndTime/1/1";
+	public static final String IDTA_STATE = "https://admin-shell.io/idta/TimeSeries/Segment/State/1/1";
+	/** The IDTA segment states: a running segment, and one whose period is over. */
+	public static final String IN_PROGRESS = "InProgress";
+	public static final String COMPLETED = "Completed";
 	/** Time semantics a row can carry; only UtcTime places a point on InfluxDB's absolute time axis. */
 	static final Set<String> IDTA_TIMES = Set.of(IDTA_UTC_TIME, "https://admin-shell.io/idta/TimeSeries/TaiTime/1/1",
 			"https://admin-shell.io/idta/TimeSeries/RelativePointInTime/1/1",
@@ -50,9 +59,13 @@ public final class TimeSeriesProjection {
 	public static final String TAGS = BASE + "/timeseries/InfluxDb2Target/Tags/1/0";
 	public static final String TAG = BASE + "/timeseries/InfluxDb2Target/Tag/1/0";
 
-	/** What one LinkedSegment writes and reads: one point per row of its series' Record. */
+	/**
+	 * What one LinkedSegment writes and reads: one point per row of its series' Record. {@code start} and {@code end}
+	 * are the segment's authored period ({@code null} when not authored); a segment is open for writes unless it is
+	 * {@code Completed} or has an end.
+	 */
 	public record Series(URI endpoint, String bucket, String measurement, Map<String, String> tags, String timePath,
-			List<RecordColumn> columns) {
+			List<RecordColumn> columns, Instant start, Instant end, boolean open) {
 		public Series { tags = Map.copyOf(tags); columns = List.copyOf(columns); }
 	}
 
@@ -107,8 +120,33 @@ public final class TimeSeriesProjection {
 		URI endpoint;
 		try { endpoint = URI.create(value(only(Aas.children(segment), IDTA_ENDPOINT, "Endpoint"), "Endpoint")); }
 		catch (IllegalArgumentException invalid) { throw error("the segment's Endpoint is not a URI"); }
+
+		Instant start = time(optional(Aas.children(segment), IDTA_START_TIME, "StartTime"), "StartTime");
+		Instant end = time(optional(Aas.children(segment), IDTA_END_TIME, "EndTime"), "EndTime");
+		if (start != null && end != null && !end.isAfter(start)) throw error("the segment's EndTime must lie after its StartTime");
+		String state = optional(Aas.children(segment), IDTA_STATE, "State");
+		if (state != null && !IN_PROGRESS.equals(state) && !COMPLETED.equals(state))
+			throw error("the segment's State must be " + IN_PROGRESS + " or " + COMPLETED + ", not " + state);
+		if (IN_PROGRESS.equals(state) && end != null) throw error("an InProgress segment has no EndTime");
 		return new Series(endpoint, value(only(Aas.children(target), BUCKET, "Bucket"), "Bucket"),
-				value(only(Aas.children(target), MEASUREMENT, "Measurement"), "Measurement"), tags, timePath, columns);
+				value(only(Aas.children(target), MEASUREMENT, "Measurement"), "Measurement"), tags, timePath, columns,
+				start, end, end == null && !COMPLETED.equals(state));
+	}
+
+	/** The value of an optional segment property; an empty value counts as not authored. */
+	private static String optional(List<SubmodelElement> children, String semantic, String what) {
+		List<SubmodelElement> matches = children.stream().filter(child -> Aas.hasSemantic(child, semantic)).toList();
+		if (matches.size() > 1) throw error(what + " is declared twice");
+		if (matches.isEmpty()) return null;
+		if (!(matches.get(0) instanceof Property property)) throw error(what + " must be a Property");
+		return property.getValue() == null || property.getValue().isBlank() ? null : property.getValue().strip();
+	}
+
+	/** A segment time in the format of a UtcTime series: an xs:dateTime with an offset. */
+	private static Instant time(String value, String what) {
+		if (value == null) return null;
+		try { return OffsetDateTime.parse(value).toInstant(); }
+		catch (DateTimeParseException invalid) { throw error("the segment's " + what + " is not an xs:dateTime with an offset: " + value); }
 	}
 
 	private static void fields(SubmodelElement element, String prefix, List<RecordColumn> columns) {

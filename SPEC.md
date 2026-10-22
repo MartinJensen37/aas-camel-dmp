@@ -453,6 +453,16 @@ submodels (a segment directly below the submodel) are not supported yet.
   different times; a field unchanged for longer than the lookback is absent.
   A series without a point has no row, so the source has no value yet. A
   stored value of another type than its field fails the read.
+- The segment's IDTA `StartTime`, `EndTime` and `State` are its period: times
+  are `xs:dateTime` with an offset, the State is `InProgress` or `Completed`
+  (absent or empty counts as not authored; anything else, an `EndTime` not
+  after the `StartTime`, or an `InProgress` segment with an `EndTime` blocks
+  the mapping). A Sink needs an open segment (not `Completed`, no `EndTime`)
+  and rejects a row whose time lies before the `StartTime`. A Source reads
+  within the period (`range(start:, stop:)`, `EndTime` included), falling back
+  to `DMP_INFLUX_LOOKBACK` only where there is no `StartTime`. The DMP never
+  maintains `RecordCount`, `LastUpdate` or `Duration`: that would be an AAS
+  write per point, and InfluxDB answers them itself.
 - Values are written as the field's valueType: strings (and date/time types)
   as strings, integer types as InfluxDB integers, `xs:double`/`xs:float`/
   `xs:decimal` as floats, `xs:boolean` as booleans.

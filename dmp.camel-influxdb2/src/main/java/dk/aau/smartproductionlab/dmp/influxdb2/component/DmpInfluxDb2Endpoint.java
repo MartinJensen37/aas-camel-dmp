@@ -36,10 +36,15 @@ public final class DmpInfluxDb2Endpoint extends InfluxDb2Endpoint {
 	private final String timePath;
 	private final Map<String, String> tags;
 	private final Map<String, RecordColumn> columns = new LinkedHashMap<>();
+	/** The segment's authored period; {@code null} where it has none. */
+	private final Instant start;
+	private final Instant stop;
 
 	DmpInfluxDb2Endpoint(String uri, DmpInfluxDb2Component component, String measurement, String bucket,
-			String timePath, Map<String, String> tags, List<RecordColumn> columns) {
+			String timePath, Map<String, String> tags, List<RecordColumn> columns, Instant start, Instant stop) {
 		super(uri, component);
+		this.start = start;
+		this.stop = stop;
 		this.measurement = measurement;
 		this.timePath = timePath;
 		this.tags = Map.copyOf(tags);
@@ -65,12 +70,14 @@ public final class DmpInfluxDb2Endpoint extends InfluxDb2Endpoint {
 	@Override public PollingConsumer createPollingConsumer() { return new DmpInfluxDb2PollingConsumer(this); }
 
 	/**
-	 * The Flux of the latest row: each Record field's last value within the lookback, in this segment's
-	 * measurement and tags (exposed for tests).
+	 * The Flux of the latest row: each Record field's last value in this segment's measurement and tags, within the
+	 * segment's period, or within the lookback where it has no StartTime (exposed for tests).
 	 */
 	String latestQuery(Duration lookback) {
+		String range = (start == null ? "start: -" + lookback.toSeconds() + "s" : "start: " + start)
+				+ (stop == null ? "" : ", stop: " + stop.plusNanos(1));
 		StringBuilder flux = new StringBuilder("from(bucket: ").append(InfluxValues.flux(getBucket())).append(")\n")
-				.append("  |> range(start: -").append(lookback.toSeconds()).append("s)\n")
+				.append("  |> range(").append(range).append(")\n")
 				.append("  |> filter(fn: (r) => r._measurement == ").append(InfluxValues.flux(measurement)).append(")\n");
 		tags.forEach((key, value) -> flux.append("  |> filter(fn: (r) => r[").append(InfluxValues.flux(key)).append("] == ")
 				.append(InfluxValues.flux(value)).append(")\n"));
@@ -145,6 +152,8 @@ public final class DmpInfluxDb2Endpoint extends InfluxDb2Endpoint {
 		Instant[] time = { now };
 		int fields = addFields(point, values, "", time);
 		if (fields == 0) throw rejected("the row sets no Record field");
+		if (start != null && time[0].isBefore(start)) throw rejected("the row's time " + time[0] + " lies before the segment's StartTime " + start);
+		if (stop != null && time[0].isAfter(stop)) throw rejected("the row's time " + time[0] + " lies after the segment's EndTime " + stop);
 		return point.time(time[0], WritePrecision.NS);
 	}
 

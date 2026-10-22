@@ -4,6 +4,7 @@ package dk.aau.smartproductionlab.dmp.influxdb2.component;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +19,8 @@ import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
 
 /**
- * {@code dmp-influxdb2:<measurement>?bucket=…&time=Time&tag.<key>=…&column.<path>=…&type.<path>=…}: the points of
- * one TimeSeries LinkedSegment. A write is one point per row, acknowledged by InfluxDB; a rejected or failed write
+ * {@code dmp-influxdb2:<measurement>?bucket=…&time=Time&tag.<key>=…&column.<path>=…&type.<path>=…[&start=…][&stop=…]}:
+ * the points of one TimeSeries LinkedSegment, within its authored period when it has one. A write is one point per row, acknowledged by InfluxDB; a rejected or failed write
  * raises. camel-influxdb2 writes through the asynchronous batching API, whose failures never reach the exchange,
  * and creates missing orgs and buckets, so the DMP ships this component (SPEC §9). All endpoints share the one
  * configured InfluxDB ({@link #configure}); its token never appears in a URI.
@@ -31,7 +32,7 @@ public final class DmpInfluxDb2Component extends InfluxDb2Component {
 
 	/** The endpoint URI of one segment. Values are passed RAW so Camel leaves them unchanged. */
 	public static String uri(String measurement, String bucket, String timePath, Map<String, String> tags,
-			List<RecordColumn> columns) {
+			List<RecordColumn> columns, Instant start, Instant stop) {
 		StringBuilder uri = new StringBuilder(SCHEME).append(':').append(encode(measurement))
 				.append("?bucket=RAW(").append(bucket).append(')')
 				.append("&time=RAW(").append(timePath).append(')');
@@ -40,6 +41,8 @@ public final class DmpInfluxDb2Component extends InfluxDb2Component {
 			uri.append("&column.").append(encode(column.path())).append("=RAW(").append(column.column()).append(')');
 			uri.append("&type.").append(encode(column.path())).append('=').append(column.valueType());
 		}
+		if (start != null) uri.append("&start=RAW(").append(start).append(')');
+		if (stop != null) uri.append("&stop=RAW(").append(stop).append(')');
 		return uri.toString();
 	}
 
@@ -71,7 +74,10 @@ public final class DmpInfluxDb2Component extends InfluxDb2Component {
 				.map(entry -> new RecordColumn(entry.getKey(), String.valueOf(entry.getValue()), String.valueOf(types.get(entry.getKey()))))
 				.toList();
 		if (columns.isEmpty()) throw new IllegalArgumentException("dmp-influxdb2 endpoint needs at least one Record field");
-		DmpInfluxDb2Endpoint endpoint = new DmpInfluxDb2Endpoint(uri, this, remaining, bucket, timePath, tags, columns);
+		Instant start = instant(getAndRemoveParameter(parameters, "start", String.class), "start");
+		Instant stop = instant(getAndRemoveParameter(parameters, "stop", String.class), "stop");
+		DmpInfluxDb2Endpoint endpoint = new DmpInfluxDb2Endpoint(uri, this, remaining, bucket, timePath, tags, columns,
+				start, stop);
 		setProperties(endpoint, parameters);
 		return endpoint;
 	}
@@ -82,6 +88,14 @@ public final class DmpInfluxDb2Component extends InfluxDb2Component {
 		setInfluxDBClient(null);
 		if (client != null) client.close();
 		super.doStop();
+	}
+
+	private static Instant instant(String value, String name) {
+		if (value == null || value.isBlank()) return null;
+		try { return Instant.parse(value); }
+		catch (java.time.format.DateTimeParseException invalid) {
+			throw new IllegalArgumentException("dmp-influxdb2 " + name + " must be an instant such as 2026-10-21T00:00:00Z");
+		}
 	}
 
 	private static String encode(String value) {

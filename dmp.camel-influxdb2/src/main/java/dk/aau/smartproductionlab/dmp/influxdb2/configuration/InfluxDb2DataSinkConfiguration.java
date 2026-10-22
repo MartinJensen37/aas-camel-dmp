@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: MIT */
 package dk.aau.smartproductionlab.dmp.influxdb2.configuration;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -16,6 +17,8 @@ public class InfluxDb2DataSinkConfiguration extends DataSinkConfiguration {
 	private String timePath;
 	private Map<String, String> tags;
 	private List<RecordColumn> columns;
+	private Instant start;
+	private Instant end;
 
 	public InfluxDb2DataSinkConfiguration() {}
 
@@ -33,9 +36,17 @@ public class InfluxDb2DataSinkConfiguration extends DataSinkConfiguration {
 	public String getBucket() { return bucket; }
 	public Map<String, String> getTags() { return tags; }
 	public List<RecordColumn> getColumns() { return columns; }
+	public Instant getStart() { return start; }
+	public Instant getEnd() { return end; }
+
+	/** The segment's authored period, either end {@code null} where it has none. */
+	public void setPeriod(Instant start, Instant end) {
+		this.start = start;
+		this.end = end;
+	}
 
 	@Override
 	public String getConnectionURI() {
-		return DmpInfluxDb2Component.uri(measurement, bucket, timePath, tags, columns);
+		return DmpInfluxDb2Component.uri(measurement, bucket, timePath, tags, columns, start, end);
 	}
 }
