@@ -115,6 +115,18 @@ class DmpInfluxDb2ComponentTest {
 	}
 
 	@Test
+	void rangesAndTextsAreWrittenFromTheirLuaShape() {
+		String uri = DmpInfluxDb2Component.uri("dosing", "ap2030", "Time", Map.of(), List.of(
+				new RecordColumn("Tolerance.min", "xs:double"), new RecordColumn("Tolerance.max", "xs:double"),
+				new RecordColumn("Batch.en", "xs:string"), new RecordColumn("Report", "xs:string")), null, null);
+		template.requestBody(uri, Map.of("Tolerance", Map.of("min", 0.5, "max", 1.5), "Batch", Map.of("en", "B-17"),
+				"Report", "/files/b17.pdf"));
+		String line = writes.get(0).body();
+		assertTrue(line.contains("Tolerance.min=0.5") && line.contains("Tolerance.max=1.5") && line.contains("Batch.en=\"B-17\"")
+				&& line.contains("Report=\"/files/b17.pdf\""), line);
+	}
+
+	@Test
 	void aFieldTheRowOmitsIsNotWritten() {
 		template.requestBody(URI_, Map.of("PackMLState", "IDLE"));
 		String line = writes.get(0).body();

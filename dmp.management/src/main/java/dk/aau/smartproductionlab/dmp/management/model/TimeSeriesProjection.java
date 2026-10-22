@@ -14,10 +14,14 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.digitaltwin.aas4j.v3.model.HasSemantics;
+import org.eclipse.digitaltwin.aas4j.v3.model.File;
 import org.eclipse.digitaltwin.aas4j.v3.model.Key;
+import org.eclipse.digitaltwin.aas4j.v3.model.LangStringTextType;
+import org.eclipse.digitaltwin.aas4j.v3.model.MultiLanguageProperty;
 import org.eclipse.digitaltwin.aas4j.v3.model.Operation;
 import org.eclipse.digitaltwin.aas4j.v3.model.OperationVariable;
 import org.eclipse.digitaltwin.aas4j.v3.model.Property;
+import org.eclipse.digitaltwin.aas4j.v3.model.Range;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.ReferenceElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
@@ -175,9 +179,10 @@ public final class TimeSeriesProjection {
 	}
 
 	/**
-	 * The columns of an element at {@code path}: a Property is one, a collection's members follow by idShort, a list's
-	 * by index, an Operation's input, InOut and output variables by idShort. Inside a referenced element
-	 * ({@code resolver == null}) references do not chain.
+	 * The columns of an element at {@code path}: a Property is one, a Range two ({@code .min}, {@code .max}), a File
+	 * one string (its path or URL), a MultiLanguageProperty one string per language its value declares
+	 * ({@code .en}); a collection's members follow by idShort, a list's by index, an Operation's input, InOut and
+	 * output variables by idShort. Inside a referenced element ({@code resolver == null}) references do not chain.
 	 */
 	private static void shape(SubmodelElement element, String path, List<RecordColumn> columns, List<Reference> references,
 			Resolver resolver) {
@@ -186,6 +191,24 @@ public final class TimeSeriesProjection {
 				String valueType = Aas.xsd(property.getValueType());
 				if (InfluxValues.kind(valueType) == null) throw error("Record field " + path + " has unsupported valueType " + valueType);
 				columns.add(new RecordColumn(path, valueType));
+			}
+			case Range range -> {
+				String valueType = Aas.xsd(range.getValueType());
+				if (InfluxValues.kind(valueType) == null) throw error("Record range " + path + " has unsupported valueType " + valueType);
+				columns.add(new RecordColumn(path + ".min", valueType));
+				columns.add(new RecordColumn(path + ".max", valueType));
+			}
+			case File file -> columns.add(new RecordColumn(path, "xs:string"));
+			case MultiLanguageProperty text -> {
+				Set<String> languages = new LinkedHashSet<>();
+				for (LangStringTextType entry : Aas.nonNull(text.getValue())) {
+					String language = entry.getLanguage();
+					if (language == null || language.isBlank() || language.contains(".") || language.contains("["))
+						throw error("Record text " + path + " declares an invalid language " + language);
+					if (!languages.add(language)) throw error("Record text " + path + " declares " + language + " twice");
+					columns.add(new RecordColumn(path + "." + language, "xs:string"));
+				}
+				if (languages.isEmpty()) throw error("Record text " + path + " declares no language; its value names them");
 			}
 			case SubmodelElementCollection collection -> {
 				for (SubmodelElement child : Aas.children(collection))

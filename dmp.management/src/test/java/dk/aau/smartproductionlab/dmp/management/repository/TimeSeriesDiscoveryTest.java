@@ -110,6 +110,40 @@ class TimeSeriesDiscoveryTest {
 	}
 
 	@Test
+	void rangesFilesAndTextsAreFields() throws Exception {
+		String extended = entries(variables(),
+				"{\"modelType\":\"Range\",\"idShort\":\"Tolerance\",\"valueType\":\"xs:double\"}",
+				"{\"modelType\":\"File\",\"idShort\":\"Report\",\"contentType\":\"application/pdf\"}",
+				"{\"modelType\":\"MultiLanguageProperty\",\"idShort\":\"Batch\",\"value\":["
+						+ "{\"language\":\"en\",\"text\":\"Batch name\"},{\"language\":\"de\",\"text\":\"Chargenname\"}]}",
+				"{\"modelType\":\"Property\",\"idShort\":\"Season\",\"valueType\":\"xs:gYear\"}");
+		try (var repository = fixture(extended)) {
+			DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
+			assertTrue(bundle.valid(), issues(bundle));
+			var sink = bundle.bundle().configuration().getDatasinks().values().stream()
+					.filter(InfluxDb2DataSinkConfiguration.class::isInstance).map(InfluxDb2DataSinkConfiguration.class::cast)
+					.findFirst().orElseThrow();
+			assertEquals(List.of(new RecordColumn("Tolerance.min", "xs:double"), new RecordColumn("Tolerance.max", "xs:double"),
+					new RecordColumn("Report", "xs:string"), new RecordColumn("Batch.en", "xs:string"),
+					new RecordColumn("Batch.de", "xs:string"), new RecordColumn("Season", "xs:gYear")),
+					sink.getColumns().subList(5, sink.getColumns().size()));
+		}
+	}
+
+	@Test
+	void aTextWithoutLanguagesOrABlobBlocksTheMapping() throws Exception {
+		for (String[] entry : new String[][] {
+				{ "{\"modelType\":\"MultiLanguageProperty\",\"idShort\":\"Batch\"}", "declares no language" },
+				{ "{\"modelType\":\"Blob\",\"idShort\":\"Image\",\"contentType\":\"image/png\"}", "has no InfluxDB form" } }) {
+			try (var repository = fixture(entries(variables(), entry[0]))) {
+				DesiredBundle bundle = only(discovery(repository, INFLUX).scan());
+				assertFalse(bundle.valid());
+				assertTrue(issues(bundle).contains(entry[1]), issues(bundle));
+			}
+		}
+	}
+
+	@Test
 	void aReferenceToAMissingElementBlocksTheMapping() throws Exception {
 		String broken = reference(variables(), "Ghost", PARAMETERS, "SubmodelElementCollection:Nowhere");
 		try (var repository = fixture(broken)) {
@@ -240,6 +274,15 @@ class TimeSeriesDiscoveryTest {
 				+ "\",\"semanticId\":{\"type\":\"ExternalReference\",\"keys\":[{\"type\":\"GlobalReference\",\"value\":"
 				+ "\"https://smartproductionlab.aau.dk/timeseries/RecordReference/1/0\"}]},"
 				+ "\"value\":{\"type\":\"ModelReference\",\"keys\":[" + keys + "]}}"));
+		return model.toString();
+	}
+
+	/** The fixture with further Record entries, given as AAS JSON. */
+	private static String entries(String variables, String... elements) {
+		var model = com.google.gson.JsonParser.parseString(variables).getAsJsonObject();
+		var record = child(child(child(child(model.getAsJsonArray("submodelElements"), "State").getAsJsonArray("value"),
+				"Station").getAsJsonArray("value"), "Metadata").getAsJsonArray("value"), "Record").getAsJsonArray("value");
+		for (String element : elements) record.add(com.google.gson.JsonParser.parseString(element));
 		return model.toString();
 	}
 

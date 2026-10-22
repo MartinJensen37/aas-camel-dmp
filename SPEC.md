@@ -431,9 +431,15 @@ submodels (a segment directly below the submodel) are not supported yet.
 
 - The Record is the row shape: one UtcTime (`xs:dateTime`; other time
   semantics block the mapping) and fields. A field's InfluxDB field is its
-  idShortPath below the Record: a Property is one field, an SMC's members
-  follow by idShort (`Position.x`), an SML's by index (`Waypoints[0].x`; never
-  by displayName), an Operation's input, InOut and output variables by idShort.
+  idShortPath below the Record: a Property is one field, a Range two
+  (`Tolerance.min`, `Tolerance.max`, of its valueType), a File one string (its
+  path or URL; the file stays where it is), a MultiLanguageProperty one string
+  per language its value declares (`Batch.en`; the declaration's texts are the
+  field's labels, and one without languages blocks the mapping). An SMC's
+  members follow by idShort (`Position.x`), an SML's by index
+  (`Waypoints[0].x`; never by displayName), an Operation's input, InOut and
+  output variables by idShort. Blobs, Entities, relationships, Capabilities and
+  events have no InfluxDB form and block the mapping.
   Renaming a field therefore starts a new InfluxDB field; its history stays
   under the old name.
 - A ReferenceElement in the Record (or in a group of it) counts exactly as if
@@ -476,7 +482,8 @@ submodels (a segment directly below the submodel) are not supported yet.
   to `DMP_INFLUX_LOOKBACK` only where there is no `StartTime`. The DMP never
   maintains `RecordCount`, `LastUpdate` or `Duration`: that would be an AAS
   write per point, and InfluxDB answers them itself.
-- Values are written as the field's valueType: strings (and date/time types)
+- Values are written as the field's valueType: strings (and date/time types,
+  including the Gregorian `xs:gYear` … `xs:gDay`)
   as strings, integer types as InfluxDB integers, `xs:double`/`xs:float`/
   `xs:decimal` as floats, `xs:boolean` as booleans.
 

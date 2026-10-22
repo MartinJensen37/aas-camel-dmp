@@ -23,7 +23,7 @@ public final class InfluxValues {
 		if (valueType == null) return null;
 		return switch (valueType) {
 			case "xs:string", "xs:normalizedString", "xs:token", "xs:anyURI", "xs:dateTime", "xs:date", "xs:time",
-					"xs:duration" -> Kind.STRING;
+					"xs:duration", "xs:gYear", "xs:gYearMonth", "xs:gMonth", "xs:gMonthDay", "xs:gDay" -> Kind.STRING;
 			case "xs:integer", "xs:long", "xs:int", "xs:short", "xs:byte", "xs:nonNegativeInteger", "xs:positiveInteger",
 					"xs:nonPositiveInteger", "xs:negativeInteger", "xs:unsignedLong", "xs:unsignedInt", "xs:unsignedShort",
 					"xs:unsignedByte" -> Kind.INTEGER;
