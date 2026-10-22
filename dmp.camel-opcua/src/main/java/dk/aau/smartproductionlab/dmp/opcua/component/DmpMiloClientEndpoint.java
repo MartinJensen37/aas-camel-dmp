@@ -18,11 +18,14 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
  * is a NodeId ({@code node}) or an AID browse path ({@code browsePath}, see
  * {@link OpcUaBrowsePaths}), resolved once per client session.
  */
-public class DmpMiloClientEndpoint extends MiloClientEndpoint {
+public class DmpMiloClientEndpoint extends MiloClientEndpoint implements org.apache.camel.MultipleConsumersSupport {
 	DmpMiloClientEndpoint(String uri, DmpMiloClientComponent component, String endpointUri,
 			MiloClientConnectionManager connectionManager) {
 		super(uri, component, endpointUri, connectionManager);
 	}
+
+	/** Each consumer has a subscription of its own, so mappings may observe the same node. */
+	@Override public boolean isMultipleConsumersSupported() { return true; }
 
 	@Override
 	public Producer createProducer() throws Exception {

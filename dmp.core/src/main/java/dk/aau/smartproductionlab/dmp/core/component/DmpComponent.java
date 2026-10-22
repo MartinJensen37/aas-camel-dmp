@@ -395,13 +395,8 @@ public class DmpComponent {
 				throw new IllegalStateException("managed route ID is already in use: " + routeId);
 			}
 		}
-		for (RouteDefinition definition : candidate.getPreparedRouteDefinitions()) {
-			Endpoint endpoint = camelContext.hasEndpoint(definition.getInput().getEndpointUri());
-			if (endpoint != null && camelContext.getRoutes().stream().anyMatch(route -> route.getEndpoint() == endpoint
-					&& (previous == null || !previous.remainingRouteIds.contains(route.getId())))) {
-				throw new IllegalStateException("managed consumer endpoint is already reserved");
-			}
-		}
+		// Routes of different bundles may consume the same endpoint: each route has a consumer of its own
+		// (its own subscription, listener or poll), and endpointOwners keeps a shared endpoint until its last owner goes.
 		for (var reservation : candidate.getRestInventory()) {
 			if (model().getRestDefinitions().stream().anyMatch(rest -> hasRestReservation(rest, reservation)
 					&& (previous == null || previous.remainingRestReservations.stream()

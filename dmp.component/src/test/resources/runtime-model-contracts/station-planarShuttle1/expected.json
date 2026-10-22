@@ -15,18 +15,17 @@
    ],
    "sinkIds": [
     "PackMLState",
-    "OccupationState",
-    "Live"
+    "OccupationState"
    ]
   },
   {
    "index": 1,
    "idShort": null,
    "sourceIds": [
-    "Uuid"
+    "StationState"
    ],
    "sinkIds": [
-    "Halt"
+    "Live"
    ]
   },
   {
@@ -36,7 +35,7 @@
     "Uuid"
    ],
    "sinkIds": [
-    "Occupy"
+    "Halt"
    ]
   },
   {
@@ -46,11 +45,21 @@
     "Uuid"
    ],
    "sinkIds": [
-    "Release"
+    "Occupy"
    ]
   },
   {
    "index": 4,
+   "idShort": null,
+   "sourceIds": [
+    "Uuid"
+   ],
+   "sinkIds": [
+    "Release"
+   ]
+  },
+  {
+   "index": 5,
    "idShort": null,
    "sourceIds": [
     "Uuid",
@@ -64,7 +73,7 @@
    ]
   },
   {
-   "index": 5,
+   "index": 6,
    "idShort": null,
    "sourceIds": [
     "Location"
@@ -74,7 +83,16 @@
     "Location_y",
     "Location_yaw",
     "PositionX",
-    "PositionY",
+    "PositionY"
+   ]
+  },
+  {
+   "index": 7,
+   "idShort": null,
+   "sourceIds": [
+    "Location"
+   ],
+   "sinkIds": [
     "Live"
    ]
   }

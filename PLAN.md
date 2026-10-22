@@ -131,9 +131,9 @@ web UI's TimeSeries plugin (TimeSeries SMCs, nested groups, and an
 nginx query proxy that keeps the token server-side, `INFLUXDB_PROXY_*`).
 
 **Stations (2026-10-22):** every operational station records
-`State/Station` (`station_state`) as the last sink of the mapping keeping the
-AAS Properties current (a consumer endpoint has one owner, so a second mapping
-on the same node cannot install), and `Log/Occupy`, `Log/Release`
+`State/Station` (`station_state`) through a history mapping of its own beside
+the one keeping the AAS Properties current (each mapping has its own
+consumers, SPEC §6), and `Log/Occupy`, `Log/Release`
 (`operation_<skill>`, also failed calls) through the skills' response
 mappings; dispensing records `Measurements/Weight`, the Planar shuttles
 `Measurements/Location`, the same way. Verified on the e2e stack. Halt answers nothing and has no log; station-specific

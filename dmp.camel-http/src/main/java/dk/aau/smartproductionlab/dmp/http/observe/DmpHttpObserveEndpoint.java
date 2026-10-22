@@ -10,7 +10,7 @@ import org.apache.camel.Producer;
 import org.apache.camel.support.DefaultEndpoint;
 
 /** One observed HTTP resource; consume-only. */
-final class DmpHttpObserveEndpoint extends DefaultEndpoint {
+final class DmpHttpObserveEndpoint extends DefaultEndpoint implements org.apache.camel.MultipleConsumersSupport {
 	private final DmpHttpObserveComponent.Subprotocol subprotocol;
 	private final URI url;
 	private final String contentType;
@@ -28,6 +28,9 @@ final class DmpHttpObserveEndpoint extends DefaultEndpoint {
 		this.password = password;
 		this.headers = java.util.Map.copyOf(headers);
 	}
+
+	/** Each consumer holds a request or stream of its own, so mappings may observe the same resource. */
+	@Override public boolean isMultipleConsumersSupported() { return true; }
 
 	@Override public Producer createProducer() {
 		throw new UnsupportedOperationException("dmp-http-observe endpoints only observe");

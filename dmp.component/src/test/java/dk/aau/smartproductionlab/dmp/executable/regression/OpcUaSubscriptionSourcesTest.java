@@ -128,6 +128,26 @@ class OpcUaSubscriptionSourcesTest {
 	}
 
 	@Test
+	void mappingsObservingOneVariableEachGetEveryChange() throws Exception {
+		List<RoutesConfiguration> bundles = compile(false, "function aimc_main(sources) return { Out = sources.Pressure + 1000 } end",
+				"function aimc_main(sources) return { Out = sources.Pressure + 2000 } end");
+		assertEquals(2, bundles.size());
+		var first = runtime.installBundle("first", bundles.get(0));
+		runtime.installBundle("second", bundles.get(1));
+		await().atMost(Duration.ofSeconds(8)).until(() -> writes.stream().anyMatch(body -> body.contains("1041"))
+				&& writes.stream().anyMatch(body -> body.contains("2041")));
+		device.level(42);
+		await().atMost(Duration.ofSeconds(8)).until(() -> writes.stream().anyMatch(body -> body.contains("1042"))
+				&& writes.stream().anyMatch(body -> body.contains("2042")));
+		// Removing one mapping leaves the other's subscription in place.
+		runtime.removeBundle(first);
+		device.level(43);
+		await().atMost(Duration.ofSeconds(8)).until(() -> writes.stream().anyMatch(body -> body.contains("2043")));
+		Thread.sleep(500);
+		assertTrue(writes.stream().noneMatch(body -> body.contains("1043")), String.valueOf(writes));
+	}
+
+	@Test
 	void filteredEventsWriteTheirSelectedFields() throws Exception {
 		runtime.installBundle("events", compile(true,
 				"function aimc_main(sources) return { Out = sources.Pressure.ToState .. \":\" .. sources.Pressure.Message } end"));
@@ -201,6 +221,11 @@ class OpcUaSubscriptionSourcesTest {
 	// ---- models: the opcua-read fixture with Pressure observed, or replaced by an event affordance ----
 
 	private RoutesConfiguration compile(boolean events, String lua) throws Exception {
+		return compile(events, new String[] { lua }).get(0);
+	}
+
+	/** One AIMC with a mapping per Lua script, all on the same source; one bundle each. */
+	private List<RoutesConfiguration> compile(boolean events, String... luas) throws Exception {
 		JsonObject aid = json(resource("opcua-read/aid.json")).getAsJsonObject();
 		JsonObject opcua = child(aid, "interface_opcua");
 		child(child(opcua, "EndpointMetadata"), "base").addProperty("value", "opc.tcp://127.0.0.1:" + devicePort);
@@ -219,15 +244,21 @@ class OpcUaSubscriptionSourcesTest {
 			sourcePath = "properties";
 		}
 		JsonObject aimc = json(resource("opcua-read/aimc.json")).getAsJsonObject();
-		JsonObject mapping = child(aimc, "MappingConfigurations").getAsJsonArray("value").get(0).getAsJsonObject();
-		child(mapping, "Transformation").addProperty("value",
-				Base64.getEncoder().encodeToString(lua.getBytes(StandardCharsets.UTF_8)));
+		JsonArray mappings = child(aimc, "MappingConfigurations").getAsJsonArray("value");
+		JsonObject mapping = mappings.get(0).getAsJsonObject();
 		JsonObject source = child(mapping, "Sources").getAsJsonArray("value").get(0).getAsJsonObject();
 		JsonArray keys = child(source, "Source").getAsJsonObject("value").getAsJsonArray("keys");
 		keys.get(3).getAsJsonObject().addProperty("value", sourcePath);
 		keys.get(4).getAsJsonObject().addProperty("value", events ? "Transition" : "Pressure");
 		if (!events) source.getAsJsonArray("value").add(json("{\"modelType\":\"Property\",\"idShort\":\"PollingInterval\","
 				+ "\"valueType\":\"xs:double\",\"value\":\"0.05\"}"));
+		while (mappings.size() > 0) mappings.remove(0);
+		for (String lua : luas) {
+			JsonObject copy = mapping.deepCopy();
+			child(copy, "Transformation").addProperty("value",
+					Base64.getEncoder().encodeToString(lua.getBytes(StandardCharsets.UTF_8)));
+			mappings.add(copy);
+		}
 
 		if (repository != null) repository.close();
 		repository = new FakeAasRepository();
@@ -242,7 +273,7 @@ class OpcUaSubscriptionSourcesTest {
 		var compiled = new ConnectorConfigurationFactory().createBundles(plan.value(),
 				new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://127.0.0.1:" + aas.getAddress().getPort())));
 		assertTrue(compiled.issues().isEmpty(), String.valueOf(compiled.issues()));
-		return compiled.bundles().get(0).configuration();
+		return compiled.bundles().stream().map(bundle -> bundle.configuration()).toList();
 	}
 
 	/**

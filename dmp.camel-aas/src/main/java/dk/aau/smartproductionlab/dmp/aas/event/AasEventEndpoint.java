@@ -16,7 +16,7 @@ import org.apache.camel.support.DefaultConsumer;
 import org.apache.camel.support.DefaultEndpoint;
 
 /** Consumer-only endpoint for one repository element; events are delivered in order on one thread. */
-final class AasEventEndpoint extends DefaultEndpoint {
+final class AasEventEndpoint extends DefaultEndpoint implements org.apache.camel.MultipleConsumersSupport {
 	private final AasEventComponent component;
 	private final String submodelId;
 	private final String idShortPath;
@@ -27,6 +27,9 @@ final class AasEventEndpoint extends DefaultEndpoint {
 		this.submodelId = submodelId;
 		this.idShortPath = idShortPath;
 	}
+
+	/** Each consumer is a listener of its own on the hub, so mappings may follow the same element. */
+	@Override public boolean isMultipleConsumersSupported() { return true; }
 
 	@Override public Producer createProducer() {
 		throw new UnsupportedOperationException("aas-event endpoints only consume repository events");

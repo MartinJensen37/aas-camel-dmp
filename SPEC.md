@@ -505,6 +505,12 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
   delivered at least once**. Without `TriggerSourceIds` every source triggers;
   with it, only the listed ones do and the rest refresh the cache only.
 - Lua runs once per evaluation against an immutable snapshot of the cache.
+- Every mapping has consumers and producers of its own. Mappings may observe
+  the same affordance or AAS element: each gets its own monitored item,
+  subscription, listener or poll at its own authored interval, and never sees
+  another mapping's samples. Connections are shared where the connector allows
+  it (one OPC UA session per server configuration); an MQTT client is per
+  mapping. Only an Operation is exclusive: one mapping answers it.
 - Sinks are dispatched sequentially in authored order; each starts from restored
   headers and body. A SinkId missing from the Lua result is an error for that
   sink; it is not silently skipped.
