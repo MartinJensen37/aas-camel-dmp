@@ -1,4 +1,4 @@
-# aas-camel-dmp — Plan
+# AAS-Camel-DMP — Plan
 
 Companion to [SPEC.md](SPEC.md). This file holds the current state and the open
 work only; finished work is described in SPEC and the git history. The previous

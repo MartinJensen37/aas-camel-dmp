@@ -3,18 +3,18 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.eclipse.digitaltwin.basyx</groupId>
+		<groupId>dk.aau.smartproductionlab</groupId>
 		<artifactId>dmp.parent</artifactId>
 		<version>${revision}</version>
 	</parent>
 	<artifactId>dmp.component</artifactId>
-	<name>DMP Component</name>
-	<description>DMP standalone component</description>
+	<name>AAS-Camel-DMP Component</name>
+	<description>The DMP executable: settings, health and management status</description>
 
 	<packaging>jar</packaging>
 
 	<properties>
-		<basyx.dmp.executable>org.eclipse.digitaltwin.basyx.dmp.component.DmpExecutable</basyx.dmp.executable>
+		<dmp.executable>dk.aau.smartproductionlab.dmp.component.DmpExecutable</dmp.executable>
 		<!-- caller may override with -DargLine=... (e.g. test health-port offsets) -->
 		<argLine></argLine>
 	</properties>
@@ -32,7 +32,7 @@
 						<manifest>
 							<addClasspath>true</addClasspath>
 							<classpathPrefix>lib/</classpathPrefix>
-							<mainClass>${basyx.dmp.executable}</mainClass>
+							<mainClass>${dmp.executable}</mainClass>
 						</manifest>
 					</archive>
 
@@ -59,17 +59,17 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.core</artifactId>
 			<version>${revision}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.management</artifactId>
 			<version>${revision}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.management</artifactId>
 			<version>${revision}</version>
 			<type>test-jar</type>
@@ -82,47 +82,47 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-paho</artifactId>
 			<version>${revision}</version>
 		</dependency>
 
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-aas</artifactId>
 			<version>${revision}</version>
 		</dependency>
 
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-lua</artifactId>
 			<version>${revision}</version>
 		</dependency>
 
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-http</artifactId>
 			<version>${revision}</version>
 		</dependency>
 
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-opcua</artifactId>
 			<version>${revision}</version>
 		</dependency>
 
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-plc4x</artifactId>
 			<version>${revision}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-snmp</artifactId>
 			<version>${revision}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-influxdb2</artifactId>
 			<version>${revision}</version>
 		</dependency>
@@ -133,7 +133,7 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-paho</artifactId>
 			<version>${revision}</version>
 			<type>test-jar</type>
@@ -141,14 +141,14 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-plc4x</artifactId>
 			<version>${revision}</version>
 			<type>test-jar</type>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-snmp</artifactId>
 			<version>${revision}</version>
 			<type>test-jar</type>

@@ -4,13 +4,13 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.eclipse.digitaltwin.basyx</groupId>
+		<groupId>dk.aau.smartproductionlab</groupId>
 		<artifactId>dmp.parent</artifactId>
 		<version>${revision}</version>
 	</parent>
 	<artifactId>dmp.camel-influxdb2</artifactId>
-	<name>Camel InfluxDB 2</name>
-	<description>TimeSeries LinkedSegments on InfluxDB 2 using camel</description>
+	<name>AAS-Camel-DMP Camel InfluxDB 2</name>
+	<description>TimeSeries LinkedSegments on InfluxDB 2: acknowledged point writes and latest-row reads</description>
 	<packaging>jar</packaging>
 	<dependencies>
 		<!-- Logging backend for tests only; dmp.component chooses the runtime backend. -->
@@ -20,7 +20,7 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.core</artifactId>
 			<version>${revision}</version>
 		</dependency>

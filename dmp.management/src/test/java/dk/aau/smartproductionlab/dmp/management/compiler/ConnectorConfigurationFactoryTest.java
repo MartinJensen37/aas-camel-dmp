@@ -1,0 +1,1068 @@
+package dk.aau.smartproductionlab.dmp.management.compiler;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.digitaltwin.aas4j.v3.model.AasSubmodelElements;
+import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultFile;
+import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultSubmodelElementList;
+import dk.aau.smartproductionlab.dmp.aas.model.Aas;
+
+import dk.aau.smartproductionlab.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteConfiguration;
+import dk.aau.smartproductionlab.dmp.aas.configuration.AASDatasinkConfiguration;
+import dk.aau.smartproductionlab.dmp.aas.configuration.AASPollingDataSourceConfiguration;
+import dk.aau.smartproductionlab.dmp.aas.operation.ProtocolBridgeRouteConfiguration;
+import dk.aau.smartproductionlab.dmp.http.configuration.HttpDataSinkConfiguration;
+import dk.aau.smartproductionlab.dmp.http.configuration.HttpObserveDataSourceConfiguration;
+import dk.aau.smartproductionlab.dmp.snmp.configuration.SnmpDataSinkConfiguration;
+import dk.aau.smartproductionlab.dmp.snmp.configuration.SnmpDataSourceConfiguration;
+import dk.aau.smartproductionlab.dmp.http.configuration.HttpPollingDataSourceConfiguration;
+import dk.aau.smartproductionlab.dmp.lua.configuration.LuaTransformerConfiguration;
+import dk.aau.smartproductionlab.dmp.paho.configuration.MqttDataSinkConfiguration;
+import dk.aau.smartproductionlab.dmp.paho.configuration.MqttDataSourceConfiguration;
+import dk.aau.smartproductionlab.dmp.opcua.configuration.OpcuaDataSinkConfiguration;
+import dk.aau.smartproductionlab.dmp.opcua.configuration.OpcuaDataSourceConfiguration;
+import dk.aau.smartproductionlab.dmp.plc4x.configuration.Plc4xDataSinkConfiguration;
+import dk.aau.smartproductionlab.dmp.plc4x.configuration.Plc4xDataSourceConfiguration;
+import dk.aau.smartproductionlab.dmp.management.compiler.MappingPlanCompiler.AidTarget;
+import dk.aau.smartproductionlab.dmp.management.compiler.MappingPlanCompiler.DirectTarget;
+import dk.aau.smartproductionlab.dmp.management.compiler.MappingPlanCompiler.EndpointPlan;
+import dk.aau.smartproductionlab.dmp.management.compiler.MappingPlanCompiler.MappingPlan;
+import dk.aau.smartproductionlab.dmp.management.compiler.MappingPlanCompiler.Plan;
+import dk.aau.smartproductionlab.dmp.management.model.WireModel;
+import org.eclipse.digitaltwin.aas4j.v3.model.OperationVariable;
+import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
+import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
+import dk.aau.smartproductionlab.dmp.management.model.AasFixtures;
+import dk.aau.smartproductionlab.dmp.management.model.WireModel.Presence;
+import dk.aau.smartproductionlab.dmp.management.repository.AasReferenceResolver;
+import org.junit.jupiter.api.Test;
+
+class ConnectorConfigurationFactoryTest {
+	private final ConnectorConfigurationFactory factory = new ConnectorConfigurationFactory();
+
+	@Test
+	void projectsHttpEndpointsAndManagedLuaWithoutPuttingScriptInUri() {
+		MappingPlan plan = mapping(WireModel.ProtocolFamily.HTTP, true);
+		var result = factory.create(new Plan(List.of(plan)), "owner/mapping-1");
+
+		assertTrue(result.issues().isEmpty());
+		var source = assertInstanceOf(HttpPollingDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next());
+		var sink = assertInstanceOf(HttpDataSinkConfiguration.class,
+				result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("Source.authored", source.getSourceId());
+		assertEquals("Sink.authored", sink.getSinkId());
+		assertEquals(List.of(source.getUniqueId()), result.configuration().getRoutes().get(0).getDatasources());
+		var route = assertInstanceOf(ExecutionPolicyRouteConfiguration.class, result.configuration().getRoutes().get(0));
+		assertEquals("owner/mapping-1:3", route.getRouteId());
+		var transformer = assertInstanceOf(LuaTransformerConfiguration.class,
+				result.configuration().getTransformers().values().iterator().next());
+		assertTrue(transformer.getConnectionURI().contains("managed:"));
+		assertFalse(transformer.getConnectionURI().contains("aimc_main"));
+		assertTrue(transformer.isKeyedInput());
+	}
+
+	@Test
+	void emitsOneStableOwnedConfigurationPerMapping() {
+		var first=mappingPlan("map-one",0,
+				new EndpointPlan("source-one",reference(),target(WireModel.ProtocolFamily.HTTP,"GET",Presence.absent())),
+				new EndpointPlan("sink-one",reference(),target(WireModel.ProtocolFamily.HTTP,"POST",Presence.absent())));
+		var second=mappingPlan("map-two",1,
+				new EndpointPlan("source-two",reference(),target(WireModel.ProtocolFamily.HTTP,"GET",Presence.absent())),
+				new EndpointPlan("sink-two",reference(),target(WireModel.ProtocolFamily.HTTP,"POST",Presence.absent())));
+		var plan=new Plan("urn:owner/submodels/AIMC",List.of(first,second));
+		var bundles=factory.createBundles(plan,null);
+		assertTrue(bundles.issues().isEmpty());
+		assertEquals(2,bundles.bundles().size());
+		assertEquals("map-one",bundles.bundles().get(0).mappingIdentity());
+		assertEquals("map-two",bundles.bundles().get(1).mappingIdentity());
+		assertFalse(bundles.bundles().get(0).bundleId().equals(bundles.bundles().get(1).bundleId()));
+		for(var bundle:bundles.bundles()) {
+			assertEquals(1,bundle.configuration().getRoutes().size());
+			assertEquals(1,bundle.configuration().getDatasources().size());
+			assertEquals(1,bundle.configuration().getDatasinks().size());
+		}
+	}
+
+	@Test
+	void reportsUnsupportedFamilyWithPathAndMappingIdentity() {
+		var result = factory.create(new Plan(List.of(mapping(WireModel.ProtocolFamily.BACNET, false))), "route");
+		assertEquals(2, result.issues().size());
+		assertTrue(result.issues().stream().allMatch(issue -> issue.mappingId().equals("logical-map")));
+		assertTrue(result.issues().stream().allMatch(issue -> issue.path().contains("Sources") || issue.path().contains("Sinks")));
+		assertTrue(result.configuration().getRoutes().isEmpty());
+	}
+
+	@Test
+	void projectsMqttBaseRelativeTopicsAndDeclaredQualityTerms() {
+		// AID 1.2 Annex B: an href resolves against the base (RFC 3986), so the base path ends with "/".
+		var endpointMetadata = AasFixtures.collection("EndpointMetadata", property("base", "mqtt://broker.example:1883/base/"));
+		var sourceForm = mqttForm("state", "0", null);
+		var sinkForm = mqttForm("command", "1", "true");
+		var sourceTarget = mqttTarget(endpointMetadata, sourceForm, "State");
+		var sinkTarget = mqttTarget(endpointMetadata, sinkForm, "Command");
+		var source = new EndpointPlan("State", reference(), sourceTarget);
+		var sink = new EndpointPlan("Command", reference(), sinkTarget);
+		var mapping = new MappingPlan("Fan", 0, List.of(source), List.of(sink), Presence.absent(),
+				Presence.absent(), Presence.absent(), Presence.absent(), Presence.absent(), Presence.absent(), List.of());
+		var result = factory.create(new Plan("urn:owner/submodels/AIMC", List.of(mapping)), "unit");
+
+		assertTrue(result.issues().isEmpty());
+		var dataSource = assertInstanceOf(MqttDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next());
+		var dataSink = assertInstanceOf(MqttDataSinkConfiguration.class,
+				result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("broker.example", dataSource.getServerUrl());
+		assertEquals(1883, dataSource.getServerPort());
+		assertEquals("base/state", dataSource.getTopic());
+		assertEquals(0, dataSource.getQos());
+		assertEquals("base/command", dataSink.getTopic());
+		assertEquals(1, dataSink.getQos());
+		assertEquals(true, dataSink.getRetained());
+		assertTrue(dataSource.getConnectionURI().contains("clientId=dmp-"));
+	}
+
+	@Test
+	void resolvesRelativeHttpFormsAgainstTheirAuthoredEndpointBase() {
+		var source=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
+				"http://api.example:8080/api/v1/","temperature",Map.of(),"GET"));
+		var sink=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,
+				"http://api.example:8080/api/v1/","alarm",Map.of(),"POST"));
+		var result=factory.create(new Plan(List.of(mappingWithEndpoints(source,sink))),"route");
+		assertTrue(result.issues().isEmpty());
+		var httpSource=assertInstanceOf(HttpPollingDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next());
+		assertEquals("http://api.example:8080/api/v1/temperature",httpSource.getServerUrl());
+		var httpSink=assertInstanceOf(HttpDataSinkConfiguration.class,
+				result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("api.example",httpSink.getServerUrl());
+		assertEquals("/api/v1/alarm",httpSink.getPath());
+		assertEquals("POST",httpSink.getMethod());
+		assertTrue(httpSink.getConnectionURI().contains("httpMethod=POST"));
+
+		// RFC 3986: a path-absolute href replaces the base path; a write without htv_methodName is a PUT (WoT default).
+		var absolute=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
+				"http://api.example:8080/api/v1/","/temperature",Map.of(),null));
+		var put=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,
+				"http://api.example:8080/api/v1/","alarm",Map.of(),null));
+		var resolved=factory.create(new Plan(List.of(mappingWithEndpoints(absolute,put))),"route");
+		assertTrue(resolved.issues().isEmpty(),resolved.issues().toString());
+		assertEquals("http://api.example:8080/temperature",
+				assertInstanceOf(HttpPollingDataSourceConfiguration.class,resolved.configuration().getDatasources().values().iterator().next()).getServerUrl());
+		assertEquals("PUT",assertInstanceOf(HttpDataSinkConfiguration.class,resolved.configuration().getDatasinks().values().iterator().next()).getMethod());
+
+		// A GET cannot write.
+		var getWrite=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080/","alarm",Map.of(),"GET"));
+		var rejected=factory.create(new Plan(List.of(mappingWithEndpoints(absolute,getWrite))),"route");
+		assertTrue(rejected.issues().stream().anyMatch(issue -> issue.path().endsWith("/forms/htv_methodName")),rejected.issues().toString());
+	}
+
+	@Test
+	void projectsOpcUaNodeAndModbusTagDetailsFromTypedBindingTerms() {
+		var uaSource = endpointPlan("ua-read", protocolTarget(WireModel.ProtocolFamily.OPCUA,
+				"opc.tcp://ua.example:4840/milo", "/?id=ns=2;s=Temperature", Map.of(), null));
+		var uaSink = endpointPlan("ua-write", protocolTarget(WireModel.ProtocolFamily.OPCUA,
+				"opc.tcp://ua.example:4840/milo", "/?id=ns=2;s=Temperature", Map.of(), null));
+		var modbusSource = endpointPlan("mb-read", protocolTarget(WireModel.ProtocolFamily.MODBUS,
+				"modbus+tcp://plc.example:502", "/2/0", Map.of("modv_entity", "Coil"), null));
+		var modbusSink = endpointPlan("mb-write", protocolTarget(WireModel.ProtocolFamily.MODBUS,
+				"modbus+tcp://plc.example:502", "/2/0", Map.of("modv_entity", "Coil"), null));
+		var plan = new Plan(List.of(mappingPlan("ua-map",0,uaSource,uaSink),
+				mappingPlan("mb-map",1,modbusSource,modbusSink)));
+		var result = factory.create(plan, "route");
+		assertTrue(result.issues().isEmpty());
+		var uaDataSource = assertInstanceOf(OpcuaDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().stream()
+						.filter(OpcuaDataSourceConfiguration.class::isInstance).findFirst().orElseThrow());
+		assertEquals("ua.example", uaDataSource.getServerUrl());
+		assertEquals("milo", uaDataSource.getPathToService());
+		assertEquals("ns=2;s=Temperature", uaDataSource.getNodeInformation());
+		var uaDataSink = assertInstanceOf(OpcuaDataSinkConfiguration.class,
+				result.configuration().getDatasinks().values().stream()
+						.filter(OpcuaDataSinkConfiguration.class::isInstance).findFirst().orElseThrow());
+		assertEquals("ns=2;s=Temperature", uaDataSink.getNodeInformation());
+		var plcSource = assertInstanceOf(Plc4xDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().stream()
+						.filter(Plc4xDataSourceConfiguration.class::isInstance).findFirst().orElseThrow());
+		assertEquals("modbus-tcp", plcSource.getDriver());
+		assertEquals("", plcSource.getServicePath());
+		assertEquals("default-unit-identifier", plcSource.getOptions().get(0).getName());
+		assertEquals("2", plcSource.getOptions().get(0).getValue());
+		assertEquals("coil:1", plcSource.getTags().get(0).getValue(), "protocol address 0 is PLC4X coil 1");
+		var plcSink = assertInstanceOf(Plc4xDataSinkConfiguration.class,
+				result.configuration().getDatasinks().values().stream()
+						.filter(Plc4xDataSinkConfiguration.class::isInstance).findFirst().orElseThrow());
+		assertEquals("coil:1", plcSink.getTags().get(0).getValue());
+	}
+
+	@Test
+	void translatesWotModbusFormsIntoPlc4xTags() {
+		var source=endpointPlan("level",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502",
+				"/7/10?quantity=4",Map.of("modv_function","readHoldingRegisters","modv_type","xsd:int",
+						"modv_mostSignificantWord","false","modv_timeout","500","modv_pollingTime","250"),null));
+		var sink=endpointPlan("setpoint",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502",
+				"/7/20",Map.of("modv_entity","modv:HoldingRegister","modv_type","xsd:unsignedShort"),null));
+		var result=factory.create(new Plan(List.of(mappingPlan("mb-map",0,source,sink))),"route");
+		assertTrue(result.issues().isEmpty(),String.valueOf(result.issues()));
+		var read=assertInstanceOf(Plc4xDataSourceConfiguration.class,result.configuration().getDatasources().values().iterator().next());
+		assertEquals("holding-register:11:DINT[2]",read.getTags().get(0).getValue(),"four registers are two 32-bit values");
+		assertEquals(Map.of("default-unit-identifier","7","default-payload-byte-order","LITTLE_ENDIAN_BYTE_SWAP","request-timeout","500"),
+				read.getOptions().stream().collect(java.util.stream.Collectors.toMap(o -> o.getName(),o -> o.getValue())));
+		assertEquals(250,read.getPollingIntervalMs(),"modv_pollingTime is the polling interval without an AIMC one");
+		var write=assertInstanceOf(Plc4xDataSinkConfiguration.class,result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("holding-register:21:UINT",write.getTags().get(0).getValue());
+	}
+
+	@Test
+	void anOpcUaFormNamesItsNodeByHrefNodeIdElseByBrowsePath() {
+		var byPath=endpointPlan("level",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840",
+				"/",Map.of("uav_browsePath","/Root/Objects/2:Tank/2:Level"),null));
+		var byId=endpointPlan("out",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840",
+				"/?id=ns=2;s=Out",Map.of("uav_browsePath","/Root/Objects/2:Tank/2:Out"),null));
+		var result=factory.create(new Plan(List.of(mappingPlan("ua",0,byPath,byId))),"route");
+		assertTrue(result.issues().isEmpty(),String.valueOf(result.issues()));
+		String source=result.configuration().getDatasources().values().iterator().next().getConnectionURI();
+		assertTrue(source.contains("browsePath=RAW(/Root/Objects/2:Tank/2:Level)") && !source.contains("node="),source);
+		String sink=result.configuration().getDatasinks().values().iterator().next().getConnectionURI();
+		assertTrue(sink.contains("node=RAW(ns=2;s=Out)"),"the href's NodeId wins: "+sink);
+
+		var relative=endpointPlan("level",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840",
+				"/",Map.of("uav_browsePath","Objects/2:Level"),null));
+		var rejected=factory.create(new Plan(List.of(mappingPlan("ua",0,relative,byId))),"route");
+		assertTrue(rejected.issues().stream().anyMatch(issue -> issue.path().endsWith("/forms/uav_browsePath")),String.valueOf(rejected.issues()));
+	}
+
+	@Test
+	void resolvesAidModbusFormsAgainstTheUnitIdInTheBase() {
+		// AID 1.2 Annex B: modbus+tcp://host:port/{unitID}/ and {address}?quantity={n}; one-based addressing
+		// counts from 1, and modv_pollingTime is a lower limit for the AIMC interval.
+		var source=new EndpointPlan("level",reference(),protocolTarget(WireModel.ProtocolFamily.MODBUS,
+				"modbus+tcp://plc.example:502/7/","10?quantity=2",Map.of("modv_entity","HoldingRegister","modv_type","xsd:short",
+						"modv_zeroBasedAddressing","false","modv_pollingTime","250"),null),Presence.of("0.1"));
+		var sink=endpointPlan("setpoint",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502/7/",
+				"20",Map.of("modv_entity","HoldingRegister","modv_type","xsd:unsignedShort"),null));
+		var result=factory.create(new Plan(List.of(mappingPlan("mb-map",0,source,sink))),"route");
+		assertTrue(result.issues().isEmpty(),String.valueOf(result.issues()));
+		var read=assertInstanceOf(Plc4xDataSourceConfiguration.class,result.configuration().getDatasources().values().iterator().next());
+		assertEquals("holding-register:10:INT[2]",read.getTags().get(0).getValue(),"one-based 10 is protocol address 9, PLC4X 10");
+		assertEquals("7",read.getOptions().get(0).getValue());
+		assertEquals(250,read.getPollingIntervalMs(),"the device's polling rate bounds the AIMC interval");
+		var write=assertInstanceOf(Plc4xDataSinkConfiguration.class,result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("holding-register:21:UINT",write.getTags().get(0).getValue());
+	}
+
+	@Test
+	void mqttTopicsFollowAidHrefRulesAndControlPacketsAreTheConsumers() {
+		var endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base","mqtt://broker.example:1883/site/"));
+		// ".//" writes a topic with a leading "/", "%23" the "#" wildcard (AID 1.2 Annex B.2).
+		var events=new EndpointPlan("Events",reference(),mqttTarget(endpointMetadata,mqttForm(".//alarms/%23","1",null),"Events"));
+		var command=new EndpointPlan("Command",reference(),mqttTarget(endpointMetadata,mqttForm("cmd","1",null),"Command"));
+		var result=factory.create(new Plan(List.of(mappingPlan("topics",0,events,command))),"route");
+		assertTrue(result.issues().isEmpty(),String.valueOf(result.issues()));
+		assertEquals("site//alarms/#",assertInstanceOf(MqttDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next()).getTopic());
+		assertEquals("site/cmd",assertInstanceOf(MqttDataSinkConfiguration.class,
+				result.configuration().getDatasinks().values().iterator().next()).getTopic());
+
+		// mqv_controlPacket describes the consumer: a form whose packet is publish cannot be subscribed to.
+		Map<String,String> terms=Map.of("mqv_qos","1","mqv_controlPacket","publish");
+		var publishOnly=new WireModel.Form(Presence.of("state"),Presence.absent(),List.of(),Presence.absent(),terms,
+				Presence.absent(),terms,emptyElement());
+		var wrong=new EndpointPlan("State",reference(),mqttTarget(endpointMetadata,publishOnly,"State"));
+		var rejected=factory.create(new Plan(List.of(mappingPlan("packet",0,wrong,command))),"route");
+		assertTrue(rejected.issues().stream().anyMatch(issue -> issue.path().endsWith("/forms/mqv_controlPacket")),
+				String.valueOf(rejected.issues()));
+	}
+
+	@Test
+	void httpSubprotocolsObservePropertiesAndSubscribeEvents() {
+		var sink=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080/","alarm",Map.of(),"POST"));
+		var sse=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",httpObserved("property","sse",true)),sink))),"route");
+		assertTrue(sse.issues().isEmpty(),sse.issues().toString());
+		var observed=assertInstanceOf(HttpObserveDataSourceConfiguration.class,sse.configuration().getDatasources().values().iterator().next());
+		assertEquals("async",observed.getDelivery());
+		assertEquals("dmp-http-observe:sse?url=RAW(http://api.example:8080/temperature)&contentType=RAW(application/json)",
+				observed.getConnectionURI());
+
+		var event=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",httpObserved("event","longpoll",false)),sink))),"route");
+		assertTrue(event.issues().isEmpty(),event.issues().toString());
+		assertTrue(assertInstanceOf(HttpObserveDataSourceConfiguration.class,event.configuration().getDatasources().values().iterator().next())
+				.getConnectionURI().startsWith("dmp-http-observe:longpoll?"));
+
+		for(var rejected:List.of(
+				Map.entry(httpObserved("event",null,false),"subscribed through subprotocol"),
+				Map.entry(httpObserved("property","websub",true),"websub is not supported"),
+				Map.entry(httpObserved("property","sse",false),"does not serve observeproperty"))) {
+			var result=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",rejected.getKey()),sink))),"route");
+			assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains(rejected.getValue())),result.issues().toString());
+		}
+		var writeObserved=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",httpObserved("property","sse",true)),
+				endpointPlan("write",httpObserved("property","sse",true))))),"route");
+		assertTrue(writeObserved.issues().stream().anyMatch(issue -> issue.message().contains("cannot be a writable destination")),
+				writeObserved.issues().toString());
+	}
+
+	/** An HTTP property or event on {@code http://api.example:8080/temperature} with the given form subprotocol. */
+	private static AidTarget httpObserved(String kind,String subprotocol,boolean observable) {
+		SubmodelElement formElement=subprotocol==null?emptyElement():AasFixtures.collection(null,property("subprotocol",subprotocol));
+		var form=new WireModel.Form(Presence.of("temperature"),Presence.absent(),List.of(),Presence.of("GET"),Map.of(),Presence.absent(),
+				Map.of(),formElement);
+		SubmodelElement element=observable?AasFixtures.collection("value",property("observable","true")):emptyElement();
+		var affordance=new WireModel.Affordance(kind,Presence.of("value"),Presence.absent(),List.of(form),
+				Presence.absent(),Presence.absent(),Presence.absent(),element);
+		SubmodelElement endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base","http://api.example:8080/"));
+		var iface=new WireModel.Interface("interface-semantic","interface_http",List.of("http"),List.of(WireModel.ProtocolFamily.HTTP),
+				emptyElement(),List.of(form),List.of(),"event".equals(kind)?List.of():List.of(affordance),List.of(),
+				"event".equals(kind)?List.of(affordance):List.of(),Presence.of(endpointMetadata),
+				Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent());
+		return new AidTarget(new AasReferenceResolver.AidTarget(iface,affordance,Presence.absent(),List.of()));
+	}
+
+	@Test
+	void snmpFormsCompileToCheckedGetsAndTypedSets() {
+		var read=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://10.0.0.5:161/","1.3.6.1.2.1.1.3.0",Map.of(),null));
+		var write=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://private@10.0.0.5",
+				"/1.3.6.1.4.1.9999.1.0",Map.of("snmpv_pduType","snmpv:SetRequestPDU","snmpv_version","SNMPv1"),null));
+		var result=factory.create(new Plan(List.of(mappingWithEndpoints(read,write))),"route");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var source=assertInstanceOf(SnmpDataSourceConfiguration.class,result.configuration().getDatasources().values().iterator().next());
+		assertEquals("dmp-snmp:10.0.0.5:161?oid=1.3.6.1.2.1.1.3.0&version=SNMPv2c",source.getConnectionURI());
+		assertEquals("sync",source.getDelivery());
+		var sink=assertInstanceOf(SnmpDataSinkConfiguration.class,result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("dmp-snmp:10.0.0.5:161?oid=1.3.6.1.4.1.9999.1.0&version=SNMPv1&community=RAW(private)",sink.getConnectionURI());
+
+		for(var rejected:List.of(
+				Map.entry(protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://10.0.0.5/","sysDescr",Map.of(),null),"snmp://{address}:{port}/{oid}"),
+				Map.entry(protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://10.0.0.5/","1.3.6.1.2.1.1.3.0",
+						Map.of("snmpv_pduType","SetRequestPDU"),null),"does not serve this mapping role"),
+				Map.entry(protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://10.0.0.5/","1.3.6.1.2.1.1.3.0",
+						Map.of("snmpv_version","SNMPv3"),null),"not supported"))) {
+			var failed=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",rejected.getKey()),write))),"route");
+			assertTrue(failed.issues().stream().anyMatch(issue -> issue.message().contains(rejected.getValue())),failed.issues().toString());
+		}
+	}
+
+	@Test
+	void staticHttpHeadersAreBoundAndInvalidOnesRejected() {
+		var poll=endpointPlan("read",httpWithHeaders("GET",null,header("X-Api-Key","s3cret")));
+		var write=endpointPlan("write",httpWithHeaders("PUT",null,header("Authorization","Bearer token-1")));
+		var result=factory.create(new Plan(List.of(mappingWithEndpoints(poll,write))),"route");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var source=assertInstanceOf(HttpPollingDataSourceConfiguration.class,result.configuration().getDatasources().values().iterator().next());
+		assertTrue(source.getConnectionURI().contains("httpClientConfigurer=#bean:dmp-http-headers-"),source.getConnectionURI());
+		assertFalse(source.getConnectionURI().contains("s3cret"));
+		var sink=assertInstanceOf(HttpDataSinkConfiguration.class,result.configuration().getDatasinks().values().iterator().next());
+		assertFalse(sink.getConnectionURI().contains("token-1"));
+
+		for(var rejected:List.of(
+				Map.entry(httpWithHeaders("GET",null,header("Content-Type","text/plain")),"set by the connector"),
+				Map.entry(httpWithHeaders("GET",null,header("Bad Name","x")),"valid htv_fieldName"),
+				Map.entry(httpWithHeaders("GET",null,header("X-A","1"),header("x-a","2")),"declared twice"),
+				Map.entry(httpWithHeaders("GET","sse",header("Accept","text/plain")),"set by its subprotocol"))) {
+			var failed=factory.create(new Plan(List.of(mappingWithEndpoints(endpointPlan("read",rejected.getKey()),write))),"route");
+			assertTrue(failed.issues().stream().anyMatch(issue -> issue.message().contains(rejected.getValue())),failed.issues().toString());
+		}
+	}
+
+	private static SubmodelElement header(String name,String value) {
+		return AasFixtures.collection(null,property("htv_fieldName",name),property("htv_fieldValue",value));
+	}
+
+	/** An observable HTTP property on http://api.example:8080/value whose form carries htv_headers (and a subprotocol). */
+	private static AidTarget httpWithHeaders(String method,String subprotocol,SubmodelElement... headers) {
+		var list=new org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultSubmodelElementList.Builder().idShort("htv_headers")
+				.typeValueListElement(org.eclipse.digitaltwin.aas4j.v3.model.AasSubmodelElements.SUBMODEL_ELEMENT_COLLECTION)
+				.value(List.of(headers)).build();
+		SubmodelElement formElement=subprotocol==null?AasFixtures.collection(null,list)
+				:AasFixtures.collection(null,list,property("subprotocol",subprotocol));
+		var form=new WireModel.Form(Presence.of("value"),Presence.absent(),List.of(),Presence.of(method),Map.of(),Presence.absent(),
+				Map.of(),formElement);
+		var affordance=new WireModel.Affordance("property",Presence.of("value"),Presence.absent(),List.of(form),
+				Presence.absent(),Presence.absent(),Presence.absent(),AasFixtures.collection("value",property("observable","true")));
+		SubmodelElement endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base","http://api.example:8080/"));
+		var iface=new WireModel.Interface("interface-semantic","interface_http",List.of("http"),List.of(WireModel.ProtocolFamily.HTTP),
+				emptyElement(),List.of(form),List.of(),List.of(affordance),List.of(),List.of(),Presence.of(endpointMetadata),
+				Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent());
+		return new AidTarget(new AasReferenceResolver.AidTarget(iface,affordance,Presence.absent(),List.of()));
+	}
+
+	@Test
+	void theFormMustServeTheMappingRole() {
+		var endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base","mqtt://broker.example:1883/"));
+		var readOnly=new WireModel.Affordance("property",Presence.of("State"),Presence.absent(),List.of(mqttForm("state","0",null)),
+				Presence.absent(),Presence.absent(),Presence.absent(),
+				AasFixtures.collection("State",property("observable","true"),property("readOnly","true")));
+		var iface=new WireModel.Interface("interface-semantic","interface_mqtt",List.of("http://www.w3.org/2011/mqtt"),
+				List.of(WireModel.ProtocolFamily.MQTT),emptyElement(),readOnly.forms(),List.of(),List.of(readOnly),List.of(),List.of(),
+				Presence.of(endpointMetadata),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent());
+		var target=new AidTarget(new AasReferenceResolver.AidTarget(iface,readOnly,Presence.absent(),List.of()));
+		var source=new EndpointPlan("in",reference(),mqttTarget(endpointMetadata,mqttForm("in","0",null),"In"));
+		var result=factory.create(new Plan(List.of(mappingPlan("write-read-only",0,source,new EndpointPlan("State",reference(),target)))),"route");
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("not writable")),String.valueOf(result.issues()));
+	}
+
+	@Test
+	void rejectsModbusFormsTheWotBindingDoesNotDescribe() {
+		for(var form:List.of(Map.entry("/coil:1",Map.<String,String>of()),
+				Map.entry("/1/0",Map.of("modv_entity","InputRegister")),
+				Map.entry("/1/0",Map.of("modv_zeroBasedAddressing","false")),
+				Map.entry("/1/0?quantity=3",Map.of("modv_entity","HoldingRegister","modv_type","xsd:int")))) {
+			var read=endpointPlan("in",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502","/1/1",Map.of(),null));
+			var write=endpointPlan("out",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502",form.getKey(),form.getValue(),null));
+			var result=factory.create(new Plan(List.of(mappingPlan("mb-map",0,read,write))),"route");
+			assertFalse(result.issues().isEmpty(),form+" must be rejected");
+			assertTrue(result.configuration().getRoutes().isEmpty());
+		}
+		var legacy=endpointPlan("in",protocolTarget(WireModel.ProtocolFamily.MODBUS,"tcp://plc.example:502","/1/1",Map.of(),null));
+		assertTrue(factory.create(new Plan(List.of(mappingWithEndpoints(legacy,legacy))),"route").issues().stream()
+				.anyMatch(issue -> issue.path().contains("EndpointMetadata/base")),"a tcp:// base is not the WoT modbus+tcp scheme");
+	}
+
+	@Test
+	void rejectsAnAuthoredModbusFunctionNotRepresentedByTheConnectorConfiguration() {
+		var modbus=endpointPlan("mb",protocolTarget(WireModel.ProtocolFamily.MODBUS,
+				"modbus+tcp://plc.example:502", "/1/0", Map.of("modv_function", "read-holding"), null));
+		var result=factory.create(new Plan(List.of(mappingWithEndpoints(modbus,modbus))),"route");
+		assertFalse(result.issues().isEmpty());
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.path().contains("modv_function")));
+		assertTrue(result.configuration().getRoutes().isEmpty());
+	}
+
+	@Test
+	void bacnetMappingsAreRejectedBecauseThePlc4xDriverNeitherReadsNorWrites() {
+		var source=endpointPlan("present-value",protocolTarget(WireModel.ProtocolFamily.BACNET,
+				"bacnet://5", "/0,1/85", Map.of(), null));
+		var sink=endpointPlan("present-value",protocolTarget(WireModel.ProtocolFamily.BACNET,
+				"bacnet://5", "/1,2/85", Map.of(), null));
+		var result=factory.create(new Plan(List.of(mappingPlan("bacnet-map",0,source,sink))),"route");
+		assertTrue(result.configuration().getRoutes().isEmpty());
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("BACnet is not supported")),
+				String.valueOf(result.issues()));
+	}
+
+	@Test
+	void mapsIolinkRestBindingsThroughTheHttpConnector() {
+		var source=endpointPlan("input",protocolTarget(WireModel.ProtocolFamily.IOLINK,
+				"http://iolink.example:8080/api", "/input",Map.of(),"GET"));
+		var sink=endpointPlan("output",protocolTarget(WireModel.ProtocolFamily.IOLINK,
+				"http://iolink.example:8080/api", "/output",Map.of(),"POST"));
+		var result=factory.create(new Plan(List.of(mappingPlan("iolink-map",0,source,sink))),"route");
+		assertTrue(result.issues().isEmpty());
+		assertInstanceOf(HttpPollingDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next());
+		assertInstanceOf(HttpDataSinkConfiguration.class,
+				result.configuration().getDatasinks().values().iterator().next());
+	}
+
+	@Test
+	void directAasTargetsRequireAndUseExplicitRepositoryRuntimeSettings() {
+		var target=new DirectTarget(new AasReferenceResolver.ResolvedElement(
+				AasFixtures.submodel("urn:owner/submodels/Variables","Variables"),
+				property("State","RUNNING")));
+		var reference=AasFixtures.reference("Submodel","urn:owner/submodels/Variables","Property","State");
+		var source=new EndpointPlan("PackMLState",reference,target,Presence.of("2"));
+		var sink=new EndpointPlan("OccupationState",reference,target);
+		var plan=new Plan(List.of(mappingPlan("aas-map",0,source,sink)));
+		var noServer=factory.create(plan,"route");
+		assertTrue(noServer.configuration().getRoutes().isEmpty());
+		assertTrue(noServer.issues().stream().anyMatch(issue -> issue.message().contains("explicit repository runtime settings")));
+
+		var result=factory.create(plan,"route",new ConnectorConfigurationFactory.RuntimeSettings(
+				URI.create("http://aas.example:8081")));
+		assertTrue(result.issues().isEmpty());
+		var ds=assertInstanceOf(AASPollingDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next());
+		String encoded=java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
+				"urn:owner/submodels/Variables".getBytes(StandardCharsets.UTF_8));
+		assertEquals("http://aas.example:8081/submodels/"+encoded,ds.getSubmodelEndpoint());
+		assertEquals("State",ds.getIdShortPath());
+		assertEquals(2000,ds.getPollingIntervalMs(),"an authored PollingInterval keeps polling");
+		var sinkConfig=assertInstanceOf(AASDatasinkConfiguration.class,
+				result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("OccupationState",sinkConfig.getSinkId());
+		assertEquals("OccupationState",sinkConfig.getValuePath());
+	}
+
+	@Test
+	void aasPropertySourcesWithoutPollingIntervalFollowRepositoryEvents() {
+		var collection=AasFixtures.collection("Status",property("State","RUNNING"));
+		var target=new DirectTarget(new AasReferenceResolver.ResolvedElement(
+				AasFixtures.submodel("urn:owner/submodels/Variables","Variables"),collection.getValue().get(0)));
+		var reference=AasFixtures.reference("Submodel","urn:owner/submodels/Variables","SubmodelElementCollection","Status","Property","State");
+		var plan=new Plan(List.of(mappingPlan("aas-event",0,new EndpointPlan("PackMLState",reference,target),
+				new EndpointPlan("OccupationState",reference,target))));
+		var result=factory.create(plan,"route",new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://aas.example:8081")));
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var ds=assertInstanceOf(dk.aau.smartproductionlab.dmp.aas.configuration.AasEventDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next());
+		assertEquals("urn:owner/submodels/Variables",ds.getSubmodelId());
+		assertEquals("Status.State",ds.getIdShortPath());
+		assertEquals("async",ds.getDelivery());
+		assertEquals("aas-element-event",ds.getSourceKind());
+		assertTrue(ds.getConnectionURI().startsWith("aas-event:"));
+		String encoded=java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
+				"urn:owner/submodels/Variables".getBytes(StandardCharsets.UTF_8));
+		assertEquals("http://aas.example:8081/submodels/"+encoded+"/submodel-elements/Status.State",ds.getEventFilter().get("readUrl"));
+		assertEquals(Map.of("type","string"),ds.getSchema());
+	}
+
+	@Test
+	void nestedAasSinksAreAddressedByTheirIdShortPath() {
+		var collection=AasFixtures.collection("Location",property("x","0.0"));
+		var target=new DirectTarget(new AasReferenceResolver.ResolvedElement(
+				AasFixtures.submodel("urn:owner/submodels/Variables","Variables"),collection.getValue().get(0)));
+		var reference=AasFixtures.reference("Submodel","urn:owner/submodels/Variables","SubmodelElementCollection","Location","Property","x");
+		var plan=new Plan(List.of(mappingPlan("aas-nested",0,new EndpointPlan("Location",reference,target,Presence.of("2")),
+				new EndpointPlan("Location_x",reference,target))));
+		var result=factory.create(plan,"route",new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://aas.example:8081")));
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var ds=assertInstanceOf(AASPollingDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next());
+		assertEquals("Location.x",ds.getIdShortPath());
+		var sink=assertInstanceOf(AASDatasinkConfiguration.class,
+				result.configuration().getDatasinks().values().iterator().next());
+		assertEquals("Location.x",sink.getIdShortPath());
+	}
+
+	@Test
+	void bridgeRestPathIsTheDelegationQualifierPathAndAMissingQualifierBlocksTheMapping() {
+		var result=factory.create(explicitResponsePlan("aid-command"),"bridge",new ConnectorConfigurationFactory.RuntimeSettings(
+				URI.create("http://aas.example:8081")));
+		var bridge=assertInstanceOf(ProtocolBridgeRouteConfiguration.class,result.configuration().getRoutes().get(0));
+		assertEquals("/operations/asset%20one/Move",bridge.getTriggerData().get(ProtocolBridgeRouteConfiguration.REST_PATH));
+
+		var plan=explicitResponsePlan("aid-command");
+		var operation=(org.eclipse.digitaltwin.aas4j.v3.model.Operation)((DirectTarget)plan.mappings().get(0).sources().get(0).target())
+				.resolved().element();
+		for (String invalid : new String[] { null, "", "/operations/asset/Move", "http://dmp:8080/operations/{aas_id_short}/Move",
+				"http://dmp:8080/" }) {
+			operation.setQualifiers(invalid==null?List.of():List.of(AasFixtures.delegation(invalid)));
+			var blocked=factory.create(plan,"bridge",new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://aas.example:8081")));
+			assertTrue(blocked.configuration().getRoutes().isEmpty(),String.valueOf(invalid));
+			assertTrue(blocked.issues().stream().anyMatch(issue -> issue.message().contains("invocationDelegation")),String.valueOf(invalid));
+		}
+	}
+
+	@Test
+	void typedPropertyListsAreTypedEvenWhenEmpty() {
+		var list=new org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultSubmodelElementList.Builder().idShort("Readings")
+				.typeValueListElement(org.eclipse.digitaltwin.aas4j.v3.model.AasSubmodelElements.PROPERTY)
+				.valueTypeListElement(dk.aau.smartproductionlab.dmp.aas.model.Aas.xsd("xs:double")).build();
+		var target=new DirectTarget(new AasReferenceResolver.ResolvedElement(
+				AasFixtures.submodel("urn:owner/submodels/Variables","Variables"),list));
+		var reference=AasFixtures.reference("Submodel","urn:owner/submodels/Variables","SubmodelElementList","Readings");
+		var source=new EndpointPlan("Readings",reference,target,Presence.of("1"));
+		var plan=new Plan(List.of(mappingPlan("list",0,source,new EndpointPlan("Out",reference,target))));
+		var result=factory.create(plan,"route",new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://aas.example:8081")));
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		assertEquals(Map.of("type","array","items",Map.of("type","number")),
+				result.configuration().getDatasources().values().iterator().next().getSchema());
+	}
+
+	@Test void fingerprintsAreDeterministicSecretSafeAndCredentialSensitiveInternally() {
+		var first=credentialsPlan("one-password");var rotated=credentialsPlan("another-password");
+		var a=factory.createBundles(first,null).bundles().get(0).fingerprint();
+		var repeated=factory.createBundles(first,null).bundles().get(0).fingerprint();
+		var b=factory.createBundles(rotated,null).bundles().get(0).fingerprint();
+		assertEquals(a.exported(),repeated.exported());assertTrue(a.sameEffectiveConfiguration(repeated));
+		assertEquals(a.exported(),b.exported(),"exported fingerprints must not provide a credential-derived oracle");
+		assertFalse(a.sameEffectiveConfiguration(b),"credential rotation still changes internal identity");
+		assertEquals(a.exported(),a.toString());
+		String json=new com.google.gson.Gson().toJson(a);
+		assertFalse(json.contains("internal"));assertFalse(json.contains("password"));
+	}
+
+	@Test void authoredMappingIdentitySurvivesListReorderingAndEffectiveOptionsChangeFingerprint() {
+		var first=mapping(WireModel.ProtocolFamily.HTTP,true);
+		var relocated=new MappingPlan(first.identity(),17,first.sources(),first.sinks(),first.defaultPollingInterval(),
+				first.transformation(),first.responseSources(),first.responseSinks(),first.responseTransformation(),first.triggerSourceIds(),first.qualifiers());
+		var a=factory.createBundles(new Plan(List.of(first)),null).bundles().get(0);
+		var b=factory.createBundles(new Plan(List.of(relocated)),null).bundles().get(0);
+		assertEquals(a.bundleId(),b.bundleId());assertEquals(a.routeId(),b.routeId());
+		assertTrue(a.fingerprint().sameEffectiveConfiguration(b.fingerprint()));
+		var interval=new MappingPlan(first.identity(),first.listIndex(),first.sources(),first.sinks(),
+				Presence.of("7"),first.transformation(),first.responseSources(),first.responseSinks(),
+				first.responseTransformation(),first.triggerSourceIds(),first.qualifiers());
+		var changed=factory.createBundles(new Plan(List.of(interval)),null).bundles().get(0);
+		assertFalse(a.fingerprint().sameEffectiveConfiguration(changed.fingerprint()));
+		assertFalse(a.fingerprint().exported().equals(changed.fingerprint().exported()));
+	}
+
+	@Test void defaultPollingDoesNotConvertMqttSubscriptionToQueueSampling() {
+		var source=endpointPlan("mqtt",protocolTarget(WireModel.ProtocolFamily.MQTT,"mqtt://broker.example:1883","/state",Map.of("mqv_retain","true"),null));
+		var sink=endpointPlan("http",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"POST"));
+		var map=mappingPlan("fan",0,source,sink);
+		map=new MappingPlan(map.identity(),0,map.sources(),map.sinks(),Presence.of("2"),
+				map.transformation(),map.responseSources(),map.responseSinks(),map.responseTransformation(),map.triggerSourceIds(),map.qualifiers());
+		var result=factory.create(new Plan(List.of(map)),"route");
+		assertTrue(result.issues().isEmpty());
+		var configured=result.configuration().getDatasources().values().iterator().next();
+		assertEquals("async",configured.getDelivery());assertEquals(0,configured.getPollingIntervalMs());
+	}
+
+	@Test void authoredUnknownProtocolOptionsBlockOnlyTheirMapping() {
+		var bad=endpointPlan("bad",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840/service", "ns=2;s=Value",
+				Map.of("uav_securityPolicy","unsupported"),null));
+		var invalid=mappingPlan("blocked",0,bad,bad);
+		var valid=mappingPlan("valid",1,endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"GET")),
+				endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"POST")));
+		var result=factory.createBundles(new Plan(List.of(invalid,valid)),null);
+		assertEquals(1,result.bundles().size());assertEquals("valid",result.bundles().get(0).mappingIdentity());
+		assertTrue(result.issues().stream().allMatch(issue -> issue.mappingId().equals("blocked")));
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.path().endsWith("uav_securityPolicy")));
+	}
+
+	private static Plan credentialsPlan(String password) {
+		var source=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
+				"http://alice:"+password+"@api.example:8080", "/state",Map.of(),"GET"));
+		var sink=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"POST"));
+		return new Plan(List.of(mappingPlan("credentials",0,source,sink)));
+	}
+
+	@Test void compilesExactActionOutputProjectionCallerReplyAndGroupedExtraWrites() {
+		var plan=explicitResponsePlan("aid-command");
+		var result=factory.create(plan,"bridge",new ConnectorConfigurationFactory.RuntimeSettings(
+				URI.create("http://aas.example:8081")));
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=assertInstanceOf(ProtocolBridgeRouteConfiguration.class,result.configuration().getRoutes().get(0));
+		assertTrue(bridge.isExplicitResponseMapping());
+		assertEquals("Reply",bridge.getCallerReplySinkId());
+		assertEquals(List.of(Map.of("sourceId","Body,&#","valuePath","$.Count")),bridge.getResponseSourceBindings());
+		assertEquals(1,bridge.getTransformers().size(),"response Lua must not execute in the request chain");
+		assertEquals(2,result.configuration().getTransformers().size());
+		assertFalse(bridge.getTransformers().contains(bridge.getResponseTransformer()));
+		var request=(LuaTransformerConfiguration)result.configuration().getTransformers().get(bridge.getTransformers().get(0));
+		var response=(LuaTransformerConfiguration)result.configuration().getTransformers().get(bridge.getResponseTransformer());
+		assertTrue(request.isKeyedInput());assertTrue(response.isKeyedInput());
+		assertFalse(response.getConnectionURI().contains("sourceKeys="));
+		assertEquals(Map.of("Count","integer"),bridge.getResponseTypes());
+		assertEquals(Map.of("Count","xs:string"),bridge.getTriggerData().get("callerResponseTypes"));
+		assertEquals(2,bridge.getResponseSinkBindings().size(),"caller Operation is a reply, not another device write");
+		assertEquals(bridge.getResponseSinkBindings().get(0).get("payloadGroup"),bridge.getResponseSinkBindings().get(1).get("payloadGroup"));
+		assertEquals("$.x",bridge.getResponseSinkBindings().get(0).get("valuePath"));
+		assertEquals("$.y",bridge.getResponseSinkBindings().get(1).get("valuePath"));
+		assertEquals(3,result.configuration().getDatasinks().size(),"one action target plus grouped response members");
+	}
+
+	@Test void scalarCciInoutputsAreCallerInputsAndOutputs() {
+		var limit=AasFixtures.property("Limit","xs:int",null);
+		var inoutputs=List.of(AasFixtures.variable(property("Uuid","id")),AasFixtures.variable(property("Trace","trace")),
+				AasFixtures.variable(limit));
+		var result=factory.create(explicitResponsePlan("aid-command",inoutputs),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
+		assertEquals(Map.of("Uuid","xs:string","Trace","xs:string","Limit","xs:int","Count","xs:string"),
+				bridge.getTriggerData().get("callerResponseTypes"));
+		assertEquals(List.of("Uuid","Trace","Limit","Count"),bridge.getTriggerData().get("callerOutputOrder"));
+	}
+
+	@Test void structuredCciVariablesAreDeclaredTemplates() {
+		var position=AasFixtures.collection("Target",AasFixtures.property("x","xs:double",null),
+				AasFixtures.property("y","xs:double",null));
+		var waypoints=new DefaultSubmodelElementList.Builder().idShort("Waypoints")
+				.typeValueListElement(AasSubmodelElements.SUBMODEL_ELEMENT_COLLECTION)
+				.value(List.of(AasFixtures.collection(null,AasFixtures.property("x","xs:double",null)))).build();
+		var codes=new DefaultSubmodelElementList.Builder().idShort("Codes").typeValueListElement(AasSubmodelElements.PROPERTY)
+				.valueTypeListElement(Aas.xsd("xs:int")).build();
+		var result=factory.create(explicitResponsePlan("aid-command",
+				List.of(AasFixtures.variable(position),AasFixtures.variable(waypoints),AasFixtures.variable(codes))),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
+		assertEquals(List.of("Target","Waypoints","Codes","Count"),bridge.getTriggerData().get("callerOutputOrder"));
+		assertEquals(Map.of("Count","xs:string"),bridge.getTriggerData().get("callerResponseTypes"),
+				"only scalar Properties have a scalar caller type");
+		assertEquals(Set.of("Target","Waypoints","Codes"),bridge.getCallerInputTemplates().keySet());
+		assertEquals(Set.of("Target","Waypoints","Codes","Count"),bridge.getCallerOutputTemplates().keySet());
+		assertEquals(position,bridge.getCallerOutputTemplates().get("Target"));
+		assertEquals(waypoints,bridge.getCallerInputTemplates().get("Waypoints"));
+	}
+
+	@Test void rejectsUnsupportedStructuredAndDuplicateCciInoutputs() {
+		var customType=AasFixtures.property("Uuid","xs:dateTime",null);
+		var nestedCustomType=AasFixtures.collection("Uuid",AasFixtures.property("at","xs:dateTime",null));
+		var duplicateMembers=AasFixtures.collection("Uuid",property("a","1"),property("a","2"));
+		var mixedList=new DefaultSubmodelElementList.Builder().idShort("Uuid").typeValueListElement(AasSubmodelElements.PROPERTY)
+				.valueTypeListElement(Aas.xsd("xs:int")).value(List.of(property("a","x"))).build();
+		var untypedEmptyList=new DefaultSubmodelElementList.Builder().idShort("Uuid")
+				.typeValueListElement(AasSubmodelElements.SUBMODEL_ELEMENT_COLLECTION).build();
+		var file=new DefaultFile.Builder().idShort("Uuid").contentType("text/plain").build();
+		var trace=AasFixtures.variable(property("Trace","trace"));
+		for (var inoutputs : List.of(List.of(AasFixtures.variable(customType)),List.of(AasFixtures.variable(nestedCustomType)),
+				List.of(AasFixtures.variable(duplicateMembers)),List.of(AasFixtures.variable(mixedList)),
+				List.of(AasFixtures.variable(untypedEmptyList)),List.of(AasFixtures.variable(file)),List.of(trace,trace))) {
+			var result=factory.create(explicitResponsePlan("aid-command",inoutputs),"bridge");
+			assertTrue(result.configuration().getRoutes().isEmpty(),inoutputs.toString());
+			assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("CCI inoutput")),
+					"InOut variables must be supported Properties, collections or lists with unique names");
+		}
+	}
+
+	@Test void identicalRemoteActionShapeCannotSubstituteForExactResponseAnchor() {
+		var result=factory.create(explicitResponsePlan("aid-remote"),"bridge");
+		assertTrue(result.configuration().getRoutes().isEmpty());
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("exact command ACTION anchor")));
+	}
+
+	/** The explicit response plan with its response parts replaced. */
+	private static Plan withResponse(Plan base,Presence<List<EndpointPlan>> sources,Presence<List<EndpointPlan>> sinks,
+			Presence<WireModel.Blob> transformation) {
+		var original=base.mappings().get(0);
+		return new Plan(base.aimcSubmodelId(),List.of(new MappingPlan(original.identity(),original.listIndex(),original.sources(),
+				original.sinks(),original.defaultPollingInterval(),original.transformation(),sources,sinks,transformation,
+				original.triggerSourceIds(),original.qualifiers())));
+	}
+
+	@Test void operationOutputsAreNeverMatchedByNameWithoutAResponseMapping() {
+		// The device output Count has the same name as the Operation's output Count; that is no mapping.
+		var result=factory.create(withResponse(explicitResponsePlan("aid-command"),Presence.absent(),Presence.absent(),
+				Presence.absent()),"bridge");
+		assertTrue(result.configuration().getRoutes().isEmpty());
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains(
+				"need ResponseSources, a ResponseTransformation and a ResponseSink selecting the Operation")),
+				result.issues().toString());
+	}
+
+	/** The explicit response plan whose Operation output Count carries the Optional qualifier {@code value}. */
+	private static Plan withOptionalCount(String value) {
+		var base=explicitResponsePlan("aid-command");
+		var operation=(org.eclipse.digitaltwin.aas4j.v3.model.Operation)((DirectTarget)base.mappings().get(0).sources().get(0)
+				.target()).resolved().element();
+		operation.getOutputVariables().get(0).getValue().setQualifiers(List.of(
+				new org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultQualifier.Builder().type("Optional")
+						.valueType(org.eclipse.digitaltwin.aas4j.v3.model.DataTypeDefXsd.BOOLEAN).value(value)
+						.semanticId(new org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultReference.Builder()
+								.type(org.eclipse.digitaltwin.aas4j.v3.model.ReferenceTypes.EXTERNAL_REFERENCE)
+								.keys(new org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultKey.Builder()
+										.type(org.eclipse.digitaltwin.aas4j.v3.model.KeyTypes.GLOBAL_REFERENCE)
+										.value(dk.aau.smartproductionlab.dmp.aas.operation.OptionalQualifier.SEMANTIC_ID).build())
+								.build()).build()));
+		return base;
+	}
+
+	@Test void anOperationWhoseOutputsAreAllOptionalNeedsNoResponseMapping() {
+		var result=factory.create(withResponse(withOptionalCount("true"),Presence.absent(),Presence.absent(),Presence.absent()),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
+		assertEquals(false,bridge.getTriggerData().get(ProtocolBridgeRouteConfiguration.EXPLICIT_RESPONSE_MAPPING));
+		// A response mapping that only fans out may leave out the caller's ResponseSink too.
+		var base=withOptionalCount("true");
+		var original=base.mappings().get(0);
+		var fanOutOnly=factory.create(withResponse(base,original.responseSources(),
+				Presence.of(original.responseSinks().value().subList(1,3)),original.responseTransformation()),"bridge");
+		assertTrue(fanOutOnly.issues().isEmpty(),fanOutOnly.issues().toString());
+	}
+
+	@Test void anUnreadableOptionalQualifierBlocksTheMapping() {
+		var result=factory.create(withOptionalCount("maybe"),"bridge");
+		assertTrue(result.configuration().getRoutes().isEmpty());
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains(
+				"the Optional qualifier needs an xs:boolean value")),result.issues().toString());
+	}
+
+	@Test void aResponseMappingIsAuthoredAsAWhole() {
+		var base=explicitResponsePlan("aid-command");
+		var original=base.mappings().get(0);
+		var withoutLua=factory.create(withResponse(base,original.responseSources(),original.responseSinks(),Presence.absent()),"bridge");
+		assertTrue(withoutLua.issues().stream().anyMatch(issue -> issue.message().contains("requires a ResponseTransformation")),
+				withoutLua.issues().toString());
+		var withoutSources=factory.create(withResponse(base,Presence.absent(),original.responseSinks(),
+				original.responseTransformation()),"bridge");
+		assertTrue(withoutSources.issues().stream().anyMatch(issue -> issue.message().contains("requires ResponseSources")),
+				withoutSources.issues().toString());
+		var withoutSinks=factory.create(withResponse(base,original.responseSources(),Presence.absent(),
+				original.responseTransformation()),"bridge");
+		assertTrue(withoutSinks.issues().stream().anyMatch(issue -> issue.message().contains("requires ResponseSinks")),
+				withoutSinks.issues().toString());
+		for(var result:List.of(withoutLua,withoutSources,withoutSinks))assertTrue(result.configuration().getRoutes().isEmpty());
+	}
+
+	@Test void operationOutputsNeedTheResponseSinkSelectingTheOperation() {
+		var base=explicitResponsePlan("aid-command");
+		var original=base.mappings().get(0);
+		// Only the AAS fan-out sinks X and Y, not the caller Operation.
+		var result=factory.create(withResponse(base,original.responseSources(),
+				Presence.of(original.responseSinks().value().subList(1,3)),original.responseTransformation()),"bridge");
+		assertTrue(result.configuration().getRoutes().isEmpty());
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("need a ResponseSink selecting the Operation")),
+				result.issues().toString());
+	}
+
+	@Test void responseSourcesMayFanOutTheSameMemberToDistinctSourceIds() {
+		var base=explicitResponsePlan("aid-command");
+		var original=base.mappings().get(0);
+		var response=original.responseSources().value().get(0);
+		var duplicate=new EndpointPlan("reply-count-copy",response.reference(),response.target());
+		var mapping=new MappingPlan(original.identity(),original.listIndex(),original.sources(),original.sinks(),
+				original.defaultPollingInterval(),original.transformation(),Presence.of(List.of(response,duplicate)),
+				original.responseSinks(),original.responseTransformation(),original.triggerSourceIds(),original.qualifiers());
+		var result=factory.create(new Plan(base.aimcSubmodelId(),List.of(mapping)),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
+		assertEquals(List.of(Map.of("sourceId","Body,&#","valuePath","$.Count"),
+				Map.of("sourceId","reply-count-copy","valuePath","$.Count")),bridge.getResponseSourceBindings());
+	}
+
+	@Test void methodArgumentTypesPreserveArrayRankAndTypedPropertySchemas() {
+		var base=explicitResponsePlan("aid-command");
+		var original=base.mappings().get(0);
+		var sink=original.sinks().get(0);
+		var target=((AidTarget)sink.target()).resolved();
+		var integer=dataSchema("integer",Map.of());
+		var array=new WireModel.DataSchema(Presence.absent(),Presence.absent(),Presence.absent(),Presence.of("array"),
+				Map.of(),Presence.of(integer),Presence.absent(),Map.of(),emptyElement());
+		var matrix=new WireModel.DataSchema(Presence.absent(),Presence.absent(),Presence.absent(),Presence.of("array"),
+				Map.of(),Presence.of(array),Presence.absent(),Map.of(),emptyElement());
+		var property=new WireModel.DataSchema(Presence.of("xs:string"),Presence.absent(),Presence.absent(),Presence.absent(),
+				Map.of(),Presence.absent(),Presence.absent(),Map.of(),emptyElement());
+		var output=dataSchema("object",Map.of("Count",integer,"Samples",array,"Matrix",matrix,"Label",property));
+		var action=target.affordance();
+		var typedAction=new WireModel.Affordance(action.kind(),action.idShort(),action.semanticId(),action.forms(),
+				action.schema(),action.input(),Presence.of(output),action.element());
+		var typedTarget=new AidTarget(new AasReferenceResolver.AidTarget(target.owner(),typedAction,target.schema(),
+				target.schemaPath(),target.submodelId()));
+		// The Operation's output Count still comes from the response mapping, now on the typed action.
+		var responseSource=original.responseSources().value().get(0);
+		var typedCount=new AidTarget(new AasReferenceResolver.AidTarget(target.owner(),typedAction,Presence.of(integer),
+				List.of("Count"),target.submodelId()));
+		var mapping=new MappingPlan(original.identity(),original.listIndex(),original.sources(),
+				List.of(new EndpointPlan(sink.id(),sink.reference(),typedTarget)),original.defaultPollingInterval(),
+				original.transformation(),Presence.of(List.of(new EndpointPlan(responseSource.id(),responseSource.reference(),typedCount))),
+				Presence.of(List.of(original.responseSinks().value().get(0))),original.responseTransformation(),
+				original.triggerSourceIds(),original.qualifiers());
+		var result=factory.create(new Plan(base.aimcSubmodelId(),List.of(mapping)),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
+		assertEquals(Map.of("Count","integer","Samples","array<integer>","Matrix","array<array<integer>>",
+				"Label","string"),bridge.getResponseTypes());
+	}
+
+	@Test void compiledResponseLuaAndRealFanOutBoundaryEmitOneCompletePayload() throws Exception {
+		var result=factory.create(explicitResponsePlan("aid-command"),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
+		var lua=(LuaTransformerConfiguration)result.configuration().getTransformers().get(bridge.getResponseTransformer());
+		var writes=new java.util.concurrent.atomic.AtomicInteger();
+		var payload=new java.util.concurrent.atomic.AtomicReference<Object>();
+		try(var context=new org.apache.camel.impl.DefaultCamelContext()) {
+			context.addRoutes(new org.apache.camel.builder.RouteBuilder() {
+				@Override public void configure() {
+					from("direct:response-write").process(exchange -> { writes.incrementAndGet();payload.set(exchange.getMessage().getBody()); });
+				}
+			});
+			lua.bind(context);context.start();
+			List<Map<String,Object>> bindings=bridge.getResponseSinkBindings().stream().map(binding -> {
+				Map<String,Object> copy=new java.util.LinkedHashMap<>(binding);copy.put("endpoint","direct:response-write");return copy;
+			}).toList();
+			try(var template=context.createProducerTemplate();var fanout=new dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.ResponseSinkFanOutProcessor(context,"compiled-response",bindings)) {
+				Object projected=dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.ResponseProjectionProcessor.project(
+						Map.of("Count",42),bridge.getResponseSourceBindings());
+				Map<?,?> transformed=template.requestBody(lua.getConnectionURI(),projected,Map.class);
+				assertEquals(Map.of("Count","42"),transformed.get("Reply"));
+				var exchange=new org.apache.camel.support.DefaultExchange(context);exchange.getMessage().setBody(transformed);
+				var jobs=fanout.prepareJobs(exchange);assertEquals(1,jobs.size());
+				String writeRoute="direct:compiled-response-write";
+				context.addRoutes(new org.apache.camel.builder.RouteBuilder() {
+					@Override public void configure() { fanout.configureWrite(from(writeRoute)); }
+				});
+				template.sendBody(writeRoute,jobs.get(0));
+				assertEquals(1,writes.get());assertEquals(Map.of("x",1L,"y",2L),payload.get());
+				exchange.getMessage().setBody(Map.of("X",1));assertTrue(fanout.prepareJobs(exchange).isEmpty());
+				assertEquals(1,writes.get(),"missing group members must not emit a partial payload");
+			} finally { context.stop();lua.close(); }
+		}
+	}
+
+	private static Plan explicitResponsePlan(String responseAnchor) {
+		return explicitResponsePlan(responseAnchor,List.of());
+	}
+	private static Plan explicitResponsePlan(String responseAnchor,List<OperationVariable> inoutputs) {
+		var callerProperty=property("Count","0");
+		var operation=AasFixtures.operation("operation",List.of(),List.of(AasFixtures.variable(callerProperty)),inoutputs);
+		operation.setQualifiers(List.of(AasFixtures.delegation("http://dmp:8080/operations/asset%20one/Move")));
+		var direct=new DirectTarget(new AasReferenceResolver.ResolvedElement(AasFixtures.submodel("cci","CCI",operation),operation));
+		var operationRef=AasFixtures.reference("Submodel","cci","SubmodelElementCollection","Skills",
+				"SubmodelElementCollection","Move","Operation","operation");
+		var source=new EndpointPlan("invoke",operationRef,direct);
+		var base=protocolTarget(WireModel.ProtocolFamily.HTTP,"http://device.example:8080","/move",Map.of(),"POST");
+		var input=dataSchema("object",Map.of());
+		var count=dataSchema("integer",Map.of());var output=dataSchema("object",Map.of("Count",count));
+		var action=new WireModel.Affordance("action",Presence.of("Move"),Presence.absent(),base.resolved().affordance().forms(),
+				Presence.absent(),Presence.of(input),Presence.of(output),emptyElement());
+		var iface=base.resolved().owner();
+		var command=new AidTarget(new AasReferenceResolver.AidTarget(iface,action,Presence.of(input),List.of(),"aid-command"));
+		var response=new AidTarget(new AasReferenceResolver.AidTarget(iface,action,Presence.of(count),List.of("Count"),responseAnchor));
+		var commandEndpoint=new EndpointPlan("Move",actionReference("aid-command","input"),command);
+		var responseSource=new EndpointPlan("Body,&#",actionReference(responseAnchor,"output"),response);
+		var extraBase=protocolTarget(WireModel.ProtocolFamily.HTTP,"http://extra.example:8080","/state",Map.of(),"POST");
+		var payload=dataSchema("object",Map.of("x",count,"y",count));
+		var extraAffordance=new WireModel.Affordance("property",Presence.of("State"),Presence.absent(),extraBase.resolved().affordance().forms(),
+				Presence.of(payload),Presence.absent(),Presence.absent(),emptyElement());
+		var x=new AidTarget(new AasReferenceResolver.AidTarget(extraBase.resolved().owner(),extraAffordance,Presence.of(count),List.of("x"),"aid-extra"));
+		var y=new AidTarget(new AasReferenceResolver.AidTarget(extraBase.resolved().owner(),extraAffordance,Presence.of(count),List.of("y"),"aid-extra"));
+		var mapping=new MappingPlan("responses",0,List.of(source),List.of(commandEndpoint),Presence.absent(),
+				Presence.of(new WireModel.Blob("function aimc_main(sources) return {Move=sources.invoke} end".getBytes(StandardCharsets.UTF_8),"text/x-lua")),
+				Presence.of(List.of(responseSource)),Presence.of(List.of(new EndpointPlan("Reply",operationRef,direct),
+						new EndpointPlan("X",reference(),x),new EndpointPlan("Y",reference(),y))),
+				Presence.of(new WireModel.Blob("function aimc_main(sources) return {Reply={Count=tostring(sources['Body,&#'])},X=1,Y=2} end".getBytes(StandardCharsets.UTF_8),"text/x-lua")),Presence.absent(),List.of());
+		return new Plan("aimc",List.of(mapping));
+	}
+
+	@Test
+	void compilesMultipleCallerVariableSourcesAndResponseSinksAroundOneOperation() {
+		var mapping=variableOperationMapping(false);
+		var result=factory.create(new Plan("aimc",List.of(mapping)),"bridge");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=assertInstanceOf(ProtocolBridgeRouteConfiguration.class,result.configuration().getRoutes().get(0));
+		assertEquals(Map.of("x-source","$.Position.x","y-source","$.Position.y"),bridge.getCallerInputSourcePaths());
+		assertEquals(Map.of("count-sink","$.Count"),bridge.getCallerReplyBindings());
+		assertEquals(List.of("x-source","y-source"),bridge.getTriggerData().get("requestSourceIds"));
+		assertEquals(1,result.configuration().getDatasinks().size(),"caller variable sinks are assembled into the one operation reply");
+	}
+
+	@Test
+	void twoResponseSinksMayNotAnswerTheSameCallerVariable() {
+		var result=factory.create(new Plan("aimc",List.of(variableOperationMapping(true))),"bridge");
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.toString().contains("only one ResponseSink may select the caller variable Count")),
+				result.issues().toString());
+	}
+
+	/** A Move Operation whose Position members are separate Sources and whose Count output is a ResponseSink. */
+	private MappingPlan variableOperationMapping(boolean duplicateCountSink) {
+		var x=property("x","0");
+		var y=property("y","0");
+		var position=AasFixtures.collection("Position",x,y);
+		var count=property("Count","0");
+		var operation=AasFixtures.operation("operation",List.of(AasFixtures.variable(position)),List.of(),
+				List.of(AasFixtures.variable(count)));
+		operation.setQualifiers(List.of(AasFixtures.delegation("http://dmp:8080/operations/asset/Move")));
+		var submodel=AasFixtures.submodel("cci","CCI",operation);
+		String operationPath="Skills.Move.operation";
+		var sourceX=new EndpointPlan("x-source",AasFixtures.reference("Submodel","cci",
+				"SubmodelElementCollection","Skills","SubmodelElementCollection","Move","Operation","operation",
+				"SubmodelElementCollection","Position","Property","x"),
+				new DirectTarget(new AasReferenceResolver.ResolvedElement(submodel,x,operation,operationPath)));
+		var sourceY=new EndpointPlan("y-source",AasFixtures.reference("Submodel","cci",
+				"SubmodelElementCollection","Skills","SubmodelElementCollection","Move","Operation","operation",
+				"SubmodelElementCollection","Position","Property","y"),
+				new DirectTarget(new AasReferenceResolver.ResolvedElement(submodel,y,operation,operationPath)));
+		var output=new EndpointPlan("count-sink",AasFixtures.reference("Submodel","cci",
+				"SubmodelElementCollection","Skills","SubmodelElementCollection","Move","Operation","operation",
+				"Property","Count"),new DirectTarget(new AasReferenceResolver.ResolvedElement(submodel,count,operation,operationPath)));
+		var base=protocolTarget(WireModel.ProtocolFamily.HTTP,"http://device.example:8080","/move",Map.of(),"POST");
+		var input=dataSchema("object",Map.of());
+		var replySchema=dataSchema("integer",Map.of());
+		var action=new WireModel.Affordance("action",Presence.of("Move"),Presence.absent(),base.resolved().affordance().forms(),
+				Presence.absent(),Presence.of(input),Presence.of(dataSchema("object",Map.of("Count",replySchema))),emptyElement());
+		var command=new AidTarget(new AasReferenceResolver.AidTarget(base.resolved().owner(),action,Presence.of(input),List.of(),"aid-command"));
+		var commandEndpoint=new EndpointPlan("Move",actionReference("aid-command","input"),command);
+		var response=new AidTarget(new AasReferenceResolver.AidTarget(base.resolved().owner(),action,
+				Presence.of(replySchema),List.of("Count"),"aid-command"));
+		var responseSource=new EndpointPlan("reply-count",actionReference("aid-command","output"),response);
+		return new MappingPlan("variable-operation",0,List.of(sourceX,sourceY),List.of(commandEndpoint),Presence.absent(),
+				Presence.of(new WireModel.Blob("function aimc_main(sources) return {Move={x=sources['x-source'],y=sources['y-source']}} end"
+						.getBytes(StandardCharsets.UTF_8),"text/x-lua")),
+				Presence.of(List.of(responseSource)),Presence.of(duplicateCountSink
+						? List.of(output,new EndpointPlan("count-sink-copy",output.reference(),output.target())) : List.of(output)),
+				Presence.of(new WireModel.Blob("function aimc_main(sources) return {['count-sink']=tostring(sources['reply-count'])} end"
+						.getBytes(StandardCharsets.UTF_8),"text/x-lua")),Presence.absent(),List.of());
+	}
+
+	private static Reference actionReference(String anchor,String direction) {
+		return AasFixtures.reference("Submodel",anchor,"SubmodelElementCollection","interface_device",
+				"SubmodelElementCollection","InteractionMetadata","SubmodelElementCollection","actions",
+				"SubmodelElementCollection","Move","SubmodelElementCollection",direction);
+	}
+	private static WireModel.DataSchema dataSchema(String type,Map<String,WireModel.DataSchema> properties) {
+		return new WireModel.DataSchema(Presence.absent(),Presence.absent(),Presence.absent(),Presence.of(type),properties,
+				Presence.absent(),Presence.absent(),Map.of(),emptyElement());
+	}
+
+	private static MappingPlan mapping(WireModel.ProtocolFamily family, boolean withLua) {
+		var schema = Presence.<WireModel.DataSchema>absent();
+		var source = new EndpointPlan("Source.authored", reference(), target(family, "GET", schema));
+		var sink = new EndpointPlan("Sink.authored", reference(), target(family, "POST", schema));
+		Presence<WireModel.Blob> transformation = withLua
+				? Presence.of(new WireModel.Blob("function aimc_main(sources) return sources end".getBytes(StandardCharsets.UTF_8), "text/x-lua"))
+				: Presence.absent();
+		return new MappingPlan("logical-map", 3, List.of(source), List.of(sink), Presence.absent(),
+				transformation, Presence.absent(), Presence.absent(), Presence.absent(), Presence.absent(), List.of());
+	}
+
+	private static AidTarget target(WireModel.ProtocolFamily family, String method,
+			Presence<WireModel.DataSchema> schema) {
+		var form = new WireModel.Form(Presence.of("http://device.example/api/value"), Presence.absent(),
+				List.of(), family == WireModel.ProtocolFamily.HTTP ? Presence.of(method) : Presence.absent(),
+				Map.of(), Presence.absent(), Map.of(), emptyElement());
+		var affordance = new WireModel.Affordance("property", Presence.of("value"), Presence.absent(),
+				List.of(form), schema, schema, schema, emptyElement());
+		var iface = new WireModel.Interface("interface-semantic", "interface-device", List.of(), List.of(family),
+				emptyElement(), List.of(form), List.of(), List.of(affordance), List.of(), List.of(),
+				Presence.absent(), Presence.absent(), schema, schema, Presence.absent(), Presence.absent());
+		return new AidTarget(new AasReferenceResolver.AidTarget(iface, affordance, schema, List.of()));
+	}
+
+	private static AidTarget protocolTarget(WireModel.ProtocolFamily family,String base,String href,
+			Map<String,String> bindingTerms, String httpMethod) {
+		Map<String,String> terms=new java.util.LinkedHashMap<>(bindingTerms);
+		Map<String,String> mqtt=new java.util.LinkedHashMap<>();
+		terms.forEach((name,value) -> { if(name.startsWith("mqv_"))mqtt.put(name,value); });
+		var form=new WireModel.Form(Presence.of(href),Presence.absent(),List.of(),
+				httpMethod==null?Presence.absent():Presence.of(httpMethod),mqtt,Presence.absent(),terms,emptyElement());
+		var affordance=new WireModel.Affordance("property",Presence.of("value"),Presence.absent(),
+				List.of(form),Presence.absent(),Presence.absent(),Presence.absent(),emptyElement());
+		SubmodelElement endpointMetadata=AasFixtures.collection("EndpointMetadata",property("base",base));
+		var iface=new WireModel.Interface("interface-semantic","interface_device",List.of("binding"),List.of(family),
+				emptyElement(),List.of(form),List.of(),List.of(affordance),List.of(),List.of(),Presence.of(endpointMetadata),
+				Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent());
+		return new AidTarget(new AasReferenceResolver.AidTarget(iface,affordance,Presence.absent(),List.of()));
+	}
+
+	private static EndpointPlan endpointPlan(String id,AidTarget target) {
+		return new EndpointPlan(id,reference(),target);
+	}
+
+	private static MappingPlan mappingWithEndpoints(EndpointPlan source,EndpointPlan sink) {
+		return mappingPlan("logical-map",0,source,sink);
+	}
+
+	private static MappingPlan mappingPlan(String identity,int index,EndpointPlan source,EndpointPlan sink) {
+		return new MappingPlan(identity,index,List.of(source),List.of(sink),Presence.absent(),Presence.absent(),
+				Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),List.of());
+	}
+
+	private static Reference reference() {
+		return AasFixtures.reference("Submodel", "aid");
+	}
+	/** An observable MQTT property (AID recommends observable for every MQTT property). */
+	private static AidTarget mqttTarget(SubmodelElement endpoint, WireModel.Form form, String id) {
+		var affordance = new WireModel.Affordance("property", Presence.of(id), Presence.absent(), List.of(form),
+				Presence.absent(), Presence.absent(), Presence.absent(), AasFixtures.collection(id, property("observable", "true")));
+		var iface = new WireModel.Interface("interface-semantic", "interface_mqtt", List.of("http://www.w3.org/2011/mqtt"),
+				List.of(WireModel.ProtocolFamily.MQTT), emptyElement(), List.of(form), List.of(), List.of(affordance),
+					List.of(), List.of(), Presence.of(endpoint), Presence.absent(), Presence.absent(), Presence.absent(),
+					Presence.absent(), Presence.absent());
+		return new AidTarget(new AasReferenceResolver.AidTarget(iface, affordance, Presence.absent(), List.of()));
+	}
+	private static WireModel.Form mqttForm(String href, String qos, String retain) {
+		Map<String, String> terms = new java.util.LinkedHashMap<>();
+		terms.put("mqv_qos", qos);
+		if (retain != null) terms.put("mqv_retain", retain);
+		return new WireModel.Form(Presence.of(href), Presence.absent(), List.of(), Presence.absent(),
+				terms, Presence.absent(), terms, emptyElement());
+	}
+	private static SubmodelElement property(String id, String value) {
+		return AasFixtures.property(id, value);
+	}
+	private static SubmodelElement emptyElement() {
+		return AasFixtures.collection(null);
+	}
+}

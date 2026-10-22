@@ -3,13 +3,13 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.eclipse.digitaltwin.basyx</groupId>
+		<groupId>dk.aau.smartproductionlab</groupId>
 		<artifactId>dmp.parent</artifactId>
 		<version>${revision}</version>
 	</parent>
 	<artifactId>dmp.camel-aas</artifactId>
-	<name>AAS Sink</name>
-	<description>AAS Sink using camel</description>
+	<name>AAS-Camel-DMP Camel AAS</name>
+	<description>AAS element reads, writes and change events, and the AAS Operation bridge</description>
 
 	<packaging>jar</packaging>
 
@@ -43,12 +43,12 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.core</artifactId>
 			<version>${revision}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-lua</artifactId>
 			<version>${revision}</version>
 			<scope>test</scope>

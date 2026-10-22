@@ -3,13 +3,13 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.eclipse.digitaltwin.basyx</groupId>
+		<groupId>dk.aau.smartproductionlab</groupId>
 		<artifactId>dmp.parent</artifactId>
 		<version>${revision}</version>
 	</parent>
 	<artifactId>dmp.camel-plc4x</artifactId>
-	<name>Camel PLC4X</name>
-	<description>PLC4X integration using camel</description>
+	<name>AAS-Camel-DMP Camel PLC4X</name>
+	<description>Modbus connector (PLC4X): checked reads and acknowledged writes</description>
 
 	<packaging>jar</packaging>
 
@@ -41,7 +41,7 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.core</artifactId>
 			<version>${revision}</version>
 		</dependency>

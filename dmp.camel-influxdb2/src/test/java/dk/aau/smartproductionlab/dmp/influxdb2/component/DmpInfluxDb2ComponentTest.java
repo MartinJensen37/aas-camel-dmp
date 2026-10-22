@@ -1,0 +1,194 @@
+/* Copyright (C) 2026 the aas-camel-dmp Authors
+ * SPDX-License-Identifier: MIT */
+package dk.aau.smartproductionlab.dmp.influxdb2.component;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.apache.camel.CamelExecutionException;
+import org.apache.camel.ProducerTemplate;
+import org.apache.camel.impl.DefaultCamelContext;
+import dk.aau.smartproductionlab.dmp.core.configuration.route.core.ConnectorInvocationException;
+import dk.aau.smartproductionlab.dmp.influxdb2.InfluxSettings;
+import dk.aau.smartproductionlab.dmp.influxdb2.RecordColumn;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.sun.net.httpserver.HttpServer;
+
+class DmpInfluxDb2ComponentTest {
+	private record Write(String query, String authorization, String body) { }
+
+	private static final List<RecordColumn> COLUMNS = List.of(
+			new RecordColumn("PackMLState", "PackMLState", "xs:string"),
+			new RecordColumn("Count", "count", "xs:long"),
+			new RecordColumn("Position.X", "Position.X", "xs:double"),
+			new RecordColumn("Ready", "Ready", "xs:boolean"));
+	private static final String URI_ = DmpInfluxDb2Component.uri("station_state", "ap2030", "Time",
+			Map.of("asset", "imaDispensing"), COLUMNS);
+
+	private final List<Write> writes = new CopyOnWriteArrayList<>();
+	private final List<String> queries = new CopyOnWriteArrayList<>();
+	private volatile int status = 204;
+	/** The annotated CSV InfluxDB answers a query with: one table per field, as {@code last()} returns. */
+	private volatile String answer = "";
+	private HttpServer influx;
+	private DefaultCamelContext context;
+	private ProducerTemplate template;
+
+	@BeforeEach
+	void start() throws Exception {
+		influx = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		influx.createContext("/api/v2/write", exchange -> {
+			writes.add(new Write(exchange.getRequestURI().getRawQuery(), exchange.getRequestHeaders().getFirst("Authorization"),
+					new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
+			byte[] answer = status == 204 ? new byte[0]
+					: "{\"code\":\"invalid\",\"message\":\"field type conflict\"}".getBytes(StandardCharsets.UTF_8);
+			exchange.getResponseHeaders().set("Content-Type", "application/json");
+			exchange.sendResponseHeaders(status, status == 204 ? -1 : answer.length);
+			if (answer.length > 0) exchange.getResponseBody().write(answer);
+			exchange.close();
+		});
+		influx.createContext("/api/v2/query", exchange -> {
+			String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+			queries.add(com.google.gson.JsonParser.parseString(request).getAsJsonObject().get("query").getAsString());
+			byte[] csv = answer.getBytes(StandardCharsets.UTF_8);
+			exchange.getResponseHeaders().set("Content-Type", "text/csv; charset=utf-8");
+			exchange.sendResponseHeaders(200, csv.length == 0 ? -1 : csv.length);
+			if (csv.length > 0) exchange.getResponseBody().write(csv);
+			exchange.close();
+		});
+		influx.start();
+		context = new DefaultCamelContext();
+		context.start();
+		context.getComponent(DmpInfluxDb2Component.SCHEME, DmpInfluxDb2Component.class).configure(new InfluxSettings(
+				URI.create("http://127.0.0.1:" + influx.getAddress().getPort()), "ap2030", "secret-token"));
+		template = context.createProducerTemplate();
+	}
+
+	@AfterEach
+	void stop() throws IOException {
+		context.stop();
+		influx.stop(0);
+	}
+
+	@Test
+	void aRowIsOneAcknowledgedPointWithTypedFields() {
+		template.requestBody(URI_, Map.of("PackMLState", "EXECUTE", "Count", 3L,
+				"Position", Map.of("X", 1.5), "Ready", true, "Time", "2026-10-21T12:00:00Z"));
+
+		assertEquals(1, writes.size());
+		Write write = writes.get(0);
+		assertTrue(write.query().contains("org=ap2030") && write.query().contains("bucket=ap2030")
+				&& write.query().contains("precision=ns"), write.query());
+		assertEquals("Token secret-token", write.authorization());
+		String line = write.body().strip();
+		assertTrue(line.startsWith("station_state,asset=imaDispensing "), line);
+		assertTrue(line.contains("PackMLState=\"EXECUTE\"") && line.contains("count=3i")
+				&& line.contains("Position.X=1.5") && line.contains("Ready=true"), line);
+		assertTrue(line.endsWith(" " + Instant.parse("2026-10-21T12:00:00Z").getEpochSecond() + "000000000"), line);
+	}
+
+	@Test
+	void aFieldTheRowOmitsIsNotWritten() {
+		template.requestBody(URI_, Map.of("PackMLState", "IDLE"));
+		String line = writes.get(0).body();
+		assertTrue(line.contains("PackMLState=\"IDLE\""), line);
+		assertFalse(line.contains("count="), line);
+	}
+
+	@Test
+	void anUnknownFieldOrAWrongTypeRejectsTheRowBeforeAnyWrite() {
+		assertEquals("INFLUX_ROW_INVALID", failure(Map.of("Unknown", "x")).getConnectorCode());
+		assertEquals("INFLUX_ROW_INVALID", failure(Map.of("Count", "three")).getConnectorCode());
+		assertEquals("INFLUX_ROW_INVALID", failure(Map.of("Count", 1.5)).getConnectorCode());
+		assertEquals("INFLUX_ROW_INVALID", failure(Map.of("PackMLState", "IDLE", "Time", "yesterday")).getConnectorCode());
+		assertEquals("INFLUX_ROW_INVALID", failure(Map.of()).getConnectorCode());
+		assertEquals("INFLUX_ROW_INVALID", failure("EXECUTE").getConnectorCode());
+		assertTrue(writes.isEmpty());
+	}
+
+	@Test
+	void aRejectedPointFailsTheExchange() {
+		status = 422;
+		ConnectorInvocationException failure = failure(Map.of("PackMLState", "IDLE"));
+		assertEquals("INFLUX_WRITE_REJECTED", failure.getConnectorCode());
+		assertEquals(ConnectorInvocationException.Category.REMOTE, failure.getCategory());
+	}
+
+	@Test
+	void anUnreachableInfluxDbFailsTheExchange() throws IOException {
+		influx.stop(0);
+		ConnectorInvocationException failure = failure(Map.of("PackMLState", "IDLE"));
+		assertEquals("INFLUX_WRITE_FAILED", failure.getConnectorCode());
+		assertEquals(ConnectorInvocationException.Category.TRANSPORT, failure.getCategory());
+	}
+
+	@Test
+	void theTokenIsNotPartOfTheEndpointUri() {
+		assertFalse(URI_.contains("secret-token"));
+		assertFalse(context.getEndpoint(URI_).getEndpointUri().contains("secret-token"));
+	}
+
+	@Test
+	void aReadIsTheLatestRowWithTheNewestTime() {
+		answer = table("string", "PackMLState", "EXECUTE", "2026-10-21T12:00:00Z")
+				+ table("long", "count", "7", "2026-10-21T12:00:05Z")
+				+ table("double", "Position.X", "1.5", "2026-10-21T11:00:00Z");
+		Object row = context.createConsumerTemplate().receiveBody(URI_, 1000);
+		assertEquals(Map.of("PackMLState", "EXECUTE", "Count", 7L, "Position", Map.of("X", 1.5),
+				"Time", "2026-10-21T12:00:05Z"), row);
+		String query = queries.get(0);
+		assertTrue(query.contains("range(start: -2592000s)"), query);
+		assertTrue(query.contains("r._measurement == \"station_state\""), query);
+		assertTrue(query.contains("r[\"asset\"] == \"imaDispensing\""), query);
+		assertTrue(query.contains("r._field == \"count\" or"), query);
+		assertTrue(query.contains("last()"), query);
+	}
+
+	@Test
+	void aSeriesWithoutAPointYetHasNoRow() {
+		answer = "";
+		assertEquals(null, context.createConsumerTemplate().receiveBody(URI_, 1000));
+	}
+
+	@Test
+	void aStoredValueOfAnotherTypeFailsTheRead() {
+		answer = table("string", "count", "seven", "2026-10-21T12:00:00Z");
+		var thrown = assertThrows(RuntimeException.class, () -> context.createConsumerTemplate().receiveBody(URI_, 1000));
+		Throwable cause = thrown;
+		while (cause != null && !(cause instanceof ConnectorInvocationException)) cause = cause.getCause();
+		assertEquals("INFLUX_VALUE_MISMATCH", assertInstanceOf(ConnectorInvocationException.class, cause).getConnectorCode());
+	}
+
+	@Test
+	void fluxStringsAreQuotedWithoutInterpolation() {
+		assertEquals("\"a\\\"b\\\\c\\${d}\"", dk.aau.smartproductionlab.dmp.influxdb2.InfluxValues.flux("a\"b\\c${d}"));
+	}
+
+	private static String table(String type, String field, String value, String time) {
+		return "#datatype,string,long,dateTime:RFC3339,dateTime:RFC3339,dateTime:RFC3339," + type + ",string,string,string\n"
+				+ "#group,false,false,true,true,false,false,true,true,true\n"
+				+ "#default,_result,,,,,,,,\n"
+				+ ",result,table,_start,_stop,_time,_value,_field,_measurement,asset\n"
+				+ ",,0,2026-09-21T00:00:00Z,2026-10-21T13:00:00Z," + time + "," + value + "," + field + ",station_state,imaDispensing\n\n";
+	}
+
+	private ConnectorInvocationException failure(Object row) {
+		CamelExecutionException thrown = assertThrows(CamelExecutionException.class, () -> template.requestBody(URI_, row));
+		return assertInstanceOf(ConnectorInvocationException.class, thrown.getCause());
+	}
+}

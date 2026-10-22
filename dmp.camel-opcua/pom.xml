@@ -3,13 +3,13 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.eclipse.digitaltwin.basyx</groupId>
+		<groupId>dk.aau.smartproductionlab</groupId>
 		<artifactId>dmp.parent</artifactId>
 		<version>${revision}</version>
 	</parent>
 	<artifactId>dmp.camel-opcua</artifactId>
-	<name>OpcUa Camel</name>
-	<description>OpcUa Camel Integration as data source and sink</description>
+	<name>AAS-Camel-DMP Camel OPC UA</name>
+	<description>OPC UA connector (Milo): reads, monitored items, events, writes and Method calls</description>
 
 	<packaging>jar</packaging>
 
@@ -27,7 +27,7 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.core</artifactId>
 			<version>${revision}</version>
 		</dependency>
@@ -56,7 +56,7 @@
 
 		<!-- Route-level tests of OPC UA values flowing through the Lua component. -->
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.camel-lua</artifactId>
 			<version>${revision}</version>
 			<scope>test</scope>

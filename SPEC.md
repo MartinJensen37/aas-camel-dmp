@@ -1,4 +1,4 @@
-# aas-camel-dmp — Design Specification
+# AAS-Camel-DMP — Design Specification
 
 > **Status (2026-10-18):** describes the implemented single-process Java DMP.
 > Open and deferred work is tracked in [PLAN.md](PLAN.md). Earlier designs
@@ -742,3 +742,5 @@ local-AID pins).
 - AIMC/AID semantics: IDTA submodel templates (CC BY 4.0) — attribute and
   indicate modifications.
 - This is a derivative work, not an official Eclipse BaSyx component.
+  Its Java packages and Maven groupId are `dk.aau.smartproductionlab` (renamed
+  from the DataBridge's `org.eclipse.digitaltwin.basyx`, 2026-10-22).

@@ -1,4 +1,4 @@
-# aas-camel-dmp
+# AAS-Camel-DMP
 
 A data-mapping processor (DMP) for Asset Administration Shells, built on
 [Apache Camel](https://camel.apache.org/) 4 and Java 21. It is a fork of the
@@ -195,3 +195,5 @@ See [SPEC.md](SPEC.md) for the design specification and decision records.
 - Derived files keep their original MIT headers; the project remains MIT (see `LICENSE`).
 - AIMC/AID semantics: IDTA submodel templates (`admin-shell-io/submodel-templates`, CC BY 4.0).
 - This is a derivative work, not an official Eclipse/BaSyx component.
+  Its Java packages and Maven groupId are `dk.aau.smartproductionlab` (renamed
+  from the DataBridge's `org.eclipse.digitaltwin.basyx`, 2026-10-22).

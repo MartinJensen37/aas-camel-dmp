@@ -2,12 +2,12 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>org.eclipse.digitaltwin.basyx</groupId>
+	<groupId>dk.aau.smartproductionlab</groupId>
 	<artifactId>dmp.parent</artifactId>
 	<version>${revision}</version>
 	<packaging>pom</packaging>
-	<name>DMP Parent</name>
-	<description>Parent POM for Eclipse BaSyx DMP</description>
+	<name>AAS-Camel-DMP</name>
+	<description>AAS-Camel-DMP: maps asset protocols to Asset Administration Shells with Apache Camel, configured by AIMC and AID submodels</description>
 
 	<modules>
 		<module>dmp.core</module>

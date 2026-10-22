@@ -7,12 +7,12 @@ assignees: ''
 ---
 
 ## User Story
-> **As a** BaSyx user/developer,  
+> **As a** DMP user/developer,  
 > **I want** [describe the feature or task],  
 > **so that** [describe the value or benefit].
 
 Use this section to clearly outline the user/developer perspective. For instance:  
-- _“As a BaSyx developer, I want to configure endpoints dynamically, so that I can easily reuse code in different environments.”_
+- _“As a DMP developer, I want to configure endpoints dynamically, so that I can easily reuse code in different environments.”_
 
 ---
 

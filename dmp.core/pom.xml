@@ -3,13 +3,13 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.eclipse.digitaltwin.basyx</groupId>
+		<groupId>dk.aau.smartproductionlab</groupId>
 		<artifactId>dmp.parent</artifactId>
 		<version>${revision}</version>
 	</parent>
 	<artifactId>dmp.core</artifactId>
-	<name>DMP Core</name>
-	<description>Core logics for the DMP</description>
+	<name>AAS-Camel-DMP Core</name>
+	<description>Route model, fan-in/fan-out, payload assembly, affordance validation and bundle lifecycle</description>
 
 	<packaging>jar</packaging>
 

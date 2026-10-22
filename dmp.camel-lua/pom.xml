@@ -3,13 +3,13 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.eclipse.digitaltwin.basyx</groupId>
+		<groupId>dk.aau.smartproductionlab</groupId>
 		<artifactId>dmp.parent</artifactId>
 		<version>${revision}</version>
 	</parent>
 	<artifactId>dmp.camel-lua</artifactId>
-	<name>Camel Lua component</name>
-	<description>Camel Lua integration (AIMC-compliant transformation blobs via LuaJ)</description>
+	<name>AAS-Camel-DMP Camel Lua</name>
+	<description>The lua: component: sandboxed AIMC transformation blobs on LuaJ</description>
 
 	<packaging>jar</packaging>
 
@@ -49,7 +49,7 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.eclipse.digitaltwin.basyx</groupId>
+			<groupId>dk.aau.smartproductionlab</groupId>
 			<artifactId>dmp.core</artifactId>
 			<version>${revision}</version>
 		</dependency>
