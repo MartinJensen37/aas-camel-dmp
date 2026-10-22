@@ -226,7 +226,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "5523a7a88d2b545884aa207b9c54a843"
+          "value": "3139ddfe5d4d597ca4886923e0bae91b"
          }
         ]
        },
@@ -247,7 +247,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "d1b110ff8bd85c20b2456e7b82f4d59d"
+          "value": "e79296827c0c5649b0fbbb06096f9e4e"
          }
         ]
        },
@@ -268,7 +268,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "d8ea65c8a9365ac4bad72b40f96b1e95"
+          "value": "3409b0f4b99858018822b760e67c8b97"
          }
         ]
        },
@@ -289,7 +289,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "7904a35e1617554082a164aa9b4dcef6"
+          "value": "141741238e795f1e9772c886fbeadeb9"
          }
         ]
        },
@@ -353,7 +353,7 @@
         ]
        },
        "contentType": "text/plain",
-       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpCiAgICBsb2NhbCBxdWV1ZSA9IHNvdXJjZXMuUHJvY2Vzc1F1ZXVlIG9yIHt9CiAgICByZXR1cm4gewogICAgICAgIFBhY2tNTFN0YXRlID0gc291cmNlcy5TdGF0ZSwKICAgICAgICBPY2N1cGF0aW9uU3RhdGUgPSAoI3F1ZXVlID09IDApIGFuZCAiW10iIG9yIGpzb24uZW5jb2RlKHF1ZXVlKSwKICAgIH0KZW5kCg=="
+       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpCiAgICBsb2NhbCBxdWV1ZSA9IHNvdXJjZXMuUHJvY2Vzc1F1ZXVlIG9yIHt9CiAgICBsb2NhbCBzdGF0ZSA9IHsKICAgICAgICBQYWNrTUxTdGF0ZSA9IHNvdXJjZXMuU3RhdGUsCiAgICAgICAgT2NjdXBhdGlvblN0YXRlID0gKCNxdWV1ZSA9PSAwKSBhbmQgIltdIiBvciBqc29uLmVuY29kZShxdWV1ZSksCiAgICB9CiAgICByZXR1cm4geyBQYWNrTUxTdGF0ZSA9IHN0YXRlLlBhY2tNTFN0YXRlLCBPY2N1cGF0aW9uU3RhdGUgPSBzdGF0ZS5PY2N1cGF0aW9uU3RhdGUsIExpdmUgPSBzdGF0ZSB9CmVuZAo="
       },
       {
        "idShort": "Sources",
@@ -435,7 +435,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "fb7f8f8a711f5a4fada9e609a6a2cf2a"
+              "value": "37e00f8727795578980075c000032890"
              }
             ]
            },
@@ -597,7 +597,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "0cbc1f592fb450819ffc53c32f918590"
+              "value": "f9e4027af9e4515780137b816852aaee"
              }
             ]
            },
@@ -998,6 +998,147 @@
            "valueType": "xs:string"
           }
          ]
+        },
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Live"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "SinksItem"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Sink"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Sink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "SinkId"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SinkId"
+           }
+          }
+         ],
+         "description": [
+          {
+           "language": "en",
+           "text": "A data sink is defined by a Sink reference and SinkId."
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "value": [
+          {
+           "idShort": "Sink",
+           "description": [
+            {
+             "language": "en",
+             "text": "This holds a reference to the respective SubmodelElement used as data sink for live-data."
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/Sink"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/imaDispensingSystemAAS/submodels/Variables"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "State"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Station"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Segments"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Live"
+             }
+            ]
+           }
+          },
+          {
+           "idShort": "SinkId",
+           "description": [
+            {
+             "language": "en",
+             "text": "This is a unique and non-empty identifier that facilitates data writing in the Lua transformation or establishes a relationship to a corresponding source when no transformation is given. It must only be unique with respect to the Sinks-list of the containing MappingConfiguration and not globally."
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/SinkId"
+             }
+            ]
+           },
+           "value": "Live",
+           "valueType": "xs:string"
+          }
+         ]
         }
        ]
       }
@@ -1116,7 +1257,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "f8294ab277e05c78990526fb426c2cf4"
+          "value": "7924f239b152581bbd753455d96da279"
          }
         ]
        },
@@ -1137,7 +1278,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "ea5e0544ff165565b0c4555adc874288"
+          "value": "4a2449469d575c43a8c189b5d7151959"
          }
         ]
        },
@@ -1158,7 +1299,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "183ec8bf9c5851ef9f60fade56eeb4f0"
+          "value": "0cb23dd1e9625ea39f2d44573715a73b"
          }
         ]
        },
@@ -1179,7 +1320,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "ac9d3c7c39af57beaee046cb16bdda9f"
+          "value": "bcc0b909d2355235b3529423ec7f720b"
          }
         ]
        },
@@ -1325,7 +1466,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "51c23f1633795649bf34cc40d43082eb"
+              "value": "d4b71652f3035113ae3e3cb2e94c1ac5"
              }
             ]
            },
@@ -1790,7 +1931,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "4c52128296045b5e96247ffa6fb1c105"
+          "value": "80875d31fbcb540a936cdf52edc0ec1f"
          }
         ]
        },
@@ -1936,7 +2077,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "c90569b83b8051bf948518ada54274a3"
+              "value": "0130d698b8f9509db09724c8ba29e7bc"
              }
             ]
            },
@@ -2242,7 +2383,7 @@
         ]
        },
        "contentType": "text/plain",
-       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIGxvY2FsIHJlcGx5ID0gc291cmNlcy5SZXBseSByZXR1cm4geyBVdWlkID0gcmVwbHkuVXVpZCwgU3RhdGUgPSByZXBseS5TdGF0ZSB9IGVuZA=="
+       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMsIHJlcXVlc3RTb3VyY2VzKQogICAgbG9jYWwgcmVwbHkgPSBzb3VyY2VzLlJlcGx5IG9yIHt9CiAgICBsb2NhbCBsb2cgPSB7IE91dGNvbWUgPSBtZXRhLmludm9jYXRpb24ub3V0Y29tZSwgRHVyYXRpb25NcyA9IG1ldGEuaW52b2NhdGlvbi5kdXJhdGlvbk1zLAogICAgICAgIE9wZXJhdGlvbiA9IHsgVXVpZCA9IHJlcXVlc3RTb3VyY2VzLlV1aWQsIFN0YXRlID0gcmVwbHkuU3RhdGUgfSB9CiAgICBpZiBtZXRhLmludm9jYXRpb24ub3V0Y29tZSB+PSAiU3VjY2VlZGVkIiB0aGVuIHJldHVybiB7IExvZyA9IGxvZyB9IGVuZAogICAgcmV0dXJuIHsgVXVpZCA9IHJlcGx5LlV1aWQsIFN0YXRlID0gcmVwbHkuU3RhdGUsIExvZyA9IGxvZyB9CmVuZAo="
       },
       {
        "idShort": "ResponseSources",
@@ -2714,6 +2855,147 @@
            "valueType": "xs:string"
           }
          ]
+        },
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Log"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpResponseSink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Sink"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Sink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "SinkId"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SinkId"
+           }
+          }
+         ],
+         "description": [
+          {
+           "language": "en",
+           "text": "A correlated response sink reference and its transformation identifier."
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "value": [
+          {
+           "idShort": "Sink",
+           "description": [
+            {
+             "language": "en",
+             "text": "Reference to a SubmodelElement used as a correlated response sink."
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSink/Sink/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/imaDispensingSystemAAS/submodels/Variables"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Log"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Occupy"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Segments"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Live"
+             }
+            ]
+           }
+          },
+          {
+           "idShort": "SinkId",
+           "description": [
+            {
+             "language": "en",
+             "text": "This is a unique and non-empty identifier that facilitates data writing in the Lua transformation or establishes a relationship to a corresponding source when no transformation is given. It must only be unique with respect to the Sinks-list of the containing MappingConfiguration and not globally."
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSink/SinkId/1/0"
+             }
+            ]
+           },
+           "value": "Log",
+           "valueType": "xs:string"
+          }
+         ]
         }
        ]
       }
@@ -2895,7 +3177,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "edbbe06ba93d5abb820303fe58ca2c11"
+          "value": "b0630a2339495aa48833b1e72eb0e737"
          }
         ]
        },
@@ -3041,7 +3323,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "490b49f194b55159a1c268e1c559e465"
+              "value": "1afa7aa9bc815f5084ff0de850ff2c3d"
              }
             ]
            },
@@ -3347,7 +3629,7 @@
         ]
        },
        "contentType": "text/plain",
-       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIGxvY2FsIHJlcGx5ID0gc291cmNlcy5SZXBseSByZXR1cm4geyBVdWlkID0gcmVwbHkuVXVpZCwgU3RhdGUgPSByZXBseS5TdGF0ZSB9IGVuZA=="
+       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMsIHJlcXVlc3RTb3VyY2VzKQogICAgbG9jYWwgcmVwbHkgPSBzb3VyY2VzLlJlcGx5IG9yIHt9CiAgICBsb2NhbCBsb2cgPSB7IE91dGNvbWUgPSBtZXRhLmludm9jYXRpb24ub3V0Y29tZSwgRHVyYXRpb25NcyA9IG1ldGEuaW52b2NhdGlvbi5kdXJhdGlvbk1zLAogICAgICAgIE9wZXJhdGlvbiA9IHsgVXVpZCA9IHJlcXVlc3RTb3VyY2VzLlV1aWQsIFN0YXRlID0gcmVwbHkuU3RhdGUgfSB9CiAgICBpZiBtZXRhLmludm9jYXRpb24ub3V0Y29tZSB+PSAiU3VjY2VlZGVkIiB0aGVuIHJldHVybiB7IExvZyA9IGxvZyB9IGVuZAogICAgcmV0dXJuIHsgVXVpZCA9IHJlcGx5LlV1aWQsIFN0YXRlID0gcmVwbHkuU3RhdGUsIExvZyA9IGxvZyB9CmVuZAo="
       },
       {
        "idShort": "ResponseSources",
@@ -3819,6 +4101,147 @@
            "valueType": "xs:string"
           }
          ]
+        },
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Log"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpResponseSink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Sink"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Sink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "SinkId"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SinkId"
+           }
+          }
+         ],
+         "description": [
+          {
+           "language": "en",
+           "text": "A correlated response sink reference and its transformation identifier."
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "value": [
+          {
+           "idShort": "Sink",
+           "description": [
+            {
+             "language": "en",
+             "text": "Reference to a SubmodelElement used as a correlated response sink."
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSink/Sink/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/imaDispensingSystemAAS/submodels/Variables"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Log"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Release"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Segments"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Live"
+             }
+            ]
+           }
+          },
+          {
+           "idShort": "SinkId",
+           "description": [
+            {
+             "language": "en",
+             "text": "This is a unique and non-empty identifier that facilitates data writing in the Lua transformation or establishes a relationship to a corresponding source when no transformation is given. It must only be unique with respect to the Sinks-list of the containing MappingConfiguration and not globally."
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/aimc/ResponseSink/SinkId/1/0"
+             }
+            ]
+           },
+           "value": "Log",
+           "valueType": "xs:string"
+          }
+         ]
         }
        ]
       }
@@ -4000,7 +4423,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "3139ddfe5d4d597ca4886923e0bae91b"
+          "value": "cb661ec54d71550f8f96258a75dc560e"
          }
         ]
        },
@@ -4146,7 +4569,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "b5cf76d9bdfb5a6686d91aaeb3386baa"
+              "value": "cb84320512af584ea494f119258ee72c"
              }
             ]
            },
@@ -4308,7 +4731,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "918f120c15a45de38fd7a85a308f65dd"
+              "value": "b8f7d90cf1a956b193484f32e7c02e15"
              }
             ]
            },
@@ -5824,7 +6247,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "3bd007ec78365f39aeba089134bc5c01"
+          "value": "611a7f21f9c15416ae712bca94f3c46b"
          }
         ]
        },
@@ -5845,7 +6268,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "d4b71652f3035113ae3e3cb2e94c1ac5"
+          "value": "0e3e249611585f0795360435d8c4ad9e"
          }
         ]
        },
@@ -5866,7 +6289,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "382f3f4d5fb756cdb0e5c59219711c81"
+          "value": "4bd1d3a3d999599faeb44346add0c800"
          }
         ]
        },
@@ -5887,7 +6310,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "8a2c47c6a8ab595d954561fe2e7891c2"
+          "value": "a696d887fd10554e871aa40ca47a1c4c"
          }
         ]
        },
@@ -5951,7 +6374,7 @@
         ]
        },
        "contentType": "text/plain",
-       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIHJldHVybiB7IFdlaWdodCA9IHNvdXJjZXMuV2VpZ2h0IH0gZW5k"
+       "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIHJldHVybiB7IFdlaWdodCA9IHNvdXJjZXMuV2VpZ2h0LCBMaXZlID0geyBXZWlnaHQgPSBzb3VyY2VzLldlaWdodCB9IH0gZW5k"
       },
       {
        "idShort": "Sources",
@@ -6323,6 +6746,147 @@
             ]
            },
            "value": "Weight",
+           "valueType": "xs:string"
+          }
+         ]
+        },
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Live"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "SinksItem"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Sink"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Sink"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "SinkId"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SinkId"
+           }
+          }
+         ],
+         "description": [
+          {
+           "language": "en",
+           "text": "A data sink is defined by a Sink reference and SinkId."
+          }
+         ],
+         "modelType": "SubmodelElementCollection",
+         "value": [
+          {
+           "idShort": "Sink",
+           "description": [
+            {
+             "language": "en",
+             "text": "This holds a reference to the respective SubmodelElement used as data sink for live-data."
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/Sink"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/imaDispensingSystemAAS/submodels/Variables"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Measurements"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Weight"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Segments"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Live"
+             }
+            ]
+           }
+          },
+          {
+           "idShort": "SinkId",
+           "description": [
+            {
+             "language": "en",
+             "text": "This is a unique and non-empty identifier that facilitates data writing in the Lua transformation or establishes a relationship to a corresponding source when no transformation is given. It must only be unique with respect to the Sinks-list of the containing MappingConfiguration and not globally."
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/Sink/SinkId"
+             }
+            ]
+           },
+           "value": "Live",
            "valueType": "xs:string"
           }
          ]

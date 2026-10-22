@@ -339,6 +339,7 @@ public final class MappingReconciliationService implements AutoCloseable {
 					mark(candidate.key(), State.INSTALLED, desiredFingerprint.exported(), desiredFingerprint.exported(), generation, "");
 					changed++;
 				} catch (RuntimeException failure) {
+					LOGGER.warn("Bundle {} failed to install: {}", candidate.desired().bundle().bundleId(), failure.toString(), failure);
 					ManagedBundle surviving = component.managedBundle(previous == null
 							? candidate.desired().bundle().bundleId() : previous.bundleId());
 					if (surviving != null) {

@@ -111,8 +111,11 @@ class AidDataSchemaTermsTest {
 			var plan = new MappingPlanCompiler(new AasReferenceResolver(repository.client())).compile(WireProjection.aimc(
 					dk.aau.smartproductionlab.dmp.aas.model.Aas.read(aimc, org.eclipse.digitaltwin.aas4j.v3.model.Submodel.class)));
 			assertEquals(AasRepositoryClient.Status.FOUND, plan.status(), String.valueOf(plan));
+			// The station's history and skill logs name the workspace's InfluxDB.
+			var influx = context.has("influx_url") ? new dk.aau.smartproductionlab.dmp.influxdb2.InfluxSettings(
+					URI.create(context.get("influx_url").getAsString()), context.get("influx_org").getAsString(), "fixture-token") : null;
 			var compiled = new ConnectorConfigurationFactory().createBundles(plan.value(),
-					new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://127.0.0.1:1")));
+					new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://127.0.0.1:1"), influx));
 			assertTrue(compiled.issues().isEmpty(), String.valueOf(compiled.issues()));
 			RoutesConfiguration all = new RoutesConfiguration();
 			for (var bundle : compiled.bundles()) {

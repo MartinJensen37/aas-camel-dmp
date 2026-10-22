@@ -20,6 +20,69 @@
     ],
     "value": "OperationalVariables"
    }
+  },
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "State"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "attribute"
+     }
+    ],
+    "value": "State"
+   }
+  },
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "da90e1d1c3835429a2b7ff8347ab760a"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "attribute"
+     }
+    ],
+    "value": "Measurements"
+   }
+  },
+  {
+   "dataSpecification": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "Log"
+     }
+    ]
+   },
+   "dataSpecificationContent": {
+    "modelType": "DataSpecificationIec61360",
+    "preferredName": [
+     {
+      "language": "en",
+      "text": "attribute"
+     }
+    ],
+    "value": "Log"
+   }
   }
  ],
  "idShort": "Variables",
@@ -102,6 +165,2947 @@
     }
    ],
    "valueType": "xs:string"
+  },
+  {
+   "embeddedDataSpecifications": [
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "State"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "class"
+       }
+      ],
+      "value": "StateGroup"
+     }
+    }
+   ],
+   "idShort": "State",
+   "modelType": "SubmodelElementCollection",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/variables/State/1/0"
+     }
+    ]
+   },
+   "value": [
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Station"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "TimeSeriesCollection"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Metadata"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Metadata"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Segments"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Segments"
+       }
+      }
+     ],
+     "idShort": "Station",
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/variables/TimeSeries/1/0"
+       }
+      ]
+     },
+     "supplementalSemanticIds": [
+      {
+       "type": "ExternalReference",
+       "keys": [
+        {
+         "type": "GlobalReference",
+         "value": "https://admin-shell.io/idta/TimeSeries/1/1"
+        }
+       ]
+      }
+     ],
+     "value": [
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Metadata"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "TimeSeriesMetadata"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Name"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "Name"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "1fd2e30968895bec8f1fba6126d65cc1"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "Description"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Record"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "Record"
+         }
+        }
+       ],
+       "idShort": "Metadata",
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/TimeSeries/Metadata/1/1"
+         }
+        ]
+       },
+       "value": [
+        {
+         "idShort": "Name",
+         "modelType": "MultiLanguageProperty",
+         "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/TimeSeries/Metadata/Name/1/1"
+           }
+          ]
+         },
+         "value": [
+          {
+           "language": "en",
+           "text": "Station state"
+          }
+         ]
+        },
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Record"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "TimeSeriesRecord"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Time"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Time"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Time"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "default"
+             }
+            ],
+            "value": "Time"
+           }
+          }
+         ],
+         "idShort": "Record",
+         "modelType": "SubmodelElementCollection",
+         "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/TimeSeries/Record/1/1"
+           }
+          ]
+         },
+         "value": [
+          {
+           "idShort": "Time",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/UtcTime/1/1"
+             }
+            ]
+           },
+           "valueType": "xs:dateTime"
+          },
+          {
+           "idShort": "PackMLState",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/RecordField/1/0"
+             }
+            ]
+           },
+           "supplementalSemanticIds": [
+            {
+             "type": "ExternalReference",
+             "keys": [
+              {
+               "type": "GlobalReference",
+               "value": "https://w3id.org/2026/apex/semantic/state/operational"
+              }
+             ]
+            }
+           ],
+           "valueType": "xs:string"
+          },
+          {
+           "idShort": "OccupationState",
+           "description": [
+            {
+             "language": "en",
+             "text": "The process queue as JSON array text"
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/RecordField/1/0"
+             }
+            ]
+           },
+           "supplementalSemanticIds": [
+            {
+             "type": "ExternalReference",
+             "keys": [
+              {
+               "type": "GlobalReference",
+               "value": "https://w3id.org/2026/apex/semantic/state/occupied"
+              }
+             ]
+            }
+           ],
+           "valueType": "xs:string"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Segments"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "TimeSeriesSegments"
+         }
+        }
+       ],
+       "idShort": "Segments",
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/TimeSeries/Segments/1/1"
+         }
+        ]
+       },
+       "value": [
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Live"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpLinkedSegment"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "e327caf4674d5478aa682d745844055c"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Name"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "4be89512a449527096ba01e52ab072bf"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Description"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "1c1dcdc64b51587089da09783d31524f"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "RecordCount"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "5ad082a19ae35e6fa564779c8e1d2b27"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "StartTime"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "13a311d8666f5000ac263485a6e75d88"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "EndTime"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "ff110ee183165e2a9783f4a8ed4b7997"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Duration"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "a971a78c9dce5d6293ebf90f7a8ce171"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SamplingInterval"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "e2e8cbe12b2150eea7cf8137d833da57"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SamplingRate"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "State"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "State"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "520112a86206586087964067dc6a88e9"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "LastUpdate"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Endpoint"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Endpoint"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Query"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Query"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "InfluxDb2Target"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "InfluxDb2Target"
+           }
+          }
+         ],
+         "idShort": "Live",
+         "modelType": "SubmodelElementCollection",
+         "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/TimeSeries/Segments/LinkedSegment/1/1"
+           }
+          ]
+         },
+         "value": [
+          {
+           "idShort": "State",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/Segment/State/1/1"
+             }
+            ]
+           },
+           "value": "InProgress",
+           "valueType": "xs:string"
+          },
+          {
+           "idShort": "Endpoint",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/Endpoint/1/1"
+             }
+            ]
+           },
+           "value": "http://influxdb:8086/api/v2/query?org=ap2030",
+           "valueType": "xs:string"
+          },
+          {
+           "idShort": "Query",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/Query/1/1"
+             }
+            ]
+           },
+           "value": "from(bucket: \"ap2030\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"station_state\")\n  |> filter(fn: (r) => r[\"asset\"] == \"syntegonStopperingSystemAAS\")\n  |> filter(fn: (r) => r[\"_field\"] == \"{{y-value}}\")",
+           "valueType": "xs:string"
+          },
+          {
+           "embeddedDataSpecifications": [
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "InfluxDb2Target"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "class"
+               }
+              ],
+              "value": "InfluxDb2Target"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "Bucket"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "Bucket"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "Measurement"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "Measurement"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "Tags"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "Tags"
+             }
+            }
+           ],
+           "idShort": "InfluxDb2Target",
+           "modelType": "SubmodelElementCollection",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/1/0"
+             }
+            ]
+           },
+           "value": [
+            {
+             "idShort": "Bucket",
+             "modelType": "Property",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Bucket/1/0"
+               }
+              ]
+             },
+             "value": "ap2030",
+             "valueType": "xs:string"
+            },
+            {
+             "idShort": "Measurement",
+             "modelType": "Property",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Measurement/1/0"
+               }
+              ]
+             },
+             "value": "station_state",
+             "valueType": "xs:string"
+            },
+            {
+             "embeddedDataSpecifications": [
+              {
+               "dataSpecification": {
+                "type": "ExternalReference",
+                "keys": [
+                 {
+                  "type": "GlobalReference",
+                  "value": "Tags"
+                 }
+                ]
+               },
+               "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                 {
+                  "language": "en",
+                  "text": "class"
+                 }
+                ],
+                "value": "Tags"
+               }
+              }
+             ],
+             "idShort": "Tags",
+             "modelType": "SubmodelElementCollection",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Tags/1/0"
+               }
+              ]
+             },
+             "value": [
+              {
+               "idShort": "asset",
+               "modelType": "Property",
+               "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                 {
+                  "type": "GlobalReference",
+                  "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Tag/1/0"
+                 }
+                ]
+               },
+               "value": "syntegonStopperingSystemAAS",
+               "valueType": "xs:string"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "embeddedDataSpecifications": [
+    {
+     "dataSpecification": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "Log"
+       }
+      ]
+     },
+     "dataSpecificationContent": {
+      "modelType": "DataSpecificationIec61360",
+      "preferredName": [
+       {
+        "language": "en",
+        "text": "class"
+       }
+      ],
+      "value": "LogGroup"
+     }
+    }
+   ],
+   "idShort": "Log",
+   "modelType": "SubmodelElementCollection",
+   "semanticId": {
+    "type": "ExternalReference",
+    "keys": [
+     {
+      "type": "GlobalReference",
+      "value": "https://smartproductionlab.aau.dk/variables/Log/1/0"
+     }
+    ]
+   },
+   "value": [
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Occupy"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "TimeSeriesCollection"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Metadata"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Metadata"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Segments"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Segments"
+       }
+      }
+     ],
+     "idShort": "Occupy",
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/variables/TimeSeries/1/0"
+       }
+      ]
+     },
+     "supplementalSemanticIds": [
+      {
+       "type": "ExternalReference",
+       "keys": [
+        {
+         "type": "GlobalReference",
+         "value": "https://admin-shell.io/idta/TimeSeries/1/1"
+        }
+       ]
+      }
+     ],
+     "value": [
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Metadata"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "TimeSeriesMetadata"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Name"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "Name"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "941392888b1d596f963f8bfe087a7fff"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "Description"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Record"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "Record"
+         }
+        }
+       ],
+       "idShort": "Metadata",
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/TimeSeries/Metadata/1/1"
+         }
+        ]
+       },
+       "value": [
+        {
+         "idShort": "Name",
+         "modelType": "MultiLanguageProperty",
+         "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/TimeSeries/Metadata/Name/1/1"
+           }
+          ]
+         },
+         "value": [
+          {
+           "language": "en",
+           "text": "Occupy calls"
+          }
+         ]
+        },
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Record"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "TimeSeriesRecord"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Time"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Time"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Time"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "default"
+             }
+            ],
+            "value": "Time"
+           }
+          }
+         ],
+         "idShort": "Record",
+         "modelType": "SubmodelElementCollection",
+         "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/TimeSeries/Record/1/1"
+           }
+          ]
+         },
+         "value": [
+          {
+           "idShort": "Time",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/UtcTime/1/1"
+             }
+            ]
+           },
+           "valueType": "xs:dateTime"
+          },
+          {
+           "idShort": "Outcome",
+           "description": [
+            {
+             "language": "en",
+             "text": "How the invocation ended"
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/RecordField/1/0"
+             }
+            ]
+           },
+           "valueType": "xs:string"
+          },
+          {
+           "idShort": "DurationMs",
+           "description": [
+            {
+             "language": "en",
+             "text": "Time from accepting the call to its answer"
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/RecordField/1/0"
+             }
+            ]
+           },
+           "valueType": "xs:long"
+          },
+          {
+           "idShort": "Operation",
+           "description": [
+            {
+             "language": "en",
+             "text": "The invoked Operation's variables"
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/RecordReference/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/ControlComponentInstance"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Skills"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Occupy"
+             },
+             {
+              "type": "Operation",
+              "value": "operation"
+             }
+            ]
+           }
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Segments"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "TimeSeriesSegments"
+         }
+        }
+       ],
+       "idShort": "Segments",
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/TimeSeries/Segments/1/1"
+         }
+        ]
+       },
+       "value": [
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Live"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpLinkedSegment"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "bc39b07cdcde51d4b61d11d894e6d930"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Name"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "11e6b69a5fbc559e86f17e8d023b9247"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Description"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "2fd80f13e83d5c53b7ca7c380716b4df"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "RecordCount"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "d9b352799b9d5c65963c0532c85eaa12"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "StartTime"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "4db5cfe6998a5b5facbeec8d3844bcf1"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "EndTime"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "425e2b5dbda057b8af7e0aac44e1b20f"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Duration"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "79e15845ca175ba6b3f04c22a3bef2f1"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SamplingInterval"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "74686ca20648562dabf9f9313e7d9a4d"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SamplingRate"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "State"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "State"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "60cc4da985875186b19a827e8e7da776"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "LastUpdate"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Endpoint"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Endpoint"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Query"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Query"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "InfluxDb2Target"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "InfluxDb2Target"
+           }
+          }
+         ],
+         "idShort": "Live",
+         "modelType": "SubmodelElementCollection",
+         "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/TimeSeries/Segments/LinkedSegment/1/1"
+           }
+          ]
+         },
+         "value": [
+          {
+           "idShort": "State",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/Segment/State/1/1"
+             }
+            ]
+           },
+           "value": "InProgress",
+           "valueType": "xs:string"
+          },
+          {
+           "idShort": "Endpoint",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/Endpoint/1/1"
+             }
+            ]
+           },
+           "value": "http://influxdb:8086/api/v2/query?org=ap2030",
+           "valueType": "xs:string"
+          },
+          {
+           "idShort": "Query",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/Query/1/1"
+             }
+            ]
+           },
+           "value": "from(bucket: \"ap2030\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"operation_occupy\")\n  |> filter(fn: (r) => r[\"asset\"] == \"syntegonStopperingSystemAAS\")\n  |> filter(fn: (r) => r[\"_field\"] == \"{{y-value}}\")",
+           "valueType": "xs:string"
+          },
+          {
+           "embeddedDataSpecifications": [
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "InfluxDb2Target"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "class"
+               }
+              ],
+              "value": "InfluxDb2Target"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "Bucket"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "Bucket"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "Measurement"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "Measurement"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "Tags"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "Tags"
+             }
+            }
+           ],
+           "idShort": "InfluxDb2Target",
+           "modelType": "SubmodelElementCollection",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/1/0"
+             }
+            ]
+           },
+           "value": [
+            {
+             "idShort": "Bucket",
+             "modelType": "Property",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Bucket/1/0"
+               }
+              ]
+             },
+             "value": "ap2030",
+             "valueType": "xs:string"
+            },
+            {
+             "idShort": "Measurement",
+             "modelType": "Property",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Measurement/1/0"
+               }
+              ]
+             },
+             "value": "operation_occupy",
+             "valueType": "xs:string"
+            },
+            {
+             "embeddedDataSpecifications": [
+              {
+               "dataSpecification": {
+                "type": "ExternalReference",
+                "keys": [
+                 {
+                  "type": "GlobalReference",
+                  "value": "Tags"
+                 }
+                ]
+               },
+               "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                 {
+                  "language": "en",
+                  "text": "class"
+                 }
+                ],
+                "value": "Tags"
+               }
+              }
+             ],
+             "idShort": "Tags",
+             "modelType": "SubmodelElementCollection",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Tags/1/0"
+               }
+              ]
+             },
+             "value": [
+              {
+               "idShort": "asset",
+               "modelType": "Property",
+               "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                 {
+                  "type": "GlobalReference",
+                  "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Tag/1/0"
+                 }
+                ]
+               },
+               "value": "syntegonStopperingSystemAAS",
+               "valueType": "xs:string"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "embeddedDataSpecifications": [
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Release"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "class"
+         }
+        ],
+        "value": "TimeSeriesCollection"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Metadata"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Metadata"
+       }
+      },
+      {
+       "dataSpecification": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "Segments"
+         }
+        ]
+       },
+       "dataSpecificationContent": {
+        "modelType": "DataSpecificationIec61360",
+        "preferredName": [
+         {
+          "language": "en",
+          "text": "attribute"
+         }
+        ],
+        "value": "Segments"
+       }
+      }
+     ],
+     "idShort": "Release",
+     "modelType": "SubmodelElementCollection",
+     "semanticId": {
+      "type": "ExternalReference",
+      "keys": [
+       {
+        "type": "GlobalReference",
+        "value": "https://smartproductionlab.aau.dk/variables/TimeSeries/1/0"
+       }
+      ]
+     },
+     "supplementalSemanticIds": [
+      {
+       "type": "ExternalReference",
+       "keys": [
+        {
+         "type": "GlobalReference",
+         "value": "https://admin-shell.io/idta/TimeSeries/1/1"
+        }
+       ]
+      }
+     ],
+     "value": [
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Metadata"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "TimeSeriesMetadata"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Name"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "Name"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "330b3bcf34db5e798dc047de0f697987"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "Description"
+         }
+        },
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Record"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "attribute"
+           }
+          ],
+          "value": "Record"
+         }
+        }
+       ],
+       "idShort": "Metadata",
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/TimeSeries/Metadata/1/1"
+         }
+        ]
+       },
+       "value": [
+        {
+         "idShort": "Name",
+         "modelType": "MultiLanguageProperty",
+         "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/TimeSeries/Metadata/Name/1/1"
+           }
+          ]
+         },
+         "value": [
+          {
+           "language": "en",
+           "text": "Release calls"
+          }
+         ]
+        },
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Record"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "TimeSeriesRecord"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Time"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Time"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Time"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "default"
+             }
+            ],
+            "value": "Time"
+           }
+          }
+         ],
+         "idShort": "Record",
+         "modelType": "SubmodelElementCollection",
+         "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/TimeSeries/Record/1/1"
+           }
+          ]
+         },
+         "value": [
+          {
+           "idShort": "Time",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/UtcTime/1/1"
+             }
+            ]
+           },
+           "valueType": "xs:dateTime"
+          },
+          {
+           "idShort": "Outcome",
+           "description": [
+            {
+             "language": "en",
+             "text": "How the invocation ended"
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/RecordField/1/0"
+             }
+            ]
+           },
+           "valueType": "xs:string"
+          },
+          {
+           "idShort": "DurationMs",
+           "description": [
+            {
+             "language": "en",
+             "text": "Time from accepting the call to its answer"
+            }
+           ],
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/RecordField/1/0"
+             }
+            ]
+           },
+           "valueType": "xs:long"
+          },
+          {
+           "idShort": "Operation",
+           "description": [
+            {
+             "language": "en",
+             "text": "The invoked Operation's variables"
+            }
+           ],
+           "modelType": "ReferenceElement",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/RecordReference/1/0"
+             }
+            ]
+           },
+           "value": {
+            "type": "ModelReference",
+            "keys": [
+             {
+              "type": "Submodel",
+              "value": "https://smartproductionlab.aau.dk/aas/syntegonStopperingSystemAAS/submodels/ControlComponentInstance"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Skills"
+             },
+             {
+              "type": "SubmodelElementCollection",
+              "value": "Release"
+             },
+             {
+              "type": "Operation",
+              "value": "operation"
+             }
+            ]
+           }
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "embeddedDataSpecifications": [
+        {
+         "dataSpecification": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "Segments"
+           }
+          ]
+         },
+         "dataSpecificationContent": {
+          "modelType": "DataSpecificationIec61360",
+          "preferredName": [
+           {
+            "language": "en",
+            "text": "class"
+           }
+          ],
+          "value": "TimeSeriesSegments"
+         }
+        }
+       ],
+       "idShort": "Segments",
+       "modelType": "SubmodelElementCollection",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/TimeSeries/Segments/1/1"
+         }
+        ]
+       },
+       "value": [
+        {
+         "embeddedDataSpecifications": [
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Live"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "class"
+             }
+            ],
+            "value": "DmpLinkedSegment"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "e9db7d8f54545f8fb5e12a571fbb2c91"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Name"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "bcbd71eb422d59d29d5868f98c4ce4da"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Description"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "428dff38eab55e5fb84e32513c255c3d"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "RecordCount"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "9e2cbd562b5a5376a68e1de65261a12d"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "StartTime"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "38a000a6699a5f9e911b248c7f40683a"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "EndTime"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "cae69c7fa13b59418b9f1a0cf37f7dc5"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Duration"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "df0d5c89af9f5b4f8e01d8426a504ebd"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SamplingInterval"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "3427972091aa5bc18bafad4b44bffd01"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "SamplingRate"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "State"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "State"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "74859420e0c356f3b9bc31115139e9c3"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "LastUpdate"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Endpoint"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Endpoint"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "Query"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Query"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "InfluxDb2Target"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "InfluxDb2Target"
+           }
+          }
+         ],
+         "idShort": "Live",
+         "modelType": "SubmodelElementCollection",
+         "semanticId": {
+          "type": "ExternalReference",
+          "keys": [
+           {
+            "type": "GlobalReference",
+            "value": "https://admin-shell.io/idta/TimeSeries/Segments/LinkedSegment/1/1"
+           }
+          ]
+         },
+         "value": [
+          {
+           "idShort": "State",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/Segment/State/1/1"
+             }
+            ]
+           },
+           "value": "InProgress",
+           "valueType": "xs:string"
+          },
+          {
+           "idShort": "Endpoint",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/Endpoint/1/1"
+             }
+            ]
+           },
+           "value": "http://influxdb:8086/api/v2/query?org=ap2030",
+           "valueType": "xs:string"
+          },
+          {
+           "idShort": "Query",
+           "modelType": "Property",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://admin-shell.io/idta/TimeSeries/Query/1/1"
+             }
+            ]
+           },
+           "value": "from(bucket: \"ap2030\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"operation_release\")\n  |> filter(fn: (r) => r[\"asset\"] == \"syntegonStopperingSystemAAS\")\n  |> filter(fn: (r) => r[\"_field\"] == \"{{y-value}}\")",
+           "valueType": "xs:string"
+          },
+          {
+           "embeddedDataSpecifications": [
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "InfluxDb2Target"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "class"
+               }
+              ],
+              "value": "InfluxDb2Target"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "Bucket"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "Bucket"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "Measurement"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "Measurement"
+             }
+            },
+            {
+             "dataSpecification": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "Tags"
+               }
+              ]
+             },
+             "dataSpecificationContent": {
+              "modelType": "DataSpecificationIec61360",
+              "preferredName": [
+               {
+                "language": "en",
+                "text": "attribute"
+               }
+              ],
+              "value": "Tags"
+             }
+            }
+           ],
+           "idShort": "InfluxDb2Target",
+           "modelType": "SubmodelElementCollection",
+           "semanticId": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/1/0"
+             }
+            ]
+           },
+           "value": [
+            {
+             "idShort": "Bucket",
+             "modelType": "Property",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Bucket/1/0"
+               }
+              ]
+             },
+             "value": "ap2030",
+             "valueType": "xs:string"
+            },
+            {
+             "idShort": "Measurement",
+             "modelType": "Property",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Measurement/1/0"
+               }
+              ]
+             },
+             "value": "operation_release",
+             "valueType": "xs:string"
+            },
+            {
+             "embeddedDataSpecifications": [
+              {
+               "dataSpecification": {
+                "type": "ExternalReference",
+                "keys": [
+                 {
+                  "type": "GlobalReference",
+                  "value": "Tags"
+                 }
+                ]
+               },
+               "dataSpecificationContent": {
+                "modelType": "DataSpecificationIec61360",
+                "preferredName": [
+                 {
+                  "language": "en",
+                  "text": "class"
+                 }
+                ],
+                "value": "Tags"
+               }
+              }
+             ],
+             "idShort": "Tags",
+             "modelType": "SubmodelElementCollection",
+             "semanticId": {
+              "type": "ExternalReference",
+              "keys": [
+               {
+                "type": "GlobalReference",
+                "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Tags/1/0"
+               }
+              ]
+             },
+             "value": [
+              {
+               "idShort": "asset",
+               "modelType": "Property",
+               "semanticId": {
+                "type": "ExternalReference",
+                "keys": [
+                 {
+                  "type": "GlobalReference",
+                  "value": "https://smartproductionlab.aau.dk/timeseries/InfluxDb2Target/Tag/1/0"
+                 }
+                ]
+               },
+               "value": "syntegonStopperingSystemAAS",
+               "valueType": "xs:string"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
   }
  ]
 }

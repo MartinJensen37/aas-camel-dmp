@@ -130,12 +130,23 @@ parent workspace's `influxdb` Compose service (org and bucket `ap2030`); the
 web UI's TimeSeries plugin (TimeSeries SMCs, nested groups, and an
 nginx query proxy that keeps the token server-side, `INFLUXDB_PROXY_*`).
 
+**Stations (2026-10-22):** every operational station records
+`State/Station` (`station_state`) as the last sink of the mapping keeping the
+AAS Properties current (a consumer endpoint has one owner, so a second mapping
+on the same node cannot install), and `Log/Occupy`, `Log/Release`
+(`operation_<skill>`, also failed calls) through the skills' response
+mappings; dispensing records `Measurements/Weight`, the Planar shuttles
+`Measurements/Location`, the same way. Verified on the e2e stack. Halt answers nothing and has no log; station-specific
+skills (Dispensing, MoveToPosition, …) are not logged yet. Every stack running
+the stations needs the InfluxDB, since the skill mappings write their log
+(main and e2e stacks have one).
+
 **Open, in order:**
-1. Station models: State and Measurements series, Operation log series
-   attached to each skill; then their AIMC mappings target the segments.
-2. Consumers: BT_Controller (it reads `Variables` today, partly at stale
+1. Consumers: BT_Controller (it reads `Variables` today, partly at stale
    paths, and must poll InfluxDB for current values), `stationctl`, the e2e
-   tests and kg-bridge; then the flat `Variables.variable` map is removed.
+   tests and kg-bridge; then the flat `Variables.variable` map and the state
+   mappings that keep it current are removed.
+2. Logs for the station-specific skills (`command_reply(..., logged=...)`).
 
 ### 3. Parent workspace
 

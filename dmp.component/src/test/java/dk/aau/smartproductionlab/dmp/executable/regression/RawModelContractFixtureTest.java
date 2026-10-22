@@ -105,9 +105,12 @@ public class RawModelContractFixtureTest {
 							aasId, aasIdShort));
 				var plan = new MappingPlanCompiler(new AasReferenceResolver(client))
 						.compile(WireProjection.aimc(Aas.read(aimcJson, Submodel.class)));
+				// The workspace's InfluxDB that TimeSeries segments name, as the generator recorded it.
+				var influx = context.has("influx_url") ? new dk.aau.smartproductionlab.dmp.influxdb2.InfluxSettings(
+						URI.create(context.get("influx_url").getAsString()), context.get("influx_org").getAsString(), "fixture-token") : null;
 				var compiled = plan.status() == AasRepositoryClient.Status.FOUND
 						? new ConnectorConfigurationFactory().createBundles(plan.value(),
-								new ConnectorConfigurationFactory.RuntimeSettings(URI.create(context.get("aas_base_url").getAsString())))
+								new ConnectorConfigurationFactory.RuntimeSettings(URI.create(context.get("aas_base_url").getAsString()), influx))
 						: null;
 				boolean compiles = compiled != null && compiled.issues().isEmpty()
 						&& compiled.bundles().size() == plan.value().mappings().size();

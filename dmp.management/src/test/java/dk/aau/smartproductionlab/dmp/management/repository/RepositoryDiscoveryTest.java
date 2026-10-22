@@ -32,7 +32,11 @@ class RepositoryDiscoveryTest {
 			repository.put(submodel("urn:unrelated", "urn:semantic:nameplate", "[]"));
 			String aimcId = JsonParser.parseString(resource(fixture.get("aimc").getAsString())).getAsJsonObject().get("id").getAsString();
 			JsonObject expected = JsonParser.parseString(resource("stoppering/expected.json")).getAsJsonObject();
-			var discovery = discovery(repository);
+			// The station's history and skill logs name the workspace's InfluxDB.
+			JsonObject context = expected.getAsJsonObject("compilerContext");
+			var discovery = new RepositoryDiscovery(repository.client(), new ConnectorConfigurationFactory.RuntimeSettings(repository.uri(),
+					new dk.aau.smartproductionlab.dmp.influxdb2.InfluxSettings(java.net.URI.create(context.get("influx_url").getAsString()),
+							context.get("influx_org").getAsString(), "fixture-token")));
 			var scan = discovery.scan();
 			assertTrue(scan.complete());
 			assertEquals(Set.of(aimcId), scan.aimcIds());
