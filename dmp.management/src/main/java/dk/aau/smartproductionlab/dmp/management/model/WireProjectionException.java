@@ -26,9 +26,13 @@ package dk.aau.smartproductionlab.dmp.management.model;
 
 public final class WireProjectionException extends IllegalArgumentException {
 	private final String pointer;
+	private final String reason;
 	public WireProjectionException(String pointer, String message) {
 		super(pointer + ": " + message);
 		this.pointer = pointer;
+		this.reason = message;
 	}
 	public String pointer() { return pointer; }
+	/** The message without its pointer. */
+	public String reason() { return reason; }
 }

@@ -742,7 +742,25 @@ written by an ordinary Sink or a ResponseSink (§5.5). The DMP's own state is in
 `/management/status` (§4.4) and the application log, which carries one line
 per mapping change (`mapping <token> of AIMC <token> is blocked (category),
 generation n`; warnings for `blocked` and `failed`), with repository IDs as
-the status tokens.
+the status tokens, followed by one line per diagnostic.
+
+`GET /management/mappings?aimc=<AIMC submodel id>` explains one AIMC's
+mappings: per mapping its `identity`, `listIndex`, `state`, `category`,
+`cause` and `diagnostics`. Anyone who can reach the DMP and knows the AIMC's
+id can read it; the status itself stays without names and messages.
+
+- A **diagnostic** is `{path, message}`: the path relative to the mapping
+  (`Sinks/value/1`, `Sources/value/0/forms/mqv_qos`, empty for the whole
+  mapping) and the compiler's message: an invalid structure, an unresolved
+  reference (`not found: …`), an unsupported connector capability, a
+  `rest-path-conflict` (`POST /… is also served by mapping …`) or a
+  `timeseries-type-conflict` (`InfluxDB field … is FLOAT (xs:double) here,
+  but …`).
+- A **cause** names why a compiled mapping failed to install, from a fixed
+  set: `multiple-consumers-unsupported`, `unknown-host`,
+  `connection-refused`, `timeout`, `authentication-failed`,
+  `endpoint-invalid`, `unknown`. The exception itself, which can carry an
+  endpoint URI with credentials, is only in the log.
 
 ## 11. Security
 

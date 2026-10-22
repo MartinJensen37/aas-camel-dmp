@@ -79,4 +79,26 @@ class ManagedRuntimeStatusTest {
 		assertEquals("old-digest", details.get("installedFingerprint"));
 		assertFalse(status.toString().contains("private-"));
 	}
+
+	@Test void mappingDetailsOfOneAimcNameItsMappingsAndTheirReasons() {
+		ManagedRuntimeStatus.beginManaged();
+		var key = new dk.aau.smartproductionlab.dmp.management.repository.RepositoryDiscovery.MappingKey("urn:aimc:a", "History", 2);
+		var other = new dk.aau.smartproductionlab.dmp.management.repository.RepositoryDiscovery.MappingKey("urn:aimc:b", "Other", 0);
+		ManagedRuntimeStatus.publish(new MappingReconciliationService.Report(true, false, 0, 0, 0, List.of(
+				new MappingReconciliationService.MappingStatus(key, MappingReconciliationService.State.BLOCKED, "d", null, 0,
+						"unsupported-connector-capability", 0, "", List.of(new MappingReconciliationService.Diagnostic(
+								"Sinks/value/0", "TimeSeries segments need a configured InfluxDB"))),
+				new MappingReconciliationService.MappingStatus(other, MappingReconciliationService.State.INSTALLED, "d", "d", 1, "", 1)),
+				List.of()));
+		var details = ManagedRuntimeStatus.mappings("urn:aimc:a");
+		var mappings = (List<?>) details.get("mappings");
+		assertEquals(1, mappings.size());
+		var mapping = (java.util.Map<?, ?>) mappings.get(0);
+		assertEquals("History", mapping.get("identity"));
+		assertEquals(2, mapping.get("listIndex"));
+		assertEquals("blocked", mapping.get("state"));
+		assertEquals(List.of(java.util.Map.of("path", "Sinks/value/0", "message", "TimeSeries segments need a configured InfluxDB")),
+				mapping.get("diagnostics"));
+		assertFalse(ManagedRuntimeStatus.asMap().toString().contains("InfluxDB"), "the status stays without messages");
+	}
 }

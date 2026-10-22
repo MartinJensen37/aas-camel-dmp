@@ -150,6 +150,32 @@ public final class ManagedRuntimeStatus {
 		return Map.copyOf(result);
 	}
 
+	/**
+	 * Why each mapping of one AIMC is or is not running: state, category, the installation cause and the
+	 * diagnostics, with their messages. Unlike {@link #asMap()} it names the mappings, so it is asked for by the
+	 * AIMC's id; the messages come from the model the AIMC's readers can read already.
+	 */
+	public static Map<String, Object> mappings(String aimcId) {
+		var report = LAST_REPORT.get();
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("aimc", aimcId);
+		result.put("reported", report != null);
+		result.put("mappings", report == null ? java.util.List.of() : report.mappings().stream()
+				.filter(mapping -> mapping.key().aimcId().equals(aimcId))
+				.map(mapping -> {
+					Map<String, Object> entry = new LinkedHashMap<>();
+					entry.put("identity", mapping.key().mappingIdentity());
+					entry.put("listIndex", mapping.key().listIndex());
+					entry.put("state", mapping.state().name().toLowerCase(java.util.Locale.ROOT));
+					entry.put("category", mapping.category() == null ? "" : mapping.category());
+					entry.put("cause", mapping.cause());
+					entry.put("diagnostics", mapping.diagnostics().stream()
+							.map(diagnostic -> Map.of("path", diagnostic.path(), "message", diagnostic.message())).toList());
+					return entry;
+				}).toList());
+		return result;
+	}
+
 	private static void updateState(State state, boolean ready, String category) {
 		Snapshot old = CURRENT.get();
 		CURRENT.set(new Snapshot(state, ready, old.initialScanComplete(), old.installedMappings(),

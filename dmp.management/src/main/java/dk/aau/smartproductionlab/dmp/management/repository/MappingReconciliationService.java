@@ -56,8 +56,21 @@ public final class MappingReconciliationService implements AutoCloseable {
 	 * shared by all bundles; {@code revision} counts this mapping's installations since the DMP started (1 for the
 	 * first, +1 per replacement) and is for display only.
 	 */
+	/** One reason a mapping does not run as authored: where in the mapping ({@code Sources/value/0}, or empty) and what. */
+	public record Diagnostic(String path, String message) { }
+	/**
+	 * {@code cause} is set when installation failed: one of {@link InstallationCause}'s fixed causes, never the
+	 * exception text. {@code diagnostics} explain a blocked or stale mapping.
+	 */
 	public record MappingStatus(MappingKey key, State state, String desiredFingerprint,
-			String installedFingerprint, long generation, String category, long revision) { }
+			String installedFingerprint, long generation, String category, long revision,
+			String cause, List<Diagnostic> diagnostics) {
+		public MappingStatus(MappingKey key, State state, String desiredFingerprint,
+				String installedFingerprint, long generation, String category, long revision) {
+			this(key, state, desiredFingerprint, installedFingerprint, generation, category, revision, "", List.of());
+		}
+		public MappingStatus { cause = cause == null ? "" : cause; diagnostics = List.copyOf(diagnostics); }
+	}
 	public record Report(boolean complete, boolean superseded, int installedOrUpdated,
 			int unchanged, int removed, List<MappingStatus> mappings, List<String> categories) {
 		public Report { mappings = List.copyOf(mappings); categories = List.copyOf(categories); }
@@ -65,7 +78,8 @@ public final class MappingReconciliationService implements AutoCloseable {
 
 	private record Active(MappingKey key, String bundleId, ManagedBundle handle,
 			EffectiveFingerprint fingerprint, Set<String> dependencies) { }
-	private record MutableStatus(State state, String desired, String installed, long generation, String category) { }
+	private record MutableStatus(State state, String desired, String installed, long generation, String category,
+			String cause, List<Diagnostic> diagnostics) { }
 
 	private final DmpComponent component;
 	private final ScanProvider scanProvider;
@@ -222,8 +236,8 @@ public final class MappingReconciliationService implements AutoCloseable {
 			boolean superseded = false;
 			List<String> categories = new ArrayList<>();
 			scan.failures().forEach(failure -> categories.add(failure.category()));
-			Set<MappingKey> restConflicts = restConflicts(scan.mappings().values());
-			Set<MappingKey> timeSeriesConflicts = timeSeriesConflicts(scan.mappings().values());
+			Map<MappingKey, List<Diagnostic>> restConflicts = restConflicts(scan.mappings().values());
+			Map<MappingKey, List<Diagnostic>> timeSeriesConflicts = timeSeriesConflicts(scan.mappings().values());
 			for (var entry : new ArrayList<>(active.entrySet())) {
 				MappingKey key = entry.getKey();
 				if (superseded(epoch, key, entry.getValue().dependencies())) { superseded = true; continue; }
@@ -261,19 +275,21 @@ public final class MappingReconciliationService implements AutoCloseable {
 					continue;
 				}
 				Active previous = active.get(candidate.key());
-				if (restConflicts.contains(candidate.key())) {
+				if (restConflicts.containsKey(candidate.key())) {
 					mark(candidate.key(), previous == null ? State.BLOCKED : State.STALE,
 							candidate.desired().fingerprint().exported(),
 							previous == null ? null : previous.fingerprint().exported(),
-							previous == null ? 0 : previous.handle().generation(), "rest-path-conflict");
+							previous == null ? 0 : previous.handle().generation(), "rest-path-conflict",
+							"", restConflicts.get(candidate.key()));
 					categories.add("rest-path-conflict");
 					continue;
 				}
-				if (timeSeriesConflicts.contains(candidate.key())) {
+				if (timeSeriesConflicts.containsKey(candidate.key())) {
 					mark(candidate.key(), previous == null ? State.BLOCKED : State.STALE,
 							candidate.desired().fingerprint().exported(),
 							previous == null ? null : previous.fingerprint().exported(),
-							previous == null ? 0 : previous.handle().generation(), "timeseries-type-conflict");
+							previous == null ? 0 : previous.handle().generation(), "timeseries-type-conflict",
+							"", timeSeriesConflicts.get(candidate.key()));
 					categories.add("timeseries-type-conflict");
 					continue;
 				}
@@ -290,7 +306,8 @@ public final class MappingReconciliationService implements AutoCloseable {
 					mark(candidate.key(), previous == null ? State.BLOCKED : State.STALE,
 							candidate.desired().fingerprint().exported(),
 							previous == null ? null : previous.fingerprint().exported(),
-							previous == null ? 0 : previous.handle().generation(), failureCategory(candidate.desired()));
+							previous == null ? 0 : previous.handle().generation(), failureCategory(candidate.desired()),
+							"", diagnostics(candidate.desired()));
 					categories.add(failureCategory(candidate.desired()));
 					continue;
 				}
@@ -353,7 +370,8 @@ public final class MappingReconciliationService implements AutoCloseable {
 					refreshReverseDependencies();
 					mark(candidate.key(), State.FAILED, desiredFingerprint.exported(),
 							surviving == null || previous == null ? null : previous.fingerprint().exported(),
-							surviving == null ? 0 : surviving.generation(), "bundle-installation-failed");
+							surviving == null ? 0 : surviving.generation(), "bundle-installation-failed",
+							InstallationCause.of(failure), List.of());
 					if (superseded(epoch, candidate.key(), dependencies)) { superseded = true; continue; }
 					categories.add("bundle-installation-failed");
 				}
@@ -372,7 +390,8 @@ public final class MappingReconciliationService implements AutoCloseable {
 		synchronized (lock) {
 			return statuses.entrySet().stream().map(entry -> new MappingStatus(entry.getKey(), entry.getValue().state(),
 					entry.getValue().desired(), entry.getValue().installed(), entry.getValue().generation(),
-					entry.getValue().category(), revisions.getOrDefault(entry.getKey(), 0L))).toList();
+					entry.getValue().category(), revisions.getOrDefault(entry.getKey(), 0L),
+					entry.getValue().cause(), entry.getValue().diagnostics())).toList();
 		}
 	}
 
@@ -442,7 +461,7 @@ public final class MappingReconciliationService implements AutoCloseable {
 				.anyMatch(failure -> failure.status() == AasRepositoryClient.Status.NOT_FOUND);
 	}
 
-	private static Set<MappingKey> restConflicts(Iterable<MappingCandidate> candidates) {
+	private static Map<MappingKey, List<Diagnostic>> restConflicts(Iterable<MappingCandidate> candidates) {
 		Map<String, List<MappingKey>> reservations = new LinkedHashMap<>();
 		for (MappingCandidate candidate : candidates) {
 			if (!candidate.desired().valid() || candidate.desired().bundle() == null) continue;
@@ -456,9 +475,21 @@ public final class MappingReconciliationService implements AutoCloseable {
 				}
 			}
 		}
-		Set<MappingKey> conflicts = new LinkedHashSet<>();
-		reservations.values().stream().filter(keys -> keys.size() > 1).forEach(conflicts::addAll);
-		return Set.copyOf(conflicts);
+		Map<MappingKey, List<Diagnostic>> conflicts = new LinkedHashMap<>();
+		reservations.forEach((reservation, keys) -> {
+			if (keys.size() < 2) return;
+			for (MappingKey key : keys) {
+				String others = keys.stream().filter(other -> !other.equals(key)).map(MappingReconciliationService::describe)
+						.distinct().collect(java.util.stream.Collectors.joining(", "));
+				conflicts.computeIfAbsent(key, ignored -> new ArrayList<>())
+						.add(new Diagnostic("", reservation + " is also served by " + others));
+			}
+		});
+		return Map.copyOf(conflicts);
+	}
+
+	private static String describe(MappingKey key) {
+		return "mapping " + key.mappingIdentity() + " of AIMC " + key.aimcId();
 	}
 
 	/**
@@ -466,7 +497,7 @@ public final class MappingReconciliationService implements AutoCloseable {
 	 * a field's type per measurement, so every mapping of such a disagreement is held back, and the declarations are
 	 * logged together.
 	 */
-	private static Set<MappingKey> timeSeriesConflicts(Iterable<MappingCandidate> candidates) {
+	private static Map<MappingKey, List<Diagnostic>> timeSeriesConflicts(Iterable<MappingCandidate> candidates) {
 		Map<String, Map<String, Set<MappingKey>>> types = new LinkedHashMap<>();
 		for (MappingCandidate candidate : candidates) {
 			if (!candidate.desired().valid() || candidate.desired().bundle() == null) continue;
@@ -488,13 +519,48 @@ public final class MappingReconciliationService implements AutoCloseable {
 							.add(candidate.key());
 			}
 		}
-		Set<MappingKey> conflicts = new LinkedHashSet<>();
+		Map<MappingKey, List<Diagnostic>> conflicts = new LinkedHashMap<>();
 		types.forEach((field, byType) -> {
-			if (byType.keySet().stream().map(type -> type.substring(0, type.indexOf(' '))).distinct().count() < 2) return;
-			byType.values().forEach(conflicts::addAll);
+			if (byType.keySet().stream().map(MappingReconciliationService::kind).distinct().count() < 2) return;
+			byType.forEach((type, keys) -> {
+				String others = byType.entrySet().stream().filter(other -> !kind(other.getKey()).equals(kind(type)))
+						.map(other -> other.getKey() + " in " + other.getValue().stream().map(MappingReconciliationService::describe)
+								.collect(java.util.stream.Collectors.joining(", ")))
+						.collect(java.util.stream.Collectors.joining("; "));
+				for (MappingKey key : keys) conflicts.computeIfAbsent(key, ignored -> new ArrayList<>())
+						.add(new Diagnostic("", "InfluxDB field " + field + " is " + type + " here, but " + others));
+			});
 			LOGGER.warn("TimeSeries field {} is declared as {}; the mappings involved are held back", field, byType.keySet());
 		});
-		return Set.copyOf(conflicts);
+		return Map.copyOf(conflicts);
+	}
+
+	/** The InfluxDB kind of a {@code "KIND (xs:type)"} declaration. */
+	private static String kind(String type) { return type.substring(0, type.indexOf(' ')); }
+
+	private static final java.util.regex.Pattern MAPPING_PREFIX =
+			java.util.regex.Pattern.compile("^/?(?:MappingConfigurations|submodelElements/\\d+)/value/\\d+/?");
+
+	/** Why a mapping did not compile, each at its path relative to the mapping. */
+	static List<Diagnostic> diagnostics(DesiredBundle desired) {
+		var mapping = desired.desired();
+		List<Diagnostic> result = new ArrayList<>();
+		if (mapping.projectionFailure() != null) {
+			result.add(new Diagnostic(relativePath(mapping.projectionFailure().pointer()), mapping.projectionFailure().message()));
+			return List.copyOf(result);
+		}
+		for (int i = 0; i < mapping.failures().size(); i++) {
+			var failure = mapping.failures().get(i);
+			String status = failure.status().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' ');
+			result.add(new Diagnostic(mapping.failurePath(i), failure.detail().isBlank() ? status : status + ": " + failure.detail()));
+		}
+		for (var issue : desired.issues()) result.add(new Diagnostic(relativePath(issue.path()), issue.message()));
+		return List.copyOf(result);
+	}
+
+	/** A compiler path ({@code MappingConfigurations/value/3/Sinks/value/1}) relative to its mapping ({@code Sinks/value/1}). */
+	static String relativePath(String path) {
+		return path == null ? "" : MAPPING_PREFIX.matcher(path).replaceFirst("");
 	}
 
 	private static String failureCategory(DesiredBundle desired) {
@@ -504,8 +570,13 @@ public final class MappingReconciliationService implements AutoCloseable {
 	}
 
 	private void mark(MappingKey key, State state, String desired, String installed, long generation, String category) {
+		mark(key, state, desired, installed, generation, category, "", List.of());
+	}
+
+	private void mark(MappingKey key, State state, String desired, String installed, long generation, String category,
+			String cause, List<Diagnostic> diagnostics) {
 		statuses.remove(key);
-		statuses.put(key, new MutableStatus(state, desired, installed, generation, category));
+		statuses.put(key, new MutableStatus(state, desired, installed, generation, category, cause, List.copyOf(diagnostics)));
 	}
 
 	private Report report(boolean complete, boolean superseded, int changed, int unchanged, int removed, List<String> categories) {

@@ -63,6 +63,22 @@ public class HealthCheckRouteBuilder extends RouteBuilder {
 			.process(exchange -> exchange.getMessage().setBody(ManagedRuntimeStatus.asMap()))
 			.marshal().json(JsonLibrary.Gson);
 
+		rest("/management").get("/mappings")
+				.produces("application/json")
+				.to("direct:managed-mappings");
+		from("direct:managed-mappings")
+			.routeId("managed-runtime-mappings")
+			.process(exchange -> {
+				String aimc = exchange.getMessage().getHeader("aimc", String.class);
+				exchange.getMessage().removeHeaders("*");
+				exchange.getMessage().setHeader(Exchange.CONTENT_TYPE, "application/json");
+				if (aimc == null || aimc.isBlank()) {
+					exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
+					exchange.getMessage().setBody(java.util.Map.of("error", "the aimc query parameter names the AIMC submodel id"));
+				} else exchange.getMessage().setBody(ManagedRuntimeStatus.mappings(aimc));
+			})
+			.marshal().json(JsonLibrary.Gson);
+
 		// Camel merges the rest consumer and the direct route it targets into a
 		// single route; the direct route's id (the canonical health route id) wins.
 		from("direct:health")

@@ -81,14 +81,25 @@ public final class MappingPlanCompiler {
 	public record Dependency(String kind, String id, String path) {
 		public Dependency(String kind, String id) { this(kind, id, null); }
 	}
+	/**
+	 * {@code failurePaths} names, per failure, the endpoint it concerns relative to the mapping
+	 * ({@code Sources/value/0}); empty when unknown.
+	 */
 	public record DesiredMapping(String identity, int listIndex, MappingPlan plan,
 			List<AasRepositoryClient.Result<?>> failures, Set<Dependency> dependencies,
-			WireModel.Mapping input, WireModel.MappingFailure projectionFailure) {
+			WireModel.Mapping input, WireModel.MappingFailure projectionFailure, List<String> failurePaths) {
 		public DesiredMapping(String identity, int listIndex, MappingPlan plan,
 				List<AasRepositoryClient.Result<?>> failures, Set<Dependency> dependencies) {
 			this(identity, listIndex, plan, failures, dependencies, null, null);
 		}
-		public DesiredMapping { failures=List.copyOf(failures); dependencies=Set.copyOf(dependencies); }
+		public DesiredMapping(String identity, int listIndex, MappingPlan plan,
+				List<AasRepositoryClient.Result<?>> failures, Set<Dependency> dependencies,
+				WireModel.Mapping input, WireModel.MappingFailure projectionFailure) {
+			this(identity, listIndex, plan, failures, dependencies, input, projectionFailure, List.of());
+		}
+		public DesiredMapping { failures=List.copyOf(failures); dependencies=Set.copyOf(dependencies); failurePaths=List.copyOf(failurePaths); }
+		/** The path of failure {@code index}, or {@code ""}. */
+		public String failurePath(int index) { return index < failurePaths.size() ? failurePaths.get(index) : ""; }
 		public boolean valid() { return plan!=null && failures.isEmpty(); }
 		@Override public String toString() { return "DesiredMapping[identity="+identity+", valid="+valid()+"]"; }
 	}
@@ -125,18 +136,21 @@ public final class MappingPlanCompiler {
 			dependencies.add(new Dependency("submodel",aimc.submodel().getId()));
 			for(WireModel.Endpoint endpoint:endpoints(mapping)) anchorDependency(endpoint.reference(),dependencies);
 			List<AasRepositoryClient.Result<?>> failures=new ArrayList<>();
+			List<String> failurePaths=new ArrayList<>();
 			List<EndpointPlan> sources=new ArrayList<>(),sinks=new ArrayList<>();
-			for(WireModel.Endpoint endpoint:mapping.sources()) {
-				var compiled=compileEndpoint(endpoint);
-				if(!compiled.found())failures.add(compiled);else sources.add(compiled.value());
+			for(int i=0;i<mapping.sources().size();i++) {
+				var compiled=compileEndpoint(mapping.sources().get(i));
+				if(compiled.found())sources.add(compiled.value());
+				else { failures.add(compiled); failurePaths.add("Sources/value/"+i); }
 			}
-			for(WireModel.Endpoint endpoint:mapping.sinks()) {
-				var compiled=compileEndpoint(endpoint);
-				if(!compiled.found())failures.add(compiled);else sinks.add(compiled.value());
+			for(int i=0;i<mapping.sinks().size();i++) {
+				var compiled=compileEndpoint(mapping.sinks().get(i));
+				if(compiled.found())sinks.add(compiled.value());
+				else { failures.add(compiled); failurePaths.add("Sinks/value/"+i); }
 			}
-			var responseSourcesResult=compileOptional(mapping.responseSources());
+			var responseSourcesResult=compileOptional(mapping.responseSources(),"ResponseSources",failurePaths);
 			if(!responseSourcesResult.found())failures.add(responseSourcesResult);
-			var responseSinksResult=compileOptional(mapping.responseSinks());
+			var responseSinksResult=compileOptional(mapping.responseSinks(),"ResponseSinks",failurePaths);
 			if(!responseSinksResult.found())failures.add(responseSinksResult);
 			List<EndpointPlan> resolved=new ArrayList<>(sources);resolved.addAll(sinks);
 			if(responseSourcesResult.found() && responseSourcesResult.value().value()!=null)resolved.addAll(responseSourcesResult.value().value());
@@ -156,14 +170,14 @@ public final class MappingPlanCompiler {
 			MappingPlan plan=failures.isEmpty()?new MappingPlan(identity,mapping.listIndex(),sources,sinks,mapping.defaultPollingInterval(),
 					mapping.transformation(),responseSourcesResult.value(),responseSinksResult.value(),mapping.responseTransformation(),
 					mapping.triggerSourceIds(),Aas.nonNull(mapping.element().getQualifiers())):null;
-			outcomes.add(new DesiredMapping(identity,mapping.listIndex(),plan,failures,dependencies,mapping,null));
+			outcomes.add(new DesiredMapping(identity,mapping.listIndex(),plan,failures,dependencies,mapping,null,failurePaths));
 		}
 		for (WireModel.MappingFailure failure : aimc.mappingFailures()) {
 			Set<Dependency> dependencies = new LinkedHashSet<>();
 			dependencies.add(new Dependency("submodel", aimc.submodel().getId()));
 			for (WireModel.RejectedReference rejected : failure.references()) anchorDependency(rejected.reference(), dependencies);
 			outcomes.add(new DesiredMapping(failure.identity(), failure.listIndex(), null,
-					List.of(invalid(failure.pointer() + ": invalid AIMC mapping structure")), dependencies,null,failure));
+					List.of(invalid(failure.pointer() + ": invalid AIMC mapping structure: " + failure.message())), dependencies,null,failure));
 		}
 		if (!aimc.mappingFailures().isEmpty()) outcomes.sort(java.util.Comparator.comparingInt(DesiredMapping::listIndex));
 		return new DesiredPlan(aimc.submodel().getId(),outcomes);
@@ -186,14 +200,15 @@ public final class MappingPlanCompiler {
 		for(SubmodelElement child:Aas.children(element))metadataDependencies(child,dependencies);
 	}
 
+	/** On a failure, adds the failing endpoint's path ({@code <collection>/value/<i>}) to {@code failurePaths}. */
 	private AasRepositoryClient.Result<WireModel.Presence<List<EndpointPlan>>> compileOptional(
-			WireModel.Presence<List<WireModel.Endpoint>> endpoints) {
+			WireModel.Presence<List<WireModel.Endpoint>> endpoints, String collection, List<String> failurePaths) {
 		if(!endpoints.present())return found(WireModel.Presence.absent());
 		if(endpoints.value()==null)return found(WireModel.Presence.of(null));
 		List<EndpointPlan> result=new ArrayList<>();
-		for(WireModel.Endpoint endpoint:endpoints.value()) {
-			var compiled=compileEndpoint(endpoint);
-			if(!compiled.found())return propagate(compiled);
+		for(int i=0;i<endpoints.value().size();i++) {
+			var compiled=compileEndpoint(endpoints.value().get(i));
+			if(!compiled.found()) { failurePaths.add(collection+"/value/"+i); return propagate(compiled); }
 			result.add(compiled.value());
 		}
 		return found(WireModel.Presence.of(List.copyOf(result)));

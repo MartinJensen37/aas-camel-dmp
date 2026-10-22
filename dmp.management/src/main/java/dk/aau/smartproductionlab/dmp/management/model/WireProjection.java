@@ -140,7 +140,7 @@ public final class WireProjection {
 					throw error(mappingPath(i) + "/idShort", "duplicate authored mapping identity " + authored);
 				accepted.add(mapping(raw, i));
 			} catch (WireProjectionException failure) {
-				rejected.add(new MappingFailure(identity, i, failure.pointer(), "invalid AIMC mapping structure",
+				rejected.add(new MappingFailure(identity, i, failure.pointer(), failure.reason(),
 						rejectedReferences(raw), raw));
 			}
 		}

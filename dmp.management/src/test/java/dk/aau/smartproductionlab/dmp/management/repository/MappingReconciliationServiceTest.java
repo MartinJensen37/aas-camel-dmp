@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import dk.aau.smartproductionlab.dmp.core.component.DmpComponent;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RoutesConfiguration;
+import dk.aau.smartproductionlab.dmp.management.compiler.ConnectorConfigurationFactory;
 import dk.aau.smartproductionlab.dmp.management.compiler.ConnectorConfigurationFactory.CompiledBundle;
 import dk.aau.smartproductionlab.dmp.management.compiler.ConnectorConfigurationFactory.DesiredBundle;
 import dk.aau.smartproductionlab.dmp.management.compiler.EffectiveFingerprint;
@@ -148,10 +149,37 @@ class MappingReconciliationServiceTest {
 					String.valueOf(report.mappings()));
 			assertTrue(report.categories().contains("timeseries-type-conflict"));
 			assertNull(runtime.managedBundle("bundle-a"));
+			var diagnostic = report.mappings().stream().filter(status -> status.key().aimcId().equals("urn:aimc:a"))
+					.findFirst().orElseThrow().diagnostics().get(0);
+			assertTrue(diagnostic.message().contains("station_state/Count is INTEGER (xs:long) here, but FLOAT (xs:double) in mapping"),
+					diagnostic.message());
+			assertTrue(diagnostic.message().contains("of AIMC urn:aimc:b"), diagnostic.message());
 		} finally {
 			service.close();
 			runtime.stopComponent();
 		}
+	}
+
+	@Test
+	void aBlockedMappingExplainsEachFailureAtItsPath() {
+		var failure = new AasRepositoryClient.Result<>(AasRepositoryClient.Status.NOT_FOUND, null, 404, "repository resource not found");
+		var desired = new DesiredMapping("mapping-a", 0, null, List.of(failure), Set.of(), null, null, List.of("Sinks/value/1"));
+		var issue = new ConnectorConfigurationFactory.Issue("MappingConfigurations/value/0/Sources/value/0/forms/mqv_qos",
+				"mapping-a", "MQTT QoS must be between 0 and 2");
+		var bundle = new DesiredBundle(desired, null, List.of(issue), fingerprint(configuration(BUNDLE)));
+		assertEquals(List.of(new MappingReconciliationService.Diagnostic("Sinks/value/1", "not found: repository resource not found"),
+				new MappingReconciliationService.Diagnostic("Sources/value/0/forms/mqv_qos", "MQTT QoS must be between 0 and 2")),
+				MappingReconciliationService.diagnostics(bundle));
+		assertEquals("Sinks/value/1/forms", MappingReconciliationService.relativePath("/submodelElements/0/value/3/Sinks/value/1/forms"));
+	}
+
+	@Test
+	void installationFailuresHaveAFixedCause() {
+		assertEquals(InstallationCause.MULTIPLE_CONSUMERS_UNSUPPORTED, InstallationCause.of(new IllegalStateException("unable to install",
+				new IllegalStateException("Multiple consumers for the same endpoint is not allowed: dmp-milo-client://user:secret@host"))));
+		assertEquals(InstallationCause.CONNECTION_REFUSED, InstallationCause.of(new RuntimeException(new java.net.ConnectException("refused"))));
+		assertEquals(InstallationCause.UNKNOWN_HOST, InstallationCause.of(new java.net.UnknownHostException("plc")));
+		assertEquals(InstallationCause.UNKNOWN, InstallationCause.of(new IllegalStateException("something else")));
 	}
 
 	@Test
@@ -190,6 +218,10 @@ class MappingReconciliationServiceTest {
 			assertEquals(2, report.mappings().size());
 			assertTrue(report.mappings().stream().allMatch(status -> status.state() == MappingReconciliationService.State.BLOCKED));
 			assertTrue(report.categories().contains("rest-path-conflict"));
+			var diagnostics = report.mappings().stream().filter(status -> status.key().mappingIdentity().equals("map-a"))
+					.findFirst().orElseThrow().diagnostics();
+			assertEquals(List.of(new MappingReconciliationService.Diagnostic("",
+					"POST /operations/shared is also served by mapping map-b of AIMC urn:aimc:b")), diagnostics);
 			assertNull(runtime.managedBundle("bundle-a"));
 			assertNull(runtime.managedBundle("bundle-b"));
 			assertEquals(0, runtime.routeCount());
@@ -238,6 +270,7 @@ class MappingReconciliationServiceTest {
 			desired.set(scan(valid("changed"), true));
 			var failed = service.reconcileNow();
 			assertEquals(MappingReconciliationService.State.FAILED, failed.mappings().get(0).state());
+			assertEquals(InstallationCause.UNKNOWN, failed.mappings().get(0).cause());
 			assertNull(failed.mappings().get(0).installedFingerprint());
 			assertNull(runtime.managedBundle(BUNDLE));
 			assertEquals(1, service.reconcileNow().installedOrUpdated(), "retired handle must not poison a later valid installation");
