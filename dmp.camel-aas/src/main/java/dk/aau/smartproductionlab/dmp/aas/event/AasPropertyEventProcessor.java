@@ -118,8 +118,6 @@ final class AasPropertyEventProcessor implements Processor {
 		// The element's value, typed by its valueType as polled reads deliver it (SPEC §5.3).
 		Object decoded = AasValues.elementValue(toJava(value));
 		exchange.getMessage().setBody(decoded);
-		dk.aau.smartproductionlab.dmp.aas.AasAudit.event(submodelId, watched, decoded, eventType, eventId,
-				(String) exchange.getMessage().getHeader(EVENT_TIME_HEADER));
 		exchange.setProperty(MATCH_PROPERTY, true);
 		exchange.setProperty(SourceEventAdapter.CONTRIBUTION_PROPERTY, true);
 	}

@@ -106,8 +106,8 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	}
 
 	/** Old standalone descriptors used the device types for both boundaries. */
-	/** Interaction-log identity of the Operation: submodel ID, idShort path, REST path and skill. */
-	public java.util.Map<String, String> getAuditTags() {
+	/** The Operation's identity: submodel ID, idShort path, REST path, skill and AAS. */
+	public java.util.Map<String, String> getOperationIdentity() {
 		java.util.Map<String, String> tags = new java.util.LinkedHashMap<>();
 		tags.put("submodel", stringValue(OPERATION_SUBMODEL_ID));
 		tags.put("path", stringValue(OPERATION_PATH));

@@ -684,33 +684,15 @@ map arguments and replies of actions (HTTP, OPC UA, MQTT); an Operation bound
 to a property is the connector's acknowledged write (`dmp-plc4x:`,
 `dmp-milo-client:`, HTTP, MQTT).
 
-## 10. AAS interaction log
+## 10. Diagnostics
 
-Optional (`DMP_AUDIT_INFLUX_URL`). Every AAS-side interaction becomes one
-InfluxDB point:
-
-| Measurement | Recorded when | Tags | Notable fields |
-| --- | --- | --- | --- |
-| `aas_read` | AAS element poll | `submodel`, `path`, `outcome` | value, `durationMs`, `error` |
-| `aas_event` | Change event used as a source value | `submodel`, `path`, `eventType` | value, `eventId`, `eventTime` |
-| `aas_write` | AAS element write (including response sinks) | `submodel`, `path`, `outcome` | value, `durationMs`, `error` |
-| `aas_invoke` | Operation call accepted | `submodel`, `path`, `skill`, `restPath`, `aas`, `caller` | input values, `invocation` |
-| `aas_reply` | Operation answered or failed | as `aas_invoke`, plus `outcome` | `invocation`, `httpStatus`, `errorCode`, `durationMs` |
-| `dmp_mapping` | Mapping state, fingerprint or category changed | `aimc`, `mapping`, `state` | `generation`, fingerprints, `category` |
-
-- Values use one field per type (`value_num` as float, `value_bool`,
-  `value_str`, `value_json` for objects and arrays, `value_null`), because
-  InfluxDB fixes a field's type per measurement.
-- Recording never blocks or fails the data flow: points go to a bounded
-  in-memory queue; a full queue drops the point. One writer thread sends
-  batches in line protocol; unreachable/5xx/408/429 are retried with backoff,
-  other 4xx batches are dropped as rejected. Counters (`queued`, `written`,
-  `dropped`, `rejected`, `lastSuccess`, `lastError`) appear under `audit` in
-  `/management/status`. On shutdown the queue is flushed for up to 3 s.
-- The log is the DMP's own view: AAS changes made by other clients are not in
-  it. Lost points are counted, not marked in the series.
-- Points carry write-time timestamps (ns); two points of the same series with
-  the same timestamp would overwrite each other in InfluxDB.
+The DMP writes no interaction log of its own (the InfluxDB interaction log was
+removed 2026-10-22). What a mapping records is authored: a `Log` series
+written by an ordinary Sink or a ResponseSink (§5.5). The DMP's own state is in
+`/management/status` (§4.4) and the application log, which carries one line
+per mapping change (`mapping <token> of AIMC <token> is blocked (category),
+generation n`; warnings for `blocked` and `failed`), with repository IDs as
+the status tokens.
 
 ## 11. Security
 

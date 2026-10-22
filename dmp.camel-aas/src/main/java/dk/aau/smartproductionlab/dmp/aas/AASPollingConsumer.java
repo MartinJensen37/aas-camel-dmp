@@ -76,8 +76,6 @@ public class AASPollingConsumer extends PollingConsumerSupport {
 	}
 	
 	protected Exchange doReceive(long timeout) {
-		
-		long started = System.nanoTime();
 		ExecutorService execService = Executors.newSingleThreadExecutor();
 	        Callable<Object> runWithTimeout = this::getMetamodelValue;
         
@@ -88,7 +86,6 @@ public class AASPollingConsumer extends PollingConsumerSupport {
 			// must return no exchange: an empty string would enter the fan-in cache.
 			Object element = timeout == WAIT_INDEFINITELY
 					? responseFuture.get() : responseFuture.get(timeout, TimeUnit.MILLISECONDS);
-			AasAudit.read(endpoint, element, started, null);
 			// Lua receives the element's value, typed as the value feed delivers it (SPEC §5.3).
 			Object decodedValue = AasValues.elementValue(element);
 			if (decodedValue == null) {
@@ -99,10 +96,8 @@ public class AASPollingConsumer extends PollingConsumerSupport {
 			return exchange;
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			AasAudit.read(endpoint, null, started, e);
 			getExceptionHandler().handleException(e);
 		} catch (TimeoutException | ExecutionException e) {
-			AasAudit.read(endpoint, null, started, e instanceof ExecutionException && e.getCause() != null ? e.getCause() : e);
 			getExceptionHandler().handleException(e);
         } finally {
 			responseFuture.cancel(true);

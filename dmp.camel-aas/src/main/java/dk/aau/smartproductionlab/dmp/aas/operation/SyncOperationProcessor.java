@@ -34,8 +34,6 @@ import java.util.Map;
 import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import java.net.HttpURLConnection;
-import dk.aau.smartproductionlab.dmp.core.audit.AuditLog;
-import dk.aau.smartproductionlab.dmp.core.audit.AuditPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.AffordanceValidation;
@@ -61,8 +59,9 @@ import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.Affordanc
  */
 public class SyncOperationProcessor implements ManagedRouteResource {
 	private static final String CALLER_REPLY_RESULT = "dmp.operation.callerReplyResult";
-	private static final String AUDIT_INVOCATION = "dmp.operation.auditInvocation";
-	private static final String AUDIT_STARTED = "dmp.operation.auditStarted";
+	/** The invocation's id and its start ({@link System#nanoTime()}). */
+	static final String INVOCATION_ID = "dmp.operation.invocationId";
+	static final String INVOCATION_STARTED = "dmp.operation.invocationStarted";
 	/** The request transformation's input keyed by SourceId. */
 	private static final String REQUEST_SOURCES = "dmp.operation.requestSources";
 	/** The request transformation's result keyed by SinkId. */
@@ -84,7 +83,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	private final ResponseSinkFanOutProcessor responseFanOut;
 	private final java.util.List<SynchronousInvocationAdapter> invocationAdapters;
 	private final SynchronousInvocationAdapter.InvocationSchema invocationSchema;
-	private volatile Map<String, String> auditTags = Map.of();
+	private volatile Map<String, String> operationIdentity = Map.of();
 
 	public SyncOperationProcessor(CamelContext camelContext, OperationContext context) {
 		this(camelContext, context, new AffordanceValidation(null, "operation " + context.action),
@@ -163,22 +162,16 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		responseFanOut.drain(timeout);
 	}
 
-	/** The Operation's identity in the interaction log (see {@link ProtocolBridgeRouteConfiguration#getAuditTags()}). */
-	void setAuditTags(Map<String, String> tags) {
-		this.auditTags = tags == null ? Map.of() : Map.copyOf(tags);
+	/** The Operation's identity (see {@link ProtocolBridgeRouteConfiguration#getOperationIdentity()}). */
+	void setOperationIdentity(Map<String, String> identity) {
+		this.operationIdentity = identity == null ? Map.of() : Map.copyOf(identity);
 	}
 
 	public void prepareRequest(Exchange exchange) throws Exception {
-		String invocation = java.util.UUID.randomUUID().toString();
-		exchange.setProperty(AUDIT_INVOCATION, invocation);
-		exchange.setProperty(AUDIT_STARTED, System.nanoTime());
+		exchange.setProperty(INVOCATION_ID, java.util.UUID.randomUUID().toString());
+		exchange.setProperty(INVOCATION_STARTED, System.nanoTime());
 		new OperationRequestProcessor(context.operationSourceId, context.callerInputTemplates,
 				context.callerInputSourcePaths).process(exchange);
-		Object request = exchange.getMessage().getBody();
-		boolean basyx = Boolean.TRUE.equals(exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY, Boolean.class));
-		AuditLog.emit(() -> auditPoint("aas_invoke", invocation).tag("caller", basyx ? "basyx" : "rest")
-				.value(request instanceof Map<?, ?> keyed && keyed.containsKey(context.operationSourceId)
-						? keyed.get(context.operationSourceId) : request));
 	}
 
 	/**
@@ -340,7 +333,6 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 			Object result = exchange.getProperty(CALLER_REPLY_RESULT);
 			exchange.getMessage().setBody(result);
 			new OperationReplyProcessor(context).process(exchange);
-			AuditLog.emit(() -> reply(exchange, "ok", HttpURLConnection.HTTP_OK, null).value(result));
 	}
 
 	public void handleFailure(Exchange exchange) {
@@ -354,33 +346,6 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		exchange.setProperty(Exchange.EXCEPTION_CAUGHT, failure);
 		new OperationFailureProcessor(context, HttpURLConnection.HTTP_INTERNAL_ERROR).process(exchange);
 		exchange.setRouteStop(true);
-		AuditLog.emit(() -> {
-			Object status = exchange.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE);
-			Object body = exchange.getMessage().getBody();
-			Object code = null;
-			if (body instanceof String text) {
-				try { body = dk.aau.smartproductionlab.dmp.core.util.JsonCodec.parseJson(text); }
-				catch (RuntimeException notJson) { body = null; }
-			}
-			if (body instanceof Map<?, ?> error) code = error.get("code");
-			return reply(exchange, "failed", status instanceof Number number ? number.intValue() : null,
-					code == null ? null : String.valueOf(code));
-		});
-	}
-
-	private AuditPoint reply(Exchange exchange, String outcome, Integer status, String errorCode) {
-		Object started = exchange.getProperty(AUDIT_STARTED);
-		AuditPoint point = auditPoint("aas_reply", exchange.getProperty(AUDIT_INVOCATION, String.class))
-				.tag("outcome", outcome).field("errorCode", errorCode)
-				.field("httpStatus", status == null ? null : status.longValue());
-		if (started instanceof Long nanos) point.field("durationMs", (System.nanoTime() - nanos) / 1_000_000d);
-		return point;
-	}
-
-	private AuditPoint auditPoint(String measurement, String invocation) {
-		AuditPoint point = AuditPoint.of(measurement);
-		auditTags.forEach(point::tag);
-		return point.field("invocation", invocation);
 	}
 
 	/** The authored per-sink transformer chains (a direct route for a multi-step chain), by SinkId. */

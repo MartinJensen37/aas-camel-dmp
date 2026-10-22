@@ -24,7 +24,6 @@ public final class ManagedRuntimeStatus {
 	private static final AtomicReference<dk.aau.smartproductionlab.dmp.core.component.DmpComponent> COMPONENT = new AtomicReference<>();
 	private static final AtomicBoolean CONTROL_ROUTE_STARTED = new AtomicBoolean();
 	private static final AtomicReference<ManagedControlReadiness> CONTROL_READINESS = new AtomicReference<>();
-	private static final AtomicReference<java.util.function.Supplier<Map<String, Object>>> AUDIT = new AtomicReference<>();
 	private ManagedRuntimeStatus() { }
 
 	public static Snapshot snapshot() { refreshReadiness(); return CURRENT.get(); }
@@ -43,9 +42,6 @@ public final class ManagedRuntimeStatus {
 	}
 
 	static void trackControlReadiness(ManagedControlReadiness readiness) { CONTROL_READINESS.set(readiness); }
-
-	/** The interaction log's counters, or null when no log is configured. */
-	static void trackAudit(java.util.function.Supplier<Map<String, Object>> status) { AUDIT.set(status); }
 
 	public static void publish(MappingReconciliationService.Report report) {
 		State current = CURRENT.get().state();
@@ -140,8 +136,6 @@ public final class ManagedRuntimeStatus {
 						"generation", entry.getKey().generation(), "active", entry.getKey().active(), "resources", entry.getValue()))
 				.sorted(java.util.Comparator.comparing(owner -> (String) owner.get("bundleToken"))).toList());
 		result.put("process", component == null ? Map.of() : component.processMetrics());
-		var audit = AUDIT.get();
-		result.put("audit", audit == null ? Map.of("enabled", false) : audit.get());
 		var report = LAST_REPORT.get();
 		result.put("converged", value.ready() && !pending && value.blockedMappings() == 0 && value.staleMappings() == 0
 				&& value.failedMappings() == 0 && report != null && report.categories().isEmpty());

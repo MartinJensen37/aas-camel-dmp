@@ -15,8 +15,7 @@ and the P3/P5 work logs) is in the git history.
   MQTT event transports both work; event-sourced AAS Property values use a
   separate value feed. The parent workspace's stacks use Kafka only, BaSyx's
   MQTT eventing is off (2026-10-18; both carry the same submodel events).
-- Ordinary and bridge mappings (SPEC §6, §7), Lua, the AAS interaction log
-  (SPEC §10) and the AID 1.2 bindings for HTTP (including `longpoll`/`sse`
+- Ordinary and bridge mappings (SPEC §6, §7), Lua and the AID 1.2 bindings for HTTP (including `longpoll`/`sse`
   observation and static `htv_headers`), MQTT, OPC UA (including
   server-described structures), Modbus and SNMP v1/v2c (SPEC §5.2) are
   implemented as specified. Lua receives AAS elements
@@ -102,8 +101,9 @@ ResponseSinks. aas-model generates one typed series per Operation (Time,
 Outcome, DurationMs and the Operation's variables). The response
 transformation also runs on failure, with the error in its input; Lua gets a
 read-only `meta` table (invocation id, duration, caller, outcome). SPEC §10,
-`InfluxAuditLog`, `LineProtocol` and `DMP_AUDIT_INFLUX_*` are removed;
-DMP-internal diagnostics go to the application log and `/management/status`.
+`InfluxAuditLog`, `LineProtocol` and `DMP_AUDIT_INFLUX_*` are removed
+(2026-10-22); DMP-internal diagnostics go to the application log and
+`/management/status`.
 
 **Camel.** `dmp-influxdb2:` extends `camel-influxdb2` 4.22 (producer only,
 asynchronous `makeWriteApi()`, auto-creates buckets and orgs): writes through
@@ -124,14 +124,13 @@ DMP (discovery of the series container, segment Sources and Sinks,
 
 **Open, in order:**
 1. Lua `meta` table and the response transformation on failure (SPEC §7, §8).
-2. Remove SPEC §10, `InfluxAuditLog`, `LineProtocol` and `DMP_AUDIT_INFLUX_*`.
-3. A compose `influxdb` service (org, bucket, tokens: a write token for the
+2. A compose `influxdb` service (org, bucket, tokens: a write token for the
    DMP, a read-only one for the web UI) and the `dmp` service's
    `DMP_INFLUX_*`.
-4. The web UI plugin: TimeSeries submodel or SMC, `Column`.
-5. Station models: State and Measurements series, Operation log series
+3. The web UI plugin: TimeSeries submodel or SMC, `Column`.
+4. Station models: State and Measurements series, Operation log series
    attached to each skill; then their AIMC mappings target the segments.
-6. Consumers: BT_Controller (it reads `Variables` today, partly at stale
+5. Consumers: BT_Controller (it reads `Variables` today, partly at stale
    paths, and must poll InfluxDB for current values), `stationctl`, the e2e
    tests and kg-bridge; then the flat `Variables.variable` map is removed.
 

@@ -68,9 +68,9 @@ public final class ManagedDmpRuntime implements AutoCloseable {
 					.getComponent(DmpInfluxDb2Component.SCHEME, DmpInfluxDb2Component.class).configure(influx);
 			reconciliation = new MappingReconciliationService(component, discovery, new RuntimeSettings(settings.repositoryUri(), influx),
 					settings.maxMappings(), settings.maxQueuedInvalidations(), settings.retryMillis());
-			MappingAudit mappingAudit = new MappingAudit();
+			MappingStateLog mappingStateLog = new MappingStateLog();
 			reconciliation.setReportListener(report -> {
-				mappingAudit.publish(report);
+				mappingStateLog.publish(report);
 				ManagedRuntimeStatus.publish(report);
 			});
 			ManagedRuntimeStatus.trackReconciliation(reconciliation, component);

@@ -400,7 +400,7 @@ public final class ConnectorConfigurationFactory {
 		trigger.put(ProtocolBridgeRouteConfiguration.REST_PATH,restPath);
 		trigger.put(ProtocolBridgeRouteConfiguration.REST_METHOD,"POST");
 		trigger.put("action",action);
-		// The Operation's AAS identity, for the interaction log: submodel ID and idShort path.
+		// The Operation's AAS identity (submodel ID, idShort path), passed to Lua as meta.invocation.
 		List<Key> operationKeys=operationKeys(operation);
 		if(!operationKeys.isEmpty()) {
 			trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_SUBMODEL_ID,operationKeys.get(0).getValue());

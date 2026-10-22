@@ -178,7 +178,7 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		SyncOperationProcessor operation = new SyncOperationProcessor(routeBuilder.getContext(), operationContext,
 				commandValidation, new AffordanceValidation(bridgeConfig.getResponseSchema(),
 						"bridge output " + action), responseSourceBindings, responseSinkTargets, routeId);
-		operation.setAuditTags(bridgeConfig.getAuditTags());
+		operation.setOperationIdentity(bridgeConfig.getOperationIdentity());
 		// Fan-in: AAS elements read at invocation, decoded like ordinary sources (SPEC §5.4).
 		java.util.List<java.util.Map<String, Object>> fanIn = bridgeConfig.getFanInSources();
 		FanIn decoder = fanIn.isEmpty() ? null : new FanIn(new RouteConfiguration(ProtocolBridgeRouteConfiguration.ROUTE_TRIGGER,

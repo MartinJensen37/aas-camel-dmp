@@ -24,7 +24,6 @@
  ******************************************************************************/
 package dk.aau.smartproductionlab.dmp.component;
 
-import dk.aau.smartproductionlab.dmp.core.audit.AuditLog;
 import dk.aau.smartproductionlab.dmp.core.component.DmpComponent;
 import dk.aau.smartproductionlab.dmp.influxdb2.InfluxSettings;
 
@@ -38,20 +37,13 @@ public class DmpExecutable {
 
 	private static DmpComponent component;
 	private static ManagedDmpRuntime managedRuntime;
-	private static InfluxAuditLog auditLog;
 	private static boolean shutdownHookRegistered;
 
 	public static void main(String[] args) throws IllegalArgumentException, SecurityException {
 		if (args.length != 0) throw new IllegalArgumentException("the DMP takes no arguments; configure it through DMP_MANAGED_* environment variables");
 		ManagedDmpRuntime runtime = new ManagedDmpRuntime(ManagedRuntimeSettings.fromEnvironment(System.getenv()),
 				InfluxSettings.fromEnvironment(System.getenv()).orElse(null));
-		startAuditLog(InfluxAuditLog.Settings.fromEnvironment(System.getenv()).orElse(null));
-		try {
-			runtime.start();
-		} catch (RuntimeException startFailure) {
-			stopAuditLog();
-			throw startFailure;
-		}
+		runtime.start();
 		managedRuntime = runtime;
 		component = runtime.component();
 		registerManagedShutdownHook();
@@ -68,27 +60,9 @@ public class DmpExecutable {
 			if (runtime != null) runtime.close();
 		} finally {
 			component = null;
-			stopAuditLog();
 		}
 	}
 
-	/** Installs the AAS interaction log before any route runs; no settings means no log. */
-	static synchronized void startAuditLog(InfluxAuditLog.Settings settings) {
-		if (settings == null || auditLog != null) return;
-		InfluxAuditLog log = new InfluxAuditLog(settings);
-		auditLog = log;
-		AuditLog.install(log);
-		ManagedRuntimeStatus.trackAudit(log::status);
-	}
-
-	static synchronized void stopAuditLog() {
-		InfluxAuditLog log = auditLog;
-		auditLog = null;
-		if (log == null) return;
-		AuditLog.uninstall(log);
-		ManagedRuntimeStatus.trackAudit(null);
-		log.close();
-	}
 
 	private static synchronized void registerManagedShutdownHook() {
 		if (shutdownHookRegistered) return;
