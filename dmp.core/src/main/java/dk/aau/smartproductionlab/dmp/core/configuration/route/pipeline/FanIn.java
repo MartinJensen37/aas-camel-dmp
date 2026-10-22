@@ -10,13 +10,16 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSinkConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSourceConfiguration;
+import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataTransformerConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RoutesConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.ManagedRouteResource;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.SourceEventAdapter;
 import dk.aau.smartproductionlab.dmp.core.util.JsonCodec;
 import dk.aau.smartproductionlab.dmp.core.util.JsonPointer;
+import dk.aau.smartproductionlab.dmp.core.util.TransformerMeta;
 
 /**
  * Fan-in: the mirror image of {@link FanOut} (SPEC §6.4).
@@ -50,11 +53,14 @@ public final class FanIn implements ManagedRouteResource {
 	public static final String CONTRIBUTION_PROPERTY = SourceEventAdapter.CONTRIBUTION_PROPERTY;
 	private static final String ACCEPTED_SNAPSHOT_PROPERTY = FanIn.class.getName() + ".acceptedSnapshot";
 	private static final String CONTRIBUTING_SOURCE_IDS_PROPERTY = FanIn.class.getName() + ".contributingSourceIds";
+	private static final String ACCEPTED_TIMES_PROPERTY = FanIn.class.getName() + ".acceptedTimes";
 
 	private final RoutesConfiguration routesConfiguration;
 	private final Map<String, String> sourceIdByEndpoint = new LinkedHashMap<>();
 	private final SourceCache cache = new SourceCache();
 	private final Map<String, AffordanceValidation> validators = new LinkedHashMap<>();
+	/** Lua's meta.sinks: each SinkId with the kind of connector it writes through. */
+	private final Map<String, Object> sinkMeta = new LinkedHashMap<>();
 
 	@Override
 	public void bind(org.apache.camel.CamelContext context) { }
@@ -73,6 +79,10 @@ public final class FanIn implements ManagedRouteResource {
 			DataSourceConfiguration config = routesConfiguration.getDatasources().get(endpointId);
 			validators.put(endpointId, new AffordanceValidation(
 					config == null ? null : config.getSchema(), "source " + endpointId, mode));
+		}
+		for (String endpointId : routeConfig.getDatasinks()) {
+			DataSinkConfiguration sink = routesConfiguration.getDatasinks().get(endpointId);
+			if (sink != null && sink.getSinkId() != null) sinkMeta.put(sink.getSinkId(), TransformerMeta.sink(sink.getConnectionURI()));
 		}
 	}
 
@@ -118,6 +128,7 @@ public final class FanIn implements ManagedRouteResource {
 				return;
 			}
 		exchange.setProperty(ACCEPTED_SNAPSHOT_PROPERTY, cache.acceptAndSnapshot(sourceId, value));
+			exchange.setProperty(ACCEPTED_TIMES_PROPERTY, cache.times());
 			exchange.setProperty(CONTRIBUTION_PROPERTY, true);
 		};
 	}
@@ -214,6 +225,11 @@ public final class FanIn implements ManagedRouteResource {
 			KeyedSnapshot accepted = exchange.getProperty(ACCEPTED_SNAPSHOT_PROPERTY, KeyedSnapshot.class);
 			if (accepted == null) throw new IllegalStateException("fan-in exchange has no accepted source snapshot");
 			exchange.getMessage().setBody(accepted.copyValues());
+			@SuppressWarnings("unchecked")
+			Map<String, java.time.Instant> times = exchange.getProperty(ACCEPTED_TIMES_PROPERTY, Map.class);
+			Map<String, Object> sources = new LinkedHashMap<>();
+			if (times != null) times.forEach((id, time) -> sources.put(id, TransformerMeta.source(time)));
+			exchange.setProperty(DataTransformerConfiguration.META, TransformerMeta.of(sources, sinkMeta, null));
 		};
 	}
 
@@ -352,15 +368,20 @@ public final class FanIn implements ManagedRouteResource {
 	 */
 	static final class SourceCache {
 		private final Map<String, Object> latest = new LinkedHashMap<>();
+		/** When each source's latest value was accepted. */
+		private final Map<String, java.time.Instant> accepted = new LinkedHashMap<>();
 
 		synchronized KeyedSnapshot acceptAndSnapshot(String sourceId, Object value) {
 			latest.put(sourceId, value == null ? JsonPointer.JSON_NULL : JsonCodec.copyValue(value));
+			accepted.put(sourceId, java.time.Instant.now());
 			Map<String, Object> values = new LinkedHashMap<>();
 			latest.forEach((key, cachedValue) -> values.put(key,
 					cachedValue == JsonPointer.JSON_NULL ? null : cachedValue));
 			return KeyedSnapshot.of(values);
 		}
 
-		synchronized void clear() { latest.clear(); }
+		synchronized Map<String, java.time.Instant> times() { return Map.copyOf(accepted); }
+
+		synchronized void clear() { latest.clear(); accepted.clear(); }
 	}
 }

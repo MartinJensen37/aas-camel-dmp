@@ -578,6 +578,15 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    `DMP_CONNECTOR_CONFIGURATION_ERROR` (500), and
    `DMP_OPERATION_VALIDATION_FAILED` (400) for a request that omits a required
    input. Nothing is retried.
+8. A failed call still runs the `ResponseTransformation` when the mapping has
+   ResponseSinks that do not answer the caller (e.g. a `Log` series), in a
+   route of its own: `sources` is empty, `requestSources` holds what the
+   request Lua received (empty when the call failed before it), and
+   `meta.invocation.outcome` is `Failed` with the `error` (`code`, `message`,
+   and the connector's `category`). Only those ResponseSinks are written, best
+   effort; SinkIds the result leaves out are skipped silently. The caller's
+   error reply is built afterwards and is unchanged by anything the
+   transformation does; if it fails, that is logged as a warning.
 
 ### 7.1 Scope: one affordance, one terminal answer
 
@@ -633,6 +642,17 @@ function aimc_main(sources)          -- sources keyed by SourceId
 end
 ```
 
+- The global `meta` describes the call, a fresh copy per invocation:
+
+  | Field | Content |
+  | --- | --- |
+  | `meta.sources.<SourceId>.time` | When the source's current value was acquired (ISO-8601 UTC) |
+  | `meta.sinks.<SinkId>.kind` | The connector the sink writes through: its endpoint scheme (`aas`, `dmp-influxdb2`, `paho-mqtt5`, …); `operation` for a ResponseSink answering the caller |
+  | `meta.invocation` | An Operation's transformations only: `id`, `started`, `caller` (`basyx` or `rest`), the Operation's `skill`, `aas`, `submodel`, `path`, `restPath`; in the response also `durationMs` and `outcome` (`Succeeded`, `Failed` with `error`, §7 step 8) |
+
+  `meta.sources` and `meta.sinks` are always tables. Lua can use them for
+  explicit logging: `Time = meta.sources.State.time`,
+  `Outcome = meta.invocation.outcome`.
 - Lua arrives only as AIMC Blobs and is compiled once per mapping in memory
   (`LuaCompiledSource`); identical sources share one compiled prototype.
 - Each invocation gets fresh, isolated globals. Inputs are converted from

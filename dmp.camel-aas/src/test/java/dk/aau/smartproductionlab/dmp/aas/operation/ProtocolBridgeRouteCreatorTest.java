@@ -25,6 +25,7 @@
 package dk.aau.smartproductionlab.dmp.aas.operation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
@@ -67,6 +68,10 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 	private static final AtomicInteger AUDIT_WRITES = new AtomicInteger();
 	private static final AtomicReference<Object> AAS_RESPONSE_BODY = new AtomicReference<>();
 	private static volatile CountDownLatch AAS_RESPONSE_WRITTEN = new CountDownLatch(0);
+	/** What the log bridges' response transformation saw (meta, requestSources) and what their Log sink got. */
+	private static final java.util.concurrent.BlockingQueue<Map<String, Object>> LOG_META = new java.util.concurrent.LinkedBlockingQueue<>();
+	private static final java.util.concurrent.BlockingQueue<Object> LOG_REQUEST_SOURCES = new java.util.concurrent.LinkedBlockingQueue<>();
+	private static final java.util.concurrent.BlockingQueue<Object> LOG_ROWS = new java.util.concurrent.LinkedBlockingQueue<>();
 	/** The consolidated REST surface port (bound once per class). */
 	private static int restPort;
 
@@ -153,12 +158,15 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 								new FixedTransformer("luaMember", "direct:luaMember"),
 								new FixedTransformer("luaMemberSecond", "direct:luaMemberSecond"),
 								new FixedTransformer("luaResp", "direct:luaResp"),
-								new FixedTransformer("luaRealResponse", realLuaResponseUri())),
+								new FixedTransformer("luaRealResponse", realLuaResponseUri()),
+								new FixedTransformer("luaLog", "direct:luaLog")),
 						Arrays.asList(
 							new FixedSink("httpCmd", "direct:httpSink"),
 							new FixedSink("infraCommand", "direct:infraCommand"),
 							new FixedSink("auditWrite", "direct:auditSink"),
-							new FixedSink("aasWrite", "direct:aasTarget")),
+							new FixedSink("aasWrite", "direct:aasTarget"),
+							new FixedSink("logWrite", "direct:logTarget"),
+							new FixedSink("failCmd", "direct:failCmd")),
 						List.of());
 
 				new ProtocolBridgeRouteCreator(this, routes)
@@ -205,6 +213,15 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 						List.of(Map.of("sinkId", "Audit", "dataSinkId", "aasWrite",
 								"payloadGroup", "device", "aas", true)));
 				new ProtocolBridgeRouteCreator(this, routes).addRouteToRouteBuilder(aasResponseBridge);
+
+				for (String[] bridge : new String[][] { { "log", "httpCmd" }, { "log-failure", "failCmd" } }) {
+					ProtocolBridgeRouteConfiguration logged = syncBridge("packingCellAAS_Restart_" + bridge[0].replace('-', '_')
+							+ "_interaction", "/operations/packingCellAAS/Restart/" + bridge[0], "luaReqRestart", bridge[1]);
+					logged.getTriggerData().put("responseTransformer", "luaLog");
+					logged.getTriggerData().put(ProtocolBridgeRouteConfiguration.RESPONSE_SINK_BINDINGS,
+							List.of(Map.of("sinkId", "Log", "dataSinkId", "logWrite", "payloadGroup", "log")));
+					new ProtocolBridgeRouteCreator(this, routes).addRouteToRouteBuilder(logged);
+				}
 
 				// test doubles for the Lua blob query endpoints
 				from("direct:luaReq").process(e -> e.getMessage()
@@ -258,6 +275,22 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 						throw new IllegalStateException("test did not release extra response sink");
 					}
 					AUDIT_COMPLETED.countDown();
+				});
+				from("direct:luaLog").process(exchange -> {
+					@SuppressWarnings("unchecked")
+					Map<String, Object> meta = exchange.getProperty(DataTransformerConfiguration.META, Map.class);
+					LOG_META.add(meta);
+					LOG_REQUEST_SOURCES.add(exchange.getProperty(DataTransformerConfiguration.REQUEST_SOURCES));
+					Object outcome = ((Map<?, ?>) meta.get("invocation")).get("outcome");
+					exchange.getMessage().setBody("Succeeded".equals(outcome)
+							? Map.of("Restart", Map.of("state", "restarting"), "Log", Map.of("outcome", outcome))
+							: Map.of("Log", Map.of("outcome", outcome)));
+				});
+				from("direct:logTarget").process(exchange -> LOG_ROWS.add(exchange.getMessage().getBody()));
+				from("direct:failCmd").process(exchange -> {
+					throw new dk.aau.smartproductionlab.dmp.core.configuration.route.core.ConnectorInvocationException(
+							dk.aau.smartproductionlab.dmp.core.configuration.route.core.ConnectorInvocationException.Category.REMOTE,
+							"DEVICE_REJECTED", "the device rejected the command", Map.of());
 				});
 				from("direct:aasTarget").process(exchange -> {
 					AAS_RESPONSE_BODY.set(exchange.getMessage().getBody());
@@ -350,6 +383,41 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 		assertEquals(java.util.Map.of("code", "DMP_OPERATION_FAILED", "error", "Operation failed"),
 				dk.aau.smartproductionlab.dmp.core.util.JsonCodec.parseJson(body.toString()));
 		assertEquals(before + 1, COMMAND_INVOCATIONS.get());
+	}
+
+	@Test
+	void aSuccessfulCallsResponseTransformationSeesItsInvocation() throws Exception {
+		LOG_META.clear(); LOG_ROWS.clear();
+		assertEquals(200, post("/operations/packingCellAAS/Restart/log", "{}", new StringBuilder()));
+		Map<String, Object> meta = LOG_META.poll(5, TimeUnit.SECONDS);
+		Map<?, ?> invocation = (Map<?, ?>) meta.get("invocation");
+		assertEquals("Succeeded", invocation.get("outcome"));
+		assertEquals("Restart", invocation.get("skill"));
+		assertEquals("rest", invocation.get("caller"));
+		assertTrue(invocation.get("id") instanceof String id && !id.isBlank(), String.valueOf(invocation));
+		assertTrue(invocation.get("durationMs") instanceof Long, String.valueOf(invocation));
+		assertEquals(Map.of("kind", "direct"), ((Map<?, ?>) meta.get("sinks")).get("Log"));
+		assertEquals(Map.of("kind", "operation"), ((Map<?, ?>) meta.get("sinks")).get("Restart"));
+		assertTrue(((Map<?, ?>) ((Map<?, ?>) meta.get("sources")).get("Restart")).get("time") instanceof String);
+		assertEquals(Map.of("outcome", "Succeeded"), LOG_ROWS.poll(5, TimeUnit.SECONDS));
+	}
+
+	@Test
+	void aFailedCallStillWritesItsLogSinksAndKeepsTheCallersError() throws Exception {
+		LOG_META.clear(); LOG_REQUEST_SOURCES.clear(); LOG_ROWS.clear();
+		StringBuilder body = new StringBuilder();
+		int status = post("/operations/packingCellAAS/Restart/log-failure", "{}", body);
+		assertEquals(502, status, "a device's rejection answers the caller as before: " + body);
+		var reply = (Map<?, ?>) dk.aau.smartproductionlab.dmp.core.util.JsonCodec.parseJson(body.toString());
+		assertFalse(String.valueOf(reply).contains("outcome"), "the caller's error is not the log row: " + reply);
+		Map<String, Object> meta = LOG_META.poll(5, TimeUnit.SECONDS);
+		Map<?, ?> invocation = (Map<?, ?>) meta.get("invocation");
+		assertEquals("Failed", invocation.get("outcome"));
+		assertEquals(Map.of("code", "DEVICE_REJECTED", "category", "REMOTE", "message", "the device rejected the command"),
+				invocation.get("error"));
+		assertEquals(Map.of(), meta.get("sources"), "a failed call has no ResponseSources");
+		assertTrue(LOG_REQUEST_SOURCES.poll(5, TimeUnit.SECONDS) instanceof Map, "the request's sources reach the failure response");
+		assertEquals(Map.of("outcome", "Failed"), LOG_ROWS.poll(5, TimeUnit.SECONDS));
 	}
 
 	@Test

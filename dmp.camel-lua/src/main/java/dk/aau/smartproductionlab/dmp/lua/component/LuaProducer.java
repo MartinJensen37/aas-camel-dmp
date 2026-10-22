@@ -53,7 +53,8 @@ import org.slf4j.LoggerFactory;
  * {@code aimc_main}) — no re-parsing/re-compiling</li>
  * <li>convert the decoded Java value tree to isolated Lua values</li>
  * <li>call {@code aimc_main(sources)} where {@code sources} is keyed by
- * {@code SourceId}</li>
+ * {@code SourceId}; the global {@code meta} describes the sources, the sinks
+ * and an Operation's invocation (SPEC §8), a fresh copy per call</li>
  * <li>convert the returned Lua table (keyed by {@code SinkId}) back to a
  * decoded Java value tree</li>
  * </ol>
@@ -77,6 +78,7 @@ public class LuaProducer extends DefaultProducer {
 		// not thread-safe, and blobs may mutate their environment).
 		Globals globals = LuaSandbox.createGlobals();
 		LuaTimeoutHook.install(globals, endpoint.getTimeoutSeconds());
+		globals.set("meta", meta(exchange));
 
 		// Bind the pre-compiled prototype to the fresh environment and run the
 		// top-level chunk (defines aimc_main) — no re-parsing/re-compiling.
@@ -116,6 +118,15 @@ public class LuaProducer extends DefaultProducer {
 				endpoint.getSourceKeys(), javaResult);
 
 		LOGGER.debug("Lua transformation '{}' applied to exchange {}", endpoint.getDiagnosticIdentity(), exchange.getExchangeId());
+	}
+
+	/** The exchange's {@link DataTransformerConfiguration#META}; {@code sources} and {@code sinks} are always tables. */
+	private static LuaValue meta(Exchange exchange) {
+		Object meta = exchange.getProperty(DataTransformerConfiguration.META);
+		LuaValue table = meta instanceof Map<?, ?> ? LuaJsonCodec.toLua(meta) : LuaValue.tableOf();
+		for (String part : new String[] { "sources", "sinks" })
+			if (!table.get(part).istable()) table.set(part, LuaValue.tableOf());
+		return table;
 	}
 
 	private Object getBody(Exchange exchange) {

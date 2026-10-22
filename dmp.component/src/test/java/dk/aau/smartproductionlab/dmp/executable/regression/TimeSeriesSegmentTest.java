@@ -48,6 +48,10 @@ class TimeSeriesSegmentTest {
 			+ "  local seen = sources.State\n"
 			+ "  return { Live = { PackMLState = seen.PackMLState, Count = seen.Count + 1, Position = { X = seen.Position.X * 2 } } }\n"
 			+ "end\n";
+	/** Reads Lua's global meta: the sink's connector kind and the source value's acquisition time. */
+	private static final String META = "function aimc_main(sources)\n"
+			+ "  return { Live = { PackMLState = meta.sinks.Live.kind, Time = meta.sources.State.time } }\n"
+			+ "end\n";
 	private static final String LATEST = table("string", "PackMLState", "EXECUTE") + table("long", "count", "7")
 			+ table("double", "Position.X", "1.5");
 
@@ -102,6 +106,18 @@ class TimeSeriesSegmentTest {
 		await().atMost(Duration.ofSeconds(10)).until(() -> !lines.isEmpty());
 		String line = lines.get(0).strip();
 		assertTrue(line.contains("PackMLState=\"EXECUTE\"") && line.contains("count=8i") && line.contains("Position.X=3"), line);
+	}
+
+	@Test
+	void theTransformationSeesItsSourcesAndSinksInMeta() throws Exception {
+		long before = java.time.Instant.now().minusSeconds(5).getEpochSecond();
+		runtime.installBundle("meta", compile(aimc(META, value())));
+		await().atMost(Duration.ofSeconds(10)).until(() -> !lines.isEmpty());
+		String line = lines.get(0).strip();
+		assertTrue(line.contains("PackMLState=\"dmp-influxdb2\""), line);
+		long seconds = Long.parseLong(line.substring(line.lastIndexOf(' ') + 1)) / 1_000_000_000L;
+		assertTrue(seconds >= before && seconds <= java.time.Instant.now().getEpochSecond(),
+				"the point's time is the source's acquisition time: " + line);
 	}
 
 	private static String table(String type, String field, String value) {

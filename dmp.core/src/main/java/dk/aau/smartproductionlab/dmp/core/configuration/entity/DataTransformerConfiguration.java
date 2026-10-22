@@ -36,6 +36,8 @@ public abstract class DataTransformerConfiguration extends RouteEntity {
 	 * for an Operation's response transformation: the values its request transformation received.
 	 */
 	public static final String REQUEST_SOURCES = "dmp.transformer.requestSources";
+	/** Exchange property: what a transformation knows besides the values, Lua's global {@code meta} (SPEC §8). */
+	public static final String META = "dmp.transformer.meta";
 
 	public DataTransformerConfiguration() {
 		super();

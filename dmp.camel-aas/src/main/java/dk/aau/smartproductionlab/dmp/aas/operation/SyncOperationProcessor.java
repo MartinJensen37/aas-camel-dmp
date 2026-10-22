@@ -34,6 +34,9 @@ import java.util.Map;
 import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import java.net.HttpURLConnection;
+
+import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataTransformerConfiguration;
+import dk.aau.smartproductionlab.dmp.core.util.TransformerMeta;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.AffordanceValidation;
@@ -62,6 +65,8 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	/** The invocation's id and its start ({@link System#nanoTime()}). */
 	static final String INVOCATION_ID = "dmp.operation.invocationId";
 	static final String INVOCATION_STARTED = "dmp.operation.invocationStarted";
+	/** meta.invocation of the request transformation: the Operation's identity, id, start and caller. */
+	private static final String INVOCATION = "dmp.operation.invocation";
 	/** The request transformation's input keyed by SourceId. */
 	private static final String REQUEST_SOURCES = "dmp.operation.requestSources";
 	/** The request transformation's result keyed by SinkId. */
@@ -168,10 +173,23 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	}
 
 	public void prepareRequest(Exchange exchange) throws Exception {
-		exchange.setProperty(INVOCATION_ID, java.util.UUID.randomUUID().toString());
+		String id = java.util.UUID.randomUUID().toString();
+		java.time.Instant started = java.time.Instant.now();
+		exchange.setProperty(INVOCATION_ID, id);
 		exchange.setProperty(INVOCATION_STARTED, System.nanoTime());
 		new OperationRequestProcessor(context.operationSourceId, context.callerInputTemplates,
 				context.callerInputSourcePaths).process(exchange);
+		// The request transformation's meta: the invocation, its sources (completed after the fan-in) and the
+		// command's sinks.
+		Map<String, Object> invocation = new java.util.LinkedHashMap<>(operationIdentity);
+		invocation.put("id", id);
+		invocation.put("started", started.toString());
+		invocation.put("caller", Boolean.TRUE.equals(exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY, Boolean.class))
+				? "basyx" : "rest");
+		exchange.setProperty(INVOCATION, invocation);
+		Map<String, Object> sinks = new java.util.LinkedHashMap<>();
+		for (String sinkId : context.commandSinkIds) sinks.put(sinkId, TransformerMeta.sink(context.commandSinkUri));
+		exchange.setProperty(DataTransformerConfiguration.META, TransformerMeta.of(sourcesMeta(exchange), sinks, invocation));
 	}
 
 	/**
@@ -179,6 +197,10 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	 * AAS values, keyed by SourceId) for the response transformation's {@code requestSources}.
 	 */
 	public void keepRequestSources(Exchange exchange) {
+		@SuppressWarnings("unchecked")
+		Map<String, Object> meta = exchange.getProperty(DataTransformerConfiguration.META, Map.class);
+		if (meta != null) exchange.setProperty(DataTransformerConfiguration.META,
+				TransformerMeta.of(sourcesMeta(exchange), castMap(meta.get("sinks")), castMap(meta.get("invocation"))));
 		if (!context.explicitResponseMapping) return;
 		exchange.setProperty(REQUEST_SOURCES, dk.aau.smartproductionlab.dmp.core.util.JsonCodec
 				.copyValue(exchange.getMessage().getBody()));
@@ -294,6 +316,88 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 				exchange.getProperty(REQUEST_SOURCES));
 		exchange.getMessage().setBody(ResponseProjectionProcessor.project(exchange.getProperty(COMMAND_REPLY),
 				responseSourceBindings));
+		exchange.setProperty(DataTransformerConfiguration.META, TransformerMeta.of(sourcesMeta(exchange),
+				responseSinksMeta(), finished(exchange, "Succeeded", null)));
+	}
+
+	/** Whether a failed call runs the response transformation: it has ResponseSinks that do not answer the caller. */
+	boolean answersFailures() {
+		return context.responseLuaUri != null && !responseSinkTargets.isEmpty();
+	}
+
+	/**
+	 * A failed call's response transformation: no ResponseSources, the request's sources, and meta.invocation with
+	 * {@code outcome = "Failed"} and the {@code error}. Only ResponseSinks that do not answer the caller are written;
+	 * the caller's error reply is built afterwards and is unchanged by anything the transformation does.
+	 */
+	public void prepareFailureResponse(Exchange exchange) {
+		Throwable failure = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class);
+		if (failure == null) failure = exchange.getException();
+		Map<String, Object> error = new java.util.LinkedHashMap<>();
+		if (failure instanceof dk.aau.smartproductionlab.dmp.core.configuration.route.core.ConnectorInvocationException connector) {
+			error.put("code", connector.getConnectorCode());
+			error.put("category", connector.getCategory().name());
+		} else {
+			error.put("code", failure == null ? "DMP_OPERATION_FAILED" : failure.getClass().getSimpleName());
+		}
+		error.put("message", failure == null || failure.getMessage() == null ? "" : failure.getMessage());
+		Object requestSources = exchange.getProperty(REQUEST_SOURCES);
+		exchange.setProperty(DataTransformerConfiguration.REQUEST_SOURCES,
+				requestSources == null ? new java.util.LinkedHashMap<String, Object>() : requestSources);
+		exchange.setProperty(DataTransformerConfiguration.META, TransformerMeta.of(Map.of(), responseSinksMeta(),
+				finished(exchange, "Failed", error)));
+		exchange.getMessage().setBody(new java.util.LinkedHashMap<String, Object>());
+	}
+
+	/** The failed call's response writes, without warnings for SinkIds it leaves out. */
+	public void prepareFailureWrites(Exchange exchange) {
+		exchange.getMessage().setBody(responseFanOut.prepareJobs(exchange, false));
+	}
+
+	public void failureResponseFailed(Exchange exchange) {
+		Throwable failure = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class);
+		LOGGER.warn("operation {}: the response transformation failed for a failed call; nothing was written ({})",
+				context.action, failure == null ? "unknown" : failure.getMessage());
+	}
+
+	private Map<String, Object> finished(Exchange exchange, String outcome, Map<String, Object> error) {
+		@SuppressWarnings("unchecked")
+		Map<String, Object> invocation = new java.util.LinkedHashMap<>(exchange.getProperty(INVOCATION, Map.class) == null
+				? operationIdentity : exchange.getProperty(INVOCATION, Map.class));
+		Object started = exchange.getProperty(INVOCATION_STARTED);
+		if (started instanceof Long nanos) invocation.put("durationMs", (System.nanoTime() - nanos) / 1_000_000L);
+		invocation.put("outcome", outcome);
+		if (error != null) invocation.put("error", error);
+		return invocation;
+	}
+
+	/** Each SourceId of the body with the time it was acquired: kept from an earlier step, otherwise now. */
+	private static Map<String, Object> sourcesMeta(Exchange exchange) {
+		@SuppressWarnings("unchecked")
+		Map<String, Object> meta = exchange.getProperty(DataTransformerConfiguration.META, Map.class);
+		Map<String, Object> known = meta == null ? Map.of() : castMap(meta.get("sources"));
+		Map<String, Object> sources = new java.util.LinkedHashMap<>();
+		if (exchange.getMessage().getBody() instanceof Map<?, ?> values)
+			for (Object id : values.keySet()) {
+				String key = String.valueOf(id);
+				sources.put(key, known.containsKey(key) ? known.get(key) : TransformerMeta.source(java.time.Instant.now()));
+			}
+		return sources;
+	}
+
+	/** The ResponseSinks: the ones the DMP writes with their connector's kind, the caller's as {@code operation}. */
+	private Map<String, Object> responseSinksMeta() {
+		Map<String, Object> sinks = new java.util.LinkedHashMap<>();
+		for (Map<String, Object> target : responseSinkTargets)
+			sinks.put(String.valueOf(target.get("sinkId")), TransformerMeta.sink(String.valueOf(target.get("endpoint"))));
+		if (context.callerReplySinkId != null) sinks.put(context.callerReplySinkId, Map.of("kind", "operation"));
+		context.callerReplyBindings.keySet().forEach(sinkId -> sinks.put(sinkId, Map.of("kind", "operation")));
+		return sinks;
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> castMap(Object value) {
+		return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
 	}
 
 	private Object normalizeReply(Exchange exchange, Object reply) {

@@ -235,10 +235,21 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		if (responseLuaUri != null) flow.to(responseLuaUri);
 		flow.process(operation::prepareResponseWrites);
 		if (!responseSinkTargets.isEmpty()) operation.configureResponseDispatch(flow, responseWriteUri);
-		flow.process(operation::completeReply)
-			.doCatch(Exception.class)
-				.process(operation::handleFailure)
-			.end();
+		flow.process(operation::completeReply);
+		var failed = flow.doCatch(Exception.class);
+		// A failed call still runs the response transformation for its log sinks, in a route of its own whose
+		// failure is only logged; the caller's error reply is built afterwards.
+		if (operation.answersFailures()) {
+			String failureRouteId = routeId + "-failure-response";
+			registerRouteId(failureRouteId);
+			var failureFlow = routeBuilder.from("direct:" + failureRouteId).routeId(failureRouteId).doTry();
+			failureFlow.to(responseLuaUri).process(operation::prepareFailureWrites);
+			operation.configureResponseDispatch(failureFlow, responseWriteUri);
+			failureFlow.doCatch(Exception.class).process(operation::failureResponseFailed).end();
+			failed.process(operation::prepareFailureResponse)
+					.enrich("direct:" + failureRouteId, (original, ignored) -> original);
+		}
+		failed.process(operation::handleFailure).end();
 		operationRoute.process(ProtocolBridgeRouteCreator::encodeRestResponse);
 		registerRestReservation(method, restPath, rest, restRouteId);
 		LOGGER.info("bridge route {}: {} {} (callerOutputOrder {})",

@@ -164,6 +164,14 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 	}
 
 	public List<DispatchJob> prepareJobs(Exchange exchange) {
+		return prepareJobs(exchange, true);
+	}
+
+	/**
+	 * The jobs of the body's SinkId values. {@code warnOmitted} is false for a failed call's response, which
+	 * usually writes only its log sinks.
+	 */
+	public List<DispatchJob> prepareJobs(Exchange exchange, boolean warnOmitted) {
 		Object parsed = exchange.getMessage().getBody();
 		if (!(parsed instanceof Map<?, ?> rawValues)) {
 			throw new IllegalArgumentException("response Lua returned no SinkId map");
@@ -175,7 +183,7 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 		java.util.Set<String> incompleteGroups = new java.util.HashSet<>();
 		for (SinkBinding binding : bindings) {
 			if (!values.containsKey(binding.sinkId)) {
-				LOGGER.warn("mapping {} response Lua omitted SinkId {}; skipping response sink",
+				if (warnOmitted) LOGGER.warn("mapping {} response Lua omitted SinkId {}; skipping response sink",
 						correlationId, binding.sinkId);
 				if (binding.payloadGroup != null) {
 					incompleteGroups.add(binding.payloadGroup);

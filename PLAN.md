@@ -99,8 +99,8 @@ bound reads and gate writes (implemented 2026-10-22, SPEC §5.5).
 **Logging.** Only what is authored: `Log` series written by ordinary sinks or
 ResponseSinks. aas-model generates one typed series per Operation (Time,
 Outcome, DurationMs and the Operation's variables). The response
-transformation also runs on failure, with the error in its input; Lua gets a
-read-only `meta` table (invocation id, duration, caller, outcome). SPEC §10,
+transformation also runs on failure, with the error in `meta.invocation`; Lua
+gets a global `meta` table (sources' times, sinks' kinds, the invocation). SPEC §10,
 `InfluxAuditLog`, `LineProtocol` and `DMP_AUDIT_INFLUX_*` are removed
 (2026-10-22); DMP-internal diagnostics go to the application log and
 `/management/status`.
@@ -120,17 +120,15 @@ present.
 **Done (2026-10-22):** `aas-model` (Variables groups, TimeSeries SMC,
 `InfluxDb2Target`, `Column`, segment periods, the `operation_log` builder); the
 DMP (discovery of the series container, segment Sources and Sinks,
-`dmp-influxdb2:`, segment periods, SPEC §5.5).
+`dmp-influxdb2:`, segment periods, SPEC §5.5); Lua's global `meta` and the
+failure response (SPEC §7 step 8, §8); the old interaction log removed; the
+parent workspace's `influxdb` Compose service (org and bucket `ap2030`).
 
 **Open, in order:**
-1. Lua `meta` table and the response transformation on failure (SPEC §7, §8).
-2. A compose `influxdb` service (org, bucket, tokens: a write token for the
-   DMP, a read-only one for the web UI) and the `dmp` service's
-   `DMP_INFLUX_*`.
-3. The web UI plugin: TimeSeries submodel or SMC, `Column`.
-4. Station models: State and Measurements series, Operation log series
+1. The web UI plugin: TimeSeries submodel or SMC, `Column`.
+2. Station models: State and Measurements series, Operation log series
    attached to each skill; then their AIMC mappings target the segments.
-5. Consumers: BT_Controller (it reads `Variables` today, partly at stale
+3. Consumers: BT_Controller (it reads `Variables` today, partly at stale
    paths, and must poll InfluxDB for current values), `stationctl`, the e2e
    tests and kg-bridge; then the flat `Variables.variable` map is removed.
 
