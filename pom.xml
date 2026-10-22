@@ -30,12 +30,12 @@
 		</license>
 	</licenses>
 
+	<!-- The DMP's maintainers. Since the project has been abandoned by the original developers of the Databridge -->
 	<developers>
 		<developer>
-			<organization>Fraunhofer-Gesellschaft zur Foerderung der angewandten Forschung e.V.</organization>
-			<id>fschnicke</id>
-			<name>Frank Schnicke</name>
-			<email>frank.schnicke@iese.fraunhofer.de</email>
+			<name>Tristan Schwörer</name>
+			<email>tristans@mp.aau.dk</email>
+			<organization>Aalborg University</organization>
 		</developer>
 	</developers>
 
@@ -51,6 +51,10 @@
 		     stress test (-Pcapacity). -->
 		<dmp.test.excludedGroups>integration,capacity</dmp.test.excludedGroups>
 		<camel.version>4.22.0</camel.version>
+		<aas4j.version>2.0.1</aas4j.version>
+		<kafka.version>4.3.1</kafka.version>
+		<milo.version>1.1.6</milo.version>
+		<slf4j.version>2.0.18</slf4j.version>
 	</properties>
 
 	<build>
@@ -132,22 +136,52 @@
 				<artifactId>jackson-annotations</artifactId>
 				<version>2.20</version>
 			</dependency>
-			<!-- Library versions aligned with what Camel 4.22 is built and tested against. -->
+			<dependency>
+				<groupId>org.eclipse.digitaltwin.aas4j</groupId>
+				<artifactId>aas4j-model</artifactId>
+				<version>${aas4j.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.digitaltwin.aas4j</groupId>
+				<artifactId>aas4j-dataformat-json</artifactId>
+				<version>${aas4j.version}</version>
+			</dependency>
+			<!-- Library versions aligned with what Camel 4.22 is built and tested against. Modules that use one
+			     of them directly declare it, so a Camel upgrade cannot drop it from under their code. -->
+			<dependency>
+				<groupId>org.slf4j</groupId>
+				<artifactId>slf4j-api</artifactId>
+				<version>${slf4j.version}</version>
+			</dependency>
 			<dependency>
 				<groupId>org.slf4j</groupId>
 				<artifactId>slf4j-simple</artifactId>
-				<version>2.0.17</version>
+				<version>${slf4j.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.milo</groupId>
+				<artifactId>milo-stack-core</artifactId>
+				<version>${milo.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.paho</groupId>
+				<artifactId>org.eclipse.paho.mqttv5.client</artifactId>
+				<version>1.2.5</version>
+			</dependency>
+			<dependency>
+				<groupId>org.snmp4j</groupId>
+				<artifactId>snmp4j</artifactId>
+				<version>3.13.1</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.httpcomponents.client5</groupId>
+				<artifactId>httpclient5</artifactId>
+				<version>5.6.3</version>
 			</dependency>
 			<dependency>
 				<groupId>com.google.code.gson</groupId>
 				<artifactId>gson</artifactId>
 				<version>2.14.0</version>
-			</dependency>
-			<dependency>
-				<!-- commons-csv (influxdb-client-java's query parser) needs 2.20; test tools would otherwise bring 2.11. -->
-				<groupId>commons-io</groupId>
-				<artifactId>commons-io</artifactId>
-				<version>2.20.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.httpcomponents.core5</groupId>
@@ -164,50 +198,21 @@
 				<artifactId>junit-jupiter</artifactId>
 				<version>5.14.4</version>
 			</dependency>
+			<!-- One Netty line for Milo (built against 4.1.136) and the PLC4X drivers, which bring older 4.1.x
+			     modules; mixed Netty modules break at runtime. -->
+			<dependency>
+				<groupId>io.netty</groupId>
+				<artifactId>netty-bom</artifactId>
+				<version>4.1.136.Final</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 			<dependency>
 				<groupId>org.apache.camel</groupId>
 				<artifactId>camel-bom</artifactId>
 				<version>${camel.version}</version>
 				<type>pom</type>
 				<scope>import</scope>
-			</dependency>
-			<!-- Pin the Spring Framework line to what camel-jms 4.22 was built
-			     against, so no older transitive spring-core wins nearest-wins
-			     resolution and breaks camel's classes (FixedBackOff etc.). -->
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-core</artifactId>
-				<version>7.0.8</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-beans</artifactId>
-				<version>7.0.8</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-context</artifactId>
-				<version>7.0.8</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-aop</artifactId>
-				<version>7.0.8</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-expression</artifactId>
-				<version>7.0.8</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-jcl</artifactId>
-				<version>7.0.8</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-tx</artifactId>
-				<version>7.0.8</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
@@ -240,26 +245,6 @@
 				<groups>capacity</groups>
 				<surefire.failIfNoSpecifiedTests>false</surefire.failIfNoSpecifiedTests>
 			</properties>
-		</profile>
-		<profile>
-			<id>license-check</id>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.eclipse.dash</groupId>
-						<artifactId>license-tool-plugin</artifactId>
-						<version>1.1.1-SNAPSHOT</version>
-						<executions>
-							<execution>
-								<id>license-check</id>
-								<goals>
-									<goal>license-check</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-				</plugins>
-			</build>
 		</profile>
 	</profiles>
 </project>

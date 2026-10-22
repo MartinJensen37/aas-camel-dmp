@@ -18,18 +18,6 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 
-	<!-- Define additional plugins that are not included by default -->
-	<!-- Plugin configuration is done in parent project(s) -->
-	<build>
-		<plugins>
-			<!-- Attach sources to jar file -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-source-plugin</artifactId>
-				<version>3.2.1</version>
-			</plugin>
-		</plugins>
-	</build>
 
 	<dependencies>
 		<!-- Logging backend for tests only; dmp.component chooses the runtime backend. -->
@@ -48,14 +36,13 @@
 			<artifactId>camel-milo</artifactId>
 		</dependency>
 
-		<!-- Pin the Milo stack to the version camel-milo 4.22.0 is built against. -->
+		<!-- The Milo stack camel-milo 4.22 is built against (milo.version). -->
 		<dependency>
 			<groupId>org.eclipse.milo</groupId>
 			<artifactId>milo-stack-core</artifactId>
-			<version>1.1.6</version>
 		</dependency>
 
-		<!-- JSON handling for the canonical OPC UA payload form (SPEC §10.6) -->
+		<!-- JSON handling for OPC UA values (SPEC §5.2) -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
@@ -67,8 +54,7 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- M4 interface transforms: route-level test of the canonical OPC UA
-		     payload flowing through the Lua component (SPEC §10.1/§10.2). -->
+		<!-- Route-level tests of OPC UA values flowing through the Lua component. -->
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.basyx</groupId>
 			<artifactId>dmp.camel-lua</artifactId>

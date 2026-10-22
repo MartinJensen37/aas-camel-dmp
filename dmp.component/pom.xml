@@ -14,26 +14,15 @@
 	<packaging>jar</packaging>
 
 	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-
 		<basyx.dmp.executable>org.eclipse.digitaltwin.basyx.dmp.component.DmpExecutable</basyx.dmp.executable>
 		<!-- caller may override with -DargLine=... (e.g. test health-port offsets) -->
 		<argLine></argLine>
 	</properties>
 
-	<!-- Define additional plugins that are not included by default -->
-	<!-- Plugin configuration is done in parent project(s) -->
 	<build>
 		<plugins>
-			<!-- Attach sources to jar file -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-source-plugin</artifactId>
-				<version>3.2.1</version>
-			</plugin>
 
-			<!-- + create the executable jar -->
+			<!-- the executable jar -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -46,16 +35,13 @@
 							<mainClass>${basyx.dmp.executable}</mainClass>
 						</manifest>
 					</archive>
-					<excludes>
-						<exclude>**/logback.xml</exclude>
-					</excludes>
+
 				</configuration>
 			</plugin>
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.2.5</version>
 				<configuration>
 					<!-- ${argLine} forwards a caller-provided -DargLine (e.g. test
 					     health-port offsets). -->
@@ -169,44 +155,27 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- kafka-clients comes from camel-kafka (Kafka 4.3.1). The embedded KRaft test broker uses the
-		     same Kafka line, so clients and broker share one version on the test classpath. -->
+		<!-- The embedded KRaft test broker shares camel-kafka's Kafka line (kafka.version) with the clients. -->
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
 			<artifactId>kafka_2.13</artifactId>
-			<version>4.3.1</version>
+			<version>${kafka.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
 			<artifactId>kafka-server</artifactId>
-			<version>4.3.1</version>
+			<version>${kafka.version}</version>
 			<scope>test</scope>
 		</dependency>
 
-		<!-- https://mvnrepository.com/artifact/org.awaitility/awaitility -->
 		<dependency>
 			<groupId>org.awaitility</groupId>
 			<artifactId>awaitility</artifactId>
 			<scope>test</scope>
 		</dependency>
 
-		<!-- https://mvnrepository.com/artifact/org.mock-server/mockserver-netty -->
-		<dependency>
-			<groupId>org.mock-server</groupId>
-			<artifactId>mockserver-netty</artifactId>
-			<version>5.15.0</version>
-			<scope>test</scope>
-		</dependency>
 
-		<!--
-		https://mvnrepository.com/artifact/org.mock-server/mockserver-client-java -->
-		<dependency>
-			<groupId>org.mock-server</groupId>
-			<artifactId>mockserver-client-java</artifactId>
-			<version>5.15.0</version>
-			<scope>test</scope>
-		</dependency>
 	</dependencies>
 
 </project>

@@ -18,16 +18,8 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 
-	<!-- Define additional plugins that are not included by default -->
-	<!-- Plugin configuration is done in parent project(s) -->
 	<build>
 		<plugins>
-			<!-- Attach sources to jar file -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-source-plugin</artifactId>
-				<version>3.2.1</version>
-			</plugin>
 			<plugin>
 				<!-- Shares the MQTT 5 test broker with the management and component tests. -->
 				<groupId>org.apache.maven.plugins</groupId>
@@ -63,8 +55,12 @@
 			<artifactId>camel-paho-mqtt5</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
+			<groupId>org.eclipse.paho</groupId>
+			<artifactId>org.eclipse.paho.mqttv5.client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.camel</groupId>

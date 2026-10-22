@@ -18,11 +18,6 @@
 	<build>
 		<plugins>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-source-plugin</artifactId>
-				<version>3.2.1</version>
-			</plugin>
-			<plugin>
 				<!-- Shares the SNMP test agent with the component tests. -->
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -46,10 +41,14 @@
 			<artifactId>dmp.core</artifactId>
 			<version>${revision}</version>
 		</dependency>
-		<!-- SNMP4J comes with camel-snmp; its producer has no SET, so dmp-snmp talks to SNMP4J itself. -->
+		<!-- camel-snmp's producer has no SET, so dmp-snmp talks to SNMP4J itself. -->
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-snmp</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.snmp4j</groupId>
+			<artifactId>snmp4j</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>

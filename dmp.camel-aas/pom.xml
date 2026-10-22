@@ -22,8 +22,19 @@
 		<!-- AAS metamodel v3 and its JSON serialization (the format BaSyx v2 serves). -->
 		<dependency>
 			<groupId>org.eclipse.digitaltwin.aas4j</groupId>
+			<artifactId>aas4j-model</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.digitaltwin.aas4j</groupId>
 			<artifactId>aas4j-dataformat-json</artifactId>
-			<version>2.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
 		</dependency>
 		<!-- camel -->
 		<dependency>
@@ -67,24 +78,20 @@
 			<artifactId>camel-paho-mqtt5</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-mock</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 	<build>
-		<defaultGoal>install</defaultGoal>
 		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-resources-plugin</artifactId>
-				<version>3.3.1</version>
-				<configuration>
-					<encoding>UTF-8</encoding>
-				</configuration>
-			</plugin>
 
 			<!-- generate camel meta-data -->
 			<plugin>
 				<groupId>org.apache.camel</groupId>
 				<artifactId>camel-component-maven-plugin</artifactId>
-				<version>4.22.0</version>
+				<version>${camel.version}</version>
 				<executions>
 					<execution>
                         <?m2e ignore?>
