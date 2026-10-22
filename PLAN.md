@@ -66,7 +66,7 @@ SMC carries this project's semanticId with the IDTA TimeSeries id as a
 supplemental id; everything inside it (`Metadata/Record`, `Segments`,
 `LinkedSegment`, `Endpoint`, `Query`) keeps the IDTA 02008 ids. A TimeSeries
 groups what is sampled together (one row = one sample), not one variable each.
-The LinkedSegment carries a DMP extension `DmpTarget`: `Bucket`,
+The LinkedSegment carries a DMP extension `InfluxDb2Target`: `Bucket`,
 `Measurement` and `Tags`. The tags name the AAS that owns the series (an AIMC
 writing another resource's series targets that resource's segment). Each
 Record field carries an explicit `Column`, generated once equal to its idShort
@@ -80,7 +80,7 @@ with different columns or types under one measurement; aas-model generating
 them from templates is the real guarantee.
 
 **DMP.** A Source or Sink targets a LinkedSegment; the DMP reads its
-TimeSeries container (Record, `DmpTarget`), which counts as referenced for
+TimeSeries container (Record, `InfluxDb2Target`), which counts as referenced for
 events and fingerprints. Lua sees the row as a table keyed by Record idShort
 (groups nested, `Position.X`); a missing field is not written, an unknown one
 or a wrong type fails the sink. `Time` is optional: a Lua value is the point's
@@ -109,7 +109,7 @@ from `value`, the group's idShortPath as prefix) and uses `Column` when
 present.
 
 **Work, in order:** `aas-model` (Variables groups, TimeSeries SMC,
-`DmpTarget`, `Column`, Operation log series); the DMP (discovery of the
+`InfluxDb2Target`, `Column`, Operation log series); the DMP (discovery of the
 container, segment source/sink, `dmp-influxdb2:`, Lua `meta` and failure
 responses, removal of §10, SPEC); a compose `influxdb` service; the web UI
 plugin; migrating stations, BT_Controller, `stationctl`, the e2e tests and

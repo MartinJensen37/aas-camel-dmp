@@ -25,7 +25,7 @@ import dk.aau.smartproductionlab.dmp.influxdb2.RecordColumn;
  * Projects a TimeSeries LinkedSegment (IDTA 02008, this project's DMP profile) and its series container into what
  * the DMP writes and reads. Elements are recognised by semanticId only, never by idShort: the series' Record is the
  * row shape, each Record field names its InfluxDB column in a {@code Column} qualifier, and the segment's
- * {@code DmpTarget} names bucket, measurement and tags. Nothing missing is filled in.
+ * {@code InfluxDb2Target} names bucket, measurement and tags. Nothing missing is filled in.
  */
 public final class TimeSeriesProjection {
 	public static final String IDTA_TIME_SERIES = "https://admin-shell.io/idta/TimeSeries/1/1";
@@ -44,11 +44,11 @@ public final class TimeSeriesProjection {
 	public static final String SERIES = BASE + "/variables/TimeSeries/1/0";
 	public static final String RECORD_GROUP = BASE + "/timeseries/RecordGroup/1/0";
 	public static final String COLUMN = BASE + "/timeseries/Column/1/0";
-	public static final String DMP_TARGET = BASE + "/timeseries/DmpTarget/1/0";
-	public static final String BUCKET = BASE + "/timeseries/DmpTarget/Bucket/1/0";
-	public static final String MEASUREMENT = BASE + "/timeseries/DmpTarget/Measurement/1/0";
-	public static final String TAGS = BASE + "/timeseries/DmpTarget/Tags/1/0";
-	public static final String TAG = BASE + "/timeseries/DmpTarget/Tag/1/0";
+	public static final String INFLUX_TARGET = BASE + "/timeseries/InfluxDb2Target/1/0";
+	public static final String BUCKET = BASE + "/timeseries/InfluxDb2Target/Bucket/1/0";
+	public static final String MEASUREMENT = BASE + "/timeseries/InfluxDb2Target/Measurement/1/0";
+	public static final String TAGS = BASE + "/timeseries/InfluxDb2Target/Tags/1/0";
+	public static final String TAG = BASE + "/timeseries/InfluxDb2Target/Tag/1/0";
 
 	/** What one LinkedSegment writes and reads: one point per row of its series' Record. */
 	public record Series(URI endpoint, String bucket, String measurement, Map<String, String> tags, String timePath,
@@ -98,10 +98,10 @@ public final class TimeSeriesProjection {
 		for (RecordColumn column : columns)
 			if (!seen.add(column.column())) throw error("Record column " + column.column() + " is declared twice");
 
-		SubmodelElement target = only(Aas.children(segment), DMP_TARGET, "DmpTarget");
+		SubmodelElement target = only(Aas.children(segment), INFLUX_TARGET, "InfluxDb2Target");
 		Map<String, String> tags = new LinkedHashMap<>();
 		for (SubmodelElement tag : Aas.children(only(Aas.children(target), TAGS, "Tags"))) {
-			if (!Aas.hasSemantic(tag, TAG)) throw error("DmpTarget Tags holds an element that is not a Tag: " + tag.getIdShort());
+			if (!Aas.hasSemantic(tag, TAG)) throw error("InfluxDb2Target Tags holds an element that is not a Tag: " + tag.getIdShort());
 			tags.put(tag.getIdShort(), value(tag, "Tag " + tag.getIdShort()));
 		}
 		URI endpoint;

@@ -143,7 +143,7 @@ public final class MappingPlanCompiler {
 			if(responseSinksResult.found() && responseSinksResult.value().value()!=null)resolved.addAll(responseSinksResult.value().value());
 			for(EndpointPlan endpoint:resolved) {
 				if(endpoint.target() instanceof DirectTarget target) metadataDependencies(target.resolved().element(),dependencies);
-				// The Record and DmpTarget lie beside the referenced segment: the series container is read, too.
+				// The Record and InfluxDb2Target lie beside the referenced segment: the series container is read, too.
 				if(endpoint.target() instanceof SeriesTarget series)
 					dependencies.add(new Dependency("submodel",series.segment().submodel().getId(),series.seriesPath()));
 			}

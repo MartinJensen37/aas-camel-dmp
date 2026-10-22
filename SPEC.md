@@ -432,7 +432,7 @@ submodels (a segment directly below the submodel) are not supported yet.
   field names its InfluxDB field in exactly one `Column` qualifier
   (`…/timeseries/Column/1/0`); a missing one blocks the mapping, and columns
   are distinct.
-- The segment's `DmpTarget` (`…/timeseries/DmpTarget/1/0`) names `Bucket`,
+- The segment's `InfluxDb2Target` (`…/timeseries/InfluxDb2Target/1/0`; each database has its own target, told apart by semanticId, and a segment carries exactly one) names `Bucket`,
   `Measurement` and `Tags` (each tag's idShort is its key). Its IDTA
   `Endpoint` must name the configured InfluxDB and org (`DMP_INFLUX_URL`,
   `DMP_INFLUX_ORG`); otherwise, or without a configured InfluxDB, the mapping

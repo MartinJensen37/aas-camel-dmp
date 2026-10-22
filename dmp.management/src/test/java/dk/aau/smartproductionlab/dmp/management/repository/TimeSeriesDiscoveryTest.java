@@ -62,7 +62,7 @@ class TimeSeriesDiscoveryTest {
 			var discovery = discovery(repository, INFLUX);
 			discovery.scan();
 			assertTrue(relevant(discovery, "State.Station.Metadata.Record.Count"), "the Record is the row shape");
-			assertTrue(relevant(discovery, "State.Station.Segments.Live.DmpTarget.Measurement"));
+			assertTrue(relevant(discovery, "State.Station.Segments.Live.InfluxDb2Target.Measurement"));
 			assertFalse(relevant(discovery, "Measurements.Weight"));
 		}
 	}
