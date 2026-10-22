@@ -122,13 +122,14 @@ present.
 DMP (discovery of the series container, segment Sources and Sinks,
 `dmp-influxdb2:`, segment periods, SPEC §5.5); Lua's global `meta` and the
 failure response (SPEC §7 step 8, §8); the old interaction log removed; the
-parent workspace's `influxdb` Compose service (org and bucket `ap2030`).
+parent workspace's `influxdb` Compose service (org and bucket `ap2030`); the
+web UI's TimeSeries plugin (TimeSeries SMCs, `Column`, nested groups, and an
+nginx query proxy that keeps the token server-side, `INFLUXDB_PROXY_*`).
 
 **Open, in order:**
-1. The web UI plugin: TimeSeries submodel or SMC, `Column`.
-2. Station models: State and Measurements series, Operation log series
+1. Station models: State and Measurements series, Operation log series
    attached to each skill; then their AIMC mappings target the segments.
-3. Consumers: BT_Controller (it reads `Variables` today, partly at stale
+2. Consumers: BT_Controller (it reads `Variables` today, partly at stale
    paths, and must poll InfluxDB for current values), `stationctl`, the e2e
    tests and kg-bridge; then the flat `Variables.variable` map is removed.
 
