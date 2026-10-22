@@ -733,7 +733,7 @@ public final class ConnectorConfigurationFactory {
 					}
 					continue;
 				}
-				DataSinkConfiguration sink=sink(endpoint,mapping,100000+i,plan,routeId,runtime,issues);
+				DataSinkConfiguration sink=sink(endpoint,mapping,RESPONSE_SINK_POSITION+i,plan,routeId,runtime,issues);
 				if(sink==null)continue;
 				payloadBinding(sink,endpoint,mapping,issues);
 				destinations.add(sink);
@@ -2115,7 +2115,17 @@ public final class ConnectorConfigurationFactory {
 	private static void put(Map<String, Object> map, String key, WireModel.Presence<String> value) {
 		if (value.present()) map.put(key, value.value());
 	}
+	/**
+	 * Response sinks compile as sinks at {@code RESPONSE_SINK_POSITION + i}, which keeps their entity ids apart
+	 * from the sinks'; their path is {@code ResponseSinks/value/i}.
+	 */
+	private static final int RESPONSE_SINK_POSITION = 100000;
+
 	private static String endpointPath(MappingPlan mapping, String collection, int position) {
+		if ("Sinks".equals(collection) && position >= RESPONSE_SINK_POSITION) {
+			collection = "ResponseSinks";
+			position -= RESPONSE_SINK_POSITION;
+		}
 		return "MappingConfigurations/value/" + mapping.listIndex() + "/" + collection + "/value/" + position;
 	}
 	private static String entityId(MappingPlan mapping, String kind, int position) {

@@ -95,23 +95,8 @@ public class RawModelContractFixtureTest {
 			var client = new AasRepositoryClient(repository.uri(), Duration.ofSeconds(1), Duration.ofSeconds(1), 10, 2, null);
 			for (JsonObject fixture : cases()) {
 				String name = fixture.get("name").getAsString();
-				JsonObject context = json(fixture.get("expected").getAsString()).getAsJsonObject("compilerContext");
-				String aasId = context.get("aas_id").getAsString(), aasIdShort = context.get("aas_id_short").getAsString();
-				repository.models().clear();
-				String aimcJson = PublishedModels.publish(text(fixture.get("aimc").getAsString()), aasId, aasIdShort);
-				repository.put(aimcJson).put(PublishedModels.publish(text(fixture.get("aid").getAsString()), aasId, aasIdShort));
-				for (JsonElement dependency : fixture.getAsJsonArray("dependencies"))
-					repository.put(PublishedModels.publish(text(name + "/" + dependency.getAsJsonObject().get("path").getAsString()),
-							aasId, aasIdShort));
-				var plan = new MappingPlanCompiler(new AasReferenceResolver(client))
-						.compile(WireProjection.aimc(Aas.read(aimcJson, Submodel.class)));
-				// The workspace's InfluxDB that TimeSeries segments name, as the generator recorded it.
-				var influx = context.has("influx_url") ? new dk.aau.smartproductionlab.dmp.influxdb2.InfluxSettings(
-						URI.create(context.get("influx_url").getAsString()), context.get("influx_org").getAsString(), "fixture-token") : null;
-				var compiled = plan.status() == AasRepositoryClient.Status.FOUND
-						? new ConnectorConfigurationFactory().createBundles(plan.value(),
-								new ConnectorConfigurationFactory.RuntimeSettings(URI.create(context.get("aas_base_url").getAsString()), influx))
-						: null;
+				var plan = plan(fixture, repository, client);
+				var compiled = plan.status() == AasRepositoryClient.Status.FOUND ? compile(fixture, plan.value(), true) : null;
 				boolean compiles = compiled != null && compiled.issues().isEmpty()
 						&& compiled.bundles().size() == plan.value().mappings().size();
 				if (compiles != fixture.get("compiles").getAsBoolean())
@@ -119,6 +104,50 @@ public class RawModelContractFixtureTest {
 			}
 		}
 		assertTrue(unexpected.isEmpty(), "outcomes differ from the manifest:\n" + String.join("\n", unexpected));
+	}
+
+	/** Without InfluxDB a station's series sinks do not compile; each issue names the endpoint it is on. */
+	@Test
+	public void issuesNameTheirEndpointIncludingResponseSinks() throws Exception {
+		try (var repository = new FakeAasRepository("")) {
+			var client = new AasRepositoryClient(repository.uri(), Duration.ofSeconds(1), Duration.ofSeconds(1), 10, 2, null);
+			JsonObject fixture = cases().stream().filter(c -> c.get("name").getAsString().equals("station-imaDispensing"))
+					.findFirst().orElseThrow();
+			var plan = plan(fixture, repository, client);
+			assertEquals(AasRepositoryClient.Status.FOUND, plan.status());
+			var paths = compile(fixture, plan.value(), false).issues().stream().map(ConnectorConfigurationFactory.Issue::path).toList();
+			assertFalse(paths.isEmpty());
+			assertTrue(paths.stream().allMatch(path -> path.matches("MappingConfigurations/value/\\d+/(Sinks|ResponseSinks)/value/\\d{1,2}")),
+					String.valueOf(paths));
+			assertTrue(paths.stream().anyMatch(path -> path.contains("/ResponseSinks/")), String.valueOf(paths));
+		}
+	}
+
+	private AasRepositoryClient.Result<MappingPlanCompiler.Plan> plan(JsonObject fixture, FakeAasRepository repository, AasRepositoryClient client) throws Exception {
+		String name = fixture.get("name").getAsString();
+		JsonObject context = context(fixture);
+		String aasId = context.get("aas_id").getAsString(), aasIdShort = context.get("aas_id_short").getAsString();
+		repository.models().clear();
+		String aimcJson = PublishedModels.publish(text(fixture.get("aimc").getAsString()), aasId, aasIdShort);
+		repository.put(aimcJson).put(PublishedModels.publish(text(fixture.get("aid").getAsString()), aasId, aasIdShort));
+		for (JsonElement dependency : fixture.getAsJsonArray("dependencies"))
+			repository.put(PublishedModels.publish(text(name + "/" + dependency.getAsJsonObject().get("path").getAsString()),
+					aasId, aasIdShort));
+		return new MappingPlanCompiler(new AasReferenceResolver(client)).compile(WireProjection.aimc(Aas.read(aimcJson, Submodel.class)));
+	}
+
+	/** With {@code influx}, the workspace's InfluxDB that TimeSeries segments name, as the generator recorded it. */
+	private ConnectorConfigurationFactory.BundleResult compile(JsonObject fixture, MappingPlanCompiler.Plan plan,
+			boolean influx) throws Exception {
+		JsonObject context = context(fixture);
+		var settings = influx && context.has("influx_url") ? new dk.aau.smartproductionlab.dmp.influxdb2.InfluxSettings(
+				URI.create(context.get("influx_url").getAsString()), context.get("influx_org").getAsString(), "fixture-token") : null;
+		return new ConnectorConfigurationFactory().createBundles(plan,
+				new ConnectorConfigurationFactory.RuntimeSettings(URI.create(context.get("aas_base_url").getAsString()), settings));
+	}
+
+	private JsonObject context(JsonObject fixture) throws Exception {
+		return json(fixture.get("expected").getAsString()).getAsJsonObject("compilerContext");
 	}
 
 	private List<JsonObject> cases() throws Exception {
