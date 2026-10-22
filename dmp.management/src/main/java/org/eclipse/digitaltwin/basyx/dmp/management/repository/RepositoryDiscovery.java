@@ -274,8 +274,11 @@ public final class RepositoryDiscovery {
 						.add(AasReferenceResolver.idShortPath(keys));
 			}
 			for (DesiredBundle bundle : state.mappings())
-				for (Dependency dependency : bundle.desired().dependencies())
-					if (!dependency.id().equals(state.id())) paths.computeIfAbsent(dependency.id(), ignored -> new LinkedHashSet<>());
+				for (Dependency dependency : bundle.desired().dependencies()) {
+					if (dependency.id().equals(state.id())) continue;
+					Set<String> referenced = paths.computeIfAbsent(dependency.id(), ignored -> new LinkedHashSet<>());
+					if (dependency.path() != null) referenced.add(dependency.path());
+				}
 		}
 		// An AID is consumed whole; a dependency without referenced paths (a ReferenceElement target) concerns all of it.
 		for (var entry : paths.entrySet()) if (entry.getValue().isEmpty() || resolver.cachedAid(entry.getKey())) whole.add(entry.getKey());

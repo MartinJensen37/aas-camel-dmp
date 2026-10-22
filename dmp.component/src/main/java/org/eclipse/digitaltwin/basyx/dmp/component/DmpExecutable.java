@@ -26,6 +26,7 @@ package org.eclipse.digitaltwin.basyx.dmp.component;
 
 import org.eclipse.digitaltwin.basyx.dmp.core.audit.AuditLog;
 import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpComponent;
+import org.eclipse.digitaltwin.basyx.dmp.influxdb2.InfluxSettings;
 
 /**
  * Starts the DMP. All routes are built at runtime from the AAS repository and
@@ -42,7 +43,8 @@ public class DmpExecutable {
 
 	public static void main(String[] args) throws IllegalArgumentException, SecurityException {
 		if (args.length != 0) throw new IllegalArgumentException("the DMP takes no arguments; configure it through DMP_MANAGED_* environment variables");
-		ManagedDmpRuntime runtime = new ManagedDmpRuntime(ManagedRuntimeSettings.fromEnvironment(System.getenv()));
+		ManagedDmpRuntime runtime = new ManagedDmpRuntime(ManagedRuntimeSettings.fromEnvironment(System.getenv()),
+				InfluxSettings.fromEnvironment(System.getenv()).orElse(null));
 		startAuditLog(InfluxAuditLog.Settings.fromEnvironment(System.getenv()).orElse(null));
 		try {
 			runtime.start();

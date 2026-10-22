@@ -7,6 +7,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.camel.builder.RouteBuilder;
 import org.eclipse.digitaltwin.basyx.dmp.core.component.DmpComponent;
 import org.eclipse.digitaltwin.basyx.dmp.core.configuration.route.core.RoutesConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.influxdb2.InfluxSettings;
+import org.eclipse.digitaltwin.basyx.dmp.influxdb2.component.DmpInfluxDb2Component;
 import org.eclipse.digitaltwin.basyx.dmp.management.compiler.ConnectorConfigurationFactory.RuntimeSettings;
 import org.eclipse.digitaltwin.basyx.dmp.management.repository.AasRepositoryClient;
 import org.eclipse.digitaltwin.basyx.dmp.management.repository.KafkaControlEventRouteBuilder;
@@ -23,6 +25,7 @@ public final class ManagedDmpRuntime implements AutoCloseable {
 		RouteBuilder create(ManagedRuntimeSettings settings, MappingReconciliationService reconciliation);
 	}
 	private final ManagedRuntimeSettings settings;
+	private final InfluxSettings influx;
 	private final DmpComponent component;
 	private final RepositoryDiscovery discovery;
 	private final ControlRouteFactory controlRoutes;
@@ -31,8 +34,11 @@ public final class ManagedDmpRuntime implements AutoCloseable {
 	private MappingReconciliationService reconciliation;
 	private boolean started;
 
-	public ManagedDmpRuntime(ManagedRuntimeSettings settings) {
-		this(settings, new DmpComponent(new RoutesConfiguration()), discovery(settings),
+	public ManagedDmpRuntime(ManagedRuntimeSettings settings) { this(settings, null); }
+
+	/** {@code influx} is the InfluxDB of TimeSeries segments, or {@code null} when none is configured. */
+	public ManagedDmpRuntime(ManagedRuntimeSettings settings, InfluxSettings influx) {
+		this(settings, influx, new DmpComponent(new RoutesConfiguration()), discovery(settings, influx),
 				(managedSettings, service) -> managedSettings.mqtt() != null
 						? new MqttControlEventRouteBuilder(managedSettings.mqtt(), service)
 						: new KafkaControlEventRouteBuilder(managedSettings.kafka(), service));
@@ -40,7 +46,13 @@ public final class ManagedDmpRuntime implements AutoCloseable {
 
 	ManagedDmpRuntime(ManagedRuntimeSettings settings, DmpComponent component,
 			RepositoryDiscovery discovery, ControlRouteFactory controlRoutes) {
+		this(settings, null, component, discovery, controlRoutes);
+	}
+
+	ManagedDmpRuntime(ManagedRuntimeSettings settings, InfluxSettings influx, DmpComponent component,
+			RepositoryDiscovery discovery, ControlRouteFactory controlRoutes) {
 		this.settings = java.util.Objects.requireNonNull(settings);
+		this.influx = influx;
 		this.component = java.util.Objects.requireNonNull(component);
 		this.discovery = java.util.Objects.requireNonNull(discovery);
 		this.controlRoutes = java.util.Objects.requireNonNull(controlRoutes);
@@ -52,7 +64,9 @@ public final class ManagedDmpRuntime implements AutoCloseable {
 		ManagedRuntimeStatus.beginManaged();
 		try {
 			component.startComponent();
-			reconciliation = new MappingReconciliationService(component, discovery, new RuntimeSettings(settings.repositoryUri()),
+			if (influx != null) component.runtimeContext()
+					.getComponent(DmpInfluxDb2Component.SCHEME, DmpInfluxDb2Component.class).configure(influx);
+			reconciliation = new MappingReconciliationService(component, discovery, new RuntimeSettings(settings.repositoryUri(), influx),
 					settings.maxMappings(), settings.maxQueuedInvalidations(), settings.retryMillis());
 			MappingAudit mappingAudit = new MappingAudit();
 			reconciliation.setReportListener(report -> {
@@ -121,10 +135,10 @@ public final class ManagedDmpRuntime implements AutoCloseable {
 		catch (RuntimeException | LinkageError ignored) { }
 	}
 
-	private static RepositoryDiscovery discovery(ManagedRuntimeSettings settings) {
+	private static RepositoryDiscovery discovery(ManagedRuntimeSettings settings, InfluxSettings influx) {
 		var repository = new AasRepositoryClient(settings.repositoryUri(), settings.connectTimeout(),
 				settings.requestTimeout(), settings.pageSize(), settings.maxPages(), settings.authorization());
-		return new RepositoryDiscovery(repository, new RuntimeSettings(settings.repositoryUri()),
+		return new RepositoryDiscovery(repository, new RuntimeSettings(settings.repositoryUri(), influx),
 				settings.maxParallelReads(), settings.aimcIds());
 	}
 }

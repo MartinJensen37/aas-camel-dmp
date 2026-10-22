@@ -119,6 +119,9 @@ The container listens on port 8080 for operation calls, `/health` and
 | `DMP_MANAGED_PAGE_SIZE`, `DMP_MANAGED_MAX_PAGES` | 100 / 100 |
 | `DMP_AFFORDANCE_VALIDATION` | `OFF` (default), `ON` or `REPORT` |
 | `DMP_HTTP_PORT` / `-Ddmp.http.port` | HTTP listener port (health, status, Operations), default 8080 |
+| `DMP_INFLUX_URL` | Optional InfluxDB 2 base URL for TimeSeries segments (SPEC §5.5); without it, segment mappings are blocked |
+| `DMP_INFLUX_ORG`, `DMP_INFLUX_TOKEN` | Required with `DMP_INFLUX_URL`; the token is never logged or exposed |
+| `DMP_INFLUX_LOOKBACK` | How far back a segment Source looks for the latest row (ISO-8601, default `P30D`) |
 | `DMP_AUDIT_INFLUX_URL` | Optional InfluxDB base URL; enables the AAS interaction log |
 | `DMP_AUDIT_INFLUX_TOKEN`, `…_ORG`, `…_BUCKET` | Required with the URL; the token is never logged or exposed |
 | `DMP_AUDIT_INFLUX_QUEUE_SIZE`, `…_BATCH_SIZE`, `…_FLUSH_INTERVAL_MS` | 10000 / 500 / 1000 |

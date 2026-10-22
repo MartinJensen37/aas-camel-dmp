@@ -30,21 +30,27 @@ import java.util.Set;
 import java.util.LinkedHashSet;
 
 import org.eclipse.digitaltwin.aas4j.v3.model.Key;
+import org.eclipse.digitaltwin.aas4j.v3.model.ReferenceTypes;
+import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultReference;
 import org.eclipse.digitaltwin.aas4j.v3.model.Qualifier;
 import org.eclipse.digitaltwin.aas4j.v3.model.QualifierKind;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.ReferenceElement;
 import org.eclipse.digitaltwin.basyx.dmp.aas.model.Aas;
+import org.eclipse.digitaltwin.basyx.dmp.management.model.TimeSeriesProjection;
 import org.eclipse.digitaltwin.basyx.dmp.management.model.WireModel;
 import org.eclipse.digitaltwin.basyx.dmp.management.repository.AasReferenceResolver;
 import org.eclipse.digitaltwin.basyx.dmp.management.repository.AasRepositoryClient;
 
 /** Resolves immutable repository inputs into an ordered, connector-neutral mapping plan. */
 public final class MappingPlanCompiler {
-	public sealed interface Target permits DirectTarget, AidTarget { }
+	public sealed interface Target permits DirectTarget, AidTarget, SeriesTarget { }
 	public record DirectTarget(AasReferenceResolver.ResolvedElement resolved) implements Target { }
 	public record AidTarget(AasReferenceResolver.AidTarget resolved) implements Target { }
+	/** A TimeSeries LinkedSegment; its series container (at {@code seriesPath}) holds the Record, the row shape. */
+	public record SeriesTarget(AasReferenceResolver.ResolvedElement segment, SubmodelElement series, String seriesPath,
+			TimeSeriesProjection.Series projection) implements Target { }
 	public record EndpointPlan(String id, Reference reference, Target target,
 			WireModel.Presence<String> pollingInterval) {
 		public EndpointPlan(String id, Reference reference, Target target) {
@@ -71,8 +77,10 @@ public final class MappingPlanCompiler {
 		public Plan(List<MappingPlan> mappings) { this(null, mappings); }
 		public Plan { mappings=List.copyOf(mappings); }
 	}
-	/** A submodel whose change can change the mapping. */
-	public record Dependency(String kind, String id) { }
+	/** A submodel whose change can change the mapping; with a {@code path}, only that element subtree of it. */
+	public record Dependency(String kind, String id, String path) {
+		public Dependency(String kind, String id) { this(kind, id, null); }
+	}
 	public record DesiredMapping(String identity, int listIndex, MappingPlan plan,
 			List<AasRepositoryClient.Result<?>> failures, Set<Dependency> dependencies,
 			WireModel.Mapping input, WireModel.MappingFailure projectionFailure) {
@@ -133,8 +141,12 @@ public final class MappingPlanCompiler {
 			List<EndpointPlan> resolved=new ArrayList<>(sources);resolved.addAll(sinks);
 			if(responseSourcesResult.found() && responseSourcesResult.value().value()!=null)resolved.addAll(responseSourcesResult.value().value());
 			if(responseSinksResult.found() && responseSinksResult.value().value()!=null)resolved.addAll(responseSinksResult.value().value());
-			for(EndpointPlan endpoint:resolved)if(endpoint.target() instanceof DirectTarget target)
-				metadataDependencies(target.resolved().element(),dependencies);
+			for(EndpointPlan endpoint:resolved) {
+				if(endpoint.target() instanceof DirectTarget target) metadataDependencies(target.resolved().element(),dependencies);
+				// The Record and DmpTarget lie beside the referenced segment: the series container is read, too.
+				if(endpoint.target() instanceof SeriesTarget series)
+					dependencies.add(new Dependency("submodel",series.segment().submodel().getId(),series.seriesPath()));
+			}
 			MappingPlan plan=failures.isEmpty()?new MappingPlan(identity,mapping.listIndex(),sources,sinks,mapping.defaultPollingInterval(),
 					mapping.transformation(),responseSourcesResult.value(),responseSinksResult.value(),mapping.responseTransformation(),
 					mapping.triggerSourceIds(),Aas.nonNull(mapping.element().getQualifiers())):null;
@@ -186,11 +198,36 @@ public final class MappingPlanCompiler {
 			return invalid("endpoint qualifier semantics are unsupported; refusing to discard them");
 		var resolved=references.resolve(endpoint.reference());
 		if(!resolved.found())return propagate(resolved);
+		if(resolved.value() instanceof AasReferenceResolver.ResolvedElement element
+				&& TimeSeriesProjection.isLinkedSegment(element.element()))
+			return compileSeries(endpoint,element);
 		Target target=switch(resolved.value()) {
 			case AasReferenceResolver.ResolvedElement element -> new DirectTarget(element);
 			case AasReferenceResolver.AidTarget aid -> new AidTarget(aid);
 		};
 		return found(new EndpointPlan(endpoint.id(),endpoint.reference(),target,endpoint.pollingInterval()));
+	}
+
+	/** A LinkedSegment target: {@code …/<series>/<Segments>/<segment>}, with its series container read beside it. */
+	private AasRepositoryClient.Result<EndpointPlan> compileSeries(WireModel.Endpoint endpoint,
+			AasReferenceResolver.ResolvedElement segment) {
+		List<Key> keys=Aas.keys(endpoint.reference());
+		if(keys.size()<4)return invalid("a LinkedSegment must lie in a TimeSeries collection (…/<series>/Segments/<segment>); "
+				+"TimeSeries submodels are not supported yet");
+		List<Key> seriesKeys=keys.subList(0,keys.size()-2);
+		var series=references.resolve(new DefaultReference.Builder().type(ReferenceTypes.MODEL_REFERENCE)
+				.keys(List.copyOf(seriesKeys)).build());
+		if(!series.found())return propagate(series);
+		if(!(series.value() instanceof AasReferenceResolver.ResolvedElement container))
+			return invalid("the LinkedSegment's container is not an AAS element");
+		SubmodelElement segments=Aas.children(container.element()).stream()
+				.filter(child -> keys.get(keys.size()-2).getValue().equals(child.getIdShort())).findFirst().orElse(null);
+		TimeSeriesProjection.Series projection;
+		try { projection=TimeSeriesProjection.project(container.element(),segments,segment.element()); }
+		catch(IllegalArgumentException invalid) { return invalid("TimeSeries "+AasReferenceResolver.idShortPath(keys)+": "+invalid.getMessage()); }
+		return found(new EndpointPlan(endpoint.id(),endpoint.reference(),
+				new SeriesTarget(segment,container.element(),AasReferenceResolver.idShortPath(seriesKeys),projection),
+				endpoint.pollingInterval()));
 	}
 
 	private static <T> AasRepositoryClient.Result<T> found(T value) {

@@ -33,6 +33,10 @@ import org.eclipse.digitaltwin.basyx.dmp.aas.operation.OptionalQualifier;
 import org.eclipse.digitaltwin.basyx.dmp.aas.operation.ProtocolBridgeRouteConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpDataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpObserveDataSourceConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.influxdb2.InfluxSettings;
+import org.eclipse.digitaltwin.basyx.dmp.influxdb2.configuration.InfluxDb2DataSinkConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.influxdb2.configuration.InfluxDb2DataSourceConfiguration;
+import org.eclipse.digitaltwin.basyx.dmp.management.model.TimeSeriesProjection;
 import org.eclipse.digitaltwin.basyx.dmp.snmp.configuration.SnmpDataSinkConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.snmp.configuration.SnmpDataSourceConfiguration;
 import org.eclipse.digitaltwin.basyx.dmp.http.configuration.HttpPollingDataSourceConfiguration;
@@ -51,6 +55,7 @@ import org.eclipse.digitaltwin.basyx.dmp.management.compiler.MappingPlanCompiler
 import org.eclipse.digitaltwin.basyx.dmp.management.compiler.MappingPlanCompiler.EndpointPlan;
 import org.eclipse.digitaltwin.basyx.dmp.management.compiler.MappingPlanCompiler.MappingPlan;
 import org.eclipse.digitaltwin.basyx.dmp.management.compiler.MappingPlanCompiler.Plan;
+import org.eclipse.digitaltwin.basyx.dmp.management.compiler.MappingPlanCompiler.SeriesTarget;
 import org.eclipse.digitaltwin.aas4j.v3.model.AasSubmodelElements;
 import org.eclipse.digitaltwin.aas4j.v3.model.Key;
 import org.eclipse.digitaltwin.aas4j.v3.model.Operation;
@@ -137,7 +142,9 @@ public final class ConnectorConfigurationFactory {
 		public DesiredBundle { issues=List.copyOf(issues); }
 		public boolean valid() { return desired.valid() && bundle!=null && issues.isEmpty(); }
 	}
-	public record RuntimeSettings(URI aasRepositoryBaseUri) {
+	/** {@code influx} is the InfluxDB TimeSeries segments must name, or {@code null} when none is configured. */
+	public record RuntimeSettings(URI aasRepositoryBaseUri, InfluxSettings influx) {
+		public RuntimeSettings(URI aasRepositoryBaseUri) { this(aasRepositoryBaseUri, null); }
 		public RuntimeSettings {
 			Objects.requireNonNull(aasRepositoryBaseUri,"aasRepositoryBaseUri");
 			if(aasRepositoryBaseUri.getUserInfo()!=null || aasRepositoryBaseUri.getQuery()!=null
@@ -989,6 +996,7 @@ public final class ConnectorConfigurationFactory {
 	private static DataSourceConfiguration source(EndpointPlan endpoint, MappingPlan mapping, int position,
 			Plan plan, String routeId, RuntimeSettings runtime, List<Issue> issues) {
 		String path = endpointPath(mapping, "Sources", position);
+		if (endpoint.target() instanceof SeriesTarget series) return seriesSource(endpoint,mapping,position,series,runtime,issues);
 		if (endpoint.target() instanceof DirectTarget) {
 			if(((DirectTarget)endpoint.target()).resolved().element() instanceof Operation) {
 				issue(issues,mapping,path,"AAS Operation targets require a ProtocolBridge route and declared ingress contract");
@@ -1087,6 +1095,7 @@ public final class ConnectorConfigurationFactory {
 	private static DataSinkConfiguration sink(EndpointPlan endpoint, MappingPlan mapping, int position,
 			Plan plan, String routeId, RuntimeSettings runtime, List<Issue> issues) {
 		String path = endpointPath(mapping, "Sinks", position);
+		if (endpoint.target() instanceof SeriesTarget series) return seriesSink(endpoint,mapping,position,series,runtime,issues);
 		if (endpoint.target() instanceof DirectTarget) {
 			if(operationModel(endpoint)!=null) {
 				issue(issues,mapping,path,"AAS Operation sinks are not supported (chained actions are unsafe); an Operation is answered through its ResponseSinks");
@@ -1140,6 +1149,53 @@ public final class ConnectorConfigurationFactory {
 		result.setSchema(schemaForAidTarget(target,mapping,path,issues));
 		setValuePath(result,target);
 		return result;
+	}
+
+	/** A TimeSeries LinkedSegment written one point per row on the configured InfluxDB. */
+	private static DataSinkConfiguration seriesSink(EndpointPlan endpoint,MappingPlan mapping,int position,
+			SeriesTarget target,RuntimeSettings runtime,List<Issue> issues) {
+		String path=endpointPath(mapping,"Sinks",position);
+		if(!seriesOnConfiguredInflux(target,mapping,path,runtime,issues))return null;
+		TimeSeriesProjection.Series series=target.projection();
+		InfluxDb2DataSinkConfiguration sink=new InfluxDb2DataSinkConfiguration(entityId(mapping,"sink",position),
+				series.measurement(),series.bucket(),series.timePath(),series.tags(),series.columns());
+		sink.setSinkId(endpoint.id());
+		return sink;
+	}
+
+	/**
+	 * A TimeSeries LinkedSegment read by polling: its latest row. InfluxDB has no subscriptions, so the source
+	 * needs an authored PollingInterval (its own or the mapping's DefaultPollingInterval); none is assumed.
+	 */
+	private static DataSourceConfiguration seriesSource(EndpointPlan endpoint,MappingPlan mapping,int position,
+			SeriesTarget target,RuntimeSettings runtime,List<Issue> issues) {
+		String path=endpointPath(mapping,"Sources",position);
+		if(!seriesOnConfiguredInflux(target,mapping,path,runtime,issues))return null;
+		OptionalLong interval=endpoint.pollingInterval().present()
+				? endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues) : pollingMillis(mapping,issues);
+		if(interval.isEmpty()) {
+			if(!hasIssue(issues,mapping))issue(issues,mapping,path,"a TimeSeries segment source is polled; it needs a PollingInterval or the mapping's DefaultPollingInterval");
+			return null;
+		}
+		TimeSeriesProjection.Series series=target.projection();
+		URI influx=runtime.influx().url();
+		InfluxDb2DataSourceConfiguration source=new InfluxDb2DataSourceConfiguration(entityId(mapping,"source",position),
+				influx.getHost(),effectivePort(influx),series.measurement(),series.bucket(),series.timePath(),series.tags(),series.columns());
+		source.setSourceId(endpoint.id());
+		source.setPollingIntervalMs(interval.getAsLong());
+		return hasIssue(issues,mapping)?null:source;
+	}
+
+	private static boolean seriesOnConfiguredInflux(SeriesTarget target,MappingPlan mapping,String path,
+			RuntimeSettings runtime,List<Issue> issues) {
+		if(runtime==null || runtime.influx()==null) {
+			issue(issues,mapping,path,"TimeSeries segments need a configured InfluxDB ("+InfluxSettings.URL+")");return false;
+		}
+		if(!runtime.influx().serves(target.projection().endpoint())) {
+			issue(issues,mapping,path,"the segment's Endpoint "+target.projection().endpoint()
+					+" does not name the configured InfluxDB and org");return false;
+		}
+		return true;
 	}
 
 	private static DataSourceConfiguration aasSource(EndpointPlan endpoint,MappingPlan mapping,int position,

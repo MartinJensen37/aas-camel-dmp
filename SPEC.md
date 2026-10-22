@@ -392,6 +392,8 @@ no such payloads.
 | Collection/list Source | Read; requires an explicit interval |
 | Property/collection Sink | Write (`PATCH …/$value`) |
 | Operation as Sink | Rejected (no chained actions) |
+| TimeSeries LinkedSegment as Sink | One InfluxDB point per evaluation (§5.5) |
+| TimeSeries LinkedSegment as Source | Read of the latest row; requires an explicit interval (§5.5) |
 
 An element below a submodel is addressed by its idShortPath: collection
 members joined by `.`, list items by index (`Location.x`, `Items[0]`).
@@ -413,6 +415,47 @@ sinks, a pointer places the SinkId value into the outgoing payload. Sinks that
 address members of the same affordance are assembled into one payload and one
 send; distinct affordances stay separate sends; AAS children are separate
 writes. Per-element fan-out over arrays is not supported.
+
+### 5.5 TimeSeries segments
+
+A time series is an SMC shaped like the IDTA 02008 submodel (`Metadata/Record`,
+`Segments/LinkedSegment`), recognised by this project's id
+`https://smartproductionlab.aau.dk/variables/TimeSeries/1/0` or the IDTA
+TimeSeries id as semanticId or supplemental id; its elements are recognised by
+semanticId, never by idShort. A reference to a LinkedSegment
+(`…/<series>/<Segments>/<segment>`) makes the DMP read the series container as
+well; it counts as referenced for events and the fingerprint. TimeSeries
+submodels (a segment directly below the submodel) are not supported yet.
+
+- The Record is the row shape: one UtcTime (`xs:dateTime`; other time
+  semantics block the mapping) and fields, groups being RecordGroup SMCs. Every
+  field names its InfluxDB field in exactly one `Column` qualifier
+  (`…/timeseries/Column/1/0`); a missing one blocks the mapping, and columns
+  are distinct.
+- The segment's `DmpTarget` (`…/timeseries/DmpTarget/1/0`) names `Bucket`,
+  `Measurement` and `Tags` (each tag's idShort is its key). Its IDTA
+  `Endpoint` must name the configured InfluxDB and org (`DMP_INFLUX_URL`,
+  `DMP_INFLUX_ORG`); otherwise, or without a configured InfluxDB, the mapping
+  is blocked. The IDTA `Query` is for people and the web UI; the DMP never
+  parses it.
+- Lua returns the row for the segment's SinkId as a table keyed by Record
+  idShort, groups nested (`row.Position.X`). A field the row omits is not
+  written; an unknown field, a value of another type than the field's
+  valueType, or a row without fields fails the sink. `Time` is optional: an
+  `xs:dateTime` with an offset is the point's time, otherwise the time of
+  writing.
+- A Source on a segment is a Read: every `PollingInterval` (its own or the
+  mapping's `DefaultPollingInterval`; without one the mapping is blocked, as
+  InfluxDB has no subscriptions) it queries each field's `last()` within
+  `DMP_INFLUX_LOOKBACK` (default `P30D`) and hands Lua the row in the same
+  shape, `Time` being the newest of the fields' times. Fields keep their
+  latest values independently, so a row can combine values written at
+  different times; a field unchanged for longer than the lookback is absent.
+  A series without a point has no row, so the source has no value yet. A
+  stored value of another type than its field fails the read.
+- Values are written as the field's valueType: strings (and date/time types)
+  as strings, integer types as InfluxDB integers, `xs:double`/`xs:float`/
+  `xs:decimal` as floats, `xs:boolean` as booleans.
 
 ## 6. Ordinary mappings
 
@@ -603,6 +646,7 @@ end
 | MQTT 5 | Observe (subscribe), Write (publish), Invoke (request/reply) | Read; MQTT 3.1.1 |
 | HTTP | Read (poll), Observe and events (`longpoll`, `sse`), Write, Invoke; static headers | `websub`, inbound requests other than Operations |
 | PLC4X (Modbus) | Read, acknowledged Write of one tag per affordance | Invoke (Modbus has no actions) |
+| InfluxDB 2 (TimeSeries, §5.5) | Acknowledged Write of one point per row, Read of the latest row (polled) | Observe (InfluxDB has no subscriptions); other databases |
 | SNMP (v1, v2c) | Read (GET, polled), Write (SET) | Traps, SNMPv3, tables |
 | BACnet | — (rejected: the PLC4X 0.13.1 `bacnet-ip` driver neither reads nor writes; it only listens for COV notifications) | Read, Write, Observe |
 
@@ -621,6 +665,7 @@ any component, and the upstream component stays usable unchanged:
 | `dmp-snmp:` | camel-snmp (SNMP4J) | checked GET (error status, missing object and timeout raise) and SET of the object's own SMI type; camel-snmp has no SET |
 | `paho-mqtt5-inout:` | camel-paho-mqtt5 | MQTT 5 request/reply with correlation; owns its reply consumer and publish producer |
 | `dmp-http-observe:` | — (camel-http has no consumer) | observing an HTTP resource by long polling or server-sent events (§5.2) |
+| `dmp-influxdb2:` | camel-influxdb2 (influxdb-client-java) | blocking writes whose rejection or failure fails the exchange (camel-influxdb2 writes through the asynchronous batching API, whose errors never reach the exchange); typed points from a Record row; a polling consumer reading the latest row with Flux (camel-influxdb2 has no consumer); no creation of orgs or buckets (camel-influxdb2 creates them by default); one client for the configured InfluxDB, its token outside every URI |
 
 Connector invocation steps (`SynchronousInvocationAdapter.configureInvoke`)
 map arguments and replies of actions (HTTP, OPC UA, MQTT); an Operation bound

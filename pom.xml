@@ -19,6 +19,7 @@
 		<module>dmp.camel-paho</module>
 		<module>dmp.camel-plc4x</module>
 		<module>dmp.camel-snmp</module>
+		<module>dmp.camel-influxdb2</module>
 		<module>dmp.component</module>
 	</modules>
 
@@ -141,6 +142,12 @@
 				<groupId>com.google.code.gson</groupId>
 				<artifactId>gson</artifactId>
 				<version>2.14.0</version>
+			</dependency>
+			<dependency>
+				<!-- commons-csv (influxdb-client-java's query parser) needs 2.20; test tools would otherwise bring 2.11. -->
+				<groupId>commons-io</groupId>
+				<artifactId>commons-io</artifactId>
+				<version>2.20.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.httpcomponents.core5</groupId>

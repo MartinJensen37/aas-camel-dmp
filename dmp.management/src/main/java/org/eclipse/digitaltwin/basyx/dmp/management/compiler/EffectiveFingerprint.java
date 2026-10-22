@@ -94,14 +94,18 @@ public final class EffectiveFingerprint {
 				desired.input() == null ? Optional.empty() : desired.input().authoredId(),
 				desired.projectionFailure(), plan(desired.plan()),
 				desired.dependencies().stream().sorted(Comparator.comparing(MappingPlanCompiler.Dependency::kind)
-						.thenComparing(MappingPlanCompiler.Dependency::id)).toList(),
+						.thenComparing(MappingPlanCompiler.Dependency::id)
+						.thenComparing(MappingPlanCompiler.Dependency::path, Comparator.nullsFirst(Comparator.naturalOrder()))).toList(),
 				desired.failures().stream().map(failure -> failure.status().name()).sorted().toList(),
 				issues.stream().map(ConnectorConfigurationFactory.Issue::path).sorted().toList(),
 				repository(runtime), validation()));
 	}
 
 	private static String repository(ConnectorConfigurationFactory.RuntimeSettings runtime) {
-		return runtime == null ? null : runtime.aasRepositoryBaseUri().toString();
+		if (runtime == null) return null;
+		// The InfluxDB a TimeSeries segment must name; its token is no compilation input.
+		String influx = runtime.influx() == null ? "" : " influx=" + runtime.influx().url() + "?org=" + runtime.influx().org();
+		return runtime.aasRepositoryBaseUri() + influx;
 	}
 
 	private static String validation() {
@@ -132,6 +136,11 @@ public final class EffectiveFingerprint {
 			SubmodelElement element = resolved.element() instanceof Property property ? Aas.withoutValue(property) : resolved.element();
 			return new DirectValue(resolved.submodel().getId(), resolved.submodel().getIdShort(),
 					resolved.submodel().getSemanticId(), element);
+		}
+		if (target instanceof MappingPlanCompiler.SeriesTarget series) {
+			var segment = series.segment();
+			return new DirectValue(segment.submodel().getId(), segment.submodel().getIdShort(),
+					segment.submodel().getSemanticId(), series.series());
 		}
 		return ((MappingPlanCompiler.AidTarget) target).resolved();
 	}
