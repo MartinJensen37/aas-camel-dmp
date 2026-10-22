@@ -1,6 +1,6 @@
 # AAS-Camel-DMP — Design Specification
 
-> **Status (2026-10-18):** describes the implemented single-process Java DMP.
+> **Status (2026-10-22):** describes the implemented single-process Java DMP.
 > Open and deferred work is tracked in [PLAN.md](PLAN.md). Earlier designs
 > (Python management node, per-asset containers, file configuration, JSONata,
 > BaSyx v1) are retired; see the git history before `8fe9c46` for their text.
@@ -14,8 +14,9 @@ Administration Shells. It:
    AAS v3 repository and the AID (Asset Interfaces Description) and other
    submodels they reference;
 2. compiles each mapping into Camel routes that acquire values from sources
-   (MQTT, OPC UA, HTTP, Modbus via PLC4X, SNMP, AAS elements), transform them
-   with a sandboxed Lua script, and write them to sinks;
+   (MQTT, OPC UA, HTTP, Modbus via PLC4X, SNMP, AAS elements, TimeSeries
+   segments on InfluxDB 2), transform them with a sandboxed Lua script, and
+   write them to sinks;
 3. serves AAS Operation invocations delegated by BaSyx and forwards them to the
    device over HTTP, OPC UA Methods or MQTT 5 request/reply, or as a property
    write;
@@ -71,6 +72,7 @@ flowchart LR
 | `dmp.camel-lua` | `lua:` component and sandbox |
 | `dmp.camel-aas` | AAS element read/write, `aas-event:` source, Operation bridge |
 | `dmp.camel-paho`, `-opcua`, `-http`, `-plc4x`, `-snmp` | Connectors reachable from AID bindings, including the DMP Camel components (§9) |
+| `dmp.camel-influxdb2` | `dmp-influxdb2:`, TimeSeries LinkedSegments on InfluxDB 2 (§5.5) |
 | `dmp.component` | Executable, settings, `/health`, `/management/status`; the root `Dockerfile` builds it into the image |
 
 ## 4. Discovery and lifecycle

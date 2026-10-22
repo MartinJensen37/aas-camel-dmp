@@ -5,7 +5,7 @@ work only; finished work is described in SPEC and the git history. The previous
 plan (milestones M0–M11, workstreams W0–W6, phases R0–R8, the retirement audit
 and the P3/P5 work logs) is in the git history.
 
-## Current state (2026-10-18)
+## Current state (2026-10-22)
 
 - The DMP is one Java process (SPEC §3). The Python management node,
   per-asset containers, standalone file configuration, examples, `--compare`
@@ -22,8 +22,15 @@ and the P3/P5 work logs) is in the git history.
   implemented as specified. Lua receives AAS elements
   in one typed value form (SPEC §5.3) and OPC UA values without an envelope,
   checked against the AID (SPEC §5.2).
+- TimeSeries LinkedSegments on InfluxDB 2 (SPEC §5.5): Sinks write one
+  acknowledged point per row, Sources poll the latest row, both within the
+  segment's period; the series' Record is the row shape.
+- The project is AAS-Camel-DMP: Java packages and Maven groupId
+  `dk.aau.smartproductionlab` (2026-10-22); the `dmp.*` modules keep their
+  names.
 - Build: Java 21, Camel 4.22, AAS4J 2.0.1, Milo 1.1.6, PLC4X 0.13.1,
-  LuaJ 3.0.1, Kafka clients 4.3.1, MQTT 5 only, JUnit 5 only. Only
+  LuaJ 3.0.1, Kafka clients 4.3.1, influxdb-client-java 8.0.0, Netty 4.1.136
+  (one line, through the Netty BOM), MQTT 5 only, JUnit 5 only. Only
   `dmp.component` ships a logging backend.
 
 ### Verification
@@ -102,19 +109,31 @@ DMP-internal diagnostics go to the application log and `/management/status`.
 asynchronous `makeWriteApi()`, auto-creates buckets and orgs): writes through
 `WriteApiBlocking` so failures fail the exchange, builds typed points from the
 Lua row, reads the latest row with Flux, never creates buckets or orgs. One
-`InfluxDBClient` per endpoint, credentials from the environment. One request
-per row; batching only with per-batch acknowledgement.
+`InfluxDBClient` for the configured InfluxDB (`DMP_INFLUX_*`), its token only
+from the environment. One request per row; batching only with per-batch
+acknowledgement.
 
 **Web UI.** The TimeSeries plugin reads a TimeSeries submodel or SMC (children
 from `value`, the group's idShortPath as prefix) and uses `Column` when
 present.
 
-**Work, in order:** `aas-model` (Variables groups, TimeSeries SMC,
-`InfluxDb2Target`, `Column`, Operation log series); the DMP (discovery of the
-container, segment source/sink, `dmp-influxdb2:`, Lua `meta` and failure
-responses, removal of §10, SPEC); a compose `influxdb` service; the web UI
-plugin; migrating stations, BT_Controller, `stationctl`, the e2e tests and
-kg-bridge to the new paths.
+**Done (2026-10-22):** `aas-model` (Variables groups, TimeSeries SMC,
+`InfluxDb2Target`, `Column`, segment periods, the `operation_log` builder); the
+DMP (discovery of the series container, segment Sources and Sinks,
+`dmp-influxdb2:`, segment periods, SPEC §5.5).
+
+**Open, in order:**
+1. Lua `meta` table and the response transformation on failure (SPEC §7, §8).
+2. Remove SPEC §10, `InfluxAuditLog`, `LineProtocol` and `DMP_AUDIT_INFLUX_*`.
+3. A compose `influxdb` service (org, bucket, tokens: a write token for the
+   DMP, a read-only one for the web UI) and the `dmp` service's
+   `DMP_INFLUX_*`.
+4. The web UI plugin: TimeSeries submodel or SMC, `Column`.
+5. Station models: State and Measurements series, Operation log series
+   attached to each skill; then their AIMC mappings target the segments.
+6. Consumers: BT_Controller (it reads `Variables` today, partly at stale
+   paths, and must poll InfluxDB for current values), `stationctl`, the e2e
+   tests and kg-bridge; then the flat `Variables.variable` map is removed.
 
 ### 3. Parent workspace
 
