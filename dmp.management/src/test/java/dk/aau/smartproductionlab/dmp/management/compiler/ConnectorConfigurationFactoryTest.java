@@ -1,5 +1,6 @@
 package dk.aau.smartproductionlab.dmp.management.compiler;
 
+import dk.aau.smartproductionlab.dmp.core.configuration.entity.Evaluation;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -113,7 +114,7 @@ class ConnectorConfigurationFactoryTest {
 		var source = new EndpointPlan("State", reference(), sourceTarget);
 		var sink = new EndpointPlan("Command", reference(), sinkTarget);
 		var mapping = new MappingPlan("Fan", 0, List.of(source), List.of(sink), Presence.absent(),
-				Presence.absent(), Presence.absent(), Presence.absent(), Presence.absent(), Presence.absent(), List.of());
+				Presence.absent(), Presence.absent(), Presence.absent(), Presence.absent(), List.of());
 		var result = factory.create(new Plan("urn:owner/submodels/AIMC", List.of(mapping)), "unit");
 
 		assertTrue(result.issues().isEmpty());
@@ -531,7 +532,7 @@ class ConnectorConfigurationFactoryTest {
 				.getBytes(StandardCharsets.UTF_8),"text/x-lua"));
 		var runtime=new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://aas.example:8081"));
 		var mapping=new MappingPlan("logged",0,List.of(state),List.of(setpoint),Presence.absent(),Presence.absent(),
-				Presence.of(List.of(written)),Presence.of(List.of(lastWrite)),lua,Presence.absent(),List.of());
+				Presence.of(List.of(written)),Presence.of(List.of(lastWrite)),lua,List.of());
 		var result=factory.create(new Plan(List.of(mapping)),"route",runtime);
 		assertTrue(result.issues().isEmpty(),result.issues().toString());
 		var route=result.configuration().getRoutes().get(0);
@@ -548,7 +549,7 @@ class ConnectorConfigurationFactoryTest {
 		var whole=new EndpointPlan("Status",AasFixtures.reference("Submodel","urn:owner/submodels/Variables","SubmodelElementCollection","Status"),
 				new DirectTarget(new AasReferenceResolver.ResolvedElement(submodel,status)));
 		var nested=new MappingPlan("nested",0,List.of(state),List.of(whole),Presence.absent(),Presence.absent(),
-				Presence.of(List.of(written)),Presence.of(List.of(lastWrite)),lua,Presence.absent(),List.of());
+				Presence.of(List.of(written)),Presence.of(List.of(lastWrite)),lua,List.of());
 		var member=factory.create(new Plan(List.of(nested)),"route",runtime);
 		assertTrue(member.issues().isEmpty(),member.issues().toString());
 		var memberBinding=member.configuration().getRoutes().get(0).getResponseSourceBindings().get(0);
@@ -557,15 +558,59 @@ class ConnectorConfigurationFactoryTest {
 
 		var reads=new EndpointPlan("Reads",state.reference(),state.target());
 		var notASink=new MappingPlan("logged",0,List.of(state),List.of(setpoint),Presence.absent(),Presence.absent(),
-				Presence.of(List.of(reads)),Presence.of(List.of(lastWrite)),lua,Presence.absent(),List.of());
+				Presence.of(List.of(reads)),Presence.of(List.of(lastWrite)),lua,List.of());
 		var rejected=factory.create(new Plan(List.of(notASink)),"route",runtime);
 		assertTrue(rejected.issues().stream().anyMatch(issue -> issue.message().contains("must select one of the mapping's Sinks")),
 				rejected.issues().toString());
 		var withoutLua=new MappingPlan("logged",0,List.of(state),List.of(setpoint),Presence.absent(),Presence.absent(),
-				Presence.of(List.of(written)),Presence.of(List.of(lastWrite)),Presence.absent(),Presence.absent(),List.of());
+				Presence.of(List.of(written)),Presence.of(List.of(lastWrite)),Presence.absent(),List.of());
 		var incomplete=factory.create(new Plan(List.of(withoutLua)),"route",runtime);
 		assertTrue(incomplete.issues().stream().anyMatch(issue -> issue.message().contains("requires a ResponseTransformation")),
 				incomplete.issues().toString());
+	}
+
+	@Test
+	void aSourcesEvaluationDecidesWhetherItTriggersAndHowItIsRead() {
+		var get=protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"GET");
+		var sink=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"POST"));
+		var mqtt=protocolTarget(WireModel.ProtocolFamily.MQTT,"mqtt://broker.example:1883","/state",Map.of("mqv_retain","true"),null);
+		java.util.function.BiFunction<String,String,EndpointPlan> source=(id,mode) -> new EndpointPlan(id,reference(),
+				id.startsWith("mqtt")?mqtt:get,Presence.absent(),mode==null?Presence.absent():Presence.of(mode));
+		java.util.function.Function<List<EndpointPlan>,MappingPlan> mapping=sources -> new MappingPlan("modes",0,sources,List.of(sink),
+				Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),List.of());
+
+		// an observed trigger and a GET read at each evaluation: no interval needed
+		var result=factory.create(new Plan(List.of(mapping.apply(List.of(source.apply("mqtt","OnChange"),source.apply("read","ReadAtEvaluation"))))),"route");
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var configured=result.configuration().getDatasources().values().stream().toList();
+		assertEquals(Evaluation.ON_CHANGE,configured.get(0).getEvaluation());
+		assertEquals(Evaluation.READ_AT_EVALUATION,configured.get(1).getEvaluation());
+		assertEquals("sync",configured.get(1).getDelivery());
+		assertEquals(0,configured.get(1).getPollingIntervalMs());
+
+		for(var rejected:List.of(
+				Map.entry(List.of(source.apply("mqtt","Cached"),source.apply("read","ReadAtEvaluation")),"no Source triggers the mapping"),
+				Map.entry(List.of(source.apply("mqtt",null),source.apply("mqttRead","ReadAtEvaluation")),"received by subscription"),
+				Map.entry(List.of(source.apply("mqtt",null),new EndpointPlan("read",reference(),get,Presence.of("2"),Presence.of("ReadAtEvaluation"))),
+						"is not polled"))) {
+			var failed=factory.create(new Plan(List.of(mapping.apply(rejected.getKey()))),"route");
+			assertTrue(failed.issues().stream().anyMatch(issue -> issue.message().contains(rejected.getValue())),failed.issues().toString());
+		}
+	}
+
+	@Test
+	void anOperationIsItsMappingsOnlyTriggerAndItsFurtherSourcesAreReadAtTheCall() {
+		var plan=explicitResponsePlan("aid-command");
+		var bridge=plan.mappings().get(0);
+		var operation=bridge.sources().get(0);
+		java.util.function.Function<EndpointPlan,MappingPlan> withSources=first -> new MappingPlan(bridge.identity(),bridge.listIndex(),
+				List.of(first),bridge.sinks(),bridge.defaultPollingInterval(),bridge.transformation(),bridge.responseSources(),
+				bridge.responseSinks(),bridge.responseTransformation(),bridge.qualifiers());
+		var evaluated=new EndpointPlan(operation.id(),operation.reference(),operation.target(),Presence.absent(),Presence.of("OnUpdate"));
+		var result=factory.create(new Plan(List.of(withSources.apply(evaluated))),"bridge",
+				new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://aas.example:8081")));
+		assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("only trigger; it takes no Evaluation")),
+				result.issues().toString());
 	}
 
 	@Test
@@ -651,14 +696,14 @@ class ConnectorConfigurationFactoryTest {
 	@Test void authoredMappingIdentitySurvivesListReorderingAndEffectiveOptionsChangeFingerprint() {
 		var first=mapping(WireModel.ProtocolFamily.HTTP,true);
 		var relocated=new MappingPlan(first.identity(),17,first.sources(),first.sinks(),first.defaultPollingInterval(),
-				first.transformation(),first.responseSources(),first.responseSinks(),first.responseTransformation(),first.triggerSourceIds(),first.qualifiers());
+				first.transformation(),first.responseSources(),first.responseSinks(),first.responseTransformation(),first.qualifiers());
 		var a=factory.createBundles(new Plan(List.of(first)),null).bundles().get(0);
 		var b=factory.createBundles(new Plan(List.of(relocated)),null).bundles().get(0);
 		assertEquals(a.bundleId(),b.bundleId());assertEquals(a.routeId(),b.routeId());
 		assertTrue(a.fingerprint().sameEffectiveConfiguration(b.fingerprint()));
 		var interval=new MappingPlan(first.identity(),first.listIndex(),first.sources(),first.sinks(),
 				Presence.of("7"),first.transformation(),first.responseSources(),first.responseSinks(),
-				first.responseTransformation(),first.triggerSourceIds(),first.qualifiers());
+				first.responseTransformation(),first.qualifiers());
 		var changed=factory.createBundles(new Plan(List.of(interval)),null).bundles().get(0);
 		assertFalse(a.fingerprint().sameEffectiveConfiguration(changed.fingerprint()));
 		assertFalse(a.fingerprint().exported().equals(changed.fingerprint().exported()));
@@ -669,7 +714,7 @@ class ConnectorConfigurationFactoryTest {
 		var sink=endpointPlan("http",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"POST"));
 		var map=mappingPlan("fan",0,source,sink);
 		map=new MappingPlan(map.identity(),0,map.sources(),map.sinks(),Presence.of("2"),
-				map.transformation(),map.responseSources(),map.responseSinks(),map.responseTransformation(),map.triggerSourceIds(),map.qualifiers());
+				map.transformation(),map.responseSources(),map.responseSinks(),map.responseTransformation(),map.qualifiers());
 		var result=factory.create(new Plan(List.of(map)),"route");
 		assertTrue(result.issues().isEmpty());
 		var configured=result.configuration().getDatasources().values().iterator().next();
@@ -703,7 +748,7 @@ class ConnectorConfigurationFactoryTest {
 
 	private static MappingPlan withDefaultPollingInterval(MappingPlan map,String seconds) {
 		return new MappingPlan(map.identity(),map.listIndex(),map.sources(),map.sinks(),Presence.of(seconds),
-				map.transformation(),map.responseSources(),map.responseSinks(),map.responseTransformation(),map.triggerSourceIds(),map.qualifiers());
+				map.transformation(),map.responseSources(),map.responseSinks(),map.responseTransformation(),map.qualifiers());
 	}
 
 	@Test void authoredUnknownProtocolOptionsBlockOnlyTheirMapping() {
@@ -813,8 +858,7 @@ class ConnectorConfigurationFactoryTest {
 					target.schemaPath(),target.submodelId(),part));
 			var mapping=new MappingPlan(original.identity(),original.listIndex(),original.sources(),
 					List.of(new EndpointPlan("Move",original.sinks().get(0).reference(),retargeted)),original.defaultPollingInterval(),
-					original.transformation(),original.responseSources(),original.responseSinks(),original.responseTransformation(),
-					original.triggerSourceIds(),original.qualifiers());
+					original.transformation(),original.responseSources(),original.responseSinks(),original.responseTransformation(),original.qualifiers());
 			var result=factory.create(new Plan(base.aimcSubmodelId(),List.of(mapping)),"bridge");
 			assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("addresses the action's input")),
 					part+": "+result.issues());
@@ -832,8 +876,7 @@ class ConnectorConfigurationFactoryTest {
 			Presence<WireModel.Blob> transformation) {
 		var original=base.mappings().get(0);
 		return new Plan(base.aimcSubmodelId(),List.of(new MappingPlan(original.identity(),original.listIndex(),original.sources(),
-				original.sinks(),original.defaultPollingInterval(),original.transformation(),sources,sinks,transformation,
-				original.triggerSourceIds(),original.qualifiers())));
+				original.sinks(),original.defaultPollingInterval(),original.transformation(),sources,sinks,transformation,original.qualifiers())));
 	}
 
 	@Test void operationOutputsAreNeverMatchedByNameWithoutAResponseMapping() {
@@ -918,7 +961,7 @@ class ConnectorConfigurationFactoryTest {
 		var duplicate=new EndpointPlan("reply-count-copy",response.reference(),response.target());
 		var mapping=new MappingPlan(original.identity(),original.listIndex(),original.sources(),original.sinks(),
 				original.defaultPollingInterval(),original.transformation(),Presence.of(List.of(response,duplicate)),
-				original.responseSinks(),original.responseTransformation(),original.triggerSourceIds(),original.qualifiers());
+				original.responseSinks(),original.responseTransformation(),original.qualifiers());
 		var result=factory.create(new Plan(base.aimcSubmodelId(),List.of(mapping)),"bridge");
 		assertTrue(result.issues().isEmpty(),result.issues().toString());
 		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
@@ -951,8 +994,7 @@ class ConnectorConfigurationFactoryTest {
 		var mapping=new MappingPlan(original.identity(),original.listIndex(),original.sources(),
 				List.of(new EndpointPlan(sink.id(),sink.reference(),typedTarget)),original.defaultPollingInterval(),
 				original.transformation(),Presence.of(List.of(new EndpointPlan(responseSource.id(),responseSource.reference(),typedCount))),
-				Presence.of(List.of(original.responseSinks().value().get(0))),original.responseTransformation(),
-				original.triggerSourceIds(),original.qualifiers());
+				Presence.of(List.of(original.responseSinks().value().get(0))),original.responseTransformation(),original.qualifiers());
 		var result=factory.create(new Plan(base.aimcSubmodelId(),List.of(mapping)),"bridge");
 		assertTrue(result.issues().isEmpty(),result.issues().toString());
 		var bridge=(ProtocolBridgeRouteConfiguration)result.configuration().getRoutes().get(0);
@@ -1027,7 +1069,7 @@ class ConnectorConfigurationFactoryTest {
 				Presence.of(new WireModel.Blob("function aimc_main(sources) return {Move=sources.invoke} end".getBytes(StandardCharsets.UTF_8),"text/x-lua")),
 				Presence.of(List.of(responseSource)),Presence.of(List.of(new EndpointPlan("Reply",operationRef,direct),
 						new EndpointPlan("X",reference(),x),new EndpointPlan("Y",reference(),y))),
-				Presence.of(new WireModel.Blob("function aimc_main(sources) return {Reply={Count=tostring(sources['Body,&#'])},X=1,Y=2} end".getBytes(StandardCharsets.UTF_8),"text/x-lua")),Presence.absent(),List.of());
+				Presence.of(new WireModel.Blob("function aimc_main(sources) return {Reply={Count=tostring(sources['Body,&#'])},X=1,Y=2} end".getBytes(StandardCharsets.UTF_8),"text/x-lua")),List.of());
 		return new Plan("aimc",List.of(mapping));
 	}
 
@@ -1088,7 +1130,7 @@ class ConnectorConfigurationFactoryTest {
 				Presence.of(List.of(responseSource)),Presence.of(duplicateCountSink
 						? List.of(output,new EndpointPlan("count-sink-copy",output.reference(),output.target())) : List.of(output)),
 				Presence.of(new WireModel.Blob("function aimc_main(sources) return {['count-sink']=tostring(sources['reply-count'])} end"
-						.getBytes(StandardCharsets.UTF_8),"text/x-lua")),Presence.absent(),List.of());
+						.getBytes(StandardCharsets.UTF_8),"text/x-lua")),List.of());
 	}
 
 	private static Reference actionReference(String anchor,String direction) {
@@ -1109,7 +1151,7 @@ class ConnectorConfigurationFactoryTest {
 				? Presence.of(new WireModel.Blob("function aimc_main(sources) return sources end".getBytes(StandardCharsets.UTF_8), "text/x-lua"))
 				: Presence.absent();
 		return new MappingPlan("logical-map", 3, List.of(source), List.of(sink), Presence.of("1"),
-				transformation, Presence.absent(), Presence.absent(), Presence.absent(), Presence.absent(), List.of());
+				transformation, Presence.absent(), Presence.absent(), Presence.absent(), List.of());
 	}
 
 	private static AidTarget target(WireModel.ProtocolFamily family, String method,
@@ -1156,7 +1198,7 @@ class ConnectorConfigurationFactoryTest {
 
 	private static MappingPlan mappingPlan(String identity,int index,EndpointPlan source,EndpointPlan sink) {
 		return new MappingPlan(identity,index,List.of(source),List.of(sink),Presence.absent(),Presence.absent(),
-				Presence.absent(),Presence.absent(),Presence.absent(),Presence.absent(),List.of());
+				Presence.absent(),Presence.absent(),Presence.absent(),List.of());
 	}
 
 	private static Reference reference() {

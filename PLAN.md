@@ -27,6 +27,9 @@ and the P3/P5 work logs) is in the git history.
   Sinks were sent, or an action's reply). Sources without a positive polling
   interval are event-based; a mapping evaluates one at a time; an Operation's
   ResponseSinks have one writer. Actions stay reachable from Operations only.
+  Each Source's `Evaluation/Mode` (`OnUpdate`, `OnChange`, `Cached`,
+  `ReadAtEvaluation`) replaces `ExecutionSemantics/TriggerSourceIds`; Lua sees
+  the trigger as `meta.sources.<id>.trigger`.
 - TimeSeries LinkedSegments on InfluxDB 2 (SPEC §5.5): Sinks write one
   acknowledged point per row, Sources poll the latest row, both within the
   segment's period; the series' Record is the row shape.

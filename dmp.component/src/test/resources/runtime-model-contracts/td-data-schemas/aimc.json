@@ -226,7 +226,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "cb2218094ab25fa2b4da05ecc97f8530"
+          "value": "b69a95406bdd579a95792c4a7a19f08d"
          }
         ]
        },
@@ -247,7 +247,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "b69a95406bdd579a95792c4a7a19f08d"
+          "value": "59843adfc1ec58eb85c3522dfd8c1679"
          }
         ]
        },
@@ -268,27 +268,6 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "59843adfc1ec58eb85c3522dfd8c1679"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "ResponseSinks"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
           "value": "7dcaa3933bcb53ba811d6b47524ac9eb"
          }
         ]
@@ -301,7 +280,7 @@
           "text": "attribute"
          }
         ],
-        "value": "ExecutionSemantics"
+        "value": "ResponseSinks"
        }
       }
      ],
@@ -384,7 +363,7 @@
               "text": "class"
              }
             ],
-            "value": "SourcesItem"
+            "value": "DmpSource"
            }
           },
           {
@@ -448,6 +427,27 @@
              }
             ],
             "value": "SourceId"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "b9bac4edd5ba5a748062f6f876173577"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Evaluation"
            }
           }
          ],

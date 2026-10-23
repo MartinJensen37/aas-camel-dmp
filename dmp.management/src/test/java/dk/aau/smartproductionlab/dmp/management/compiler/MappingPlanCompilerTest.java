@@ -71,8 +71,7 @@ class MappingPlanCompilerTest {
 				mapping.sources().get(0).element());
 		var blocked = new WireModel.Mapping(Optional.of("blocked"), 1, List.of(missing), List.of(missing),
 				mapping.defaultPollingInterval(), mapping.transformation(), WireModel.Presence.absent(),
-				WireModel.Presence.absent(), WireModel.Presence.absent(), mapping.executionSemantics(),
-				mapping.triggerSourceIds(), mapping.element());
+				WireModel.Presence.absent(), WireModel.Presence.absent(), mapping.element());
 		var aimc = new WireModel.Aimc(original.submodel(), List.of(mapping, blocked));
 		try (var repository = repository()) {
 			var resolver = new AasReferenceResolver(repository.client());
@@ -108,7 +107,7 @@ class MappingPlanCompilerTest {
 			var directTarget = assertInstanceOf(MappingPlanCompiler.DirectTarget.class, mapping.sinks().get(0).target());
 			assertEquals("Property", Aas.modelType(directTarget.resolved().element()));
 			assertFalse(mapping.responseSources().present());
-			assertFalse(mapping.triggerSourceIds().present());
+			assertFalse(mapping.sources().get(0).evaluation().present());
 		}
 	}
 
@@ -142,7 +141,7 @@ class MappingPlanCompilerTest {
 				List.of(new WireModel.Endpoint("bad",missing,good.sources().get(0).element())),good.sinks(),
 				good.defaultPollingInterval(),good.transformation(),
 				WireModel.Presence.of(List.of(new WireModel.Endpoint("reply",remote,good.sources().get(0).element()))),
-				WireModel.Presence.absent(),WireModel.Presence.absent(),good.executionSemantics(),good.triggerSourceIds(),good.element());
+				WireModel.Presence.absent(),WireModel.Presence.absent(),good.element());
 		try (var repository = repository()) {
 			var compiler=new MappingPlanCompiler(new AasReferenceResolver(repository.client()));
 			var desired=compiler.compileDesired(new WireModel.Aimc(original.submodel(),List.of(blocked,good)));

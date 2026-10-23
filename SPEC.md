@@ -158,10 +158,9 @@ block the mappings that reference them.
 AssetInterfacesMappingConfiguration
 └── MappingConfigurations[]
     ├── DefaultPollingInterval   (optional, seconds; fallback for Read sources; 0 = none)
-    ├── ExecutionSemantics
-    │   └── TriggerSourceIds[]   (optional; SourceIds whose updates execute the mapping)
     ├── Transformation           (Blob, Lua)
-    ├── Sources[]  : Source (Reference), SourceId, PollingInterval?
+    ├── Sources[]  : Source (Reference), SourceId, PollingInterval?,
+    │                Evaluation? (DMP extension: Mode, §6)
     ├── Sinks[]    : Sink (Reference), SinkId
     │   DMP extensions, the response half (§6, §7):
     ├── ResponseSources[] : Source (Reference), SourceId
@@ -170,10 +169,12 @@ AssetInterfacesMappingConfiguration
 ```
 
 The IDTA template defines `DefaultPollingInterval`, `Transformation`,
-`Sources` and `Sinks`. Every DMP extension (Response*,
-`ExecutionSemantics`) carries a semantic id
+`Sources` and `Sinks`. Every DMP extension (Response*, a Source's
+`Evaluation`) carries a semantic id
 `https://smartproductionlab.aau.dk/aimc/<Name>/1/0`; the DMP checks the
-`ExecutionSemantics` id and matches the others by idShort.
+`Evaluation` id and matches the others by idShort. `ExecutionSemantics` with
+`TriggerSourceIds` is retired (2026-10-23) and rejected: each Source says
+whether it triggers.
 
 Unknown fields, retired declarations (`writeDelegation`, JSONata semantic IDs,
 `queryLanguage`, `executionPolicy`) and behaviour-bearing qualifiers are
@@ -507,11 +508,30 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
                                      ResponseSinks[] ◄── response Lua ◄── ResponseSources[] (what the Sinks were sent)
 ```
 
-- Each source has its own consumer (Observe) or poller (Read) and contributes
+- A Source's `Evaluation/Mode` says whether it triggers the mapping and how its
+  value is obtained:
+
+  | Mode | Evaluates the mapping | Value comes from |
+  | --- | --- | --- |
+  | `OnUpdate` (without an `Evaluation`) | on every new value | observe, or poll at its interval |
+  | `OnChange` | when the new value differs from the source's previous one (the first counts) | observe, or poll |
+  | `Cached` | never | observe, or poll; the latest value |
+  | `ReadAtEvaluation` | never | one Read per evaluation |
+
+  Values are compared after `valuePath`: maps, lists and numbers by content.
+  A mapping without an `OnUpdate` or `OnChange` source is blocked.
+- Each observed or polled source has its own consumer or poller and contributes
   its decoded, `valuePath`-extracted value to a per-mapping latest-value cache.
-- The mapping evaluates when a triggering source updates **and every source has
-  delivered at least once**. Without `TriggerSourceIds` every source triggers;
-  with it, only the listed ones do and the rest refresh the cache only.
+  The mapping evaluates when a triggering source updates **and every observed
+  or polled source has delivered at least once**; the others refresh the cache
+  only.
+- A `ReadAtEvaluation` source has no consumer and no interval (a
+  `PollingInterval` other than 0 blocks the mapping). Each evaluation reads it
+  once, after the readiness gate and before the Lua; a failed read fails the
+  evaluation with `DMP_SOURCE_READ_FAILED`. Its affordance must be readable
+  (`readproperty`, an AAS element, a TimeSeries segment): an MQTT topic, an
+  event or a form that only observes (an HTTP subprotocol) blocks the mapping,
+  and an observable OPC UA variable is read, not monitored.
 - A mapping evaluates one at a time: an evaluation snapshots the cache when it
   starts, runs Lua once against that immutable snapshot and dispatches its
   sinks before the next one starts. A later evaluation therefore never starts
@@ -673,9 +693,11 @@ A bridge mapping binds the Operation 1:1 to one affordance:
 
 On the AAS side the mapping fans in and out:
 
-- **Fan-in.** Further Sources that address AAS elements are read once per
-  invocation, before the request Lua, and passed to it under their SourceIds
-  next to the Operation's variables. A failed read answers
+- **Fan-in.** The Operation is the mapping's only trigger and takes no
+  `Evaluation`. Further Sources address AAS elements and are
+  `ReadAtEvaluation` (their default; another Mode blocks the mapping): read
+  once per invocation, before the request Lua, and passed to it under their
+  SourceIds next to the Operation's variables. A failed read answers
   `DMP_DEVICE_TRANSPORT_ERROR`. A read hands Lua the element's value
   (§5.3).
 - **Fan-out.** ResponseSinks receive the response Lua's values for their
@@ -710,13 +732,21 @@ function aimc_main(sources)          -- sources keyed by SourceId
 end
 ```
 
-- The global `meta` describes the call, a fresh copy per invocation:
+- The global `meta` describes the evaluation or call, a fresh copy per
+  invocation. It is a global, not a parameter: `aimc_main` receives the data
+  (`sources`, and in a response `requestSources`), `meta` the context. Each
+  transformation sees a `meta` of its own:
 
-  | Field | Content |
-  | --- | --- |
-  | `meta.sources.<SourceId>.time` | When the source's current value was acquired (ISO-8601 UTC) |
-  | `meta.sinks.<SinkId>.kind` | The connector the sink writes through: its endpoint scheme (`aas`, `dmp-influxdb2`, `paho-mqtt5`, …); `operation` for a ResponseSink answering the caller |
-  | `meta.invocation` | The evaluation or call: `id`, `started`; an Operation's also `caller` (`basyx` or `rest`) and the Operation's `skill`, `aas`, `submodel`, `path`, `restPath`; in the response also `durationMs` and `outcome` (`Succeeded`, `Failed` with `error`, §6, §7 step 8) |
+  | Field | Request transformation | Response transformation |
+  | --- | --- | --- |
+  | `meta.sources.<SourceId>.time` | each Source: when its value was acquired (ISO-8601 UTC) | each ResponseSource: when the reply arrived |
+  | `meta.sources.<SourceId>.trigger` | `true` on the Sources whose new value caused the evaluation (an Operation's own Sources for a call); absent otherwise | absent |
+  | `meta.sinks.<SinkId>.kind` | each Sink: the connector it writes through, its endpoint scheme (`aas`, `dmp-influxdb2`, `paho-mqtt5`, …) | each ResponseSink: its connector, or `operation` for one answering the caller |
+  | `meta.invocation.id`, `.started` | the evaluation or call: a UUID, and when it started (ISO-8601 UTC) | the same |
+  | `meta.invocation.caller`, `.skill`, `.aas`, `.submodel`, `.path`, `.restPath` | an Operation call only: who called (`basyx` or `rest`) and the Operation | the same |
+  | `meta.invocation.durationMs` | — | from the start to the end of the sinks or the device's reply |
+  | `meta.invocation.outcome` | — | `Succeeded`, or `Failed` when the request Lua, a sink, a read or the device failed (§6, §7 step 8) |
+  | `meta.invocation.error` | — | with `Failed`: `code` (the connector's, e.g. `DEVICE_REJECTED`, `DMP_SOURCE_READ_FAILED`), `message`, and the connector's `category` (`REMOTE`, `TIMEOUT`, `TRANSPORT`, `CONFIGURATION`) where it has one |
 
   `meta.sources` and `meta.sinks` are always tables. Lua can use them for
   explicit logging: `Time = meta.sources.State.time`,
@@ -824,7 +854,7 @@ id can read it; the status itself stays without names and messages.
 | ADR-020 | One fixed execution rule per mapping (§6); no authorable execution policy. |
 | ADR-022 | Operation delegation: the Operation is the source, one AID action or property is the sink (§7.1). |
 | ADR-023 | Variables/Parameters are plain Properties; references address the element itself. |
-| ADR-024 | Optional `TriggerSourceIds`; acquisition mode comes from declared capability. |
+| ADR-024 | Each Source's `Evaluation/Mode` (`OnUpdate` without one) says whether it triggers and how it is read; acquisition otherwise comes from declared capability (2026-10-23, replacing `TriggerSourceIds`). |
 | ADR-025 | Connector capabilities are explicit per interaction (§9). |
 | ADR-027 | Single Java process; Python management node, per-asset containers and file configuration removed (2026-10-15). |
 | ADR-028 | Need-to-know discovery and event-only lifecycle; no periodic repair (2026-10-15). |

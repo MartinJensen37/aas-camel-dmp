@@ -14,6 +14,7 @@ import org.apache.camel.support.DefaultExchange;
 import org.apache.camel.test.junit5.CamelTestSupport;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSinkConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSourceConfiguration;
+import dk.aau.smartproductionlab.dmp.core.configuration.entity.Evaluation;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataTransformerConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteCreatorHelper;
@@ -53,9 +54,10 @@ class AffordancePipelineTest extends CamelTestSupport {
 	}
 
 	static final class TriggerSource extends DataSourceConfiguration {
-		TriggerSource(String endpointId, String sourceId) {
+		TriggerSource(String endpointId, String sourceId, Evaluation evaluation) {
 			super(endpointId, "", 0);
 			setSourceId(sourceId);
+			setEvaluation(evaluation);
 		}
 		@Override public String getConnectionURI() { return "direct:" + getUniqueId(); }
 	}
@@ -189,20 +191,19 @@ class AffordancePipelineTest extends CamelTestSupport {
 						null, "ordered", AffordanceValidation.Mode.ON);
 
 				RoutesConfiguration triggerConfigs = new RoutesConfiguration(
-						List.of(new TriggerSource("position", "Position"),
-								new TriggerSource("invoke", "Invoke")), List.of(), List.of(), List.of());
+						List.of(new TriggerSource("position", "Position", Evaluation.CACHED),
+								new TriggerSource("invoke", "Invoke", Evaluation.ON_UPDATE),
+								new TriggerSource("state", "State", Evaluation.ON_CHANGE)), List.of(), List.of(), List.of());
 				RouteConfiguration triggerRoute = new RouteConfiguration("execution-policy",
-						List.of("position", "invoke"), List.of(), List.of());
-				triggerRoute.setTriggerData(Map.of("triggerSourceIds", List.of("Invoke")));
+						List.of("position", "invoke", "state"), List.of(), List.of());
 				triggerFanIn = new FanIn(triggerRoute, triggerConfigs, AffordanceValidation.Mode.OFF);
 				for (String endpointId : triggerRoute.getDatasources()) {
 					String sourceId = FanIn.resolveSourceId(triggerConfigs, endpointId);
 					from("direct:" + endpointId)
 						.setHeader(FanIn.SOURCE_ID_HEADER, constant(sourceId))
-						.process(triggerFanIn.disassemble(endpointId))
+						.process(triggerFanIn.disassemble(List.of(endpointId)))
 						.filter(triggerFanIn::contributed)
-						.filter(exchange -> triggerFanIn.selectedTrigger(exchange,
-								triggerRoute.getTriggerSourceIds()))
+						.filter(triggerFanIn::selectedTrigger)
 						.to("direct:selected-trigger");
 				}
 				from("direct:selected-trigger")
@@ -440,24 +441,10 @@ class AffordancePipelineTest extends CamelTestSupport {
 	}
 
 	@Test
-	void explicitTriggerSelectionIsIndependentOfContributionCaching() throws Exception {
-		try (var context = new DefaultCamelContext()) {
-			var exchange = new DefaultExchange(context);
-			exchange.getMessage().setHeader(FanIn.SOURCE_ID_HEADER, "Position");
-			RoutesConfiguration configs = new RoutesConfiguration(List.of(new Source()), List.of(), List.of(), List.of());
-			RouteConfiguration route = new RouteConfiguration("execution-policy", List.of("source"), List.of(), List.of());
-			try (FanIn fanIn = new FanIn(route, configs, AffordanceValidation.Mode.ON)) {
-				assertFalse(fanIn.selectedTrigger(exchange, List.of("Invoke")));
-				assertTrue(fanIn.selectedTrigger(exchange, List.of("Position")));
-				assertTrue(fanIn.selectedTrigger(exchange, null)); // unauthored semantics retains legacy any-source triggering
-			}
-		}
-	}
-
-	@Test
-	void unselectedUpdatesRefreshEnrichmentWithoutExecutingUntilTriggerArrives() throws Exception {
+	void cachedUpdatesRefreshEnrichmentWithoutExecutingUntilATriggerArrives() throws Exception {
 		MockEndpoint executed = getMockEndpoint("mock:selected-trigger");
 		executed.expectedMessageCount(2);
+		template.sendBody("direct:state", "IDLE");
 		template.sendBody("direct:position", "10");
 		template.sendBody("direct:invoke", "1");
 		template.sendBody("direct:position", "11");
@@ -470,6 +457,27 @@ class AffordancePipelineTest extends CamelTestSupport {
 		assertEquals(11.0, second.get("Position"));
 		assertEquals(1.0, first.get("Invoke"));
 		assertEquals(2.0, second.get("Invoke"));
+		Map<?, ?> meta = executed.getExchanges().get(1).getProperty(DataTransformerConfiguration.META, Map.class);
+		assertEquals(Boolean.TRUE, ((Map<?, ?>) ((Map<?, ?>) meta.get("sources")).get("Invoke")).get("trigger"));
+		assertFalse(((Map<?, ?>) ((Map<?, ?>) meta.get("sources")).get("Position")).containsKey("trigger"),
+				"only the triggering source is marked");
+	}
+
+	@Test
+	void anOnChangeSourceTriggersOnlyWhenItsValueChanges() throws Exception {
+		MockEndpoint executed = getMockEndpoint("mock:selected-trigger");
+		template.sendBody("direct:position", "10");
+		template.sendBody("direct:invoke", "1");
+		executed.reset();
+		executed.expectedMessageCount(2);
+		template.sendBody("direct:state", "IDLE");
+		template.sendBody("direct:state", "IDLE");
+		template.sendBody("direct:state", "EXECUTE");
+		template.sendBody("direct:state", "EXECUTE");
+		executed.assertIsSatisfied();
+		var gson = new com.google.gson.Gson();
+		assertEquals("IDLE", gson.fromJson(executed.getExchanges().get(0).getMessage().getBody(String.class), Map.class).get("State"));
+		assertEquals("EXECUTE", gson.fromJson(executed.getExchanges().get(1).getMessage().getBody(String.class), Map.class).get("State"));
 	}
 
 	@Test

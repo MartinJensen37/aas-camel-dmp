@@ -51,10 +51,14 @@ public final class MappingPlanCompiler {
 	/** A TimeSeries LinkedSegment; its series container (at {@code seriesPath}) holds the Record, the row shape. */
 	public record SeriesTarget(AasReferenceResolver.ResolvedElement segment, SubmodelElement series, String seriesPath,
 			TimeSeriesProjection.Series projection) implements Target { }
+	/** An endpoint with its target; a Source also with its {@code PollingInterval} and {@code Evaluation/Mode}. */
 	public record EndpointPlan(String id, Reference reference, Target target,
-			WireModel.Presence<String> pollingInterval) {
+			WireModel.Presence<String> pollingInterval, WireModel.Presence<String> evaluation) {
 		public EndpointPlan(String id, Reference reference, Target target) {
 			this(id, reference, target, WireModel.Presence.absent());
+		}
+		public EndpointPlan(String id, Reference reference, Target target, WireModel.Presence<String> pollingInterval) {
+			this(id, reference, target, pollingInterval, WireModel.Presence.absent());
 		}
 		@Override public String toString() { return "EndpointPlan[id="+id+"]"; }
 	}
@@ -63,13 +67,11 @@ public final class MappingPlanCompiler {
 			WireModel.Presence<WireModel.Blob> transformation,
 			WireModel.Presence<List<EndpointPlan>> responseSources,
 			WireModel.Presence<List<EndpointPlan>> responseSinks,
-			WireModel.Presence<WireModel.Blob> responseTransformation,
-			WireModel.Presence<List<String>> triggerSourceIds, List<Qualifier> qualifiers) {
+			WireModel.Presence<WireModel.Blob> responseTransformation, List<Qualifier> qualifiers) {
 		public MappingPlan {
 			sources=List.copyOf(sources); sinks=List.copyOf(sinks); qualifiers=List.copyOf(qualifiers);
 			if(responseSources.present() && responseSources.value()!=null) responseSources=WireModel.Presence.of(List.copyOf(responseSources.value()));
 			if(responseSinks.present() && responseSinks.value()!=null) responseSinks=WireModel.Presence.of(List.copyOf(responseSinks.value()));
-			if(triggerSourceIds.present() && triggerSourceIds.value()!=null) triggerSourceIds=WireModel.Presence.of(List.copyOf(triggerSourceIds.value()));
 		}
 		@Override public String toString() { return "MappingPlan[identity="+identity+", listIndex="+listIndex+"]"; }
 	}
@@ -168,8 +170,7 @@ public final class MappingPlanCompiler {
 				}
 			}
 			MappingPlan plan=failures.isEmpty()?new MappingPlan(identity,mapping.listIndex(),sources,sinks,mapping.defaultPollingInterval(),
-					mapping.transformation(),responseSourcesResult.value(),responseSinksResult.value(),mapping.responseTransformation(),
-					mapping.triggerSourceIds(),Aas.nonNull(mapping.element().getQualifiers())):null;
+					mapping.transformation(),responseSourcesResult.value(),responseSinksResult.value(),mapping.responseTransformation(),Aas.nonNull(mapping.element().getQualifiers())):null;
 			outcomes.add(new DesiredMapping(identity,mapping.listIndex(),plan,failures,dependencies,mapping,null,failurePaths));
 		}
 		for (WireModel.MappingFailure failure : aimc.mappingFailures()) {
@@ -226,7 +227,7 @@ public final class MappingPlanCompiler {
 			case AasReferenceResolver.ResolvedElement element -> new DirectTarget(element);
 			case AasReferenceResolver.AidTarget aid -> new AidTarget(aid);
 		};
-		return found(new EndpointPlan(endpoint.id(),endpoint.reference(),target,endpoint.pollingInterval()));
+		return found(new EndpointPlan(endpoint.id(),endpoint.reference(),target,endpoint.pollingInterval(),endpoint.evaluation()));
 	}
 
 	/** A LinkedSegment target: {@code …/<series>/<Segments>/<segment>}, with its series container read beside it. */
@@ -249,7 +250,7 @@ public final class MappingPlanCompiler {
 		catch(IllegalArgumentException invalid) { return invalid("TimeSeries "+AasReferenceResolver.idShortPath(keys)+": "+invalid.getMessage()); }
 		return found(new EndpointPlan(endpoint.id(),endpoint.reference(),
 				new SeriesTarget(segment,container.element(),AasReferenceResolver.idShortPath(seriesKeys),projection),
-				endpoint.pollingInterval()));
+				endpoint.pollingInterval(),endpoint.evaluation()));
 	}
 
 	/** A Record's reference resolved like a mapping endpoint; a repository failure keeps its status for retries. */

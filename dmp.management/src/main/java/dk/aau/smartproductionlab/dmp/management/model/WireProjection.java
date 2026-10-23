@@ -59,7 +59,8 @@ import dk.aau.smartproductionlab.dmp.core.util.JsonCodec;
 public final class WireProjection {
 	public static final String AIMC = "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/Submodel";
 	private static final String AIMC_MAPPING_LIST = "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/1/0/MappingConfigurations";
-	private static final String AIMC_EXECUTION = "https://smartproductionlab.aau.dk/aimc/ExecutionSemantics/1/0";
+	/** A source's Evaluation (DMP extension): whether it triggers its mapping and how its value is obtained. */
+	private static final String AIMC_EVALUATION = "https://smartproductionlab.aau.dk/aimc/Evaluation/1/0";
 	/** AID 1.1 and 1.2 share the interface structure the DMP reads (1.2 adds protocols and optional fields). */
 	private static final java.util.List<String> AID = java.util.List.of(
 			"https://admin-shell.io/idta/AssetInterfacesDescription/1/1/Submodel",
@@ -84,8 +85,10 @@ public final class WireProjection {
 	/** An event's {@code data}: the schema of each notification (WoT TD 1.1 §5.3.1.5). */
 	private static final String WOT_NOTIFICATION = "https://www.w3.org/2019/wot/td#hasNotificationSchema";
 	private static final Set<String> MAPPING_FIELDS = Set.of("Sources","Sinks","DefaultPollingInterval","Transformation",
-			"ResponseSources","ResponseSinks","ResponseTransformation","ExecutionSemantics");
-	private static final Set<String> RETIRED_ID_SHORTS = Set.of("executionpolicy","writedelegation","luamode","transformengine","jsonata","querylanguage");
+			"ResponseSources","ResponseSinks","ResponseTransformation");
+	/** ExecutionSemantics/TriggerSourceIds gave way to each Source's Evaluation (2026-10-23). */
+	private static final Set<String> RETIRED_ID_SHORTS = Set.of("executionpolicy","writedelegation","luamode","transformengine","jsonata",
+			"querylanguage","executionsemantics");
 	private static final List<String> BINDING_PREFIXES = List.of("mqv_","uav_","modv_","bacv_","iolv_","canv_","snmpv_");
 	private WireProjection() { }
 
@@ -184,17 +187,8 @@ public final class WireProjection {
 		Presence<List<Endpoint>> responseSources = optionalEndpoints(mapping, "ResponseSources", "Source", i);
 		Presence<List<Endpoint>> responseSinks = optionalEndpoints(mapping, "ResponseSinks", "Sink", i);
 		Presence<Blob> responseTransformation = blobField(mapping, "ResponseTransformation", i);
-		Presence<SubmodelElementCollection> execution = executionSemantics(mapping, i);
-		Presence<List<String>> triggers = triggerIds(execution, i);
-		if (triggers.present()) {
-			Set<String> selected = new LinkedHashSet<>();
-			Set<String> sourceIds = sources.stream().map(Endpoint::id).collect(java.util.stream.Collectors.toSet());
-			if (triggers.value().isEmpty()) throw error(path + "/ExecutionSemantics", "trigger selection must be nonempty");
-			for (String trigger : triggers.value()) if (trigger.isBlank() || !selected.add(trigger) || !sourceIds.contains(trigger))
-				throw error(path + "/ExecutionSemantics", "trigger IDs must be unique known SourceIds");
-		}
 		return new Mapping(id, i, sources, sinks, polling, transformation, responseSources, responseSinks,
-				responseTransformation, execution, triggers, mapping);
+				responseTransformation, mapping);
 	}
 
 	private static List<RejectedReference> rejectedReferences(SubmodelElement mapping) {
@@ -532,7 +526,7 @@ public final class WireProjection {
 			if (!(idElement instanceof Property idProperty) || idProperty.getValue() == null || idProperty.getValue().isBlank())
 				throw error(path + "/" + identifier, "must be a non-empty string Property");
 			for (SubmodelElement field : fields)
-				if (!Set.of(role, identifier, "PollingInterval").contains(field.getIdShort() == null ? "" : field.getIdShort()))
+				if (!Set.of(role, identifier, "PollingInterval", "Evaluation").contains(field.getIdShort() == null ? "" : field.getIdShort()))
 					throw error(path, "unsupported endpoint field '" + field.getIdShort() + "'");
 			if (!ids.add(idProperty.getValue())) throw error(path + "/" + identifier, "duplicate authored " + identifier + " " + idProperty.getValue());
 			Presence<String> polling = Presence.absent();
@@ -542,7 +536,7 @@ public final class WireProjection {
 				if (!(pollingElement instanceof Property pollingProperty)) throw error(path + "/PollingInterval", "must be a Property with a value");
 				polling = Presence.of(pollingProperty.getValue());
 			}
-			result.add(new Endpoint(idProperty.getValue(), reference.getValue(), polling, endpoint));
+			result.add(new Endpoint(idProperty.getValue(), reference.getValue(), polling, evaluation(endpoint, role, path), endpoint));
 		}
 		return List.copyOf(result);
 	}
@@ -573,26 +567,22 @@ public final class WireProjection {
 		return Presence.of(new Blob(blob.getValue(), blob.getContentType()));
 	}
 
-	private static Presence<SubmodelElementCollection> executionSemantics(SubmodelElementCollection mapping, int index) {
-		SubmodelElement element = directChild(mapping, "ExecutionSemantics", mappingPath(index));
+	/** A Source's {@code Evaluation/Mode}; which modes the mapping allows is the compiler's to judge. */
+	private static Presence<String> evaluation(SubmodelElementCollection endpoint, String role, String path) {
+		SubmodelElement element = directChild(endpoint, "Evaluation", path);
 		if (element == null) return Presence.absent();
-		String path = mappingPath(index) + "/ExecutionSemantics";
-		if (!(element instanceof SubmodelElementCollection semantics)) throw error(path, "must be SubmodelElementCollection");
-		return Presence.of(semantics);
-	}
-
-	private static Presence<List<String>> triggerIds(Presence<SubmodelElementCollection> execution, int index) {
-		if (!execution.present()) return Presence.absent();
-		SubmodelElementCollection semantics = execution.value();
-		String path = mappingPath(index) + "/ExecutionSemantics";
-		for (SubmodelElement child : nonNull(semantics.getValue()))
-			if (!"TriggerSourceIds".equals(child.getIdShort())) throw error(path, "unsupported execution selection field");
-		if (!hasSemantic(semantics, AIMC_EXECUTION)) throw error(path + "/semanticId", "unexpected execution semantics type");
-		SubmodelElement ids = directChild(semantics, "TriggerSourceIds", path);
-		if (ids == null) return Presence.absent();
-		if (!(ids instanceof SubmodelElementList list)) throw error(path + "/TriggerSourceIds", "must be SubmodelElementList");
-		validateListType(list, AasSubmodelElements.PROPERTY, path + "/TriggerSourceIds");
-		return stringArrayElement(list, path + "/TriggerSourceIds");
+		String at = path + "/Evaluation";
+		if (!role.equals("Source")) throw error(at, "Evaluation is a source-only field");
+		if (!(element instanceof SubmodelElementCollection evaluation)) throw error(at, "must be SubmodelElementCollection");
+		if (!hasExactSemantic(evaluation, AIMC_EVALUATION)) throw error(at + "/semanticId", "expected " + AIMC_EVALUATION);
+		for (SubmodelElement child : nonNull(evaluation.getValue()))
+			if (!"Mode".equals(child.getIdShort())) throw error(at, "unsupported evaluation field '" + child.getIdShort() + "'");
+		SubmodelElement mode = directChild(evaluation, "Mode", at);
+		if (!(mode instanceof Property property) || property.getValue() == null)
+			throw error(at + "/Mode", "must be a Property with a value");
+		if (dk.aau.smartproductionlab.dmp.core.configuration.entity.Evaluation.ofAuthored(property.getValue()) == null)
+			throw error(at + "/Mode", "expected OnUpdate, OnChange, Cached or ReadAtEvaluation");
+		return Presence.of(property.getValue());
 	}
 
 	private static Presence<List<String>> stringArrayField(SubmodelElement parent, String name, String path) {

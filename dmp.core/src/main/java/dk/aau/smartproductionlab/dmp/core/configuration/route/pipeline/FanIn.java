@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSinkConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSourceConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataTransformerConfiguration;
+import dk.aau.smartproductionlab.dmp.core.configuration.entity.Evaluation;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RoutesConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.ManagedRouteResource;
@@ -54,9 +55,14 @@ public final class FanIn implements ManagedRouteResource {
 	private static final String ACCEPTED_SNAPSHOT_PROPERTY = FanIn.class.getName() + ".acceptedSnapshot";
 	private static final String CONTRIBUTING_SOURCE_IDS_PROPERTY = FanIn.class.getName() + ".contributingSourceIds";
 	private static final String ACCEPTED_TIMES_PROPERTY = FanIn.class.getName() + ".acceptedTimes";
+	/** The endpoints of this message whose value differs from their previous one. */
+	private static final String CHANGED_PROPERTY = FanIn.class.getName() + ".changed";
+	/** The SourceIds whose new value triggers this evaluation (Lua's {@code meta.sources.<id>.trigger}). */
+	private static final String TRIGGERS_PROPERTY = FanIn.class.getName() + ".triggers";
 
 	private final RoutesConfiguration routesConfiguration;
 	private final Map<String, String> sourceIdByEndpoint = new LinkedHashMap<>();
+	private final Map<String, Evaluation> evaluationByEndpoint = new LinkedHashMap<>();
 	private final SourceCache cache = new SourceCache();
 	private final Map<String, AffordanceValidation> validators = new LinkedHashMap<>();
 	/** Lua's meta.sinks: each SinkId with the kind of connector it writes through. */
@@ -83,6 +89,7 @@ public final class FanIn implements ManagedRouteResource {
 		for (String endpointId : routeConfig.getDatasources()) {
 			sourceIdByEndpoint.put(endpointId, resolveSourceId(routesConfiguration, endpointId));
 			DataSourceConfiguration config = routesConfiguration.getDatasources().get(endpointId);
+			evaluationByEndpoint.put(endpointId, config == null ? Evaluation.ON_UPDATE : config.getEvaluation());
 			validators.put(endpointId, new AffordanceValidation(
 					config == null ? null : config.getSchema(), "source " + endpointId, mode));
 		}
@@ -92,9 +99,11 @@ public final class FanIn implements ManagedRouteResource {
 		}
 	}
 
-	/** Every SourceId this mapping requires before it may evaluate. */
+	/** Every SourceId this mapping requires before it may evaluate: all but those read at evaluation. */
 	public Set<String> expectedSourceIds() {
-		return sourceIdByEndpoint.values().stream().collect(java.util.stream.Collectors.toSet());
+		return sourceIdByEndpoint.entrySet().stream()
+				.filter(entry -> evaluationByEndpoint.get(entry.getKey()) != Evaluation.READ_AT_EVALUATION)
+				.map(Map.Entry::getValue).collect(java.util.stream.Collectors.toSet());
 	}
 
 	/**
@@ -133,10 +142,11 @@ public final class FanIn implements ManagedRouteResource {
 					value == JsonPointer.JSON_NULL ? null : value)) {
 				return;
 			}
-			SourceCache.Snapshot accepted = cache.acceptAndSnapshot(sourceId, value);
+				SourceCache.Snapshot accepted = cache.acceptAndSnapshot(sourceId, value);
 			exchange.setProperty(ACCEPTED_SNAPSHOT_PROPERTY, accepted.values());
 			exchange.setProperty(ACCEPTED_TIMES_PROPERTY, accepted.times());
 			exchange.setProperty(CONTRIBUTION_PROPERTY, true);
+			if (accepted.changed()) changed(exchange).add(dataSourceId);
 		};
 	}
 
@@ -168,6 +178,30 @@ public final class FanIn implements ManagedRouteResource {
 		};
 	}
 
+	/**
+	 * A value read at evaluation: decoded like a contribution, never cached. Fails when the message carries no
+	 * value the source can use.
+	 */
+	public Object decode(String dataSourceId, Exchange exchange) {
+		bufferStream(exchange);
+		if (exchange.getMessage().getBody() == null) throw new IllegalStateException("the read returned no value");
+		Object value = disassemble(exchange, dataSourceId);
+		if (value == null) throw new IllegalStateException("the read returned no value");
+		Object plain = value == JsonPointer.JSON_NULL ? null : value;
+		if (!validators.get(dataSourceId).incoming(plain)) throw new IllegalStateException("the value does not match the source's schema");
+		return plain;
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Set<String> changed(Exchange exchange) {
+		Set<String> changed = exchange.getProperty(CHANGED_PROPERTY, Set.class);
+		if (changed == null) {
+			changed = new java.util.LinkedHashSet<>();
+			exchange.setProperty(CHANGED_PROPERTY, changed);
+		}
+		return changed;
+	}
+
 	/** Reads a one-shot stream body once, so every source of the group sees the payload. */
 	private static void bufferStream(Exchange exchange) {
 		Object body = exchange.getMessage().getBody();
@@ -185,16 +219,22 @@ public final class FanIn implements ManagedRouteResource {
 		return Boolean.TRUE.equals(exchange.getProperty(CONTRIBUTION_PROPERTY));
 	}
 
-	/** True when this contribution is selected to trigger evaluation. */
-	public boolean selectedTrigger(Exchange exchange, List<String> selectedSourceIds) {
-		if (selectedSourceIds == null) return true;
+	/**
+	 * True when this contribution triggers an evaluation: a contributing source evaluates {@code OnUpdate}, or
+	 * {@code OnChange} and its value changed. The triggering SourceIds are kept for Lua's {@code meta}.
+	 */
+	public boolean selectedTrigger(Exchange exchange) {
+		Set<String> changed = changed(exchange);
+		Set<String> triggers = new java.util.LinkedHashSet<>();
 		Object grouped = exchange.getProperty(CONTRIBUTING_SOURCE_IDS_PROPERTY);
-		if (grouped instanceof List<?> ids) {
-			return ids.stream().map(String::valueOf).map(sourceIdByEndpoint::get)
-					.anyMatch(selectedSourceIds::contains);
+		if (grouped instanceof List<?> ids) for (Object id : ids) {
+			String endpointId = String.valueOf(id);
+			Evaluation evaluation = evaluationByEndpoint.getOrDefault(endpointId, Evaluation.ON_UPDATE);
+			if (evaluation == Evaluation.ON_UPDATE || evaluation == Evaluation.ON_CHANGE && changed.contains(endpointId))
+				triggers.add(sourceIdByEndpoint.get(endpointId));
 		}
-		Object sourceId = exchange.getMessage().getHeader(SOURCE_ID_HEADER);
-		return sourceId != null && selectedSourceIds.contains(String.valueOf(sourceId));
+		exchange.setProperty(TRIGGERS_PROPERTY, Set.copyOf(triggers));
+		return !triggers.isEmpty();
 	}
 
 	/**
@@ -256,7 +296,10 @@ public final class FanIn implements ManagedRouteResource {
 			@SuppressWarnings("unchecked")
 			Map<String, java.time.Instant> times = exchange.getProperty(ACCEPTED_TIMES_PROPERTY, Map.class);
 			Map<String, Object> sources = new LinkedHashMap<>();
-			if (times != null) times.forEach((id, time) -> sources.put(id, TransformerMeta.source(time)));
+			@SuppressWarnings("unchecked")
+			Set<String> triggers = exchange.getProperty(TRIGGERS_PROPERTY, Set.class);
+			if (times != null) times.forEach((id, time) -> sources.put(id,
+					TransformerMeta.source(time, triggers != null && triggers.contains(id))));
 			exchange.setProperty(DataTransformerConfiguration.META, TransformerMeta.of(sources, sinkMeta,
 					TransformerMeta.invocation(java.time.Instant.now())));
 		};
@@ -400,20 +443,45 @@ public final class FanIn implements ManagedRouteResource {
 		/** When each source's latest value was accepted. */
 		private final Map<String, java.time.Instant> accepted = new LinkedHashMap<>();
 
-		/** The cached values with the times they were accepted, taken together. */
-		record Snapshot(KeyedSnapshot values, Map<String, java.time.Instant> times) { }
+		/** The cached values with the times they were accepted, taken together; whether the accepted value changed. */
+		record Snapshot(KeyedSnapshot values, Map<String, java.time.Instant> times, boolean changed) { }
 
 		synchronized Snapshot acceptAndSnapshot(String sourceId, Object value) {
-			latest.put(sourceId, value == null ? JsonPointer.JSON_NULL : JsonCodec.copyValue(value));
+			Object next = value == null ? JsonPointer.JSON_NULL : JsonCodec.copyValue(value);
+			boolean changed = !latest.containsKey(sourceId) || !sameValue(latest.get(sourceId), next);
+			latest.put(sourceId, next);
 			accepted.put(sourceId, java.time.Instant.now());
-			return snapshot();
+			return snapshot(changed);
 		}
 
-		synchronized Snapshot snapshot() {
+		synchronized Snapshot snapshot() { return snapshot(false); }
+
+		private Snapshot snapshot(boolean changed) {
 			Map<String, Object> values = new LinkedHashMap<>();
 			latest.forEach((key, cachedValue) -> values.put(key,
 					cachedValue == JsonPointer.JSON_NULL ? null : cachedValue));
-			return new Snapshot(KeyedSnapshot.of(values), Map.copyOf(accepted));
+			return new Snapshot(KeyedSnapshot.of(values), Map.copyOf(accepted), changed);
+		}
+
+		/** Decoded values compared by content: maps, lists, byte arrays and numbers by their value. */
+		private static boolean sameValue(Object left, Object right) {
+			if (left instanceof byte[] a && right instanceof byte[] b) return java.util.Arrays.equals(a, b);
+			if (left instanceof Number a && right instanceof Number b) {
+				try { return new java.math.BigDecimal(a.toString()).compareTo(new java.math.BigDecimal(b.toString())) == 0; }
+				catch (NumberFormatException notFinite) { return Double.compare(a.doubleValue(), b.doubleValue()) == 0; }
+			}
+			if (left instanceof Map<?, ?> a && right instanceof Map<?, ?> b) {
+				if (a.size() != b.size()) return false;
+				for (Map.Entry<?, ?> entry : a.entrySet())
+					if (!b.containsKey(entry.getKey()) || !sameValue(entry.getValue(), b.get(entry.getKey()))) return false;
+				return true;
+			}
+			if (left instanceof List<?> a && right instanceof List<?> b) {
+				if (a.size() != b.size()) return false;
+				for (int i = 0; i < a.size(); i++) if (!sameValue(a.get(i), b.get(i))) return false;
+				return true;
+			}
+			return java.util.Objects.equals(left, right);
 		}
 
 		synchronized void clear() { latest.clear(); accepted.clear(); }

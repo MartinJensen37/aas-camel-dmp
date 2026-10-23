@@ -189,7 +189,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		exchange.setProperty(INVOCATION, invocation);
 		Map<String, Object> sinks = new java.util.LinkedHashMap<>();
 		for (String sinkId : context.commandSinkIds) sinks.put(sinkId, TransformerMeta.sink(context.commandSinkUri));
-		exchange.setProperty(DataTransformerConfiguration.META, TransformerMeta.of(sourcesMeta(exchange), sinks, invocation));
+		exchange.setProperty(DataTransformerConfiguration.META, TransformerMeta.of(requestSourcesMeta(exchange), sinks, invocation));
 	}
 
 	/**
@@ -200,7 +200,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		@SuppressWarnings("unchecked")
 		Map<String, Object> meta = exchange.getProperty(DataTransformerConfiguration.META, Map.class);
 		if (meta != null) exchange.setProperty(DataTransformerConfiguration.META,
-				TransformerMeta.of(sourcesMeta(exchange), castMap(meta.get("sinks")), castMap(meta.get("invocation"))));
+				TransformerMeta.of(requestSourcesMeta(exchange), castMap(meta.get("sinks")), castMap(meta.get("invocation"))));
 		if (!context.explicitResponseMapping) return;
 		exchange.setProperty(REQUEST_SOURCES, dk.aau.smartproductionlab.dmp.core.util.JsonCodec
 				.copyValue(exchange.getMessage().getBody()));
@@ -362,6 +362,16 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		invocation.put("outcome", outcome);
 		if (error != null) invocation.put("error", error);
 		return invocation;
+	}
+
+	/** The request transformation's sources: the Operation's own, the call's trigger, marked as such. */
+	private Map<String, Object> requestSourcesMeta(Exchange exchange) {
+		java.util.Set<String> operationSources = !context.callerInputSourcePaths.isEmpty() ? context.callerInputSourcePaths.keySet()
+				: context.operationSourceId == null ? java.util.Set.of() : java.util.Set.of(context.operationSourceId);
+		Map<String, Object> sources = new java.util.LinkedHashMap<>();
+		sourcesMeta(exchange).forEach((id, source) -> sources.put(id, !operationSources.contains(id) ? source
+				: TransformerMeta.source(java.time.Instant.parse(String.valueOf(castMap(source).get("time"))), true)));
+		return sources;
 	}
 
 	/** Each SourceId of the body with the time it was acquired: kept from an earlier step, otherwise now. */

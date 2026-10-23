@@ -133,6 +133,29 @@ class WireProjectionTest {
 		assertArrayEquals(new byte[0],projected.transformation().value().bytes());
 	}
 
+	/** A Source carrying an Evaluation SMC with the given semanticId and Mode. */
+	private static String evaluatedMapping(String role, String semanticId, String mode) {
+		String evaluation="{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"Evaluation\",\"semanticId\":{\"type\":\"ExternalReference\","+
+				"\"keys\":[{\"type\":\"GlobalReference\",\"value\":\""+semanticId+"\"}]},\"value\":["+
+				"{\"modelType\":\"Property\",\"idShort\":\"Mode\",\"valueType\":\"xs:string\",\"value\":\""+mode+"\"}]}";
+		String evaluated=endpoint(role).replaceFirst("\\]\\}$",","+java.util.regex.Matcher.quoteReplacement(evaluation)+"]}");
+		return mapping("evaluated").replace(endpoint(role),evaluated);
+	}
+
+	@Test void aSourcesEvaluationModeIsProjectedAndCheckedHere() {
+		String evaluation="https://smartproductionlab.aau.dk/aimc/Evaluation/1/0";
+		var mapping=WireProjection.aimc(sm(aimcWithItems(evaluatedMapping("Source",evaluation,"OnChange")))).mappings().get(0);
+		assertEquals(WireModel.Presence.of("OnChange"),mapping.sources().get(0).evaluation());
+		assertFalse(mapping.sinks().get(0).evaluation().present());
+		for(String bad:java.util.List.of(evaluatedMapping("Source",evaluation,"Sometimes"),evaluatedMapping("Source","https://example.org/other","OnChange"),
+				evaluatedMapping("Sink",evaluation,"OnChange")))
+			assertThrows(WireProjectionException.class,()->WireProjection.aimc(sm(aimcWithItems(bad))));
+		String retired=mapping("retired").replaceFirst(java.util.regex.Pattern.quote("\"value\":["),
+				"\"value\":[{\"modelType\":\"SubmodelElementCollection\",\"idShort\":\"ExecutionSemantics\",\"value\":[]},");
+		assertTrue(assertThrows(WireProjectionException.class,()->WireProjection.aimc(sm(aimcWithItems(retired))))
+				.getMessage().contains("retired"));
+	}
+
 	@Test void preservesOptionalResponseExecutionAndQualifierFields() {
 		String item=mapping("extended").replaceFirst(java.util.regex.Pattern.quote("\"modelType\":\"SubmodelElementCollection\",\"value\":["),
 				"\"modelType\":\"SubmodelElementCollection\",\"qualifiers\":[{\"type\":\"contract\",\"valueType\":\"xs:string\",\"value\":\"v1\"}],\"value\":["+
@@ -143,7 +166,6 @@ class WireProjectionTest {
 		assertEquals("Source-1",mapping.responseSources().value().get(0).id());
 		assertEquals("Sink-1",mapping.responseSinks().value().get(0).id());
 		assertArrayEquals(new byte[] {'{','}'},mapping.responseTransformation().value().bytes());
-		assertFalse(mapping.executionSemantics().present());
 		assertEquals("contract",mapping.element().getQualifiers().get(0).getType());
 		assertEquals("v1",mapping.element().getQualifiers().get(0).getValue());
 	}

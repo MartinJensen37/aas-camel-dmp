@@ -23,6 +23,7 @@ import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataTransformerCo
 import dk.aau.smartproductionlab.dmp.core.security.BasicCredential;
 import dk.aau.smartproductionlab.dmp.core.util.JsonCodec;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteConfiguration;
+import dk.aau.smartproductionlab.dmp.core.configuration.entity.Evaluation;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RoutesConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteConfiguration;
 import dk.aau.smartproductionlab.dmp.aas.configuration.AASDatasinkConfiguration;
@@ -180,9 +181,18 @@ public final class ConnectorConfigurationFactory {
 			Map<DataSourceConfiguration,Integer> sourcePositions = new java.util.IdentityHashMap<>();
 			for (int i = 0; i < mapping.sources().size(); i++) {
 				EndpointPlan endpoint = mapping.sources().get(i);
-				DataSourceConfiguration source = source(endpoint, mapping, i, plan, routeId, runtime, issues);
-				if (source != null) { sources.add(source); sourceIds.add(source.getUniqueId()); sourcePositions.put(source, i); }
+				Evaluation evaluation = evaluation(endpoint);
+				DataSourceConfiguration source = evaluation == Evaluation.READ_AT_EVALUATION
+						? readSource(endpoint, mapping, i, plan, routeId, runtime, issues)
+						: source(endpoint, mapping, i, plan, routeId, runtime, issues);
+				if (source != null) {
+					source.setEvaluation(evaluation);
+					sources.add(source); sourceIds.add(source.getUniqueId()); sourcePositions.put(source, i);
+				}
 			}
+			if (mapping.sources().stream().noneMatch(endpoint -> evaluation(endpoint).triggers())) issue(issues, mapping,
+					"MappingConfigurations/value/" + mapping.listIndex() + "/Sources",
+					"no Source triggers the mapping; one needs the Evaluation OnUpdate (the default) or OnChange");
 			for (int i = 0; i < mapping.sinks().size(); i++) {
 				EndpointPlan endpoint = mapping.sinks().get(i);
 				DataSinkConfiguration sink = sink(endpoint, mapping, i, plan, routeId, runtime, issues);
@@ -192,8 +202,8 @@ public final class ConnectorConfigurationFactory {
 			// A read source is polled at its PollingInterval, else at the mapping's DefaultPollingInterval
 			// (IDTA AIMC; ignored for asynchronous sources). Without a positive one (none, or 0) the source
 			// is event-based, and one its binding can only read blocks the mapping: no interval is assumed.
-			java.util.function.Predicate<DataSourceConfiguration> unpaced = source ->
-					"sync".equalsIgnoreCase(source.getDelivery()) && source.getPollingIntervalMs()<=0;
+			java.util.function.Predicate<DataSourceConfiguration> unpaced = source -> source.getEvaluation() != Evaluation.READ_AT_EVALUATION
+					&& "sync".equalsIgnoreCase(source.getDelivery()) && source.getPollingIntervalMs()<=0;
 			java.util.function.Predicate<DataSourceConfiguration> ownInterval = source ->
 					mapping.sources().get(sourcePositions.get(source)).pollingInterval().present();
 			boolean fallback = sources.stream().anyMatch(unpaced.and(ownInterval.negate()));
@@ -206,10 +216,6 @@ public final class ConnectorConfigurationFactory {
 			if (mapping.qualifiers().stream().anyMatch(ConnectorConfigurationFactory::behaviorQualifier)) issue(issues, mapping,
 					"MappingConfigurations/value/" + mapping.listIndex() + "/qualifiers",
 					"mapping qualifier semantics are not represented by the runtime route API");
-			if (mapping.triggerSourceIds().present() && (mapping.triggerSourceIds().value() == null
-					|| mapping.triggerSourceIds().value().isEmpty())) issue(issues, mapping,
-					"MappingConfigurations/value/" + mapping.listIndex() + "/ExecutionSemantics/TriggerSourceIds",
-					"authored trigger selection must be a nonempty list");
 
 			List<DataTransformerConfiguration> transformers = new ArrayList<>();
 			if (mapping.transformation().present()) {
@@ -250,7 +256,6 @@ public final class ConnectorConfigurationFactory {
 					sourceIds, transformers.stream().map(DataTransformerConfiguration::getUniqueId)
 							.filter(id -> !id.equals(responseTransformer)).toList(), sinkIds);
 			route.setRouteId(routeId + ":" + mapping.listIndex());
-			if (mapping.triggerSourceIds().present()) triggerData.put("triggerSourceIds", mapping.triggerSourceIds().value());
 			if (!triggerData.isEmpty()) route.setTriggerData(triggerData);
 			output.addRoute(new ExecutionPolicyRouteConfiguration(route));
 		}
@@ -346,12 +351,12 @@ public final class ConnectorConfigurationFactory {
 		if(action==null || action.isBlank()) { issue(issues,mapping,root+"/Sources","Operation reference does not identify an exact parent skill/action");return; }
 		if(mapping.sinks().isEmpty()) { issue(issues,mapping,root+"/Sinks","bridge Operation requires at least one declared command binding");return; }
 		if(mapping.qualifiers().stream().anyMatch(ConnectorConfigurationFactory::behaviorQualifier)) issue(issues,mapping,root+"/qualifiers","mapping qualifiers are not represented by the bridge route schema");
-		if(mapping.triggerSourceIds().present()) {
-			Set<String> operationSourceIds=mapping.sources().stream().filter(endpoint -> operationModel(endpoint)!=null)
-					.map(EndpointPlan::id).collect(java.util.stream.Collectors.toSet());
-			if(mapping.triggerSourceIds().value()==null || mapping.triggerSourceIds().value().isEmpty()
-					|| !operationSourceIds.containsAll(mapping.triggerSourceIds().value()))
-				issue(issues,mapping,root+"/ExecutionSemantics/TriggerSourceIds","operation trigger selection must select one or more SourceIds for its exact Operation");
+		// The Operation is its mapping's only trigger; its further sources are read at the call.
+		for(EndpointPlan source:mapping.sources()) {
+			if(operationModel(source)!=null && source.evaluation().present())
+				issue(issues,mapping,root+"/Sources/"+source.id()+"/Evaluation","an Operation is its mapping's only trigger; it takes no Evaluation");
+			if(operationModel(source)==null && evaluation(source,Evaluation.READ_AT_EVALUATION)!=Evaluation.READ_AT_EVALUATION)
+				issue(issues,mapping,root+"/Sources/"+source.id()+"/Evaluation","an Operation mapping reads its further sources at the call (ReadAtEvaluation)");
 		}
 		// The Operation is bound 1:1 to the AID action of its skill, or to one property affordance it writes.
 		AidTarget actionTarget=null,propertyTarget=null;
@@ -393,6 +398,7 @@ public final class ConnectorConfigurationFactory {
 		for(int i=0;i<fanIn.size();i++) {
 			DataSourceConfiguration read=aasReadSource(fanIn.get(i),mapping,500000+i,(DirectTarget)fanIn.get(i).target(),runtime,issues);
 			if(read==null)continue;
+			read.setEvaluation(Evaluation.READ_AT_EVALUATION);
 			fanInReads.add(read);
 			fanInBindings.add(Map.of("sourceId",fanIn.get(i).id(),"dataSourceId",read.getUniqueId()));
 		}
@@ -753,6 +759,8 @@ public final class ConnectorConfigurationFactory {
 	 * values, the transformation maps them, the sinks receive the result.
 	 */
 	private static void requireResponseUnit(MappingPlan mapping,String path,List<Issue> issues) {
+		if(mapping.responseSources().value()!=null) for(EndpointPlan source:mapping.responseSources().value())
+			if(source.evaluation().present())issue(issues,mapping,path,"ResponseSource "+source.id()+" takes no Evaluation: it is the reply, not an input");
 		if(!mapping.responseTransformation().present() || mapping.responseTransformation().value()==null)
 			issue(issues,mapping,path,"a response mapping requires a ResponseTransformation");
 		if(!mapping.responseSources().present() || mapping.responseSources().value()==null
@@ -857,6 +865,51 @@ public final class ConnectorConfigurationFactory {
 
 	private static List<String> remainder(List<String> prefix,List<String> path) {
 		return path.size()>=prefix.size() && path.subList(0,prefix.size()).equals(prefix) ? path.subList(prefix.size(),path.size()) : null;
+	}
+
+	/** A Source's authored {@code Evaluation/Mode}; without one, {@link Evaluation#ON_UPDATE}. */
+	private static Evaluation evaluation(EndpointPlan source) {
+		return evaluation(source,Evaluation.ON_UPDATE);
+	}
+
+	private static Evaluation evaluation(EndpointPlan source,Evaluation absent) {
+		if(!source.evaluation().present())return absent;
+		Evaluation authored=Evaluation.ofAuthored(source.evaluation().value());
+		return authored==null?absent:authored;
+	}
+
+	/**
+	 * A source read once per evaluation ({@code ReadAtEvaluation}): a Read, never an observation, at no interval
+	 * of its own. Its affordance must be readable; an MQTT topic is only received by subscription.
+	 */
+	private static DataSourceConfiguration readSource(EndpointPlan endpoint,MappingPlan mapping,int position,Plan plan,
+			String routeId,RuntimeSettings runtime,List<Issue> issues) {
+		String path=endpointPath(mapping,"Sources",position);
+		if(polled(endpoint)) { issue(issues,mapping,path+"/PollingInterval","a source read at evaluation is not polled; remove its PollingInterval");return null; }
+		if(endpoint.target() instanceof SeriesTarget series)return seriesSource(endpoint,mapping,position,series,runtime,true,issues);
+		if(endpoint.target() instanceof DirectTarget direct) {
+			if(direct.resolved().element() instanceof Operation)return source(endpoint,mapping,position,plan,routeId,runtime,issues);
+			return aasReadSource(endpoint,mapping,position,direct,runtime,issues);
+		}
+		AidTarget target=(AidTarget)endpoint.target();
+		WireModel.Affordance affordance=target.resolved().affordance();
+		if(!"property".equalsIgnoreCase(affordance.kind())) { issue(issues,mapping,path,"only a property can be read at evaluation");return null; }
+		if(affordance.forms().stream().noneMatch(form -> AidForms.operations(affordance,form).contains(AidForms.READ))) {
+			issue(issues,mapping,path,"the property is not readable (op readproperty), so it cannot be read at evaluation");return null;
+		}
+		List<WireModel.ProtocolFamily> families=target.resolved().owner().protocolFamilies();
+		if(families.equals(List.of(WireModel.ProtocolFamily.MQTT))) {
+			issue(issues,mapping,path,"an MQTT property is received by subscription and cannot be read at evaluation");return null;
+		}
+		DataSourceConfiguration source=families.equals(List.of(WireModel.ProtocolFamily.OPCUA))
+				?opcuaSource(endpoint,mapping,position,target,true,issues)
+				:source(endpoint,mapping,position,plan,routeId,runtime,issues);
+		if(source==null)return null;
+		if(!"sync".equalsIgnoreCase(source.getDelivery())) {
+			issue(issues,mapping,path,"the form observes (e.g. an HTTP subprotocol) and cannot be read at evaluation");return null;
+		}
+		source.setPollingIntervalMs(0);
+		return source;
 	}
 
 	private static void validateCapabilities(MappingPlan mapping,List<Issue> issues) {
@@ -1097,7 +1150,7 @@ public final class ConnectorConfigurationFactory {
 	private static DataSourceConfiguration source(EndpointPlan endpoint, MappingPlan mapping, int position,
 			Plan plan, String routeId, RuntimeSettings runtime, List<Issue> issues) {
 		String path = endpointPath(mapping, "Sources", position);
-		if (endpoint.target() instanceof SeriesTarget series) return seriesSource(endpoint,mapping,position,series,runtime,issues);
+		if (endpoint.target() instanceof SeriesTarget series) return seriesSource(endpoint,mapping,position,series,runtime,false,issues);
 		if (endpoint.target() instanceof DirectTarget) {
 			if(((DirectTarget)endpoint.target()).resolved().element() instanceof Operation) {
 				issue(issues,mapping,path,"AAS Operation targets require a ProtocolBridge route and declared ingress contract");
@@ -1115,7 +1168,7 @@ public final class ConnectorConfigurationFactory {
 			return mqttSource(endpoint, mapping, position, target, plan, routeId, issues);
 		}
 		if (families.equals(List.of(WireModel.ProtocolFamily.OPCUA))) {
-			return opcuaSource(endpoint,mapping,position,target,issues);
+			return opcuaSource(endpoint,mapping,position,target,false,issues);
 		}
 		if (families.equals(List.of(WireModel.ProtocolFamily.MODBUS))) {
 			return plc4xSource(endpoint,mapping,position,target,issues);
@@ -1281,12 +1334,12 @@ public final class ConnectorConfigurationFactory {
 	 * needs an authored PollingInterval (its own or the mapping's DefaultPollingInterval); none is assumed.
 	 */
 	private static DataSourceConfiguration seriesSource(EndpointPlan endpoint,MappingPlan mapping,int position,
-			SeriesTarget target,RuntimeSettings runtime,List<Issue> issues) {
+			SeriesTarget target,RuntimeSettings runtime,boolean readAtEvaluation,List<Issue> issues) {
 		String path=endpointPath(mapping,"Sources",position);
 		if(!seriesOnConfiguredInflux(target,mapping,path,runtime,issues))return null;
-		OptionalLong interval=endpoint.pollingInterval().present()
+		OptionalLong interval=readAtEvaluation ? OptionalLong.empty() : endpoint.pollingInterval().present()
 				? endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues) : pollingMillis(mapping,issues);
-		if(interval.isEmpty()) {
+		if(interval.isEmpty() && !readAtEvaluation) {
 			if(!hasIssue(issues,mapping))issue(issues,mapping,path,"a TimeSeries segment source is polled; it needs a PollingInterval or the mapping's DefaultPollingInterval");
 			return null;
 		}
@@ -1296,7 +1349,7 @@ public final class ConnectorConfigurationFactory {
 				influx.getHost(),effectivePort(influx),series.measurement(),series.bucket(),series.timePath(),series.tags(),series.columns());
 		source.setPeriod(series.start(),series.end());
 		source.setSourceId(endpoint.id());
-		source.setPollingIntervalMs(interval.getAsLong());
+		if(interval.isPresent())source.setPollingIntervalMs(interval.getAsLong());
 		return hasIssue(issues,mapping)?null:source;
 	}
 
@@ -1809,7 +1862,7 @@ public final class ConnectorConfigurationFactory {
 	private record ProtocolBase(String host,int port,String servicePath,String username,String password,URI uri) { }
 
 	private static DataSourceConfiguration opcuaSource(EndpointPlan endpoint,MappingPlan mapping,int position,
-			AidTarget target,List<Issue> issues) {
+			AidTarget target,boolean readAtEvaluation,List<Issue> issues) {
 		String path=endpointPath(mapping,"Sources",position);
 		if("event".equalsIgnoreCase(target.resolved().affordance().kind()))return opcuaEventSource(endpoint,mapping,position,target,issues);
 		if(!"property".equalsIgnoreCase(target.resolved().affordance().kind())) {
@@ -1823,7 +1876,7 @@ public final class ConnectorConfigurationFactory {
 		// observeproperty (OPC 10101 §6.4.1) is a monitored item: the server samples the variable at the
 		// sampling interval and reports changes; PollingInterval sets both sampling and publishing interval.
 		// A property that is observable is observed; otherwise it is read.
-		boolean observed=AidForms.operations(target.resolved().affordance(),form).contains(AidForms.OBSERVE);
+		boolean observed=!readAtEvaluation && AidForms.operations(target.resolved().affordance(),form).contains(AidForms.OBSERVE);
 		if(interval.isPresent())configuration.put("requestedPublishingInterval",Long.toString(interval.getAsLong()));
 		if(interval.isPresent() && observed)configuration.put("samplingInterval",Long.toString(interval.getAsLong()));
 		OpcuaDataSourceConfiguration source=new OpcuaDataSourceConfiguration(entityId(mapping,"source",position),

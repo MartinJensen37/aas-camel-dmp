@@ -226,7 +226,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "c566b46b0b725bc0bb0bf7aa1aa9fe0b"
+          "value": "f9221a5595d05444b8bdb2882c2c2f81"
          }
         ]
        },
@@ -247,7 +247,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "e9176372f21c52ef88283753c067bf5d"
+          "value": "cb0602dd974e50ecaf72b53e512fbccc"
          }
         ]
        },
@@ -268,7 +268,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "f9221a5595d05444b8bdb2882c2c2f81"
+          "value": "dd8eb2d6210358ceab6ff3123bc5bcee"
          }
         ]
        },
@@ -281,27 +281,6 @@
          }
         ],
         "value": "ResponseSinks"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "cb0602dd974e50ecaf72b53e512fbccc"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "ExecutionSemantics"
        }
       }
      ],
@@ -405,7 +384,7 @@
               "text": "class"
              }
             ],
-            "value": "SourcesItem"
+            "value": "DmpSource"
            }
           },
           {
@@ -469,6 +448,27 @@
              }
             ],
             "value": "SourceId"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "32368209ee065b6891580fa9dc145a15"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Evaluation"
            }
           }
          ],
@@ -571,7 +571,7 @@
               "text": "class"
              }
             ],
-            "value": "SourcesItem"
+            "value": "DmpSource"
            }
           },
           {
@@ -601,7 +601,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "5635c1d814fa530c9e7a64b48608b40d"
+              "value": "d61683af5f6d5b618184956c959f9e19"
              }
             ]
            },
@@ -635,6 +635,27 @@
              }
             ],
             "value": "SourceId"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "a39774c0e2c3535184debe89ead8086b"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Evaluation"
            }
           }
          ],

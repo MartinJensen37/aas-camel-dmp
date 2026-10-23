@@ -36,7 +36,7 @@ import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSinkConfigura
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.AffordanceValidation;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.FanIn;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.ResponseSinkTargets;
-import dk.aau.smartproductionlab.dmp.core.configuration.route.core.ConnectorInvocationException;
+import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.SourceReads;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -207,13 +207,8 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		flow.process(operation::prepareRequest);
 		for (int i = 0; i < fanIn.size(); i++) {
 			String sourceId = String.valueOf(fanIn.get(i).get("sourceId"));
-			flow.enrich(readRoute(routeId, "fan-in", i, String.valueOf(fanIn.get(i).get("dataSourceId")), decoder),
-					(original, read) -> {
-						@SuppressWarnings("unchecked")
-						java.util.Map<String, Object> sources = (java.util.Map<String, Object>) original.getMessage().getBody();
-						sources.put(sourceId, read.getMessage().getBody());
-						return original;
-					});
+			flow.enrich(SourceReads.route(routeBuilder, routesConfiguration, routeId + "-fan-in", i,
+					String.valueOf(fanIn.get(i).get("dataSourceId")), decoder), SourceReads.into(sourceId));
 		}
 		flow.process(operation::keepRequestSources)
 				.to(requestTransformers)
@@ -256,42 +251,6 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		LOGGER.info("bridge route {}: {} {} (callerOutputOrder {})",
 				routeId, method, restPath,
 				operationContext.callerOutputOrder);
-	}
-
-	/** A route making one fresh Read of a source and decoding it; a failed read is a transport error. */
-	private String readRoute(String routeId, String label, int index, String dataSourceId, FanIn decoder) {
-		String readRouteId = (routeId + "-" + label + "-read-" + index).replaceAll("[^A-Za-z0-9_.:-]", "-");
-		registerRouteId(readRouteId);
-		var route = routeBuilder.from("direct:" + readRouteId).routeId(readRouteId).doTry();
-		RouteCreatorHelper.configureSyncRead(route, RouteCreatorHelper.getDataSourceEndpoint(routesConfiguration, dataSourceId,
-				routeId), dk.aau.smartproductionlab.dmp.core.configuration.route.execution.policy.ExecutionPolicyRouteCreator.SYNC_POLL_TIMEOUT_MS);
-		route.process(exchange -> {
-				if (!decodeQuietly(decoder, dataSourceId, exchange)) throw new IllegalStateException("undecodable value");
-			})
-			.doCatch(Exception.class)
-				.process(exchange -> {
-					throw new ConnectorInvocationException(ConnectorInvocationException.Category.TRANSPORT,
-							"DMP_SOURCE_READ_FAILED", "a fan-in source could not be read",
-							java.util.Map.of("source", FanIn.resolveSourceId(routesConfiguration, dataSourceId)));
-				})
-			.end();
-		return "direct:" + readRouteId;
-	}
-
-	/** Decodes a source message in place (body = its value); false when it carries no valid value. */
-	private boolean decodeQuietly(FanIn decoder, String dataSourceId, org.apache.camel.Exchange exchange) {
-		try {
-			if (exchange.getMessage().getBody() == null) return false;
-			decoder.disassemble(dataSourceId).process(exchange);
-			if (!decoder.contributed(exchange)) return false;
-			decoder.merge().process(exchange);
-			Object value = ((java.util.Map<?, ?>) exchange.getMessage().getBody())
-					.get(FanIn.resolveSourceId(routesConfiguration, dataSourceId));
-			exchange.getMessage().setBody(value == dk.aau.smartproductionlab.dmp.core.util.JsonPointer.JSON_NULL ? null : value);
-			return true;
-		} catch (Exception undecodable) {
-			return false;
-		}
 	}
 
 	private static void encodeRestResponse(org.apache.camel.Exchange exchange) {

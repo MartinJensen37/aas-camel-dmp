@@ -65,6 +65,8 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 	private String mode;
 	/** Connector-specific filter options; never interpreted as a Camel URI. */
 	private Map<String, Object> eventFilter;
+	/** Whether the source triggers its mapping and how its value is obtained; absent → {@link Evaluation#ON_UPDATE}. */
+	private Evaluation evaluation;
 
 	public DataSourceConfiguration() {
 		super();
@@ -130,6 +132,14 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 
 	public void setDelivery(String delivery) {
 		this.delivery = delivery;
+	}
+
+	public Evaluation getEvaluation() {
+		return evaluation == null ? Evaluation.ON_UPDATE : evaluation;
+	}
+
+	public void setEvaluation(Evaluation evaluation) {
+		this.evaluation = evaluation;
 	}
 
 	public long getPollingIntervalMs() {

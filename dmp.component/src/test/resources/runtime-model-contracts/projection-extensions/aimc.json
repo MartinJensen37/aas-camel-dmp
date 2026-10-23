@@ -247,7 +247,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "4e0e6943b65f50df8e629bc9172941a1"
+          "value": "d1e022b4e7c758eca1fdcc5fcd213e47"
          }
         ]
        },
@@ -268,7 +268,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "d1e022b4e7c758eca1fdcc5fcd213e47"
+          "value": "e7f05d4341285d6ab10f0879e1253c18"
          }
         ]
        },
@@ -281,27 +281,6 @@
          }
         ],
         "value": "ResponseSinks"
-       }
-      },
-      {
-       "dataSpecification": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "ExecutionSemantics"
-         }
-        ]
-       },
-       "dataSpecificationContent": {
-        "modelType": "DataSpecificationIec61360",
-        "preferredName": [
-         {
-          "language": "en",
-          "text": "attribute"
-         }
-        ],
-        "value": "ExecutionSemantics"
        }
       }
      ],
@@ -384,7 +363,7 @@
               "text": "class"
              }
             ],
-            "value": "SourcesItem"
+            "value": "DmpSource"
            }
           },
           {
@@ -448,6 +427,27 @@
              }
             ],
             "value": "SourceId"
+           }
+          },
+          {
+           "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [
+             {
+              "type": "GlobalReference",
+              "value": "8586c701f8e352bd990c745ecbaeaa1f"
+             }
+            ]
+           },
+           "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [
+             {
+              "language": "en",
+              "text": "attribute"
+             }
+            ],
+            "value": "Evaluation"
            }
           }
          ],
@@ -705,100 +705,6 @@
        },
        "contentType": "text/plain",
        "value": "ZnVuY3Rpb24gYWltY19tYWluKHNvdXJjZXMpIHJldHVybiBzb3VyY2VzIGVuZA=="
-      },
-      {
-       "embeddedDataSpecifications": [
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "ExecutionSemantics"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "class"
-           }
-          ],
-          "value": "DmpExecutionSemantics"
-         }
-        },
-        {
-         "dataSpecification": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "TriggerSourceIds"
-           }
-          ]
-         },
-         "dataSpecificationContent": {
-          "modelType": "DataSpecificationIec61360",
-          "preferredName": [
-           {
-            "language": "en",
-            "text": "attribute"
-           }
-          ],
-          "value": "TriggerSourceIds"
-         }
-        }
-       ],
-       "idShort": "ExecutionSemantics",
-       "description": [
-        {
-         "language": "en",
-         "text": "Optional execution selection for a MappingConfiguration."
-        }
-       ],
-       "modelType": "SubmodelElementCollection",
-       "semanticId": {
-        "type": "ExternalReference",
-        "keys": [
-         {
-          "type": "GlobalReference",
-          "value": "https://smartproductionlab.aau.dk/aimc/ExecutionSemantics/1/0"
-         }
-        ]
-       },
-       "value": [
-        {
-         "idShort": "TriggerSourceIds",
-         "description": [
-          {
-           "language": "en",
-           "text": "SourceIds whose contributions trigger mapping execution."
-          }
-         ],
-         "modelType": "SubmodelElementList",
-         "semanticId": {
-          "type": "ExternalReference",
-          "keys": [
-           {
-            "type": "GlobalReference",
-            "value": "https://smartproductionlab.aau.dk/aimc/ExecutionSemantics/TriggerSourceIds/1/0"
-           }
-          ]
-         },
-         "orderRelevant": true,
-         "typeValueListElement": "Property",
-         "valueTypeListElement": "xs:string",
-         "value": [
-          {
-           "modelType": "Property",
-           "value": "invoke",
-           "valueType": "xs:string"
-          }
-         ]
-        }
-       ]
       }
      ]
     }

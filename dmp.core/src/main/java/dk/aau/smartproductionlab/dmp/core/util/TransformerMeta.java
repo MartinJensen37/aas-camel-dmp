@@ -29,6 +29,11 @@ public final class TransformerMeta {
 		return Map.of("time", time.toString());
 	}
 
+	/** A source acquired at {@code time}; {@code trigger} when its new value caused this evaluation. */
+	public static Map<String, Object> source(Instant time, boolean trigger) {
+		return trigger ? Map.of("time", time.toString(), "trigger", true) : source(time);
+	}
+
 	/** A new invocation: its {@code id} and the time it {@code started}. */
 	public static Map<String, Object> invocation(Instant started) {
 		Map<String, Object> invocation = new LinkedHashMap<>();

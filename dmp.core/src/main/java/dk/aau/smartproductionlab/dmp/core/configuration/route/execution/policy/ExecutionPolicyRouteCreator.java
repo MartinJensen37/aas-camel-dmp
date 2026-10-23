@@ -37,6 +37,8 @@ import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteCreatorH
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.FanIn;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.FanOut;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.ResponseHalf;
+import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.SourceReads;
+import dk.aau.smartproductionlab.dmp.core.configuration.entity.Evaluation;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RoutesConfiguration;
 import dk.aau.smartproductionlab.dmp.core.routebuilder.DmpRouteBuilder;
 import org.slf4j.Logger;
@@ -53,15 +55,17 @@ import org.slf4j.LoggerFactory;
  * declared {@code pollingIntervalMs} (the AIMC's IDTA polling interval, MC
  * level or per-source override);</li>
  * <li>every valid source update refreshes the cached contribution; an update
- * evaluates the mapping only when its SourceId is selected by optional
- * {@code ExecutionSemantics.TriggerSourceIds} (absent = legacy any-source)
- * and once all required sources have delivered.</li>
+ * evaluates the mapping only when the source's {@link Evaluation} triggers
+ * ({@code OnUpdate}, or {@code OnChange} with a changed value) and once all
+ * cached sources have delivered;</li>
+ * <li>a source read at evaluation has no consumer or poll of its own: each
+ * evaluation reads it once, after the readiness gate.</li>
  * </ul>
  *
  * <p>
- * Trigger selection never changes how an endpoint is read or observed.
- * Selected source contributions still wait for a complete sources snapshot;
- * unselected contributions update enrichment state without executing Lua.
+ * A trigger never changes how an endpoint is read or observed. Triggering
+ * contributions still wait for a complete sources snapshot; the others
+ * update the cache without executing Lua.
  *
  * <p>
  * Fan-out reuses the shared transform-once multicast {@link FanOut}.
@@ -94,11 +98,8 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 
 		FanIn fanIn = new FanIn(routeConfig, routesConfiguration);
 		if (routeBuilder instanceof DmpRouteBuilder managed) managed.registerManagedResource(fanIn);
-		List<String> triggerSourceIds = routeConfig.getTriggerSourceIds();
-		if (triggerSourceIds != null && !fanIn.expectedSourceIds().containsAll(triggerSourceIds)) {
-			throw new IllegalArgumentException("route " + routeId
-					+ " triggerSourceIds must identify sources on this route");
-		}
+		List<String> readAtEvaluation = routeConfig.getDatasources().stream()
+				.filter(id -> evaluation(id) == Evaluation.READ_AT_EVALUATION).toList();
 		String collectUri = "direct:policy-" + routeId;
 
 		// Install the collector before source/timer ingress routes so it is ready
@@ -112,13 +113,15 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 				.process(fanIn.merge());
 		ResponseHalf response = ResponseHalf.of(routeBuilder, routesConfiguration, routeConfig, routeId);
 		if (response == null) {
+			readAtEvaluation(cycle, fanIn, readAtEvaluation, routeId);
 			FanOut.apply(cycle, routesConfiguration, routeConfig,
 					dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
 		} else {
 			// The response half runs after the sinks, also when the evaluation failed, and inside the
 			// evaluation: its writes finish before the next evaluation starts.
-			cycle.process(response::keepRequestSources);
 			var attempt = cycle.doTry();
+			readAtEvaluation(attempt, fanIn, readAtEvaluation, routeId);
+			attempt.process(response::keepRequestSources);
 			FanOut.apply(attempt, routesConfiguration, routeConfig,
 					dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
 			attempt.process(response::succeeded).enrich(response.uri(), ResponseHalf::keepOriginal);
@@ -131,6 +134,7 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 
 		Map<Acquisition, List<String>> acquisitions = new LinkedHashMap<>();
 		for (String endpointId : routeConfig.getDatasources()) {
+			if (readAtEvaluation.contains(endpointId)) continue;
 			DataSourceConfiguration config = routesConfiguration.getDatasources().get(endpointId);
 			acquisitions.computeIfAbsent(Acquisition.of(config), ignored -> new java.util.ArrayList<>()).add(endpointId);
 		}
@@ -155,7 +159,7 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 						.setHeader(FanIn.SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceIds.get(0)))
 						.process(fanIn.disassemble(endpointIds))
 						.filter(fanIn::contributed)
-						.filter(exchange -> fanIn.selectedTrigger(exchange, triggerSourceIds))
+						.filter(fanIn::selectedTrigger)
 						.process(fanIn.evaluate(collectUri));
 			} else {
 				// async source: the consumer feeds the cache and drives an
@@ -172,11 +176,25 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 						.setHeader(FanIn.SOURCE_ID_HEADER, org.apache.camel.builder.Builder.constant(sourceIds.get(0)))
 						.process(fanIn.disassemble(endpointIds))
 						.filter(fanIn::contributed)
-						.filter(exchange -> fanIn.selectedTrigger(exchange, triggerSourceIds))
+						.filter(fanIn::selectedTrigger)
 						.process(fanIn.evaluate(collectUri));
 			}
 		}
 
+	}
+
+	/** One fresh Read per evaluation of each source read at evaluation, into the sources map. */
+	private void readAtEvaluation(ProcessorDefinition<?> evaluation, FanIn fanIn, List<String> endpointIds, String routeId) {
+		for (int i = 0; i < endpointIds.size(); i++) {
+			String endpointId = endpointIds.get(i);
+			evaluation.enrich(SourceReads.route(routeBuilder, routesConfiguration, routeId, i, endpointId, fanIn),
+					SourceReads.into(FanIn.resolveSourceId(routesConfiguration, endpointId)));
+		}
+	}
+
+	private Evaluation evaluation(String endpointId) {
+		DataSourceConfiguration config = routesConfiguration.getDatasources().get(endpointId);
+		return config == null ? Evaluation.ON_UPDATE : config.getEvaluation();
 	}
 
 	private void registerRouteId(String routeId) {

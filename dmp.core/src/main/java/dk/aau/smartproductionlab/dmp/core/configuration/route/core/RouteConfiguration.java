@@ -102,24 +102,6 @@ public class RouteConfiguration {
 		return triggerData;
 	}
 
-	/** Optional explicit SourceId trigger selection; null means legacy defaults. */
-	public List<String> getTriggerSourceIds() {
-		if (triggerData == null || !triggerData.containsKey("triggerSourceIds")) return null;
-		Object value = triggerData.get("triggerSourceIds");
-		if (!(value instanceof List<?> list) || list.isEmpty()) {
-			throw new IllegalArgumentException("ExecutionSemantics.TriggerSourceIds must be a nonempty list");
-		}
-		if (list.stream().anyMatch(valueItem -> !(valueItem instanceof String))) {
-			throw new IllegalArgumentException("ExecutionSemantics.TriggerSourceIds must contain strings");
-		}
-		List<String> ids = list.stream().map(String.class::cast).toList();
-		if (ids.stream().anyMatch(String::isBlank)
-				|| ids.stream().distinct().count() != ids.size()) {
-			throw new IllegalArgumentException("ExecutionSemantics.TriggerSourceIds must contain unique strings");
-		}
-		return ids;
-	}
-
 	/** The response half's Lua transformer id (ResponseTransformation), or null. */
 	public String getResponseTransformer() {
 		Object value = triggerData == null ? null : triggerData.get(RESPONSE_TRANSFORMER);

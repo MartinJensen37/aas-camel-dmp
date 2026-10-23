@@ -18,6 +18,7 @@ import org.apache.camel.test.junit5.CamelTestSupport;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSinkConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSourceConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataTransformerConfiguration;
+import dk.aau.smartproductionlab.dmp.core.configuration.entity.Evaluation;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.ConnectorInvocationException;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RoutesConfiguration;
@@ -32,9 +33,13 @@ class OrdinaryResponseRouteTest extends CamelTestSupport {
 	private static final class Source extends DataSourceConfiguration {
 		private final String uri;
 		Source(String uniqueId, String sourceId, String uri) {
+			this(uniqueId, sourceId, uri, Evaluation.ON_UPDATE);
+		}
+		Source(String uniqueId, String sourceId, String uri, Evaluation evaluation) {
 			super(uniqueId, null, 0);
 			setSourceId(sourceId);
-			setDelivery("async");
+			setDelivery(evaluation == Evaluation.READ_AT_EVALUATION ? "sync" : "async");
+			setEvaluation(evaluation);
 			this.uri = uri;
 		}
 		@Override public String getConnectionURI() { return uri; }
@@ -83,9 +88,16 @@ class OrdinaryResponseRouteTest extends CamelTestSupport {
 					exchange.getMessage().setBody(Map.of("Log", row));
 				});
 
+				// a second mapping: a trigger, and a reading read once per evaluation
+				from("direct:readingLua").process(exchange -> exchange.getMessage().setBody(
+						Map.of("Setpoint", ((Map<?, ?>) exchange.getMessage().getBody()).get("Reading"))));
+
 				RoutesConfiguration routes = new RoutesConfiguration(
-						List.of(new Source("value", "Value", "direct:in")),
+						List.of(new Source("value", "Value", "direct:in"),
+								new Source("go", "Go", "direct:go"),
+								new Source("reading", "Reading", "seda:reading", Evaluation.READ_AT_EVALUATION)),
 						List.of(new Transformer("requestLua", "direct:requestLua"),
+								new Transformer("readingLua", "direct:readingLua"),
 								new Transformer("responseLua", "direct:responseLua")),
 						List.of(new Sink("setpoint", "Setpoint", "direct:device"),
 								new Sink("log", "Log", "mock:log")),
@@ -101,6 +113,11 @@ class OrdinaryResponseRouteTest extends CamelTestSupport {
 						List.of(Map.of("sinkId", "Log", "dataSinkId", "log")));
 				route.setTriggerData(trigger);
 				new ExecutionPolicyRouteCreator(this, routes).addRouteToRouteBuilder(route);
+				RouteConfiguration reads = new RouteConfiguration(ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER,
+						List.of("go", "reading"), List.of("readingLua"), List.of("setpoint"));
+				reads.setRouteId("reads");
+				reads.setTriggerData(trigger);
+				new ExecutionPolicyRouteCreator(this, routes).addRouteToRouteBuilder(reads);
 			}
 		};
 	}
@@ -119,6 +136,25 @@ class OrdinaryResponseRouteTest extends CamelTestSupport {
 				String.valueOf(invocation));
 		assertEquals(Map.of("Log", Map.of("kind", "mock")), responseMeta.get().get("sinks"));
 		assertEquals(Map.of("Value", 21), requestSources.get(), "the response sees what the request transformation saw");
+	}
+
+	@Test
+	void aSourceReadAtEvaluationIsReadOnceForEachEvaluation() throws Exception {
+		MockEndpoint device = getMockEndpoint("mock:device");
+		MockEndpoint log = getMockEndpoint("mock:log");
+		template.sendBody("seda:reading", 7);
+		template.sendBody("direct:go", "now");
+		assertEquals(7, device.getExchanges().get(0).getMessage().getBody());
+		assertEquals(Map.of("Go", "now", "Reading", 7), requestSources.get());
+		assertEquals("Succeeded", ((Map<?, ?>) responseMeta.get().get("invocation")).get("outcome"));
+
+		// nothing to read: the evaluation fails, and its response says why
+		template.sendBody("seda:reading", null);
+		assertThrows(CamelExecutionException.class, () -> template.sendBody("direct:go", "again"));
+		assertEquals(1, device.getReceivedCounter());
+		assertEquals("Failed", log.getExchanges().get(1).getMessage().getBody(Map.class).get("outcome"));
+		Map<?, ?> error = (Map<?, ?>) ((Map<?, ?>) responseMeta.get().get("invocation")).get("error");
+		assertEquals("DMP_SOURCE_READ_FAILED", error.get("code"));
 	}
 
 	@Test

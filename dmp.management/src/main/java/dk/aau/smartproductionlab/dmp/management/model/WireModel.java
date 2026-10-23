@@ -49,9 +49,13 @@ public final class WireModel {
 		public static <T> Presence<T> of(T value) { return new Presence<>(true, value); }
 	}
 
-	public record Endpoint(String id, Reference reference, Presence<String> pollingInterval, SubmodelElementCollection element) {
+	public record Endpoint(String id, Reference reference, Presence<String> pollingInterval, Presence<String> evaluation,
+			SubmodelElementCollection element) {
 		public Endpoint(String id, Reference reference, SubmodelElementCollection element) {
-			this(id, reference, Presence.absent(), element);
+			this(id, reference, Presence.absent(), Presence.absent(), element);
+		}
+		public Endpoint(String id, Reference reference, Presence<String> pollingInterval, SubmodelElementCollection element) {
+			this(id, reference, pollingInterval, Presence.absent(), element);
 		}
 	}
 	public record Blob(byte[] bytes, String contentType) {
@@ -66,13 +70,11 @@ public final class WireModel {
 	public record Mapping(Optional<String> authoredId, int listIndex, List<Endpoint> sources, List<Endpoint> sinks,
 			Presence<String> defaultPollingInterval, Presence<Blob> transformation,
 			Presence<List<Endpoint>> responseSources, Presence<List<Endpoint>> responseSinks,
-			Presence<Blob> responseTransformation, Presence<SubmodelElementCollection> executionSemantics,
-			Presence<List<String>> triggerSourceIds, SubmodelElementCollection element) {
+			Presence<Blob> responseTransformation, SubmodelElementCollection element) {
 		public Mapping { authoredId = authoredId == null ? Optional.empty() : authoredId;
 			sources = List.copyOf(sources); sinks = List.copyOf(sinks);
 			if (responseSources.present() && responseSources.value() != null) responseSources = Presence.of(List.copyOf(responseSources.value()));
-			if (responseSinks.present() && responseSinks.value() != null) responseSinks = Presence.of(List.copyOf(responseSinks.value()));
-			if (triggerSourceIds.present() && triggerSourceIds.value() != null) triggerSourceIds = Presence.of(List.copyOf(triggerSourceIds.value())); }
+			if (responseSinks.present() && responseSinks.value() != null) responseSinks = Presence.of(List.copyOf(responseSinks.value())); }
 	}
 	public record RejectedReference(String role, Reference reference) { }
 	public record MappingFailure(String identity, int listIndex, String pointer, String message,

@@ -482,7 +482,7 @@ class MappingReconciliationServiceTest {
 		var fingerprint = fingerprint(configuration);
 		var plan = new MappingPlan(identity, index, List.of(), List.of(), WireModel.Presence.absent(),
 				WireModel.Presence.absent(), WireModel.Presence.absent(), WireModel.Presence.absent(),
-				WireModel.Presence.absent(), WireModel.Presence.absent(), List.of());
+				WireModel.Presence.absent(), List.of());
 		var desired = new DesiredMapping(identity, index, plan, List.of(),
 				Set.of(new MappingPlanCompiler.Dependency("submodel", dependency)));
 		var bundle = new CompiledBundle(identity, index, bundleId, bundleId + "-" + version, configuration, fingerprint);
@@ -515,7 +515,7 @@ class MappingReconciliationServiceTest {
 		RoutesConfiguration configuration = configuration(routeId);
 		var plan = new MappingPlan("mapping-a", 0, List.of(), List.of(), WireModel.Presence.absent(),
 				WireModel.Presence.absent(), WireModel.Presence.absent(), WireModel.Presence.absent(),
-				WireModel.Presence.absent(), WireModel.Presence.absent(), List.of());
+				WireModel.Presence.absent(), List.of());
 		var desired = new DesiredMapping("mapping-a", 0, plan, List.of(),
 				Set.of(new MappingPlanCompiler.Dependency("submodel", "urn:dependency")));
 		var fingerprint = fingerprint(configuration);
@@ -543,7 +543,7 @@ class MappingReconciliationServiceTest {
 		var bundle = new CompiledBundle(identity, 0, bundleId, bundleId, configuration, fingerprint);
 		var plan = new MappingPlan(identity, 0, List.of(), List.of(), WireModel.Presence.absent(),
 				WireModel.Presence.absent(), WireModel.Presence.absent(), WireModel.Presence.absent(),
-				WireModel.Presence.absent(), WireModel.Presence.absent(), List.of());
+				WireModel.Presence.absent(), List.of());
 		var desired = new DesiredMapping(identity, 0, plan, List.of(), Set.of());
 		var desiredBundle = new DesiredBundle(desired, bundle, List.of(), fingerprint);
 		var key = new RepositoryDiscovery.MappingKey(aimc, identity, 0);
@@ -563,7 +563,7 @@ class MappingReconciliationServiceTest {
 		var bundle = new CompiledBundle(bundleId, 0, bundleId, bundleId, configuration, fingerprint);
 		var plan = new MappingPlan(bundleId, 0, List.of(), List.of(), WireModel.Presence.absent(),
 				WireModel.Presence.absent(), WireModel.Presence.absent(), WireModel.Presence.absent(),
-				WireModel.Presence.absent(), WireModel.Presence.absent(), List.of());
+				WireModel.Presence.absent(), List.of());
 		var desired = new DesiredMapping(bundleId, 0, plan, List.of(), Set.of());
 		var key = new RepositoryDiscovery.MappingKey(aimc, bundleId, 0);
 		return new RepositoryDiscovery.MappingCandidate(key, new DesiredBundle(desired, bundle, List.of(), fingerprint));
