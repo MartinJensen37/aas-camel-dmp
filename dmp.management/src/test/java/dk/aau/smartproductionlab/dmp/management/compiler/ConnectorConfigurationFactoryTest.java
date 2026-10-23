@@ -69,7 +69,6 @@ class ConnectorConfigurationFactoryTest {
 				result.configuration().getTransformers().values().iterator().next());
 		assertTrue(transformer.getConnectionURI().contains("managed:"));
 		assertFalse(transformer.getConnectionURI().contains("aimc_main"));
-		assertTrue(transformer.isKeyedInput());
 	}
 
 	@Test
@@ -784,8 +783,6 @@ class ConnectorConfigurationFactoryTest {
 		assertFalse(bridge.getTransformers().contains(bridge.getResponseTransformer()));
 		var request=(LuaTransformerConfiguration)result.configuration().getTransformers().get(bridge.getTransformers().get(0));
 		var response=(LuaTransformerConfiguration)result.configuration().getTransformers().get(bridge.getResponseTransformer());
-		assertTrue(request.isKeyedInput());assertTrue(response.isKeyedInput());
-		assertFalse(response.getConnectionURI().contains("sourceKeys="));
 		assertEquals(Map.of("Count","integer"),bridge.getResponseTypes());
 		assertEquals(Map.of("Count","xs:string"),bridge.getTriggerData().get("callerResponseTypes"));
 		assertEquals(2,bridge.getResponseSinkBindings().size(),"caller Operation is a reply, not another device write");
@@ -1081,7 +1078,6 @@ class ConnectorConfigurationFactoryTest {
 		var bridge=assertInstanceOf(ProtocolBridgeRouteConfiguration.class,result.configuration().getRoutes().get(0));
 		assertEquals(Map.of("x-source","$.Position.x","y-source","$.Position.y"),bridge.getCallerInputSourcePaths());
 		assertEquals(Map.of("count-sink","$.Count"),bridge.getCallerReplyBindings());
-		assertEquals(List.of("x-source","y-source"),bridge.getTriggerData().get("requestSourceIds"));
 		assertEquals(1,result.configuration().getDatasinks().size(),"caller variable sinks are assembled into the one operation reply");
 	}
 

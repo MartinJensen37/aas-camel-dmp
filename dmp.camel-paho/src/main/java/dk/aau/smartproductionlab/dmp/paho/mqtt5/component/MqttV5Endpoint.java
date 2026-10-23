@@ -42,14 +42,12 @@ import org.apache.camel.spi.UriPath;
  *
  * <p>
  * InOut options: {@code replyTopic} (the DECLARED {@code mqv_response_topic}),
- * {@code replyTimeout} (seconds), {@code correlationHeader} (optional — when
- * set, the generated correlation id is exposed on that exchange header and a
- * non-blank header value is used as the correlation instead of a fresh UUID).
- * The first reply with the request's correlation data is the terminal reply.
+ * {@code replyTimeout} (seconds). Each request carries a fresh UUID as its
+ * correlation data; the first reply with it is the terminal reply.
  * The publish itself rides the upstream {@code paho-mqtt5:} producer derived
- * from the shared transport options (brokerUrl, clientId, qos, retained,
- * userName, password, or credentials: the registry name of bound credentials,
- * which the upstream endpoints then reference instead of carrying the secret).
+ * from the shared transport options (brokerUrl, clientId, qos, retained, and
+ * credentials: the registry name of bound credentials, which the upstream
+ * endpoints then reference instead of carrying the secret).
  *
  * @author aas-camel-dmp
  */
@@ -79,17 +77,6 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 
 	@Metadata(defaultValue = "30", description = "Request budget in seconds including subscription, publication and reply wait")
 	private long replyTimeout = 30;
-
-	@Metadata(description = "Optional exchange header name for the correlation id; "
-			+ "when present and non-blank its value IS the correlation data, otherwise "
-			+ "a UUID is minted and exposed on this header")
-	private String correlationHeader;
-
-	@Metadata(description = "MQTT user name (optional)")
-	private String userName;
-
-	@Metadata(description = "MQTT password (optional)")
-	private String password;
 
 	@Metadata(description = "Registry name of bound credentials (BoundCredential); keeps them out of every URI")
 	private String credentials;
@@ -184,42 +171,12 @@ public class MqttV5Endpoint extends org.apache.camel.support.DefaultEndpoint
 		this.replyTimeout = replyTimeout;
 	}
 
-	public String getCorrelationHeader() {
-		return correlationHeader;
-	}
-
-	public void setCorrelationHeader(String correlationHeader) {
-		this.correlationHeader = correlationHeader;
-	}
-
-	public String getUserName() {
-		return credentials != null ? bound("user") : userName;
-	}
-
-	public void setUserName(String userName) {
-		this.userName = userName;
-	}
-
-	public String getPassword() {
-		return credentials != null ? bound("password") : password;
-	}
-
 	public String getCredentials() {
 		return credentials;
 	}
 
 	public void setCredentials(String credentials) {
 		this.credentials = credentials;
-	}
-
-	private String bound(String part) {
-		Object value = getCamelContext().getRegistry().lookupByName(credentials + "." + part);
-		if (!(value instanceof String text)) throw new IllegalStateException("MQTT credentials are not bound: " + credentials);
-		return text;
-	}
-
-	public void setPassword(String password) {
-		this.password = password;
 	}
 
 	@Override

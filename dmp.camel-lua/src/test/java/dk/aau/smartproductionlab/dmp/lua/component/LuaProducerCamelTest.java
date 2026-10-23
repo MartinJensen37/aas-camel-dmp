@@ -73,7 +73,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 	@Test
 	void transformBodyWithLuaBlob() throws Exception {
 		String script = writeBlob("simple.lua");
-		String uri = managedUri(script) + "?sourceKeys=a,b&timeoutSeconds=2";
+		String uri = managedUri(script) + "?timeoutSeconds=2";
 
 		context.getRouteDefinitions().clear();
 		context.addRoutes(new RouteBuilder() {
@@ -93,36 +93,6 @@ class LuaProducerCamelTest extends CamelTestSupport {
 	}
 
 	@Test
-	void singleSourceKeyWrapsWholePayload() throws Exception {
-		// AIMC contract: sources[SourceId] = the whole payload of that source.
-		// A single sourceKeys value must key the whole payload (not extract a
-		// field from it, as the comma-list form does).
-		Path blob = tempDir.resolve("stationstate.lua");
-		Files.writeString(blob, """
-				function aimc_main(sources)
-				    local st = sources.StationState or {}
-				    return { State = st.State }
-				end
-				""", StandardCharsets.UTF_8);
-		String uri = managedUri(blob) + "?sourceKeys=StationState&timeoutSeconds=2";
-
-		context.getRouteDefinitions().clear();
-		context.addRoutes(new RouteBuilder() {
-			@Override
-			public void configure() throws Exception {
-				from("direct:start").to(uri).to("mock:result");
-			}
-		});
-		context.start();
-
-		template.sendBody("direct:start", Map.of("State", "EXECUTE", "ProcessQueue", java.util.List.of()));
-		Map<?, ?> result = getMockEndpoint("mock:result").getExchanges().get(0)
-				.getMessage().getBody(Map.class);
-
-		assertEquals("EXECUTE", result.get("State"));
-	}
-
-	@Test
 	void requestSourcesArriveAsSecondArgument() throws Exception {
 		// An Operation's response transformation also sees what its request transformation received.
 		Path blob = tempDir.resolve("response.lua");
@@ -131,7 +101,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 				    return { Done = sources.Result.ok, At = requestSources and requestSources.Target.id }
 				end
 				""", StandardCharsets.UTF_8);
-		String uri = managedUri(blob) + "?keyedInput=true&timeoutSeconds=2";
+		String uri = managedUri(blob) + "?timeoutSeconds=2";
 
 		context.getRouteDefinitions().clear();
 		context.addRoutes(new RouteBuilder() {
@@ -167,45 +137,14 @@ class LuaProducerCamelTest extends CamelTestSupport {
 		context.start();
 
 		CamelExecutionException ex = assertThrows(CamelExecutionException.class,
-				() -> template.sendBody("direct:start", "{}"));
+				() -> template.sendBody("direct:start", Map.of()));
 		Throwable cause = ex.getCause();
 		assertEquals(true, cause.getMessage().contains("must return a table"));
 	}
 
 	@Test
-	void fineSourceValuePathDisassemblesPayloadToLeaf() throws Exception {
-		// SPEC §8.4 #8 (fine source): valuePath=$.State auto-extracts the nested
-		// property into sources[SourceId] at the DMP boundary — the blob sees
-		// the leaf value, no in-blob traversal needed (it must NOT see the full
-		// payload object).
-		Path blob = tempDir.resolve("fine.lua");
-		Files.writeString(blob, """
-				function aimc_main(sources)
-				    local st = sources.StationState
-				    if type(st) == "table" then
-				        return { error = "expected leaf, got object" }
-				    end
-				    return { State = st }
-				end
-				""", StandardCharsets.UTF_8);
-		String uri = managedUri(blob) + "?sourceKeys=StationState&valuePath=$.State&timeoutSeconds=2";
-
-		context.getRouteDefinitions().clear();
-		addRoute(uri);
-		context.start();
-
-		template.sendBody("direct:start", Map.of("State", "EXECUTE",
-				"ProcessQueue", Map.of("mode", "AUTO")));
-		Map<?, ?> result = getMockEndpoint("mock:result").getExchanges().get(0)
-				.getMessage().getBody(Map.class);
-
-		assertEquals("EXECUTE", result.get("State"));
-	}
-
-	@Test
 	void coarseSourceDeliversWholePayloadToBlob() throws Exception {
-		// SPEC §8.4 #7 (coarse source): no valuePath → sources[SourceId] is the
-		// whole decoded payload; nested access happens in-blob.
+		// A source's whole decoded payload arrives under its SourceId; nested access happens in-blob.
 		Path blob = tempDir.resolve("coarse.lua");
 		Files.writeString(blob, """
 				function aimc_main(sources)
@@ -215,39 +154,19 @@ class LuaProducerCamelTest extends CamelTestSupport {
 				    return { State = state, Mode = mode }
 				end
 				""", StandardCharsets.UTF_8);
-		String uri = managedUri(blob) + "?sourceKeys=StationState&timeoutSeconds=2";
+		String uri = managedUri(blob) + "?timeoutSeconds=2";
 
 		context.getRouteDefinitions().clear();
 		addRoute(uri);
 		context.start();
 
-		template.sendBody("direct:start", Map.of("State", "EXECUTE",
-				"ProcessQueue", Map.of("mode", "AUTO")));
+		template.sendBody("direct:start", Map.of("StationState", Map.of("State", "EXECUTE",
+				"ProcessQueue", Map.of("mode", "AUTO"))));
 		Map<?, ?> result = getMockEndpoint("mock:result").getExchanges().get(0)
 				.getMessage().getBody(Map.class);
 
 		assertEquals("EXECUTE", result.get("State"));
 		assertEquals("AUTO", result.get("Mode"));
-	}
-
-	@Test
-	void fineSourceMissingValuePathFailsClearly() throws Exception {
-		// SPEC §8.4 #8: pointer on a missing path → clear route error.
-		Path blob = tempDir.resolve("fine-missing.lua");
-		Files.writeString(blob, """
-				function aimc_main(sources)
-				    return { State = sources.StationState or "none" }
-				end
-				""", StandardCharsets.UTF_8);
-		String uri = managedUri(blob) + "?sourceKeys=StationState&valuePath=$.Missing&timeoutSeconds=2";
-
-		context.getRouteDefinitions().clear();
-		addRoute(uri);
-		context.start();
-
-		CamelExecutionException ex = assertThrows(CamelExecutionException.class,
-				() -> template.sendBody("direct:start", Map.of("State", "EXECUTE")));
-		assertEquals(true, ex.getCause().getMessage().contains("does not resolve"));
 	}
 
 	@Test
@@ -263,7 +182,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 		context.start();
 
 		String opaqueText = "{\"looks\":\"like JSON\"}";
-		template.sendBody("direct:start", opaqueText);
+		template.sendBody("direct:start", Map.of("body", opaqueText));
 		Map<?, ?> textResult = getMockEndpoint("mock:result").getExchanges().get(0)
 				.getMessage().getBody(Map.class);
 		assertEquals("string", textResult.get("kind"));
@@ -271,7 +190,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 
 		getMockEndpoint("mock:result").reset();
 		byte[] bytes = new byte[] { 0, 1, 2, (byte) 0xff };
-		template.sendBody("direct:start", bytes);
+		template.sendBody("direct:start", Map.of("body", bytes));
 		Map<?, ?> byteResult = getMockEndpoint("mock:result").getExchanges().get(0)
 				.getMessage().getBody(Map.class);
 		assertArrayEquals(bytes, (byte[]) byteResult.get("value"));
@@ -293,7 +212,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 
 		Map<String, Object> value = new java.util.LinkedHashMap<>();
 		value.put("nullable", JsonPointer.JSON_NULL);
-		template.sendBody("direct:start", value);
+		template.sendBody("direct:start", Map.of("body", value));
 		Map<?, ?> result = getMockEndpoint("mock:result").getExchanges().get(0)
 				.getMessage().getBody(Map.class);
 		assertEquals(true, result.get("present"));
@@ -312,7 +231,7 @@ class LuaProducerCamelTest extends CamelTestSupport {
 		context.getRouteDefinitions().clear();
 		addRoute(managedUri(blob));
 		context.start();
-		template.sendBody("direct:start", "103.5585973");
+		template.sendBody("direct:start", Map.of("body", "103.5585973"));
 		Map<?, ?> result = getMockEndpoint("mock:result").getExchanges().get(0)
 				.getMessage().getBody(Map.class);
 		assertEquals("103.5585973", result.get("text"));

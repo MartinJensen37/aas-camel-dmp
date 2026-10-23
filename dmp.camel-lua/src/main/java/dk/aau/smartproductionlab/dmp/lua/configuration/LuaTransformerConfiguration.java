@@ -36,8 +36,8 @@ import dk.aau.smartproductionlab.dmp.lua.sandbox.LuaCompiledSource;
  *
  * <p>
  * The compiled source is bound in the owning Camel registry and referenced as
- * {@code lua:managed:<binding>?sourceKeys=body&...}; the connection URI
- * transports decoded Java values. The blob must expose
+ * {@code lua:managed:<binding>?timeoutSeconds=...}; the connection URI
+ * transports decoded Java values keyed by SourceId. The blob must expose
  * {@code function aimc_main(sources)}.
  *
  * @author aas-camel-dmp
@@ -45,13 +45,9 @@ import dk.aau.smartproductionlab.dmp.lua.sandbox.LuaCompiledSource;
 public class LuaTransformerConfiguration extends DataTransformerConfiguration implements ManagedRouteResource {
 
 	public static final String DEFAULT_TIMEOUT_SECONDS = "2";
-	public static final String DEFAULT_SOURCE_KEYS = "body";
 
 	private final String bindingName = "lua-source-" + UUID.randomUUID();
 	private String timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
-	private String sourceKeys = DEFAULT_SOURCE_KEYS;
-	private boolean keyedInput;
-	private String valuePath;
 	private volatile LuaCompiledSource managedSource;
 	private CamelContext boundContext;
 	private volatile int bindingOwners;
@@ -133,18 +129,7 @@ public class LuaTransformerConfiguration extends DataTransformerConfiguration im
 
 	@Override
 	public String getConnectionURI() {
-		StringBuilder uri = new StringBuilder("lua:managed:" + bindingName);
-		uri.append("?timeoutSeconds=").append(getTimeoutSeconds());
-		if (keyedInput) {
-			uri.append("&keyedInput=true");
-			if (getValuePath() != null && !getValuePath().isBlank()) {
-				throw new IllegalArgumentException("Keyed Lua input must be projected before transformation");
-			}
-		} else uri.append("&sourceKeys=").append(getSourceKeys());
-		if (getValuePath() != null && !getValuePath().isBlank()) {
-			uri.append("&valuePath=").append(getValuePath());
-		}
-		return uri.toString();
+		return "lua:managed:" + bindingName + "?timeoutSeconds=" + getTimeoutSeconds();
 	}
 
 	public String getTimeoutSeconds() {
@@ -153,34 +138,5 @@ public class LuaTransformerConfiguration extends DataTransformerConfiguration im
 
 	public void setTimeoutSeconds(String timeoutSeconds) {
 		this.timeoutSeconds = timeoutSeconds;
-	}
-
-	public String getSourceKeys() {
-		return sourceKeys;
-	}
-
-	public void setSourceKeys(String sourceKeys) {
-		this.sourceKeys = sourceKeys;
-	}
-
-	public boolean isKeyedInput() {
-		return keyedInput;
-	}
-
-	public void setKeyedInput(boolean keyedInput) {
-		this.keyedInput = keyedInput;
-	}
-
-	/**
-	 * Optional source-side fine resolution (ADR-014 / SPEC §8.3): a JSON
-	 * Pointer applied to the incoming canonical payload before it is placed
-	 * under a {@code SourceId}. Absent → coarse (whole payload).
-	 */
-	public String getValuePath() {
-		return valuePath;
-	}
-
-	public void setValuePath(String valuePath) {
-		this.valuePath = valuePath;
 	}
 }

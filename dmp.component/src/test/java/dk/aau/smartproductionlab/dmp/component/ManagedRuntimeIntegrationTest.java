@@ -79,7 +79,7 @@ class ManagedRuntimeIntegrationTest {
 		repository.put(PublishedModels.publish(resource("http-operation/dependencies/0.json")
 				.replace(cci, "b/submodels/ControlComponentInstance"), "contractBAS", "contractB"));
 		var settings = new ManagedRuntimeSettings(repository.uri(),
-				null, new KafkaControlEventRouteBuilder.Settings("127.0.0.1:9092", "control", "dmp-control", Set.of()), Set.of(), 16, 16, 4, 30_000, Duration.ofSeconds(2), Duration.ofSeconds(2), 50, 4);
+				null, new KafkaControlEventRouteBuilder.Settings("127.0.0.1:9092", "control", "dmp-control"), Set.of(), 16, 16, 4, 30_000, Duration.ofSeconds(2), Duration.ofSeconds(2), 50, 4);
 		var client = new AasRepositoryClient(settings.repositoryUri(), settings.connectTimeout(), settings.requestTimeout(),
 				settings.pageSize(), settings.maxPages(), null);
 		Runtime component = new Runtime();
@@ -167,7 +167,7 @@ class ManagedRuntimeIntegrationTest {
 	}
 
 	private static final class Runtime extends DmpComponent {
-		Runtime() { super(new RoutesConfiguration()); }
+		Runtime() { super(); }
 		int routeCount() { return camelContext.getRoutesSize(); }
 	}
 }

@@ -59,7 +59,6 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 	private static final String REAL_LUA_ROUTE_ID = "packingCellAAS_Restart_real_lua_interaction";
 	private static final ConcurrentMap<String, String> LAST_COMMAND = new ConcurrentHashMap<>();
 	private static final ConcurrentMap<String, String> LAST_REQUEST_CHAIN_INPUT = new ConcurrentHashMap<>();
-	private static final ConcurrentMap<String, String> LAST_SINK_CHAIN_INPUT = new ConcurrentHashMap<>();
 	private static final AtomicInteger COMMAND_INVOCATIONS = new AtomicInteger();
 	private static final AtomicInteger RESPONSE_TRANSFORMS = new AtomicInteger();
 	private static volatile CountDownLatch AUDIT_ENTERED = new CountDownLatch(0);
@@ -111,8 +110,10 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 		ProtocolBridgeRouteConfiguration config = new ProtocolBridgeRouteConfiguration(base);
 		config.setRouteId(routeId);
 		config.getTriggerData().put(ProtocolBridgeRouteConfiguration.REST_PATH, restPath);
-		config.getTriggerData().put(ProtocolBridgeRouteConfiguration.REST_METHOD, "POST");
 		config.getTriggerData().put("action", "Restart");
+		config.getTriggerData().put("callerInputSourcePaths", Map.of("Restart", "$"));
+		config.getTriggerData().put("commandSinkIds", List.of(sinkId));
+		config.getTriggerData().put("commandSinkBindings", List.of(Map.of("sinkId", "Restart", "dataSinkId", sinkId)));
 		// The authored response mapping: the reply's Restart member is the ResponseSource,
 		// the Operation (SinkId Restart) declares the output "state".
 		config.getTriggerData().put("responseTransformer", "luaResp");
@@ -155,8 +156,6 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 								new FixedTransformer("luaReqFail", "direct:luaReqFail"),
 								new FixedTransformer("luaRespFail", "direct:luaRespFail"),
 								new FixedTransformer("luaAasResponse", "direct:luaAasResponse"),
-								new FixedTransformer("luaMember", "direct:luaMember"),
-								new FixedTransformer("luaMemberSecond", "direct:luaMemberSecond"),
 								new FixedTransformer("luaResp", "direct:luaResp"),
 								new FixedTransformer("luaRealResponse", realLuaResponseUri()),
 								new FixedTransformer("luaLog", "direct:luaLog")),
@@ -180,8 +179,6 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 						Map.of("sinkId", "AuthoredCommand", "dataSinkId", "infraCommand",
 								"valuePath", "$.value")));
 				memberBridge.setTransformers(List.of("luaReqMember", "luaReqMemberSecond"));
-				memberBridge.setDatasinkMappingConfiguration(
-						Map.of("infraCommand", new String[] {"luaMember", "luaMemberSecond"}));
 				new ProtocolBridgeRouteCreator(this, routes).addRouteToRouteBuilder(memberBridge);
 				new ProtocolBridgeRouteCreator(this, routes).addRouteToRouteBuilder(
 						syncBridge("packingCellAAS_Restart_failure_interaction",
@@ -244,15 +241,6 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 					LAST_REQUEST_CHAIN_INPUT.put(MEMBER_ROUTE_ID,
 							dk.aau.smartproductionlab.dmp.core.util.JsonCodec.toJson(
 									exchange.getMessage().getBody())));
-				from("direct:luaMember").setBody().constant(Map.of(
-						"AuthoredCommand", Map.of("value", "intermediate")));
-				from("direct:luaMemberSecond").process(exchange -> {
-					LAST_SINK_CHAIN_INPUT.put(MEMBER_ROUTE_ID,
-							dk.aau.smartproductionlab.dmp.core.util.JsonCodec.toJson(
-									exchange.getMessage().getBody()));
-					exchange.getMessage().setBody(Map.of(
-							"AuthoredCommand", Map.of("value", "transformed")));
-				});
 				from("direct:luaResp").process(e -> {
 					RESPONSE_TRANSFORMS.incrementAndGet();
 				});
@@ -328,7 +316,7 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 			String name = "response-object-" + java.util.UUID.randomUUID();
 			context.getRegistry().bind(name, dk.aau.smartproductionlab.dmp.lua.sandbox.LuaCompiledSource
 					.fromBytes(input.readAllBytes(), "response-object.lua", 1 << 20));
-			return "lua:managed:" + name + "?sourceKeys=body";
+			return "lua:managed:" + name;
 		} catch (Exception e) {
 			throw new IllegalStateException("could not compile response Lua fixture", e);
 		}
@@ -350,16 +338,14 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 	}
 
 	@Test
-	void mapsInfrastructureTransformerIdentityToTheAuthoredSinkId() throws Exception {
+	void mapsInfrastructureSinkIdentityToTheAuthoredSinkId() throws Exception {
 		StringBuilder body = new StringBuilder();
 		int status = post("/operations/packingCellAAS/Restart/member", "{}", body);
 		assertEquals(200, status);
 		assertEquals("{\"AuthoredCommand\":{\"value\":\"original\"}}",
 				LAST_REQUEST_CHAIN_INPUT.get(MEMBER_ROUTE_ID));
-		assertEquals("{\"AuthoredCommand\":{\"value\":\"intermediate\"}}",
-				LAST_SINK_CHAIN_INPUT.get(MEMBER_ROUTE_ID));
-		assertTrue(LAST_COMMAND.get(MEMBER_ROUTE_ID).contains("transformed"),
-				"configured member chain must run although infra and authored IDs differ: "
+		assertTrue(LAST_COMMAND.get(MEMBER_ROUTE_ID).contains("original"),
+				"the authored SinkId's value is the command although infra and authored IDs differ: "
 						+ LAST_COMMAND.get(MEMBER_ROUTE_ID));
 	}
 

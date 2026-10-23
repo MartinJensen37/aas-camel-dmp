@@ -58,7 +58,7 @@ class SnmpBindingTest {
 			exchange.close();
 		});
 		aas.start();
-		runtime = new DmpComponent(new RoutesConfiguration(), Duration.ofSeconds(4)) { };
+		runtime = new DmpComponent(Duration.ofSeconds(4)) { };
 		runtime.startComponent();
 	}
 

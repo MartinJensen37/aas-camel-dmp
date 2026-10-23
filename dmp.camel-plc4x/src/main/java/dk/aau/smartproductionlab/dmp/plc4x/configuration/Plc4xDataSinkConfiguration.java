@@ -27,7 +27,6 @@ package dk.aau.smartproductionlab.dmp.plc4x.configuration;
 import java.util.List;
 
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSinkConfiguration;
-import dk.aau.smartproductionlab.dmp.plc4x.configuration.deserializer.OptionDeserializer;
 
 /**
  * PLC4X write sink (DMP v3): the camel-plc4x producer writes the transformed
@@ -45,20 +44,20 @@ public class Plc4xDataSinkConfiguration extends DataSinkConfiguration {
 	private int serverPort;
 	private String driver;
 	private String servicePath = "";
-	private Object options;
+	private List<Option> options = List.of();
 	private List<Tag> tags;
 
 	public Plc4xDataSinkConfiguration() {
 	}
 
 	public Plc4xDataSinkConfiguration(String uniqueId, String serverUrl, int serverPort, String driver,
-			String servicePath, Object options, List<Tag> tags) {
+			String servicePath, List<Option> options, List<Tag> tags) {
 		super(uniqueId);
 		this.serverUrl = serverUrl;
 		this.serverPort = serverPort;
 		this.driver = driver;
 		this.servicePath = servicePath;
-		this.options = options;
+		this.options = options == null ? List.of() : List.copyOf(options);
 		this.tags = tags;
 	}
 
@@ -79,7 +78,7 @@ public class Plc4xDataSinkConfiguration extends DataSinkConfiguration {
 	}
 
 	public List<Option> getOptions() {
-		return new OptionDeserializer().deserialize(options);
+		return options;
 	}
 
 	public List<Tag> getTags() {

@@ -4,8 +4,10 @@
 name: AAS-Camel-DMP CI with Maven
 
 on:
+  push:
+    branches: [ main ]
   pull_request:
-    branches: [ main, development ]
+    branches: [ main ]
 
 jobs:
   build:

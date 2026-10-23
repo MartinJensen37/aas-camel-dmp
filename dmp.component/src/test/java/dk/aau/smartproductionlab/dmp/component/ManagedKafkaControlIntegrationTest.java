@@ -69,7 +69,7 @@ class ManagedKafkaControlIntegrationTest {
 		}
 		var settings = new ManagedRuntimeSettings(URI.create("http://127.0.0.1:" + repository.port() + "/repo"), null,
 				new KafkaControlEventRouteBuilder.Settings("127.0.0.1:" + kafkaPort,
-						aasTopic + "," + submodelTopic, group, Set.of()), Set.of(), 8, 8, 2, 60_000, Duration.ofSeconds(2),
+						aasTopic + "," + submodelTopic, group), Set.of(), 8, 8, 2, 60_000, Duration.ofSeconds(2),
 				Duration.ofSeconds(2), 10, 4);
 		ManagedDmpRuntime runtime = null;
 		try {
@@ -152,7 +152,7 @@ class ManagedKafkaControlIntegrationTest {
 		repository.start();
 		String topic = "late-control", group = "late-control-group";
 		var settings = new ManagedRuntimeSettings(URI.create("http://127.0.0.1:" + repository.port() + "/repo"), null,
-				new KafkaControlEventRouteBuilder.Settings(broker.bootstrap(), topic, group, Set.of()), Set.of(), 8, 8, 2, 1000, Duration.ofSeconds(1), Duration.ofSeconds(1), 10, 4);
+				new KafkaControlEventRouteBuilder.Settings(broker.bootstrap(), topic, group), Set.of(), 8, 8, 2, 1000, Duration.ofSeconds(1), Duration.ofSeconds(1), 10, 4);
 		try (var runtime = new ManagedDmpRuntime(settings); var admin = broker.admin()) {
 			runtime.start();
 			assertFalse(ManagedRuntimeStatus.snapshot().ready(), "configured route is not a real topic/assignment");
@@ -200,7 +200,7 @@ class ManagedKafkaControlIntegrationTest {
 			admin.createTopics(java.util.List.of(new NewTopic(aasTopic, 1, (short) 1))).all().get(10, TimeUnit.SECONDS);
 			var settings = new ManagedRuntimeSettings(URI.create("http://127.0.0.1:" + repository.port() + "/repo"), null,
 					new KafkaControlEventRouteBuilder.Settings(broker.bootstrap(),
-							aasTopic + "," + submodelTopic, group, Set.of()), Set.of(), 8, 8, 2, 1000, Duration.ofSeconds(1), Duration.ofSeconds(1), 10, 4);
+							aasTopic + "," + submodelTopic, group), Set.of(), 8, 8, 2, 1000, Duration.ofSeconds(1), Duration.ofSeconds(1), 10, 4);
 			try (var runtime = new ManagedDmpRuntime(settings)) {
 				runtime.start();
 				Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
@@ -228,7 +228,7 @@ class ManagedKafkaControlIntegrationTest {
 				Awaitility.await().atMost(Duration.ofSeconds(20)).until(() -> {
 					oldMember.poll(Duration.ofMillis(200)); return !oldMember.assignment().isEmpty();
 				});
-				var settings = new KafkaControlEventRouteBuilder.Settings(broker.bootstrap(), topic, group, Set.of());
+				var settings = new KafkaControlEventRouteBuilder.Settings(broker.bootstrap(), topic, group);
 				try (var observer = new ManagedControlReadiness(settings, "new-control-instance")) {
 					observer.poll();
 					assertFalse(observer.snapshot().ready(), "another assigned member is not this runtime");

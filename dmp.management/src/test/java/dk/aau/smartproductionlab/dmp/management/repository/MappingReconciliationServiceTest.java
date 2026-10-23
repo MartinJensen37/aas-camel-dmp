@@ -537,7 +537,7 @@ class MappingReconciliationServiceTest {
 			String bundleId, String restPath) {
 		RouteConfiguration route = new RouteConfiguration("bridge", List.of(), List.of(), List.of());
 		route.setRouteId(bundleId);
-		route.setTriggerData(Map.of("restPath", restPath, "restMethod", "POST"));
+		route.setTriggerData(Map.of("restPath", restPath));
 		RoutesConfiguration configuration = new RoutesConfiguration(Map.of(), Map.of(), Map.of(), List.of(route));
 		var fingerprint = fingerprint(configuration);
 		var bundle = new CompiledBundle(identity, 0, bundleId, bundleId, configuration, fingerprint);
@@ -578,7 +578,7 @@ class MappingReconciliationServiceTest {
 	private static final class Runtime extends DmpComponent {
 		boolean failReplacementWithoutSurvivor;
 		boolean failRemoval;
-		Runtime() { super(new RoutesConfiguration()); }
+		Runtime() { super(); }
 		int routeCount() { return camelContext.getRoutesSize(); }
 		@Override public synchronized ManagedBundle replaceBundle(ManagedBundle previous, StagedBundle staged) {
 			if (failReplacementWithoutSurvivor) {

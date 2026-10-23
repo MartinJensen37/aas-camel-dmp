@@ -43,43 +43,21 @@ public class RouteConfiguration {
 	private List<String> datasources = new ArrayList<>();
 	private List<String> transformers = new ArrayList<>();
 	private List<String> datasinks = new ArrayList<>();
-	private Map<String, String[]> datasinkMappingConfiguration;
 
 	private Map<String, Object> triggerData = new HashMap<>();
-
-	/** The parsed execution contract (ADR-020); {@code null} = unauthored. */
 
 	public RouteConfiguration() {
 	}
 
 	/**
-	 * Constructs a new RouteConfiguration object with a mapping configuration to
-	 * map distinct transformators to multiple datasinks.
-	 *
 	 * @param trigger
-	 *            the trigger for the route configuration
+	 *            the route creator's trigger
 	 * @param datasources
-	 *            the datasources associated with the route (fan-in)
+	 *            the datasources feeding the route (fan-in)
 	 * @param transformers
-	 *            the list of transformers to be applied in the route
+	 *            the transformers applied once per evaluation, in order
 	 * @param datasinks
-	 *            the list of datasinks to which data should be routed
-	 * @param datasinkMappingConfiguration
-	 *            the mapping configuration for datasinks, mapping each datasink to
-	 *            its corresponding configuration
-	 */
-	public RouteConfiguration(String trigger, List<String> datasources, List<String> transformers, List<String> datasinks, Map<String, String[]> datasinkMappingConfiguration) {
-		this.trigger = trigger;
-		this.datasources = datasources;
-		this.transformers = transformers;
-		this.datasinks = datasinks;
-		this.datasinkMappingConfiguration = datasinkMappingConfiguration;
-	}
-
-	/**
-	 * Constructs a new RouteConfiguration object without a mapping configuration to
-	 * map distinct transformators to multiple datasinks. I.e., all transformators
-	 * would be equally applied to all data sinks.
+	 *            the datasinks the result is dispatched to, in order
 	 */
 	public RouteConfiguration(String trigger, List<String> datasources, List<String> transformers, List<String> datasinks) {
 		this.trigger = trigger;
@@ -89,15 +67,12 @@ public class RouteConfiguration {
 	}
 
 	public RouteConfiguration(RouteConfiguration configuration) {
-		this(configuration.getRouteTrigger(), configuration.getDatasources(), configuration.getTransformers(), configuration.getDatasinks(), configuration.getDatasinkMappingConfiguration());
+		this(configuration.getRouteTrigger(), configuration.getDatasources(), configuration.getTransformers(), configuration.getDatasinks());
 		setRouteId(configuration.getRouteId());
 		this.triggerData = configuration.triggerData;
 	}
 
-	/**
-	 * The parsed execution contract (ADR-020). Strictly parsed by the
-	 * deserializer; {@code null} means the mapping authored no policy block.
-	 */
+	/** What the route creator needs beyond sources, transformers and sinks, as the compiler set it. */
 	public Map<String, Object> getTriggerData() {
 		return triggerData;
 	}
@@ -169,7 +144,7 @@ public class RouteConfiguration {
 	}
 
 	/**
-	 * The datasource ids feeding this route (fan-in, SPEC §6.4). A route may
+	 * The datasource ids feeding this route (fan-in, SPEC §6). A route may
 	 * aggregate multiple sources into one exchange before the transform.
 	 */
 	public List<String> getDatasources() {
@@ -178,14 +153,6 @@ public class RouteConfiguration {
 
 	public void setDatasources(List<String> datasources) {
 		this.datasources = datasources;
-	}
-
-	public Map<String, String[]> getDatasinkMappingConfiguration() {
-		return datasinkMappingConfiguration;
-	}
-
-	public void setDatasinkMappingConfiguration(Map<String, String[]> datasinkMappingConfiguration) {
-		this.datasinkMappingConfiguration = datasinkMappingConfiguration;
 	}
 
 }

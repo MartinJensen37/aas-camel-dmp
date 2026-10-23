@@ -42,29 +42,21 @@ import org.slf4j.LoggerFactory;
 public class OperationRequestProcessor implements Processor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(OperationRequestProcessor.class);
-	private final String operationSourceId;
 	private final java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> inputTemplates;
 	private final java.util.Map<String, String> inputSourcePaths;
 
-	public OperationRequestProcessor() {
-		this(null);
-	}
-
-	public OperationRequestProcessor(String operationSourceId) {
-		this(operationSourceId, java.util.Map.of());
-	}
-
-	public OperationRequestProcessor(String operationSourceId,
-			java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> inputTemplates) {
-		this(operationSourceId, inputTemplates, java.util.Map.of());
-	}
-
-	public OperationRequestProcessor(String operationSourceId,
+	/**
+	 * @param inputSourcePaths
+	 *            each Source on the Operation: its SourceId and the path it selects ({@code $} for the whole
+	 *            request)
+	 */
+	public OperationRequestProcessor(
 			java.util.Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> inputTemplates,
 			java.util.Map<String, String> inputSourcePaths) {
-		this.operationSourceId = operationSourceId;
+		if (inputSourcePaths == null || inputSourcePaths.isEmpty())
+			throw new IllegalArgumentException("an Operation request needs at least one Source on the Operation");
 		this.inputTemplates = inputTemplates == null ? java.util.Map.of() : inputTemplates;
-		this.inputSourcePaths = inputSourcePaths == null ? java.util.Map.of() : inputSourcePaths;
+		this.inputSourcePaths = inputSourcePaths;
 	}
 
 	@Override
@@ -76,14 +68,7 @@ public class OperationRequestProcessor implements Processor {
 			body = OperationPayloads.flattenOperationVariables(body, inputTemplates);
 		}
 		requireInputs(body);
-		if (!inputSourcePaths.isEmpty()) {
-			body = keyedInputs(body);
-		} else if (operationSourceId != null && !operationSourceId.isBlank()) {
-			java.util.Map<String, Object> keyed = new java.util.LinkedHashMap<>();
-			keyed.put(operationSourceId, body);
-			body = keyed;
-		}
-		exchange.getMessage().setBody(JsonCodec.copyValue(body));
+		exchange.getMessage().setBody(JsonCodec.copyValue(keyedInputs(body)));
 	}
 
 	/**

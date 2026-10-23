@@ -41,7 +41,7 @@ import dk.aau.smartproductionlab.dmp.lua.sandbox.LuaCompiledSource;
  * Endpoint for the {@code lua:} scheme (producer-only transformation).
  *
  * <p>
- * URI syntax: {@code lua:managed:<binding>?timeoutSeconds=2&sourceKeys=body},
+ * URI syntax: {@code lua:managed:<binding>?timeoutSeconds=2},
  * where {@code <binding>} names a {@link LuaCompiledSource} bound in the Camel
  * registry by its {@code LuaTransformerConfiguration}. Lua is never read from files.
  *
@@ -58,14 +58,6 @@ public class LuaEndpoint extends DefaultEndpoint implements AccountedEndpoint {
 	@UriParam(defaultValue = "2", description = "CPU budget per invocation in seconds")
 	private double timeoutSeconds = 2;
 
-	@UriParam(defaultValue = "body", description = "How to assemble the sources map: 'body' wraps the whole payload, or a comma-separated list of keys to extract from the payload object")
-	private String sourceKeys = "body";
-
-	@UriParam(description = "Internal runtime binding: the input is already an exact SourceId-keyed map")
-	private boolean keyedInput;
-
-	@UriParam(description = "Source-side fine resolution / disassembly (ADR-014 / SPEC §6.5): a JSON Pointer (RFC 6901, e.g. $.State) applied to the incoming canonical payload before it is placed under a SourceId. When set, only the extracted leaf is delivered under SourceId (fine); when absent, the whole payload is delivered (coarse). Applies alongside a single sourceKeys entry.")
-	private String valuePath;
 	private volatile LuaCompiledSource source;
 
 	@Override public java.util.List<AccountingEntry> accounting() {
@@ -126,32 +118,4 @@ public class LuaEndpoint extends DefaultEndpoint implements AccountedEndpoint {
 		this.timeoutSeconds = timeoutSeconds;
 	}
 
-	public String getSourceKeys() {
-		return sourceKeys;
-	}
-
-	public void setSourceKeys(String sourceKeys) {
-		this.sourceKeys = sourceKeys;
-	}
-
-	public boolean isKeyedInput() {
-		return keyedInput;
-	}
-
-	public void setKeyedInput(boolean keyedInput) {
-		this.keyedInput = keyedInput;
-	}
-
-	/**
-	 * The JSON Pointer (SPEC §6.5.1) used to disassemble the incoming payload
-	 * before it is placed under a {@code SourceId}; absent → coarse (whole
-	 * payload delivered, SPEC §8.3).
-	 */
-	public String getValuePath() {
-		return valuePath;
-	}
-
-	public void setValuePath(String valuePath) {
-		this.valuePath = valuePath;
-	}
 }

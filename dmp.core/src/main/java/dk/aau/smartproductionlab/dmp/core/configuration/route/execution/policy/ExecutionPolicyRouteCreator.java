@@ -93,8 +93,6 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 				routesConfiguration, routeConfig.getDatasinks(), routeId);
 		String[] dataTransformerEndpoints = RouteCreatorHelper.getDataTransformerEndpoints(
 				routesConfiguration, routeConfig.getTransformers(), routeId);
-		Map<String, String[]> datasinkMapping = RouteCreatorHelper.getDataSinkMappingById(
-				routesConfiguration, routeConfig.getDatasinkMappingConfiguration(), routeId);
 
 		FanIn fanIn = new FanIn(routeConfig, routesConfiguration);
 		if (routeBuilder instanceof DmpRouteBuilder managed) managed.registerManagedResource(fanIn);
@@ -115,7 +113,7 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 		if (response == null) {
 			readAtEvaluation(cycle, fanIn, readAtEvaluation, routeId);
 			FanOut.apply(cycle, routesConfiguration, routeConfig,
-					dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
+					dataTransformerEndpoints, dataSinkEndpoints, routeId);
 		} else {
 			// The response half runs after the sinks, also when the evaluation failed, and inside the
 			// evaluation: its writes finish before the next evaluation starts.
@@ -123,7 +121,7 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 			readAtEvaluation(attempt, fanIn, readAtEvaluation, routeId);
 			attempt.process(response::keepRequestSources);
 			FanOut.apply(attempt, routesConfiguration, routeConfig,
-					dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
+					dataTransformerEndpoints, dataSinkEndpoints, routeId);
 			attempt.process(response::succeeded).enrich(response.uri(), ResponseHalf::keepOriginal);
 			attempt.doCatch(Exception.class)
 					.process(response::failed)
@@ -228,13 +226,13 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 	 * so its sources must also agree on whether their schema decodes the payload as JSON.
 	 */
 	private record Acquisition(Class<?> type, String uri, String delivery, long pollingIntervalMs,
-			String sourceKind, String mode, Map<String, Object> eventFilter, boolean jsonSchema) {
+			String sourceKind, Map<String, Object> eventFilter, boolean jsonSchema) {
 		static Acquisition of(DataSourceConfiguration config) {
-			if (config == null) return new Acquisition(null, null, null, 0, null, null, null, false);
+			if (config == null) return new Acquisition(null, null, null, 0, null, null, false);
 			String delivery = config.getDelivery() == null ? null : config.getDelivery().toLowerCase(java.util.Locale.ROOT);
 			long pollingIntervalMs = "sync".equals(delivery) ? effectivePollingIntervalMs(config) : 0;
 			return new Acquisition(config.getClass(), config.getConnectionURI(), delivery, pollingIntervalMs,
-					config.getSourceKind(), config.getMode(), config.getEventFilter(),
+					config.getSourceKind(), config.getEventFilter(),
 					FanIn.jsonSchema(config.getSchema()));
 		}
 	}

@@ -38,44 +38,44 @@ class OperationCommandValidationTest {
 	void actionAssemblyRejectsMissingAuthoredSinkIds() {
 		assertThrows(IllegalArgumentException.class, () -> OperationPayloads.assembleCommand(
 				Map.of("Other", Map.of("x", 1)), List.of("Expected"),
-				Map.of("Expected", "$.X"), "Action"));
+				Map.of("Expected", "$.X")));
 	}
 
 	@Test
 	void actionAssemblyUsesExactlyTheAuthoredSinkValue() {
 		assertEquals(Map.of("x", 1), OperationPayloads.assembleCommand(
 				Map.of("Expected", Map.of("x", 1), "Other", Map.of("wrong", true)),
-				List.of("Expected"), Map.of("Expected", "$"), "Action"));
+				List.of("Expected"), Map.of("Expected", "$")));
 	}
 
 	@Test
 	void actionWholeAndMemberOverlapMergesWithoutUnwrappingPayloadAgain() {
 		Map<String, Object> whole = Map.of("sinkId", Map.of("x", 1), "sibling", "keep");
 		assertEquals(whole, OperationPayloads.assembleCommand(Map.of("sinkId", whole),
-				List.of("sinkId"), Map.of(), "sinkId"));
+				List.of("sinkId"), Map.of()));
 		assertEquals(whole, OperationPayloads.assembleCommand(Map.of("sinkId", whole),
-				List.of("sinkId"), Map.of("sinkId", "$"), "sinkId"));
+				List.of("sinkId"), Map.of("sinkId", "$")));
 		assertEquals(whole, OperationPayloads.assembleCommand(Map.of("sinkId", whole, "Member", 1),
-				List.of("sinkId", "Member"), Map.of("Member", "$.sinkId.x"), "sinkId"));
+				List.of("sinkId", "Member"), Map.of("Member", "$.sinkId.x")));
 		assertThrows(IllegalArgumentException.class, () -> OperationPayloads.assembleCommand(
 				Map.of("sinkId", whole, "Member", 2), List.of("sinkId", "Member"),
-				Map.of("Member", "$.sinkId.x"), "sinkId"));
+				Map.of("Member", "$.sinkId.x")));
 	}
 
 	@Test
 	void actionArrayMembersUseTheSharedPresenceAwareAssembler() {
 		assertEquals(Map.of("items", List.of("first", "second")), OperationPayloads.assembleCommand(
 				Map.of("First", "first", "Second", "second"), List.of("Second", "First"),
-				Map.of("First", "$.items[0]", "Second", "$.items[1]"), "Action"));
+				Map.of("First", "$.items[0]", "Second", "$.items[1]")));
 		assertThrows(IllegalArgumentException.class, () -> OperationPayloads.assembleCommand(
 				Map.of("First", "first"), List.of("First", "Second"),
-				Map.of("First", "$.items[0]", "Second", "$.items[1]"), "Action"));
+				Map.of("First", "$.items[0]", "Second", "$.items[1]")));
 	}
 
 	@Test
 	void actionSinkIdsAreExactStringsNotStringifiedForeignKeys() {
 		assertThrows(IllegalArgumentException.class, () -> OperationPayloads.assembleCommand(
-				Map.of(1, Map.of("x", 1)), List.of("1"), Map.of(), "Action"));
+				Map.of(1, Map.of("x", 1)), List.of("1"), Map.of()));
 	}
 
 	@Test
@@ -94,10 +94,12 @@ class OperationCommandValidationTest {
 		});
 		camel.start();
 		try {
-			OperationContext context = new OperationContext("Move", "direct:unused", null,
-					"direct:group-device", Map.of(), Map.of(), List.of(), "Invoke", "Whole", "Reply",
-					List.of("Whole", "Member"), Map.of("Member", "$.member"),
-					false, List.of(), List.of(), Map.of());
+			OperationContext context = OperationContext.builder("Move", "direct:group-device")
+				.callerInputSourcePaths(Map.of("Invoke", "$"))
+				.callerReplySinkId("Reply")
+				.commandSinkIds(List.of("Whole", "Member"))
+				.commandSinkValuePaths(Map.of("Member", "$.member"))
+				.build();
 			try (SyncOperationProcessor processor = new SyncOperationProcessor(camel, context,
 					new AffordanceValidation(null, "command"), new AffordanceValidation(null, "reply"),
 					List.of(), List.of())) {
@@ -121,7 +123,7 @@ class OperationCommandValidationTest {
 	void requestValueIsKeyedByTheAuthoredOperationSourceId() throws Exception {
 		var exchange = new DefaultExchange(new DefaultCamelContext());
 		exchange.getMessage().setBody("{\"Position\":{\"x\":1}}");
-		new OperationRequestProcessor("Invoke").process(exchange);
+		new OperationRequestProcessor(Map.of(), Map.of("Invoke", "$")).process(exchange);
 		Map<?, ?> actual = exchange.getMessage().getBody(Map.class);
 		assertEquals(Map.of("Position", Map.of("x", 1L)), actual.get("Invoke"));
 	}
@@ -130,12 +132,12 @@ class OperationCommandValidationTest {
 	void operationRequestProcessorMarksBaSyxArrayBeforeFlattening() throws Exception {
 		var exchange = new DefaultExchange(new DefaultCamelContext());
 		exchange.getMessage().setBody("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Uuid\",\"valueType\":\"xs:string\",\"value\":\"abc\"}}]");
-		new OperationRequestProcessor("Invoke").process(exchange);
+		new OperationRequestProcessor(Map.of(), Map.of("Invoke", "$")).process(exchange);
 		assertEquals(true, exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY));
 	}
 
 	@Test
-	void actionRunsRequestAndIndependentPerSinkTransformerChainsBeforeOneInvocation() throws Exception {
+	void actionRunsRequestTransformersInOrderBeforeOneInvocation() throws Exception {
 		DefaultCamelContext camel = new DefaultCamelContext();
 		AtomicReference<Object> command = new AtomicReference<>();
 		AtomicInteger requestTransformations = new AtomicInteger();
@@ -146,10 +148,6 @@ class OperationCommandValidationTest {
 				from("direct:request-one").process(exchange -> requestTransformations.incrementAndGet()).setBody()
 						.constant(Map.of("First", Map.of("v", 1), "Second", Map.of("v", 2)));
 				from("direct:request-two").process(exchange -> requestTransformations.incrementAndGet());
-				from("direct:first-transformer").setBody().constant(
-						Map.of("First", Map.of("x", 10), "Second", Map.of("v", 2)));
-				from("direct:second-transformer").setBody().constant(
-						Map.of("First", Map.of("v", 1), "Second", Map.of("y", 20)));
 				from("direct:device").process(exchange -> {
 					invocations.incrementAndGet();
 					command.set(exchange.getMessage().getBody());
@@ -159,23 +157,25 @@ class OperationCommandValidationTest {
 		});
 		camel.start();
 		try {
-			OperationContext context = new OperationContext("Move", "direct:request-one", null,
-					"direct:device", Map.of(), Map.of("Done", "boolean"), List.of("Done"), "Invoke", "Move", "Invoke",
-					List.of("First", "Second"), Map.of("First", "$.X", "Second", "$.Y"),
-					false, List.of(), List.of(), Map.of(),
-					List.of("direct:request-one", "direct:request-two"),
-					Map.of("First", List.of("direct:first-transformer"),
-							"Second", List.of("direct:second-transformer")));
+			OperationContext context = OperationContext.builder("Move", "direct:device")
+				.responseTypes(Map.of("Done", "boolean"))
+				.callerResponseTypes(Map.of("Done", "boolean"))
+				.callerOutputOrder(List.of("Done"))
+				.callerInputSourcePaths(Map.of("Invoke", "$"))
+				.callerReplySinkId("Invoke")
+				.commandSinkIds(List.of("First", "Second"))
+				.commandSinkValuePaths(Map.of("First", "$.X", "Second", "$.Y"))
+				.build();
 			var exchange = new DefaultExchange(camel);
 			exchange.getMessage().setBody("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Invoke\",\"valueType\":\"xs:string\",\"value\":\"\"}}]");
 			try (var processor = new SyncOperationProcessor(camel, context,
 					new AffordanceValidation(null, "command"),
 					new AffordanceValidation(null, "reply"), List.of(), List.of())) {
-				operationRoute(camel, processor, context.requestTransformerUris);
+				operationRoute(camel, processor, List.of("direct:request-one", "direct:request-two"));
 				camel.createProducerTemplate().send("direct:operation", exchange);
 			}
 
-			assertEquals(Map.of("X", Map.of("x", 10), "Y", Map.of("y", 20)), command.get());
+			assertEquals(Map.of("X", Map.of("v", 1), "Y", Map.of("v", 2)), command.get());
 			assertEquals(2, requestTransformations.get(), "every request transformer must run in order");
 			assertEquals(1, invocations.get(), "grouped member sinks must make one device invocation");
 			assertEquals(true, exchange.getMessage().getBody() instanceof List<?>,
@@ -205,9 +205,6 @@ class OperationCommandValidationTest {
 				var route = from("direct:operation").process(processor::prepareRequest);
 				for (String transformer : requestTransformers) route.to(transformer);
 				route.process(processor::keepRequestResult);
-				processor.sinkTransformerChains().forEach((sinkId, chain) -> {
-					if (!chain.isEmpty()) route.enrich(chain.get(0), processor.keepSinkResult(sinkId));
-				});
 				route.process(processor::prepareCommand);
 				processor.configureInvoke(route);
 				route.process(processor::acceptReply)

@@ -57,6 +57,240 @@ brokers (KRaft Kafka, MQTT 5) and need no external services.
 Do not run Maven while the IDE re-imports POMs: the IDE can rewrite
 `target/classes` underneath a running build.
 
+## Review fixes before the evaluation (2026-10-23)
+
+A review of all modules (2026-10-23) found bugs the tests miss, hot-path
+costs that would distort E2–E5 ([EVALUATION.md](EVALUATION.md)), and DataBridge
+leftovers. The work is grouped by cause, so that one change settles several
+findings. Every step lands with a regression test that fails before it.
+
+Order: H0, then H1 and H2 (independent), H3, H4, H5. H6 follows the paper's
+measurements unless decided otherwise. The E2/E3/E4 pilot (EVALUATION §7)
+starts after H1–H3; E5 after H4.
+
+### H0. Delete dead DataBridge code — done (2026-10-23)
+
+No behaviour change; the unit suite passes (607 tests, the 40 fewer than
+before tested only the removed code), and so does the integration profile. Removed: per-sink transformer chains
+(FanOut, bridge, `RouteConfiguration.datasinkMappingConfiguration`), Lua's
+non-keyed input modes (`sourceKeys`, `keyedInput`, `valuePath` on `lua:`), the
+unmanaged `DmpRouteBuilder` path and `DmpComponent`'s empty orchestrator and
+health-check registry, the bridge's GET branch and its fallbacks to the action
+name (`OperationContext` is built explicitly; `operationSourceId`,
+`commandSinkId`, `responseOrder` and `restMethod` are gone from the trigger
+data), `paho-mqtt5-inout`'s `correlationHeader` and inline credentials and with
+them the reply registry's 60 s fence (in-flight calls are still bounded at
+8192), the OPC UA envelope converters, normalizer and method-metadata
+service, the PLC4X option deserializer, `AASComponentUtil`,
+`plc4j-driver-bacnet`, `DMP_MANAGED_DATA_PLANE_GROUP_IDS`, stale test
+resources and javadoc references. CI runs on `main`. Kept: the one-shot
+`DmpComponent.installBundle(String, RoutesConfiguration)`, which 65 tests use.
+
+### H1. One clean evaluation (`dmp.core`)
+
+An evaluation becomes its own exchange instead of the source's exchange
+mutated along the way.
+
+- **Fresh message.** Each evaluation starts from a fresh message, so no source
+  header or property reaches Lua or a sink. Today a polled OPC UA source
+  leaves `CamelMiloNodeIds`, which an OPC UA sink then executes as a Read and
+  reports as a successful write. HTTP response headers go out as request
+  headers of an HTTP sink.
+- **One copy per value.** Values are copied once at the connector boundary
+  and are immutable after that (unmodifiable maps and lists). The cache
+  snapshot, the per-sink start and the response half share them. This removes
+  about 10 of the 12 full copies of the simplest mapping, and the 2S+2 copies
+  of `requestSources` (S = number of sinks); the Lua conversions stay.
+- **OnChange.** A change stays pending until an evaluation passes the
+  readiness gate (today a first value the gate drops is lost). Values are
+  compared only for OnChange sources.
+- **Per message.** Sink endpoints are resolved when the route is built (no
+  `toD`, no `send(String uri)` per evaluation), and nothing is formatted for a
+  disabled DEBUG log.
+- **Causes kept.** `ConnectorInvocationException` takes a cause.
+  `DMP_SOURCE_READ_FAILED` carries the read's own error.
+  `meta.invocation.error.code` is the connector's code or `DMP_MAPPING_FAILED`,
+  never a Java class name.
+- **O3 hook** (EVALUATION §4.2): source arrival and sink completion as a JFR
+  event, in the same place.
+- **Tests:**
+  - a polled OPC UA source with an OPC UA sink;
+  - an HTTP source with an HTTP sink (headers);
+  - OnChange behind the gate;
+  - a copy-count or allocation check on the S1 mapping.
+
+### H2. Lua budget (`dmp.camel-lua`)
+
+One replacement for the hook settles both safety and speed.
+
+- **Hook.** A minimal instruction counter replaces LuaJ's `DebugLib`, which
+  runs per instruction and makes all Lua about 3× slower (measured). The
+  counter is a `DebugLib` subclass set as `Globals.debuglib` (a public field),
+  whose `onCall`/`onReturn` do nothing, so the `debug` table and the `package`
+  stand-in are no longer loaded. The timeout becomes an `Error`, not a
+  `LuaError`: LuaJ 3.0.1's `pcall` catches `LuaError` and `Exception` only
+  (checked in its bytecode). Today `pcall` swallows the timeout and a loop
+  around `pcall` never ends.
+- **Library calls.** Functions that run as one instruction in Java get caps:
+  - the result length of `string.rep` and `table.concat`;
+  - the input size of `json`.
+- **Patterns.** `find`/`match`/`gmatch`/`gsub` get a matcher of the DMP's own
+  that counts steps against the same budget. A length cap does not bound
+  backtracking: the review's reproducer has a 2000-character subject.
+  LuaJ's matcher is internal to its `StrLib` and the build has no LuaJ
+  sources, so this is a port of Lua 5.2's pattern matcher (`lstrlib.c`, MIT),
+  checked against LuaJ's results in tests.
+
+  `LuaJsonCodec` gets a depth and cycle guard (today a cyclic result is a
+  `StackOverflowError`). `print` goes to the log at DEBUG, not to stdout.
+- **Shared prototype.** Identical Lua shares one compiled prototype across
+  mappings, as SPEC §8 states (today the cache key includes the mapping).
+- **SPEC §8:** the budget is wall time from the start of the invocation.
+- **Tests:** the review's reproducers as unit tests: a `pcall` loop,
+  `string.rep("x", 2^30)`, a backtracking pattern and a cyclic result.
+
+### H3. Reconciliation and events (`dmp.management`)
+
+- **Structure without values.** One helper strips values recursively
+  (Property, SMC, SML, MLP, Range, File).
+  - The fingerprint uses it; today only a top-level Property loses its value.
+  - `relevant()` drops an SME_UPDATED of any element type whose structure is
+    unchanged.
+  - This ends the reinstall on every write of a collection sink, and the
+    recompiles on value writes.
+- **Retry what failed.** Dependency reads that failed transiently, and probes
+  of new AIMC ids, go into a retry set that the next pass re-reads. Today the
+  retry refreshes an empty set forever, the mapping stays blocked and
+  `/health` stays 503.
+- **Events during a pass.** Events accepted while a pass runs are checked
+  again against the index that pass produces; during the initial scan, all of
+  them. Today they are filtered against the old index (an empty one at
+  startup) and their offsets committed.
+- **Bridge fingerprint.** It includes the Operation when Sources address its
+  variables. Today a changed `invocationDelegation` keeps the old REST path.
+- **Event types.** Unknown and `AAS_*` event types are ignored, not a full
+  rescan. A malformed event is logged.
+- **Ingestion.**
+  - The event identity is read without parsing the whole event.
+  - One parse per event is shared by the control path, the value-feed hub and
+    every listener (today 3 + N parses, N = sources on that submodel).
+  - The Kafka control consumer polls batches and commits per batch (today
+    `maxPollRecords=1` and a synchronous commit per record).
+  - SPEC §4.2's lazy parsing then holds.
+- **`/health`.** Ready means the initial scan has completed and the event
+  transport is connected (SPEC §4.4, README). Mapping failures show only in
+  `/management/status`.
+- **Swap.**
+  - The REST path stays registered and answers "unavailable" during a swap;
+    today the caller gets a 404.
+  - The fence is checked before the old bundle is retired, so a fence during
+    the drain no longer leaves the mapping without a bundle.
+- **Cost per pass.** Reverse dependencies are built once per pass, and the
+  conflict checks run only over the changed mappings.
+- **Tests:**
+  - an AID that answers 503 at startup recovers;
+  - an AIMC deleted, or an AID created, during the initial scan;
+  - an SMC sink written at 1 Hz does not reinstall;
+  - a changed `invocationDelegation` reinstalls;
+  - reconcile time at N = 1000.
+
+### H4. Connector boundaries
+
+- **AAS client (`dmp.camel-aas`).**
+  - One URL builder encodes the idShortPath (`Items[0]` fails on every write
+    today).
+  - Every data-plane request carries the repository authorization, shared with
+    discovery (today discovery succeeds and every sink or read gets 401).
+  - SMC/SML sinks are written as ValueOnly, with leaves as text by their
+    declared valueTypes. Check against BaSyx first.
+  - Reads use `sendAsync` with a timeout instead of a new thread per read.
+  - No INFO line per write.
+- **Credentials.** Every credential is bound in the Camel registry, as MQTT's
+  already are: the OPC UA user and password, HTTP Basic, the SNMP community.
+  None goes into a URI. This fixes the encoding bugs (`@`, `&`, `#` in a
+  password) and the clear-text exposure (Deferred: the credential redaction
+  audit).
+- **HTTP.** One option builder for polls, sinks, observation and actions:
+  - automatic retries off; today they are disabled only with `htv_headers`,
+    which contradicts SPEC §5.2;
+  - connect and response timeouts of 30 s, as actions have (today 180 s for
+    sinks);
+  - HTTP/1.1.
+
+  Long polls back off on connect timeouts; SSE gets an idle timeout.
+- **MQTT.**
+  - The reply topic is subscribed once per endpoint, not once per call.
+  - The publish no longer waits behind the subscription under the endpoint
+    lock.
+  - Payloads are decoded as JSON whatever the schema's type (today a scalar
+    schema hands Lua bytes).
+  - The default QoS is decision 2 below.
+- **OPC UA.**
+  - A failed subscription setup deletes the subscription it created and backs
+    off (today it leaks one every 500 ms onto the shared session).
+  - Browse paths are resolved once per session for Read and Call (SPEC §5.2).
+  - NodeIds are parsed without the regex that cuts at `)`.
+  - The device-schema check runs on the first Good sample.
+  - Read and Write time out after 30 s.
+  - Int64 writes are range-checked.
+  - Security is decision 3 below.
+- **SNMP.** Printable UTF-8 octet strings come out as text.
+- **Tests:**
+  - list-index sink and read;
+  - a secured repository;
+  - a password with `@&`;
+  - an HTTP sink to a hung server;
+  - a scalar MQTT source;
+  - a bad NodeId leaves no subscriptions behind;
+  - request/reply with 32 concurrent callers.
+
+### H5. Threads and scale (E4)
+
+- **Evaluations off the consumer thread.** Evaluations leave the Paho, Milo
+  and value-feed threads: a shared pool runs each mapping's evaluations one at
+  a time, and the consumers only accept. Today one slow sink blocks Paho's
+  callback thread (QoS acks, inbound queue of 10), and the value feed runs
+  stalled tasks itself (CallerRuns). This also removes the per-mapping lock.
+- **Polling** runs on one shared scheduler at a fixed rate, not a Timer
+  thread per source.
+- **MQTT.** One client per broker and credentials (from Deferred), carrying
+  each mapping's subscriptions.
+- **PLC4X.** One connection per device (a cached connection manager), not
+  one per tag.
+- **Test:** the capacity profile at N = 1000 with a bound on the thread
+  count.
+
+### H6. The compiler emits route plans directly
+
+`RoutesConfiguration`, the configuration entity classes, `triggerData` and the
+ServiceLoader route-creator registry give way to the compiler's typed plan.
+A mapping is then compiled once per install; today it is compiled twice,
+once for the fingerprint and again when staged. This is the largest change
+and has no behaviour change.
+
+### Documents
+
+- SPEC corrections that still apply after the fixes: the default QoS, OPC UA
+  security, and large integers and bytes in Lua (opaque values). Also:
+  Properties of other valueTypes are blocked today, not passed as lexical text.
+- A LICENSE file (MIT, with the DataBridge's notice); README and SPEC §13
+  already point to it.
+
+### Decisions needed
+
+1. **Coalescing (H5).** Should triggers that arrive while a mapping evaluates
+   collapse into one evaluation (the union of `meta.sources.*.trigger`)?
+   Recommended: yes. Today they already evaluate the same snapshot once per
+   arrival.
+2. **MQTT QoS without `mqv_qos`.** The WoT binding default (0), or today's 2?
+   Recommended: 0, with `aas-model` authoring `mqv_qos` where it matters. QoS
+   0 blocks invoke-only actions, so those need it authored.
+3. **OPC UA security.** Support AID security definitions (Sign,
+   SignAndEncrypt, certificates), or document `None`? Recommended: document
+   now and defer; the lab servers run without security.
+4. **When to do H6.** Before or after the paper's measurements? Recommended:
+   after, unless the double compile shows up in E4's time-to-ready.
+
 ## Planned work
 
 ### 1. Physical stations register `aas-model` exports
@@ -201,9 +435,9 @@ the stations needs the InfluxDB, since the skill mappings write their log
   not implement it yet) for actions longer than a caller's HTTP timeout.
 - **Runtime:** recovery from a lost MQTT event session without a restart;
   multiple DMP instances / HA (today `DMP_MANAGED_AIMC_IDS` partitions
-  manually); a shared MQTT client per broker; per-mapping Lua memory
-  isolation; Lua blob provenance (signing); a credential redaction audit of
-  data-plane log lines and caller error details.
+  manually); per-mapping Lua memory isolation; Lua blob provenance
+  (signing); a credential redaction audit of data-plane log lines and caller
+  error details beyond H4. The shared MQTT client per broker moved to H5.
 - **Verification:** live staging on the lab (Occupy/Halt and granular
   Operations, cross-AAS references, mixed sync+async fan-in); Kafka
   `SASL_SSL` with `PLAIN`; one final performance and capacity evaluation.

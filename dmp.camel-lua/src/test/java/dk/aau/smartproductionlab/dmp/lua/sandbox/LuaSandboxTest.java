@@ -32,7 +32,7 @@ import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaValue;
 
 /**
- * Verifies the whitelisted global environment (SPEC §7.2).
+ * Verifies the whitelisted global environment (SPEC §8).
  */
 class LuaSandboxTest {
 

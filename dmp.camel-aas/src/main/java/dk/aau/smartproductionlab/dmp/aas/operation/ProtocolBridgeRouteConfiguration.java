@@ -27,13 +27,9 @@ package dk.aau.smartproductionlab.dmp.aas.operation;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteConfiguration;
 
 /**
- * AAS Operation invocation route. All
- * interaction specifics ride in {@code triggerData} — the DERIVED caller
- * path ({@code restPath}/{@code restMethod}, DMP v3: the descriptor derives
- * the REST surface by convention and the bridge emits the consumer from it),
- * {@code responseTransformer}, action name and opaque target connector options
- * — exactly what the descriptor emits; no name
- * sniffing anywhere.
+ * AAS Operation invocation route. All interaction specifics ride in {@code triggerData}: the caller's
+ * path ({@code restPath}, served with POST), {@code responseTransformer}, the action name and opaque
+ * target connector options, exactly what the compiler emits; nothing is matched by name.
  */
 public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 
@@ -41,7 +37,6 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public static final String FAN_IN_SOURCES = "fanInSources";
 	public static final String ROUTE_TRIGGER = "bridge";
 	public static final String REST_PATH = "restPath";
-	public static final String REST_METHOD = "restMethod";
 	public static final String RESPONSE_TRANSFORMER = RouteConfiguration.RESPONSE_TRANSFORMER;
 	/** DECLARED command parameter types (AID input DataSchema: name → JSON type). */
 	public static final String PARAMETER_TYPES = "parameterTypes";
@@ -54,10 +49,6 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public static final String CALLER_OUTPUT_TEMPLATES = "callerOutputTemplates";
 	public static final String CALLER_INPUT_SOURCE_PATHS = "callerInputSourcePaths";
 	public static final String CALLER_REPLY_BINDINGS = "callerReplyBindings";
-	/** DECLARED positional reply order (CCI operation output_variable order). */
-	public static final String RESPONSE_ORDER = "responseOrder";
-	public static final String OPERATION_SOURCE_ID = "operationSourceId";
-	public static final String COMMAND_SINK_ID = "commandSinkId";
 	public static final String CALLER_REPLY_SINK_ID = "callerReplySinkId";
 	public static final String COMMAND_SINK_IDS = "commandSinkIds";
 	public static final String COMMAND_SINK_BINDINGS = "commandSinkBindings";
@@ -65,7 +56,6 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public static final String RESPONSE_SOURCE_BINDINGS = RouteConfiguration.RESPONSE_SOURCE_BINDINGS;
 	public static final String RESPONSE_SINK_BINDINGS = RouteConfiguration.RESPONSE_SINK_BINDINGS;
 	public static final String EXPLICIT_RESPONSE_MAPPING = "explicitResponseMapping";
-	public static final String DEFAULT_REST_METHOD = "POST";
 
 	public ProtocolBridgeRouteConfiguration(RouteConfiguration configuration) {
 		super(configuration);
@@ -79,11 +69,6 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public String getRestPath() {
 		Object value = getTriggerData().get(REST_PATH);
 		return value == null ? null : String.valueOf(value);
-	}
-
-	public String getRestMethod() {
-		Object value = getTriggerData().get(REST_METHOD);
-		return value == null ? DEFAULT_REST_METHOD : String.valueOf(value);
 	}
 
 	public String getAction() {
@@ -101,7 +86,6 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 		return typeMap(RESPONSE_TYPES);
 	}
 
-	/** Old standalone descriptors used the device types for both boundaries. */
 	/** The Operation's identity: submodel ID, idShort path, REST path, skill and AAS. */
 	public java.util.Map<String, String> getOperationIdentity() {
 		java.util.Map<String, String> tags = new java.util.LinkedHashMap<>();
@@ -146,8 +130,7 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	}
 
 	public java.util.Map<String, String> getCallerResponseTypes() {
-		return getTriggerData().containsKey(CALLER_RESPONSE_TYPES)
-				? typeMap(CALLER_RESPONSE_TYPES) : getResponseTypes();
+		return typeMap(CALLER_RESPONSE_TYPES);
 	}
 
 	public java.util.List<String> getParameterRequired() {
@@ -172,40 +155,12 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 		return list.stream().filter(java.util.Objects::nonNull).map(String::valueOf).toList();
 	}
 
-	/** Legacy `responseOrder` key used before caller and server order were separated. */
-	public java.util.List<String> getResponseOrder() {
-		Object value = getTriggerData().get(RESPONSE_ORDER);
-		if (!(value instanceof java.util.List<?> list)) {
-			return java.util.List.of();
-		}
-		java.util.List<String> out = new java.util.ArrayList<>();
-		for (Object entry : list) {
-			if (entry != null) {
-				out.add(String.valueOf(entry));
-			}
-		}
-		return out;
-	}
-
 	public java.util.List<String> getCallerOutputOrder() {
-		Object value = getTriggerData().get("callerOutputOrder");
-		if (!(value instanceof java.util.List<?> list)) {
-			return getResponseOrder();
-		}
-		return list.stream().filter(java.util.Objects::nonNull).map(String::valueOf).toList();
-	}
-
-	public String getOperationSourceId() {
-		return stringValue(OPERATION_SOURCE_ID);
-	}
-
-	public String getCommandSinkId() {
-		return stringValue(COMMAND_SINK_ID);
+		return stringList("callerOutputOrder");
 	}
 
 	public String getCallerReplySinkId() {
-		String id = stringValue(CALLER_REPLY_SINK_ID);
-		return id == null ? null : id;
+		return stringValue(CALLER_REPLY_SINK_ID);
 	}
 
 	public java.util.List<String> getCommandSinkIds() {

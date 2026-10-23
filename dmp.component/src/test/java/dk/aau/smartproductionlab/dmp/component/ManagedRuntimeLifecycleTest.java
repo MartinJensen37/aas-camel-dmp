@@ -204,7 +204,7 @@ class ManagedRuntimeLifecycleTest {
 	private static ManagedRuntimeSettings settings(int port) {
 		return new ManagedRuntimeSettings(URI.create("http://127.0.0.1:" + port + "/repo"), null,
 				new dk.aau.smartproductionlab.dmp.management.repository.KafkaControlEventRouteBuilder.Settings(
-						"127.0.0.1:9092", "aas-control", "dmp-control", Set.of()), Set.of(),
+						"127.0.0.1:9092", "aas-control", "dmp-control"), Set.of(),
 				8, 8, 2, 10_000, Duration.ofSeconds(1), Duration.ofSeconds(1), 10, 4);
 	}
 
@@ -240,7 +240,7 @@ class ManagedRuntimeLifecycleTest {
 		List<String> lifecycle;
 		boolean failControlRoute;
 		boolean failControlLinkage;
-		Runtime() { super(new RoutesConfiguration()); }
+		Runtime() { super(); }
 		@Override public void startComponent() { lifecycle.add("component-start"); }
 		@Override public void addRuntimeRoutes(RouteBuilder routes) {
 			lifecycle.add("control-route");
@@ -251,7 +251,7 @@ class ManagedRuntimeLifecycleTest {
 	}
 
 	private static final class ActualRuntime extends DmpComponent {
-		ActualRuntime() { super(new RoutesConfiguration()); }
+		ActualRuntime() { super(); }
 		List<String> routeIds() { return camelContext.getRoutes().stream().map(route -> route.getRouteId()).toList(); }
 	}
 }

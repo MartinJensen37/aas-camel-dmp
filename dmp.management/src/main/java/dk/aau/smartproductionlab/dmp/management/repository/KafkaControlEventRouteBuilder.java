@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: MIT */
 package dk.aau.smartproductionlab.dmp.management.repository;
 
-import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -31,7 +30,7 @@ public final class KafkaControlEventRouteBuilder extends RouteBuilder {
 	private final MappingReconciliationService reconciliation;
 	private final String clientId = "dmp-control-" + java.util.UUID.randomUUID();
 
-	public record Settings(String brokers, String topic, String groupId, Set<String> dataPlaneGroupIds) {
+	public record Settings(String brokers, String topic, String groupId) {
 		public Settings {
 			if (brokers == null || !BROKER_LIST.matcher(brokers).matches()
 					|| java.util.Arrays.stream(brokers.split(",")).anyMatch(broker -> {
@@ -50,8 +49,6 @@ public final class KafkaControlEventRouteBuilder extends RouteBuilder {
 			}
 			topic = String.join(",", names);
 			if (groupId == null || !KAFKA_NAME.matcher(groupId).matches()) throw new IllegalArgumentException("valid control group ID is required");
-			dataPlaneGroupIds = dataPlaneGroupIds == null ? Set.of() : Set.copyOf(dataPlaneGroupIds);
-			if (dataPlaneGroupIds.contains(groupId)) throw new IllegalArgumentException("control group must be distinct from data-plane groups");
 		}
 		public List<String> topics() { return List.of(topic.split(",")); }
 	}

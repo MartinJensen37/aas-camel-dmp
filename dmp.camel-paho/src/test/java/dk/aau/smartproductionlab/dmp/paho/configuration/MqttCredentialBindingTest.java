@@ -57,15 +57,16 @@ class MqttCredentialBindingTest {
 	}
 
 	@Test
-	void mqtt5EndpointsResolveBoundCredentialsByName() throws Exception {
+	void mqtt5EndpointsReferenceBoundCredentialsByName() throws Exception {
 		try (var context = new DefaultCamelContext()) {
 			var credential = new dk.aau.smartproductionlab.dmp.core.security.BoundCredential("alice", SECRET);
 			credential.bind(context);
 			context.start();
 			var endpoint = context.getEndpoint("paho-mqtt5-inout:command?brokerUrl=tcp://broker:1883&clientId=dmp-op"
 					+ "&replyTopic=reply&credentials=" + credential.name(), MqttV5Endpoint.class);
-			assertEquals("alice", endpoint.getUserName());
-			assertEquals(SECRET, endpoint.getPassword());
+			assertEquals(credential.name(), endpoint.getCredentials());
+			assertEquals("alice", context.getRegistry().lookupByName(endpoint.getCredentials() + ".user"));
+			assertEquals(SECRET, context.getRegistry().lookupByName(endpoint.getCredentials() + ".password"));
 			assertFalse(endpoint.getEndpointUri().contains(SECRET));
 			credential.close();
 			assertNull(context.getRegistry().lookupByName(credential.name() + ".password"));

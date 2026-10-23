@@ -15,8 +15,8 @@ import org.apache.camel.util.PropertiesHelper;
 /**
  * {@code dmp-plc4x:<driver>://<host>:<port>?tag.<name>=<address>&<driver options>}: camel-plc4x
  * with acknowledged writes and checked reads (see {@link DmpPlc4xEndpoint}). URIs take the same
- * tag, trigger and period parameters as {@code plc4x:}; every other parameter that is not a Camel
- * endpoint option is a PLC4X driver option and becomes part of the connection string.
+ * tag parameters as {@code plc4x:}; every other parameter that is not a Camel endpoint option is a
+ * PLC4X driver option and becomes part of the connection string.
  */
 @org.apache.camel.spi.annotations.Component("dmp-plc4x")
 public class DmpPlc4xComponent extends Plc4XComponent {
@@ -30,8 +30,6 @@ public class DmpPlc4xComponent extends Plc4XComponent {
 		Map<String, Object> declared = getAndRemoveOrResolveReferenceParameter(parameters, "tags", Map.class);
 		if (declared != null) declared.forEach((name, address) -> tags.put(name, String.valueOf(address)));
 		PropertiesHelper.extractProperties(parameters, "tag.").forEach((name, address) -> tags.put(name, String.valueOf(address)));
-		String trigger = getAndRemoveOrResolveReferenceParameter(parameters, "trigger", String.class);
-		Integer period = getAndRemoveOrResolveReferenceParameter(parameters, "period", Integer.class);
 
 		StringBuilder connection = new StringBuilder(remaining);
 		String separator = remaining.contains("?") ? "&" : "?";
@@ -45,8 +43,6 @@ public class DmpPlc4xComponent extends Plc4XComponent {
 
 		DmpPlc4xEndpoint endpoint = new DmpPlc4xEndpoint(uri, this, connection.toString());
 		endpoint.setTags(tags);
-		if (trigger != null) endpoint.setTrigger(trigger);
-		if (period != null) endpoint.setPeriod(period);
 		setProperties(endpoint, parameters);
 		return endpoint;
 	}

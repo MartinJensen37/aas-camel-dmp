@@ -39,7 +39,7 @@ import dk.aau.smartproductionlab.dmp.management.repository.PublishedModels;
 /** Executes authored wire fixtures through real repository, builders, Lua, REST and HTTP I/O. */
 class ManagedModelBehaviorTest {
 	private static final class Runtime extends DmpComponent {
-		Runtime() { super(new RoutesConfiguration()); }
+		Runtime() { super(); }
 		int endpoints() { return camelContext.getEndpoints().size(); }
 		void listener(int port) throws Exception {
 			camelContext.addRoutes(new RouteBuilder() {

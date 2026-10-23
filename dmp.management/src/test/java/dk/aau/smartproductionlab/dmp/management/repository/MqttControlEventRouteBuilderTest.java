@@ -75,7 +75,7 @@ class MqttControlEventRouteBuilderTest {
 	}
 
 	private static MappingReconciliationService reconciliation() {
-		return new MappingReconciliationService(new DmpComponent(new RoutesConfiguration()),
+		return new MappingReconciliationService(new DmpComponent(),
 				() -> new RepositoryDiscovery.Scan(true, "", Set.of(), Set.of(), Map.of(), Map.of(), List.of()),
 				candidate -> RoutesConfiguration::new, 8, 8, 1000);
 	}

@@ -34,30 +34,13 @@ import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSinkConfigura
  *
  */
 public class AASDatasinkConfiguration extends DataSinkConfiguration {
-	private static final String PROPERTY_TYPE = "PROPERTY";
-
-	private String type;
 	private String submodelEndpoint;
 	private String idShortPath;
-	public AASDatasinkConfiguration() {}
-	
+
 	public AASDatasinkConfiguration(String submodelEndpoint, String idShortPath, String uniqueId) {
 		super(uniqueId);
-		this.type = PROPERTY_TYPE;
 		this.submodelEndpoint = submodelEndpoint;
 		this.idShortPath = idShortPath;
-	}
-	
-	public AASDatasinkConfiguration(String submodelEndpoint, String idShortPath) {
-		this(submodelEndpoint, idShortPath, null);
-	}
-
-	public String getType() {
-		return type;
-	}
-
-	public void setType(String type) {
-		this.type = type;
 	}
 
 	public String getSubmodelEndpoint() {

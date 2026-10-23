@@ -156,7 +156,7 @@ public class AASEndpoint extends DefaultEndpoint {
 	/**
 	 * When configured, extracts the SinkId field (valuePath) out of the JSON
 	 * message body so each sink writes only its own value. The valuePath is a
-	 * JSON Pointer (SPEC §6.5.4), so both a bare key ({@code "PackMLState"})
+	 * JSON Pointer (SPEC §5.4), so both a bare key ({@code "PackMLState"})
 	 * and a nested pointer ({@code "$.SetPoint"}) work; absent → write the body
 	 * as-is (coarse sink).
 	 */
@@ -174,7 +174,7 @@ public class AASEndpoint extends DefaultEndpoint {
 		}
 		Object value = field.get();
 		if (value == dk.aau.smartproductionlab.dmp.core.util.JsonPointer.JSON_NULL) {
-			// present-but-null leaf: write an explicit JSON null (T1.12)
+			// present-but-null leaf: write an explicit JSON null
 			return null;
 		}
 		// collections are returned as the JAVA OBJECT so the DotAasV3 writer

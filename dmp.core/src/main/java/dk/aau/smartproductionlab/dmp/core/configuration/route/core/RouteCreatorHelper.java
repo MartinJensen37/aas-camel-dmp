@@ -24,11 +24,8 @@
  ******************************************************************************/
 package dk.aau.smartproductionlab.dmp.core.configuration.route.core;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSinkConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSourceConfiguration;
@@ -43,7 +40,7 @@ public class RouteCreatorHelper {
 
 	/**
 	 * Resolves one datasource endpoint, failing with a contextual message when
-	 * the id is unknown (T2.4: the former bare NPE named nothing).
+	 * the id is unknown.
 	 */
 	public static String getDataSourceEndpoint(RoutesConfiguration routesConfiguration, String dataSourceId,
 			String routeLabel) {
@@ -54,17 +51,6 @@ public class RouteCreatorHelper {
 					"route " + routeLabel + " references unknown datasource '" + dataSourceId + "'");
 		}
 		return config.getConnectionURI();
-	}
-
-	/**
-	 * Resolves a list of datasource ids to their endpoint URIs (fan-in, SPEC
-	 * §6.4). The first entry is the route trigger; the rest are aggregated in.
-	 */
-	public static String[] getDataSourceEndpoints(RoutesConfiguration routesConfiguration, List<String> dataSourceIdList,
-			String routeLabel) {
-		return dataSourceIdList.stream()
-				.map(id -> getDataSourceEndpoint(routesConfiguration, id, routeLabel))
-				.toArray(String[]::new);
 	}
 
 	public static String getDataSinkEndpoint(RoutesConfiguration routesConfiguration, String dataSinkId, String routeLabel) {
@@ -100,56 +86,6 @@ public class RouteCreatorHelper {
 					return config.getConnectionURI();
 				})
 				.toArray(String[]::new);
-	}
-
-	public static Map<String, String[]> getDataSinkMapping(RoutesConfiguration routesConfiguration,
-			Map<String, String[]> datasinkMappingConfiguration, String routeLabel) {
-		if (datasinkMappingConfiguration == null || datasinkMappingConfiguration.isEmpty()) {
-			return null;
-		}
-		Set<String> dataSinkIds = datasinkMappingConfiguration.keySet();
-
-		Map<String, String> resolvedDataSinkEndpoints = new java.util.LinkedHashMap<>();
-		for (String dataSinkId : dataSinkIds) {
-			resolvedDataSinkEndpoints.put(dataSinkId,
-					getDataSinkEndpoint(routesConfiguration, dataSinkId, routeLabel));
-		}
-
-		return resolvedDataSinkEndpoints.entrySet().stream()
-				.collect(Collectors.toMap(Map.Entry::getValue,
-						entry -> getDataTransformerEndpoints(routesConfiguration,
-								Arrays.asList(asStringArray(datasinkMappingConfiguration.get(entry.getKey()))),
-								routeLabel)));
-	}
-
-	/** Retains sink identity when several fine-grained sinks share one device URI. */
-	public static Map<String, String[]> getDataSinkMappingById(RoutesConfiguration routesConfiguration,
-			Map<String, String[]> mapping, String routeLabel) {
-		if (mapping == null || mapping.isEmpty()) {
-			return null;
-		}
-		Map<String, String[]> resolved = new java.util.LinkedHashMap<>();
-		mapping.forEach((sinkId, transformers) -> {
-			getDataSinkEndpoint(routesConfiguration, sinkId, routeLabel);
-			resolved.put(sinkId, getDataTransformerEndpoints(routesConfiguration,
-					Arrays.asList(asStringArray(transformers)), routeLabel));
-		});
-		return resolved;
-	}
-
-	/**
-	 * Tolerates list-typed mapping values (e.g. from lenient JSON
-	 * deserialization) so a misconfigured transformer sequence fails with a
-	 * named-route error instead of a raw ClassCastException (T2.4).
-	 */
-	private static String[] asStringArray(Object value) {
-		if (value instanceof String[] array) {
-			return array;
-		}
-		if (value instanceof List<?> list) {
-			return list.stream().map(String::valueOf).toArray(String[]::new);
-		}
-		return new String[0];
 	}
 
 	/**

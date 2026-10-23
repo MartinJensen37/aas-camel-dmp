@@ -61,8 +61,6 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 	private long pollingIntervalMs;
 	/** Typed connector kind for sources whose transport body needs adaptation. */
 	private String sourceKind;
-	/** Resolved source mode, such as {@code poll} or {@code event}. */
-	private String mode;
 	/** Connector-specific filter options; never interpreted as a Camel URI. */
 	private Map<String, Object> eventFilter;
 	/** Whether the source triggers its mapping and how its value is obtained; absent → {@link Evaluation#ON_UPDATE}. */
@@ -96,7 +94,7 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 
 	/**
 	 * The AIMC SourceId this source contributes to the {@code sources} map
-	 * (SPEC §6.4). Mirrors the sink-side {@code valuePath}: the key under
+	 * (SPEC §6). Mirrors the sink-side {@code valuePath}: the key under
 	 * which this source's payload is placed for the Lua transform.
 	 */
 	public String getSourceId() {
@@ -156,14 +154,6 @@ public abstract class DataSourceConfiguration extends RouteEntity {
 
 	public void setSourceKind(String sourceKind) {
 		this.sourceKind = sourceKind;
-	}
-
-	public String getMode() {
-		return mode;
-	}
-
-	public void setMode(String mode) {
-		this.mode = mode;
 	}
 
 	public Map<String, Object> getEventFilter() {

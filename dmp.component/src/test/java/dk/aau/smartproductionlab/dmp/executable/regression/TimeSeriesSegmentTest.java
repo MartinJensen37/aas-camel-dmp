@@ -78,7 +78,7 @@ class TimeSeriesSegmentTest {
 		});
 		influx.start();
 		repository = new FakeAasRepository().put(variables()).put(resource("timeseries/parameters.json")).put(data());
-		runtime = new DmpComponent(new RoutesConfiguration(), Duration.ofSeconds(4)) { };
+		runtime = new DmpComponent(Duration.ofSeconds(4)) { };
 		runtime.startComponent();
 		runtime.runtimeContext().getComponent(DmpInfluxDb2Component.SCHEME, DmpInfluxDb2Component.class).configure(settings());
 	}

@@ -62,11 +62,6 @@ class AffordancePipelineTest extends CamelTestSupport {
 		@Override public String getConnectionURI() { return "direct:" + getUniqueId(); }
 	}
 
-	static final class Transformer extends DataTransformerConfiguration {
-		Transformer() { super("modeMap"); }
-		@Override public String getConnectionURI() { return "direct:modeMap"; }
-	}
-
 	private static Sink sink(String id, String key, String path, String group, Object schema) {
 		return new Sink(id, key, path, group, schema, NESTED, "mock:device");
 	}
@@ -75,7 +70,7 @@ class AffordancePipelineTest extends CamelTestSupport {
 	protected RouteBuilder createRouteBuilder() {
 		return new RouteBuilder() {
 			@Override public void configure() {
-				RoutesConfiguration configs = new RoutesConfiguration(List.of(), List.of(new Transformer()), List.of(
+				RoutesConfiguration configs = new RoutesConfiguration(List.of(), List.of(), List.of(
 						sink("uuid", "Uuid", "$.Part.Uuid", "device/action",
 								Map.of("type", "string")),
 						sink("mode", "Mode", "$.Part.Mode", "device/action",
@@ -108,58 +103,49 @@ class AffordancePipelineTest extends CamelTestSupport {
 						List.of(), List.of("uuid", "other", "mode", "count"));
 				FanOut.apply(from("direct:complete"), configs, complete, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, complete.getDatasinks(), "complete"),
-						null, "complete", AffordanceValidation.Mode.ON);
+						"complete", AffordanceValidation.Mode.ON);
 
 				RouteConfiguration incomplete = new RouteConfiguration("execution-policy", List.of(),
 						List.of(), List.of("solo"));
 				FanOut.apply(from("direct:incomplete"), configs, incomplete, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, incomplete.getDatasinks(), "incomplete"),
-						null, "incomplete", AffordanceValidation.Mode.ON);
+						"incomplete", AffordanceValidation.Mode.ON);
 				FanOut.apply(from("direct:report"), configs, incomplete, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, incomplete.getDatasinks(), "report"),
-						null, "report", AffordanceValidation.Mode.REPORT);
-				RouteConfiguration mapped = new RouteConfiguration("execution-policy", List.of(),
-						List.of(), List.of("uuid", "mode", "count"),
-						Map.of("mode", new String[] {"modeMap"}));
-				FanOut.apply(from("direct:mapped"), configs, mapped, new String[0],
-						RouteCreatorHelper.getDataSinkEndpoints(configs, mapped.getDatasinks(), "mapped"),
-						RouteCreatorHelper.getDataSinkMappingById(configs,
-								mapped.getDatasinkMappingConfiguration(), "mapped"),
-						"mapped", AffordanceValidation.Mode.ON);
-				from("direct:modeMap").setBody().constant(Map.of("Mode", "AUTO"));
+						"report", AffordanceValidation.Mode.REPORT);
 				RouteConfiguration whole = new RouteConfiguration("execution-policy", List.of(),
 						List.of(), List.of("whole"));
 				FanOut.apply(from("direct:whole"), configs, whole, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, whole.getDatasinks(), "whole"),
-						null, "whole", AffordanceValidation.Mode.ON);
+						"whole", AffordanceValidation.Mode.ON);
 				RouteConfiguration numeric = new RouteConfiguration("execution-policy", List.of(),
 						List.of(), List.of("numericString"));
 				FanOut.apply(from("direct:numeric"), configs, numeric, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, numeric.getDatasinks(), "numeric"),
-						null, "numeric", AffordanceValidation.Mode.ON);
+						"numeric", AffordanceValidation.Mode.ON);
 				RouteConfiguration wholeAndMember = new RouteConfiguration("execution-policy", List.of(),
 						List.of(), List.of("wholeGroup", "uuid"));
 				FanOut.apply(from("direct:wholeAndMember"), configs, wholeAndMember, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, wholeAndMember.getDatasinks(), "wholeAndMember"),
-						null, "wholeAndMember", AffordanceValidation.Mode.ON);
+						"wholeAndMember", AffordanceValidation.Mode.ON);
 					RouteConfiguration nullArrayOverlap = new RouteConfiguration("execution-policy", List.of(),
 						List.of(), List.of("arrayWhole", "arrayMember"));
 				FanOut.apply(from("direct:nullArrayOverlap"), configs, nullArrayOverlap, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, nullArrayOverlap.getDatasinks(), "nullArrayOverlap"),
-						null, "nullArrayOverlap", AffordanceValidation.Mode.ON);
+						"nullArrayOverlap", AffordanceValidation.Mode.ON);
 				RouteConfiguration arrayMembers = new RouteConfiguration("execution-policy", List.of(),
 						List.of(), List.of("arraySecond", "unrelatedGroup", "arrayMember"));
 				for (AffordanceValidation.Mode mode : AffordanceValidation.Mode.values()) {
 					String routeId = "arrayMembers" + mode;
 					FanOut.apply(from("direct:" + routeId), configs, arrayMembers, new String[0],
 							RouteCreatorHelper.getDataSinkEndpoints(configs, arrayMembers.getDatasinks(), routeId),
-							null, routeId, mode);
+							routeId, mode);
 				}
 				RouteConfiguration memberAndWhole = new RouteConfiguration("execution-policy", List.of(),
 						List.of(), List.of("uuid", "wholeGroup", "other"));
 				FanOut.apply(from("direct:memberAndWhole"), configs, memberAndWhole, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, memberAndWhole.getDatasinks(), "memberAndWhole"),
-						null, "memberAndWhole", AffordanceValidation.Mode.ON);
+						"memberAndWhole", AffordanceValidation.Mode.ON);
 				RouteConfiguration isolated = new RouteConfiguration("execution-policy", List.of(),
 						List.of(), List.of("mutator", "observer"));
 				var isolatedRoute = from("direct:isolated")
@@ -169,7 +155,7 @@ class AffordancePipelineTest extends CamelTestSupport {
 						.setBody().constant(Map.of("First", 1, "Second", 2));
 				FanOut.apply(isolatedRoute, configs, isolated, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, isolated.getDatasinks(), "isolated"),
-						null, "isolated", AffordanceValidation.Mode.ON);
+						"isolated", AffordanceValidation.Mode.ON);
 				from("direct:mutatingSink").process(exchange -> {
 					exchange.getMessage().setHeader("branch", "poison");
 					exchange.setProperty("branch", "poison");
@@ -188,7 +174,7 @@ class AffordancePipelineTest extends CamelTestSupport {
 						List.of(), List.of("order1", "order2", "order3"));
 				FanOut.apply(from("direct:ordered"), configs, ordered, new String[0],
 						RouteCreatorHelper.getDataSinkEndpoints(configs, ordered.getDatasinks(), "ordered"),
-						null, "ordered", AffordanceValidation.Mode.ON);
+						"ordered", AffordanceValidation.Mode.ON);
 
 				RoutesConfiguration triggerConfigs = new RoutesConfiguration(
 						List.of(new TriggerSource("position", "Position", Evaluation.CACHED),
@@ -220,16 +206,6 @@ class AffordancePipelineTest extends CamelTestSupport {
 			triggerFanIn.close();
 			triggerFanIn = null;
 		}
-	}
-
-	@Test
-	void sinkTransformerRunsBeforeJoiningSiblingContributions() throws Exception {
-		MockEndpoint device = getMockEndpoint("mock:device");
-		device.expectedMessageCount(1);
-		template.sendBody("direct:mapped", Map.of("Uuid", "a", "Mode", "MANUAL", "Count", 2));
-		device.assertIsSatisfied();
-		assertEquals(Map.of("Part", Map.of("Uuid", "a", "Mode", "AUTO"), "Count", 2),
-				device.getExchanges().get(0).getMessage().getBody());
 	}
 
 	@Test

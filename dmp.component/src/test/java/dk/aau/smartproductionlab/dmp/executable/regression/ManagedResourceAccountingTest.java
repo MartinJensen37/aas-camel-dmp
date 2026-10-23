@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 class ManagedResourceAccountingTest {
 	private static final byte[] SCRIPT = "function aimc_main(sources) return sources end".getBytes(StandardCharsets.UTF_8);
 	private static final class Runtime extends DmpComponent implements AutoCloseable {
-		Runtime() throws Exception { super(new RoutesConfiguration()); camelContext.start(); }
+		Runtime() throws Exception { super(); camelContext.start(); }
 		CamelContext context() { return camelContext; }
 		@Override public void close() { stopComponent(); }
 	}
@@ -37,7 +37,6 @@ class ManagedResourceAccountingTest {
 	}
 	private static LuaTransformerConfiguration lua(String id, LuaCompiledSource source) {
 		var transformer = new LuaTransformerConfiguration(id, source);
-		transformer.setKeyedInput(true);
 		return transformer;
 	}
 	private static LuaCompiledSource source() { return LuaCompiledSource.fromBytes(SCRIPT, "accounting", 256); }

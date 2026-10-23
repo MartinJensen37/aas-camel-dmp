@@ -36,7 +36,6 @@ import org.eclipse.milo.opcua.stack.core.types.UaEnumeratedType;
 import org.eclipse.milo.opcua.stack.core.types.UaStructuredType;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
-import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
@@ -47,87 +46,16 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.ULong;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UNumber;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
- * Canonical OPC UA payload forms (SPEC §10.6, ADR-007 — normalize at the
- * protocol boundary).
- *
- * <p>
- * The canonical JSON value handed to the Lua blob for an OPC UA source is:
- *
- * <pre>
- * { "nodeId": &lt;id&gt;, "value": &lt;typed&gt;, "status": &lt;code&gt;, "timestamp": &lt;time&gt; }
- * </pre>
- *
- * For the write direction, a canonical JSON object ({@code {"value": …}}) is
- * converted back into a Milo {@link Variant} so the milo-client producer can
- * write it (SPEC §10.2, MQTT → OPC UA commands).
+ * The JSON form of OPC UA values (ADR-007: normalize at the protocol boundary). A source hands Lua the
+ * variable's value itself; status codes and timestamps are not passed on (SPEC §5.2).
  *
  * @author aas-camel-dmp
  */
 public final class OpcUaCanonical {
 
-	/** Exchange header carrying the node id (used by the canonical converters). */
-	public static final String NODE_ID_HEADER = "CamelMiloNodeId";
-	/** Explicit opt-in for decoding the canonical envelope at a route boundary. */
-	public static final String CANONICAL_HEADER = "CamelOpcUaCanonical";
-
-	private static final ObjectMapper MAPPER = new ObjectMapper();
-
 	private OpcUaCanonical() {
 		throw new IllegalStateException("Utility class");
-	}
-
-	/**
-	 * Converts a Milo {@link DataValue} to the canonical JSON map.
-	 *
-	 * @param value  the monitored/read value
-	 * @param nodeId node identifier or {@code null} (optional metadata)
-	 */
-	public static Map<String, Object> toCanonical(DataValue value, String nodeId) {
-		Map<String, Object> canonical = new LinkedHashMap<>();
-		if (nodeId != null) {
-			canonical.put("nodeId", nodeId);
-		}
-
-		Variant variant = value.getValue();
-		canonical.put("value", sanitize(variant != null ? variant.getValue() : null));
-
-		StatusCode status = value.getStatusCode();
-		canonical.put("status", status != null ? status.getValue() : null);
-
-		DateTime sourceTime = value.getSourceTime();
-		DateTime serverTime = value.getServerTime();
-		DateTime time = sourceTime != null && !sourceTime.isNull() ? sourceTime : serverTime;
-		canonical.put("timestamp", time != null && !time.isNull() ? time.getJavaInstant().toString() : null);
-
-		return canonical;
-	}
-
-	/** Serializes a canonical map to JSON. */
-	public static String toCanonicalJson(DataValue value, String nodeId) {
-		try {
-			return MAPPER.writeValueAsString(toCanonical(value, nodeId));
-		} catch (JsonProcessingException e) {
-			throw new IllegalArgumentException("Cannot serialize OPC UA value to canonical JSON", e);
-		}
-	}
-
-	/**
-	 * Produces the Milo {@link Variant} a milo-client producer writes from a
-	 * canonical {@code value} (SPEC §10.6).
-	 */
-	public static Variant toVariant(Object canonicalValue) {
-		return canonicalValue == null ? Variant.ofNull() : new Variant(canonicalValue);
-	}
-
-	/**
-	 * Keeps JSON-friendly values as-is; binary payloads become base64 strings.
-	 */
-	static Object sanitize(Object raw) {
-		return jsonValue(raw);
 	}
 
 	/**

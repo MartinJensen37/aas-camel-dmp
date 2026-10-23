@@ -40,10 +40,6 @@ public class HTTPRequest {
 		send("PATCH", url, content);
 	}
 
-	public static void putRequest(String url, String content) throws IOException {
-		send("PUT", url, content);
-	}
-
 	private static void send(String method, String url, String content) throws IOException {
 		HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(30))
 				.header("Content-type", "application/json")

@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 class ManagedRuntimeAccountingStatusTest {
 	@AfterEach void reset() { ManagedRuntimeStatus.reset(); }
 	private static final class Runtime extends DmpComponent implements AutoCloseable {
-		Runtime() throws Exception { super(new RoutesConfiguration()); camelContext.start(); }
+		Runtime() throws Exception { super(); camelContext.start(); }
 		@Override public void close() { stopComponent(); }
 	}
 	private static RoutesConfiguration configuration(DataTransformerConfiguration transformer) {

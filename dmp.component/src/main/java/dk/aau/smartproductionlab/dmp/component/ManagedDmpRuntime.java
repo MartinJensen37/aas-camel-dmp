@@ -38,7 +38,7 @@ public final class ManagedDmpRuntime implements AutoCloseable {
 
 	/** {@code influx} is the InfluxDB of TimeSeries segments, or {@code null} when none is configured. */
 	public ManagedDmpRuntime(ManagedRuntimeSettings settings, InfluxSettings influx) {
-		this(settings, influx, new DmpComponent(new RoutesConfiguration()), discovery(settings, influx),
+		this(settings, influx, new DmpComponent(), discovery(settings, influx),
 				(managedSettings, service) -> managedSettings.mqtt() != null
 						? new MqttControlEventRouteBuilder(managedSettings.mqtt(), service)
 						: new KafkaControlEventRouteBuilder(managedSettings.kafka(), service));

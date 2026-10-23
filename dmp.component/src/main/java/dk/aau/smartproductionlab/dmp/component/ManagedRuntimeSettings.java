@@ -92,7 +92,7 @@ public record ManagedRuntimeSettings(URI repositoryUri, String authorization,
 		switch (transport) {
 		case "kafka" -> kafka = new KafkaControlEventRouteBuilder.Settings(
 				required(environment, "DMP_MANAGED_KAFKA_BROKERS"), required(environment, "DMP_MANAGED_CONTROL_TOPIC"),
-				required(environment, "DMP_MANAGED_CONTROL_GROUP_ID"), commaSet(environment.get("DMP_MANAGED_DATA_PLANE_GROUP_IDS")));
+				required(environment, "DMP_MANAGED_CONTROL_GROUP_ID"));
 		case "mqtt" -> {
 			URI broker;
 			try { broker = URI.create(required(environment, "DMP_MANAGED_MQTT_BROKER_URI")); }
@@ -141,16 +141,6 @@ public record ManagedRuntimeSettings(URI repositoryUri, String authorization,
 
 	private static long longValue(Map<String, String> environment, String name, long fallback) {
 		return environment.containsKey(name) ? Long.parseLong(environment.get(name).trim()) : fallback;
-	}
-
-	private static Set<String> commaSet(String raw) {
-		if (raw == null || raw.isBlank()) return Set.of();
-		Set<String> values = new LinkedHashSet<>();
-		for (String value : raw.split(",")) {
-			String item = value.trim();
-			if (item.isEmpty() || !values.add(item)) throw new IllegalArgumentException("managed list contains a blank or duplicate value");
-		}
-		return Set.copyOf(values);
 	}
 
 	private static Set<String> aimcIds(String raw) {

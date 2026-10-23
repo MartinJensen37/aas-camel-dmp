@@ -28,7 +28,6 @@ import java.net.URISyntaxException;
 import java.util.List;
 import org.apache.hc.core5.net.URIBuilder;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSourceConfiguration;
-import dk.aau.smartproductionlab.dmp.plc4x.configuration.deserializer.OptionDeserializer;
 
 /**
  * An implementation of PLC4X consumer configuration
@@ -43,18 +42,18 @@ public class Plc4xDataSourceConfiguration extends DataSourceConfiguration {
 	
 	private String driver;
 	private String servicePath = "";
-	private Object options;
+	private List<Option> options = List.of();
 	private List<Tag> tags;
 
 	public Plc4xDataSourceConfiguration() {
 	}
 
 	public Plc4xDataSourceConfiguration(String uniqueId, String serverUrl, int serverPort, String driver,
-			String servicePath, Object options, List<Tag> tags) {
+			String servicePath, List<Option> options, List<Tag> tags) {
 		super(uniqueId, serverUrl, serverPort);
 		this.driver = driver;
 		this.servicePath = servicePath;
-		this.options = options;
+		this.options = options == null ? List.of() : List.copyOf(options);
 		this.tags = tags;
 	}
 	
@@ -67,7 +66,7 @@ public class Plc4xDataSourceConfiguration extends DataSourceConfiguration {
 	}
 
 	public List<Option> getOptions() {
-		return new OptionDeserializer().deserialize(options);
+		return options;
 	}
 
 	public List<Tag> getTags() {

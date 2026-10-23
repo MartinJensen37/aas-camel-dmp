@@ -42,7 +42,7 @@ import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
 
 /**
- * Contract test matrix for the Lua transformation blob (SPEC §8.4). These
+ * Contract test matrix for the Lua transformation blob (SPEC §8). These
  * tests exercise the same blob files that run in the DMP.
  */
 class LuaContractTest {

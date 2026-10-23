@@ -47,12 +47,4 @@ public abstract class DataTransformerConfiguration extends RouteEntity {
 		super(uniqueId);
 	}
 
-	/**
-	 * The Lua envelope key (the AIMC SourceId the blob's {@code sources}
-	 * table is keyed by) — only the Lua transformer carries it; the base
-	 * contract returns {@code null}.
-	 */
-	public String getSourceKeys() {
-		return null;
-	}
 }

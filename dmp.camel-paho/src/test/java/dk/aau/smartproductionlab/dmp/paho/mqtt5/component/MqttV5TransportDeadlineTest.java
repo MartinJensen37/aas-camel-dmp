@@ -87,10 +87,11 @@ class MqttV5TransportDeadlineTest {
 			assertTrue(fixture.broker.pings.get() > 0, "peer answered keepalive while withholding publication ACK");
 			fixture.assertRetired();
 			fixture.producer.start();
-			assertThrows(IllegalStateException.class,
-					() -> fixture.producer.process(fixture.request("unknown-outcome")));
-			assertFalse(fixture.broker.secondPublication.await(1_500, TimeUnit.MILLISECONDS), "no QoS replay after restart");
-			assertEquals(1, fixture.broker.publications.get());
+			fixture.broker.withholdPublicationAck = false;
+			fixture.broker.withholdPubcomp = false;
+			fixture.producer.process(fixture.request("after-restart"));
+			assertFalse(fixture.broker.thirdPublication.await(1_500, TimeUnit.MILLISECONDS), "no QoS replay after restart");
+			assertEquals(2, fixture.broker.publications.get(), "only the new command is published");
 		}
 	}
 
@@ -174,7 +175,7 @@ class MqttV5TransportDeadlineTest {
 			context.start();
 			endpoint = context.getEndpoint("paho-mqtt5-inout:command?brokerUrl=" + broker.uri()
 					+ "&clientId=deadline-" + UUID.randomUUID() + "&replyTopic=reply&qos=" + qos
-					+ "&replyTimeout=1&correlationHeader=Correlation", MqttV5Endpoint.class);
+					+ "&replyTimeout=1", MqttV5Endpoint.class);
 			producer = newProducer();
 			producer.start();
 		}
@@ -186,10 +187,9 @@ class MqttV5TransportDeadlineTest {
 				@Override protected String upstreamPublishUri() { return super.upstreamPublishUri() + "&keepAliveInterval=1"; }
 			};
 		}
-		DefaultExchange request(String correlation) {
+		DefaultExchange request(String label) {
 			var exchange = new DefaultExchange(context, ExchangePattern.InOut);
 			exchange.getMessage().setBody(Map.of("value", 1));
-			exchange.getMessage().setHeader("Correlation", correlation);
 			return exchange;
 		}
 		void assertRetired() {
@@ -234,7 +234,7 @@ class MqttV5TransportDeadlineTest {
 		final AtomicInteger publications = new AtomicInteger();
 		final AtomicInteger pings = new AtomicInteger();
 		final CountDownLatch withheld = new CountDownLatch(1);
-		final CountDownLatch secondPublication = new CountDownLatch(2);
+		final CountDownLatch thirdPublication = new CountDownLatch(3);
 		final CountDownLatch thirdSubscription = new CountDownLatch(3);
 		volatile int withholdSubscription;
 		volatile boolean withholdConnectAck;
@@ -285,7 +285,7 @@ class MqttV5TransportDeadlineTest {
 					}
 					case 3 -> {
 						publications.incrementAndGet();
-						secondPublication.countDown();
+						thirdPublication.countDown();
 						int qos = (header >> 1) & 3;
 						int topicLength = ((body[0] & 255) << 8) | (body[1] & 255);
 						int offset = 2 + topicLength;

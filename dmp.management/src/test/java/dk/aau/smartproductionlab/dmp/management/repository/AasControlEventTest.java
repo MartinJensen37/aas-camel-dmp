@@ -101,7 +101,7 @@ class AasControlEventTest {
 	@Test
 	void listenerUsesManualOrderedCommitAndASeparateSingleConsumerGroup() {
 		var settings = new KafkaControlEventRouteBuilder.Settings("127.0.0.1:9092", "aas-control",
-				"dmp-control", Set.of("mapping-data", "telemetry-data"));
+				"dmp-control");
 		var route = new KafkaControlEventRouteBuilder(settings, null);
 		String uri = route.endpointUri();
 		assertTrue(uri.contains("groupId=dmp-control"));
@@ -115,29 +115,27 @@ class AasControlEventTest {
 		assertTrue(values.contains("groupId=dmp-control-values-"), "its own consumer group, never the control group");
 		assertFalse(values.contains("groupId=dmp-control&"));
 		var both = new KafkaControlEventRouteBuilder.Settings("127.0.0.1:9092", "aas-events, submodel-events",
-				"dmp-control", Set.of("mapping-data", "telemetry-data"));
+				"dmp-control");
 		assertEquals(List.of("aas-events", "submodel-events"), both.topics());
 		assertTrue(new KafkaControlEventRouteBuilder(both, null).endpointUri().startsWith("kafka:aas-events,submodel-events?"));
 		assertEquals(List.of("aas-control"), settings.topics(), "the existing single-topic API remains unchanged");
 		for (String invalidTopics : List.of("", ",aas-events", "aas-events,", "aas-events,,submodel-events",
 				"aas-events,aas-events", "bad/topic", ".", "..", "x".repeat(250), "a,b,c,d,e,f,g,h,i")) {
 			assertThrows(IllegalArgumentException.class, () -> new KafkaControlEventRouteBuilder.Settings(
-					"127.0.0.1:9092", invalidTopics, "dmp-control", Set.of()));
+					"127.0.0.1:9092", invalidTopics, "dmp-control"));
 		}
 		assertThrows(IllegalArgumentException.class, () -> new KafkaControlEventRouteBuilder.Settings(
-				"127.0.0.1:9092", "aas-control", "mapping-data", Set.of("mapping-data")));
-		assertThrows(IllegalArgumentException.class, () -> new KafkaControlEventRouteBuilder.Settings(
-				"127.0.0.1:9092&groupId=other", "aas-control", "dmp-control", Set.of()));
+				"127.0.0.1:9092&groupId=other", "aas-control", "dmp-control"));
 	}
 
 	@Test
 	void controlRouteInvalidatesBeforeManualOffsetCommit() throws Exception {
-		var component = new DmpComponent(new RoutesConfiguration());
+		var component = new DmpComponent();
 		var service = new MappingReconciliationService(component,
 				() -> new RepositoryDiscovery.Scan(true, "", Set.of(), Set.of(), Map.of(), Map.of(), List.of()),
 				candidate -> () -> new RoutesConfiguration(), 8, 8, 60_000);
 		var settings = new KafkaControlEventRouteBuilder.Settings("127.0.0.1:9092", "aas-control",
-				"dmp-control", Set.of());
+				"dmp-control");
 		var context = new DefaultCamelContext();
 		context.addRoutes(new KafkaControlEventRouteBuilder(settings, service));
 		AdviceWith.adviceWith(context, "dmp-management-control-events", advice -> advice.replaceFromWith("direct:control"));

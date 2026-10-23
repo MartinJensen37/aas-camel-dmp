@@ -88,7 +88,6 @@ public class ManagedKafkaSaslIntegrationTest {
 				assertFalse(endpoint.getConfiguration().isAutoCommitEnable());
 				assertTrue(endpoint.getConfiguration().isAllowManualCommit());
 				assertEquals(group, endpoint.getConfiguration().getGroupId());
-				assertEquals(Set.of("data-plane-unchanged"), settings.kafka().dataPlaneGroupIds());
 				assertFalse(endpoint.getEndpointUri().contains("sasl.jaas"));
 				assertFalse(endpoint.getEndpointUri().contains(broker.password));
 				var other = component.unrelatedKafka();
@@ -245,7 +244,7 @@ public class ManagedKafkaSaslIntegrationTest {
 	}
 	private static final class RuntimeComponent extends DmpComponent {
 		String lastClientId;
-		RuntimeComponent() { super(new RoutesConfiguration()); }
+		RuntimeComponent() { super(); }
 		KafkaEndpoint control() {
 			var endpoint = (KafkaEndpoint) camelContext.getRoute("dmp-management-control-events").getEndpoint();
 			lastClientId = endpoint.getConfiguration().getClientId();
@@ -299,7 +298,6 @@ public class ManagedKafkaSaslIntegrationTest {
 			return ManagedRuntimeSettings.fromEnvironment(Map.ofEntries(
 					Map.entry("DMP_MANAGED_AAS_REPOSITORY_URI", repository.toString()), Map.entry("DMP_MANAGED_KAFKA_BROKERS", bootstrap()),
 					Map.entry("DMP_MANAGED_CONTROL_TOPIC", topic), Map.entry("DMP_MANAGED_CONTROL_GROUP_ID", group),
-					Map.entry("DMP_MANAGED_DATA_PLANE_GROUP_IDS", "data-plane-unchanged"),
 					Map.entry("DMP_MANAGED_KAFKA_SECURITY_PROTOCOL", "SASL_PLAINTEXT"), Map.entry("DMP_MANAGED_KAFKA_SASL_MECHANISM", "PLAIN"),
 					Map.entry("DMP_MANAGED_KAFKA_SASL_USERNAME", "runtime"), Map.entry("DMP_MANAGED_KAFKA_SASL_PASSWORD", password),
 					Map.entry("DMP_MANAGED_RETRY_INTERVAL_MS", "60000")));

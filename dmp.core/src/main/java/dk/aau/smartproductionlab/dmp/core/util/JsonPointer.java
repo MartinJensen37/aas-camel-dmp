@@ -35,7 +35,7 @@ import java.util.Optional;
  * {@code readValue(json, Object.class)} or Gson.
  *
  * <p>
- * Supported syntax (SPEC §6.5.1):
+ * Supported syntax (SPEC §5.4):
  * <ul>
  * <li>{@code $.State} — top-level object key</li>
  * <li>{@code /State} — RFC 6901 pointer</li>
@@ -59,8 +59,8 @@ public final class JsonPointer {
 	 * Marker returned by {@link #extract(Object)} when the pointer resolves to
 	 * a <b>legit JSON {@code null}</b> leaf — present, but null. Distinct from
 	 * an empty Optional (a missing path), so callers can tell a payload that
-	 * really says {@code {"State": null}} apart from one without the key
-	 * (T1.12). Callers should map this marker to a Java {@code null} value.
+	 * really says {@code {"State": null}} apart from one without the key.
+	 * Callers should map this marker to a Java {@code null} value.
 	 */
 	public static final Object JSON_NULL = new Object() {
 		@Override
@@ -163,9 +163,9 @@ public final class JsonPointer {
 	 * Extracts the value at this pointer. Returns {@link Optional#empty()} when
 	 * any token does not resolve (missing key / out-of-range index / navigating
 	 * into a scalar), so callers can decide between a coarse fallback and a
-	 * clear route error (SPEC §8.4 #8). A pointer that resolves to a JSON
+	 * clear route error (SPEC §5.4). A pointer that resolves to a JSON
 	 * {@code null} leaf returns {@link Optional#of(JSON_NULL)} — present, but
-	 * null (T1.12); callers map the marker to a Java {@code null}.
+	 * null; callers map the marker to a Java {@code null}.
 	 */
 	public Optional<Object> extract(Object root) {
 		Object current = root;
@@ -197,21 +197,6 @@ public final class JsonPointer {
 		return parse(expression).extract(root);
 	}
 
-	/**
-	 * The leaf object key of the pointer, e.g. {@code SetPoint} for
-	 * {@code $.SetPoint} and {@code id} for {@code $.WorkOrders[0].id}; empty
-	 * for an index-only pointer or an empty pointer. Used for post-transform
-	 * assembly (placing the {@code SinkId} value into the constructed outgoing
-	 * payload, SPEC §6.5.4).
-	 */
-	public String leafKey() {
-		for (int i = tokens.size() - 1; i >= 0; i--) {
-			if (!isIndex(tokens.get(i))) {
-				return tokens.get(i);
-			}
-		}
-		return "";
-	}
 
 	public boolean isEmpty() {
 		return tokens.isEmpty();
@@ -228,8 +213,7 @@ public final class JsonPointer {
 	/**
 	 * RFC 6901 unescaping ({@code ~1} → {@code /}, {@code ~0} → {@code ~}) for
 	 * plain pathish tokens; the RFC-style branch and quoted bracket keys
-	 * already carry their literals verbatim (T1.12: previously only the
-	 * {@code /a~1b} syntax decoded escapes, so {@code $.a~1b} silently missed).
+	 * already carry their literals verbatim.
 	 */
 	private static String unescape(String token) {
 		if (token.indexOf('~') < 0) {

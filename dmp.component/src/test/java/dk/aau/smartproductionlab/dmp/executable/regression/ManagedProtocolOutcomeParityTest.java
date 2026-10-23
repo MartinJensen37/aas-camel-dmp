@@ -79,7 +79,7 @@ import dk.aau.smartproductionlab.dmp.paho.testing.Mqtt5TestBroker;
 /** Static Python-oracle descriptors and Java plans, one exclusive production owner at a time. */
 class ManagedProtocolOutcomeParityTest {
     private static final class Runtime extends DmpComponent {
-        Runtime() { super(new RoutesConfiguration(), Duration.ofSeconds(4)); }
+        Runtime() { super(Duration.ofSeconds(4)); }
         int routes() { return camelContext.getRoutesSize(); }
         int endpoints() { return camelContext.getEndpoints().size(); }
         void listener(int port) throws Exception {

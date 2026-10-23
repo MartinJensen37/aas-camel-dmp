@@ -18,12 +18,10 @@ import org.junit.jupiter.api.Test;
 
 class LuaCompiledSourceCamelTest extends CamelTestSupport {
 	@Test
-	void managedKeyedInputPreservesExactAuthoredKeysAndPayloadLevels() throws Exception {
+	void keyedInputPreservesExactAuthoredKeysAndPayloadLevels() throws Exception {
 		String script = "function aimc_main(sources) return { result = sources } end";
 		var configuration = new LuaTransformerConfiguration("exact-keys",
 				LuaCompiledSource.fromBytes(script.getBytes(StandardCharsets.UTF_8), "exact-keys", 256));
-		configuration.setKeyedInput(true);
-		configuration.setSourceKeys("a&unknown=bad,#unicode");
 		configuration.bind(context);
 		try {
 			context.addRoutes(new RouteBuilder() {
@@ -67,7 +65,7 @@ class LuaCompiledSourceCamelTest extends CamelTestSupport {
 			context.start();
 
 			for (int i = 0; i < 10; i++) {
-				Map<?, ?> result = template.requestBody("direct:managed", Map.of("value", i), Map.class);
+				Map<?, ?> result = template.requestBody("direct:managed", Map.of("body", Map.of("value", i)), Map.class);
 				assertEquals(i, ((Number) result.get("value")).intValue());
 			}
 			assertEquals(1, compileCount.get());

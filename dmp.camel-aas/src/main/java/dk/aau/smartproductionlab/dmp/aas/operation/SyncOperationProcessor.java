@@ -72,8 +72,6 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	/** The request transformation's result keyed by SinkId. */
 	private static final String REQUEST_RESULT = "dmp.operation.requestResult";
 	private static final String COMMAND_REPLY = "dmp.operation.commandReply";
-	/** Per-sink transformer chains' results, keyed by SinkId. */
-	private static final String SINK_RESULTS = "dmp.operation.sinkResults";
 	/** A property write: the value written, which is also the call's reply. */
 	private static final String WRITTEN_VALUE = "dmp.operation.writtenValue";
 
@@ -177,8 +175,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		java.time.Instant started = java.time.Instant.now();
 		exchange.setProperty(INVOCATION_ID, id);
 		exchange.setProperty(INVOCATION_STARTED, System.nanoTime());
-		new OperationRequestProcessor(context.operationSourceId, context.callerInputTemplates,
-				context.callerInputSourcePaths).process(exchange);
+		new OperationRequestProcessor(context.callerInputTemplates, context.callerInputSourcePaths).process(exchange);
 		// The request transformation's meta: the invocation, its sources (completed after the fan-in) and the
 		// command's sinks.
 		Map<String, Object> invocation = new java.util.LinkedHashMap<>(operationIdentity);
@@ -222,8 +219,8 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		}
 		// parse every DECLARED parameter per its AID DataSchema type —
 		// the wire representation is data-driven, never name-based
-		Map<String, Object> command = OperationPayloads.assembleCommand(applySinkTransformers(exchange),
-				context.commandSinkIds, context.commandSinkValuePaths, context.commandSinkId);
+		Map<String, Object> command = OperationPayloads.assembleCommand(exchange.getProperty(REQUEST_RESULT),
+				context.commandSinkIds, context.commandSinkValuePaths);
 		OperationPayloads.coerceFields(command, context.parameterTypes);
 		try {
 			validation.outgoing(command);
@@ -247,7 +244,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	 */
 	private void prepareWrite(Exchange exchange) {
 		Object value = dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.PayloadAssembler.assemble(
-				OperationPayloads.keyedValues(applySinkTransformers(exchange)),
+				OperationPayloads.keyedValues(exchange.getProperty(REQUEST_RESULT)),
 				context.commandSinkIds, context.commandSinkValuePaths);
 		Object written = value == dk.aau.smartproductionlab.dmp.core.util.JsonPointer.JSON_NULL ? null : value;
 		try {
@@ -366,8 +363,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 
 	/** The request transformation's sources: the Operation's own, the call's trigger, marked as such. */
 	private Map<String, Object> requestSourcesMeta(Exchange exchange) {
-		java.util.Set<String> operationSources = !context.callerInputSourcePaths.isEmpty() ? context.callerInputSourcePaths.keySet()
-				: context.operationSourceId == null ? java.util.Set.of() : java.util.Set.of(context.operationSourceId);
+		java.util.Set<String> operationSources = context.callerInputSourcePaths.keySet();
 		Map<String, Object> sources = new java.util.LinkedHashMap<>();
 		sourcesMeta(exchange).forEach((id, source) -> sources.put(id, !operationSources.contains(id) ? source
 				: TransformerMeta.source(java.time.Instant.parse(String.valueOf(castMap(source).get("time"))), true)));
@@ -453,40 +449,6 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 		exchange.setProperty(Exchange.EXCEPTION_CAUGHT, failure);
 		new OperationFailureProcessor(context, HttpURLConnection.HTTP_INTERNAL_ERROR).process(exchange);
 		exchange.setRouteStop(true);
-	}
-
-	/** The authored per-sink transformer chains (a direct route for a multi-step chain), by SinkId. */
-	java.util.Map<String, java.util.List<String>> sinkTransformerChains() {
-		return context.sinkTransformerUris;
-	}
-
-	/** Enricher strategy: keeps a per-sink chain's result for {@code sinkId}; the exchange body is unchanged. */
-	org.apache.camel.AggregationStrategy keepSinkResult(String sinkId) {
-		return (original, transformed) -> {
-			@SuppressWarnings("unchecked")
-			Map<String, Object> results = original.getProperty(SINK_RESULTS, Map.class);
-			if (results == null) {
-				results = new java.util.LinkedHashMap<>();
-				original.setProperty(SINK_RESULTS, results);
-			}
-			results.put(sinkId, OperationPayloads.requireCommandSinkValue(transformed.getMessage().getBody(), sinkId));
-			return original;
-		};
-	}
-
-	/** The request result per SinkId, a sink with its own transformer chain taking that chain's result. */
-	private Object applySinkTransformers(Exchange exchange) {
-		Object transformed = exchange.getProperty(REQUEST_RESULT);
-		if (context.sinkTransformerUris.isEmpty()) return transformed;
-		Map<String, Object> values = OperationPayloads.keyedValues(transformed);
-		@SuppressWarnings("unchecked")
-		Map<String, Object> chained = exchange.getProperty(SINK_RESULTS, Map.class);
-		Map<String, Object> result = new java.util.LinkedHashMap<>();
-		for (String sinkId : context.commandSinkIds) {
-			result.put(sinkId, chained != null && chained.containsKey(sinkId) ? chained.get(sinkId)
-					: OperationPayloads.requireCommandSinkValue(values, sinkId));
-		}
-		return result;
 	}
 
 }

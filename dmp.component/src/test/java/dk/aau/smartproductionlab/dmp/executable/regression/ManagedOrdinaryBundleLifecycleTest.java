@@ -48,7 +48,7 @@ import java.nio.charset.StandardCharsets;
 class ManagedOrdinaryBundleLifecycleTest {
 	private static final class Runtime extends DmpComponent {
 		Runtime() { this(java.time.Duration.ofSeconds(2)); }
-		Runtime(java.time.Duration timeout) { super(new RoutesConfiguration(), timeout); }
+		Runtime(java.time.Duration timeout) { super(timeout); }
 		org.apache.camel.CamelContext context() { return camelContext; }
 	}
 
@@ -434,7 +434,7 @@ class ManagedOrdinaryBundleLifecycleTest {
 	}
 	@Test
 	void independentOrdinaryBundlesInstallRemoveAndReaddWithoutRestartingTheComponent() {
-		DmpComponent dmp = new DmpComponent(new RoutesConfiguration());
+		DmpComponent dmp = new DmpComponent();
 		try {
 			dmp.startComponent();
 			var first = dmp.installBundle("owner-A", configuration("mapping-A"));
@@ -461,7 +461,7 @@ class ManagedOrdinaryBundleLifecycleTest {
 
 	@Test
 	void managedLuaBindingLivesExactlyAsLongAsItsBundle() {
-		DmpComponent dmp = new DmpComponent(new RoutesConfiguration());
+		DmpComponent dmp = new DmpComponent();
 		LuaTransformerConfiguration lua = new LuaTransformerConfiguration("managed-lua",
 				LuaCompiledSource.fromBytes("function aimc_main(sources) return sources end"
 						.getBytes(StandardCharsets.UTF_8), "mapping:managed-lua", 256));
@@ -481,7 +481,7 @@ class ManagedOrdinaryBundleLifecycleTest {
 
 	@Test
 	void componentStopRetiresManagedBundlesBeforeStoppingTheContext() {
-		DmpComponent dmp = new DmpComponent(new RoutesConfiguration());
+		DmpComponent dmp = new DmpComponent();
 		LuaTransformerConfiguration lua = new LuaTransformerConfiguration("managed-stop",
 				LuaCompiledSource.fromBytes("function aimc_main(sources) return sources end"
 						.getBytes(StandardCharsets.UTF_8), "mapping:managed-stop", 256));

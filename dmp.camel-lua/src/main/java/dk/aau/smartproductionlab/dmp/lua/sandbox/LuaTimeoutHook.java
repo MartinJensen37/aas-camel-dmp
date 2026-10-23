@@ -32,7 +32,7 @@ import org.luaj.vm2.lib.DebugLib;
 import org.luaj.vm2.lib.VarArgFunction;
 
 /**
- * CPU timeout guard for Lua blobs (SPEC §7.3).
+ * CPU timeout guard for Lua blobs (SPEC §8).
  *
  * <p>
  * LuaJ is not interruptible mid-evaluation, so the guard relies on an
@@ -69,7 +69,7 @@ public final class LuaTimeoutHook {
 		}
 
 		// DebugLib registers itself into package.loaded; provide a minimal package
-		// table for the load, then hide it again (SPEC §7.2: package is excluded).
+		// table for the load, then hide it again (SPEC §8: package is excluded).
 		LuaValue packageTable = LuaValue.tableOf();
 		packageTable.set("loaded", LuaValue.tableOf());
 		packageTable.set("preload", LuaValue.tableOf());
@@ -92,7 +92,7 @@ public final class LuaTimeoutHook {
 		globals.get("debug").get("sethook")
 				.invoke(hook, LuaValue.valueOf(""), LuaValue.valueOf(HOOK_INSTRUCTION_COUNT));
 
-		// hide the debug library and package machinery from blobs (SPEC §7.2)
+		// hide the debug library and package machinery from blobs (SPEC §8)
 		globals.set("debug", LuaValue.NIL);
 		globals.set("package", LuaValue.NIL);
 	}

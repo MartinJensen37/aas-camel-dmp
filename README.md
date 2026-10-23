@@ -44,7 +44,8 @@ submodel events.
 ### What a mapping can do
 
 - **Property and event routing.** Read or observe a source (MQTT, OPC UA,
-  HTTP polling, Modbus/BACnet via PLC4X, AAS elements), transform it with Lua,
+  HTTP polling and observation, Modbus via PLC4X, SNMP, AAS elements,
+  TimeSeries segments), transform it with Lua,
   and write to sinks (AAS elements, MQTT, OPC UA, HTTP, PLC4X). An AAS Property
   source without a `PollingInterval` follows the repository's change events
   instead of being polled: each event carries the new value. These values come
@@ -102,7 +103,6 @@ The container listens on port 8080 for operation calls, `/health` and
 | `DMP_MANAGED_KAFKA_BROKERS` | **Required for Kafka.** Kafka bootstrap servers for control events |
 | `DMP_MANAGED_CONTROL_TOPIC` | **Required for Kafka.** 1–8 comma-separated literal topic names, e.g. `submodel-events` |
 | `DMP_MANAGED_CONTROL_GROUP_ID` | **Required for Kafka.** Consumer group of the control listener |
-| `DMP_MANAGED_DATA_PLANE_GROUP_IDS` | Data-plane Kafka groups the control group must not share |
 | `DMP_MANAGED_KAFKA_SECURITY_PROTOCOL` | `PLAINTEXT` (default), `SASL_PLAINTEXT` or `SASL_SSL`; control plane only |
 | `DMP_MANAGED_KAFKA_SASL_MECHANISM` | With SASL: `PLAIN`, `SCRAM-SHA-256` or `SCRAM-SHA-512` |
 | `DMP_MANAGED_KAFKA_SASL_USERNAME`, `…_PASSWORD` | With SASL: nonblank credentials; never logged or exposed |

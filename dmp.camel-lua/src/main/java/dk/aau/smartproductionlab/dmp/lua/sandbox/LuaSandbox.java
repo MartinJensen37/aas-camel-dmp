@@ -38,7 +38,7 @@ import org.luaj.vm2.lib.TableLib;
 import org.luaj.vm2.lib.ZeroArgFunction;
 
 /**
- * Whitelisted global environment factory for Lua blobs (SPEC §7.2).
+ * Whitelisted global environment factory for Lua blobs (SPEC §8).
  *
  * <p>
  * Available to blobs: base functions ({@code assert, error, ipairs, next,
@@ -53,7 +53,7 @@ import org.luaj.vm2.lib.ZeroArgFunction;
  * {@code getmetatable}/{@code setmetatable}.
  *
  * <p>
- * LuaJ {@code Globals} are not thread-safe (SPEC §7.5): the caller creates one
+ * LuaJ {@code Globals} are not thread-safe (SPEC §8): the caller creates one
  * sandbox per exchange/invocation.
  *
  * @author aas-camel-dmp
@@ -105,7 +105,7 @@ public final class LuaSandbox {
 		// strip non-whitelisted base functions
 		STRIPPED_BASE_FUNCTIONS.forEach(name -> globals.set(name, LuaValue.NIL));
 
-		// os: only clock (SPEC §7.2)
+		// os: only clock (SPEC §8)
 		LuaValue os = LuaValue.tableOf();
 		os.set("clock", new ZeroArgFunction() {
 			@Override

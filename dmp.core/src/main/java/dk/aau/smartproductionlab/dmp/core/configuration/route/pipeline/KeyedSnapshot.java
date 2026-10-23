@@ -4,7 +4,6 @@ import dk.aau.smartproductionlab.dmp.core.util.JsonCodec;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -97,11 +96,6 @@ public final class KeyedSnapshot {
 	/** A defensive, ordered copy of the keyed values (empty when not keyed). */
 	public Map<String, Object> copyValues() {
 		return new LinkedHashMap<>(asMap());
-	}
-
-	/** Convenience for diagnostics. */
-	public List<String> idList() {
-		return List.copyOf(ids());
 	}
 
 	@Override

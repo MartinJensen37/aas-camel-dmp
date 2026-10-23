@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
-import java.util.Map;
 
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSinkConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSourceConfiguration;
@@ -19,7 +18,7 @@ class RouteCreatorHelperTest {
 	void missingDatasourceNamesRouteAndIdEvenWhenMapIsNull() {
 		assertEquals("route r1 references unknown datasource 'input'",
 				assertThrows(IllegalArgumentException.class,
-						() -> RouteCreatorHelper.getDataSourceEndpoints(routes, List.of("input"), "r1")).getMessage());
+						() -> RouteCreatorHelper.getDataSourceEndpoint(routes, "input", "r1")).getMessage());
 		routes.setDatasources(null);
 		assertEquals("route r1 references unknown datasource 'input'",
 				assertThrows(IllegalArgumentException.class,
@@ -34,7 +33,7 @@ class RouteCreatorHelperTest {
 		routes.setDatasinks(null);
 		assertEquals("route r2 references unknown datasink 'output'",
 				assertThrows(IllegalArgumentException.class,
-						() -> RouteCreatorHelper.getDataSinkMapping(routes, Map.of("output", new String[0]), "r2")).getMessage());
+						() -> RouteCreatorHelper.getDataSinkEndpoint(routes, "output", "r2")).getMessage());
 	}
 
 	@Test
@@ -46,16 +45,6 @@ class RouteCreatorHelperTest {
 		assertEquals("route r3 references unknown transformer 'convert'",
 				assertThrows(IllegalArgumentException.class,
 						() -> RouteCreatorHelper.getDataTransformerEndpoints(routes, List.of("convert"), "r3")).getMessage());
-		routes.addDatasink(new DataSinkConfiguration("output") {
-			@Override
-			public String getConnectionURI() {
-				return "direct:output";
-			}
-		});
-		assertEquals("route r3 references unknown transformer 'convert'",
-				assertThrows(IllegalArgumentException.class,
-						() -> RouteCreatorHelper.getDataSinkMapping(routes,
-								Map.of("output", new String[] {"convert"}), "r3")).getMessage());
 	}
 
 	@Test
@@ -79,12 +68,10 @@ class RouteCreatorHelperTest {
 			}
 		});
 
-		assertArrayEquals(new String[] {"direct:input"},
-				RouteCreatorHelper.getDataSourceEndpoints(routes, List.of("input"), "r4"));
+		assertEquals("direct:input", RouteCreatorHelper.getDataSourceEndpoint(routes, "input", "r4"));
 		assertArrayEquals(new String[] {"direct:output"},
 				RouteCreatorHelper.getDataSinkEndpoints(routes, List.of("output"), "r4"));
 		assertArrayEquals(new String[] {"direct:convert"},
-				RouteCreatorHelper.getDataSinkMapping(routes, Map.of("output", new String[] {"convert"}), "r4")
-						.get("direct:output"));
+				RouteCreatorHelper.getDataTransformerEndpoints(routes, List.of("convert"), "r4"));
 	}
 }

@@ -58,10 +58,8 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Wire encoding stays upstream's; this component owns finite client waits and
  * request/reply lifetime. Reply connections can reconnect, but command connections
- * never automatically reconnect or replay outstanding QoS publications. The correlation data rides
- * the optional {@code correlationHeader} exchange header when the endpoint
- * declares it: a non-blank header value IS the correlation, otherwise a UUID
- * is minted and exposed on the header.
+ * never automatically reconnect or replay outstanding QoS publications. Each
+ * request's correlation data is a fresh UUID.
  *
  * @author aas-camel-dmp
  */
@@ -115,10 +113,7 @@ public class MqttV5Producer extends DefaultProducer {
 		if (replyTopic == null || replyTopic.isBlank()) {
 			throw new IllegalStateException("MQTT InOut invocation requires a replyTopic option");
 		}
-		String correlation = correlationOf(exchange);
-		if (correlation == null || correlation.isBlank()) {
-			correlation = UUID.randomUUID().toString();
-		}
+		String correlation = UUID.randomUUID().toString();
 		MqttProperties properties = new MqttProperties();
 		properties.setResponseTopic(replyTopic);
 		properties.setCorrelationData(correlation.getBytes(StandardCharsets.UTF_8));
@@ -208,20 +203,6 @@ public class MqttV5Producer extends DefaultProducer {
 		}
 	}
 
-	private String correlationOf(Exchange exchange) {
-		String header = endpoint.getCorrelationHeader();
-		if (header == null || header.isBlank()) {
-			return null; // a fresh correlation per invocation
-		}
-		String value = exchange.getMessage().getHeader(header, String.class);
-		if (value != null && !value.isBlank()) {
-			return value;
-		}
-		String minted = UUID.randomUUID().toString();
-		exchange.getMessage().setHeader(header, minted);
-		return minted;
-	}
-
 	/**
 	 * The upstream {@code paho-mqtt5:} CONSUMER URI for the declared reply
 	 * topic — same broker and QoS as the publish leg, its own client id
@@ -253,19 +234,11 @@ public class MqttV5Producer extends DefaultProducer {
 		return uri.toString();
 	}
 
-	/** Bound credentials are passed on by reference; only unmanaged endpoints carry them inline. */
+	/** Bound credentials are passed on by reference, never inline. */
 	private void appendCredentials(StringBuilder uri) {
-		if (endpoint.getCredentials() != null) {
-			uri.append("&userName=#bean:").append(endpoint.getCredentials()).append(".user");
-			uri.append("&password=#bean:").append(endpoint.getCredentials()).append(".password");
-			return;
-		}
-		if (endpoint.getUserName() != null && !endpoint.getUserName().isBlank()) {
-			uri.append("&userName=").append(endpoint.getUserName());
-		}
-		if (endpoint.getPassword() != null) {
-			uri.append("&password=").append(endpoint.getPassword());
-		}
+		if (endpoint.getCredentials() == null) return;
+		uri.append("&userName=#bean:").append(endpoint.getCredentials()).append(".user");
+		uri.append("&password=#bean:").append(endpoint.getCredentials()).append(".password");
 	}
 
 	private void assertAdmitted(long invocationGeneration) {

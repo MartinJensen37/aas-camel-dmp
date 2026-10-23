@@ -350,7 +350,7 @@ class ManagedLuaReconciliationTest {
 	}
 
 	private static final class Runtime extends DmpComponent {
-		Runtime() { super(new RoutesConfiguration(), Duration.ofSeconds(7)); }
+		Runtime() { super(Duration.ofSeconds(7)); }
 		CamelContext context() { return camelContext; }
 	}
 

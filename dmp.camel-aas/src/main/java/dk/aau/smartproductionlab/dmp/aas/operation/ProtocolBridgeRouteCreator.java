@@ -92,41 +92,20 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 				: RouteCreatorHelper.getDataTransformerEndpoints(routesConfiguration,
 						Collections.singletonList(bridgeConfig.getResponseTransformer()), "bridge");
 		String responseLuaUri = responseTransformers.length == 0 ? null : responseTransformers[0];
-		java.util.List<String> commandSinkIds = bridgeConfig.getCommandSinkIds().isEmpty()
-				? bridgeConfig.getDatasinks() : bridgeConfig.getCommandSinkIds();
+		java.util.List<String> commandSinkIds = bridgeConfig.getCommandSinkIds();
 		String commandSinkUri = firstSinkUri(commandSinkIds);
-		java.util.Map<String, String[]> sinkTransformerEndpoints = RouteCreatorHelper.getDataSinkMappingById(
-				routesConfiguration, bridgeConfig.getDatasinkMappingConfiguration(), bridgeConfig.getRouteId());
 		AffordanceValidation commandValidation = commandValidation(commandSinkIds);
 		java.util.List<java.util.Map<String, Object>> responseSinkTargets = ResponseSinkTargets.resolve(
 				routeBuilder, routesConfiguration, bridgeConfig.getRouteId(), bridgeConfig.getResponseSinkBindings());
 		java.util.List<java.util.Map<String, Object>> responseSourceBindings =
 				bridgeConfig.getResponseSourceBindings();
-		java.util.List<String> commandSourceIds = bridgeConfig.getCommandSinkBindings().isEmpty()
-				? java.util.List.of(bridgeConfig.getCommandSinkId() == null
-						? String.valueOf(bridgeConfig.getAction()) : bridgeConfig.getCommandSinkId())
-				: bridgeConfig.getCommandSinkBindings().stream()
-						.map(binding -> String.valueOf(binding.get("sinkId"))).toList();
+		java.util.List<String> commandSourceIds = bridgeConfig.getCommandSinkBindings().stream()
+				.map(binding -> String.valueOf(binding.get("sinkId"))).toList();
 		java.util.Map<String, String> commandValuePaths = new java.util.LinkedHashMap<>();
 		for (java.util.Map<String, Object> binding : bridgeConfig.getCommandSinkBindings()) {
 			if (binding.get("valuePath") != null) {
 				commandValuePaths.put(String.valueOf(binding.get("sinkId")),
 						String.valueOf(binding.get("valuePath")));
-			}
-		}
-		java.util.Map<String, java.util.List<String>> authoredSinkTransformers = new java.util.LinkedHashMap<>();
-		if (sinkTransformerEndpoints != null) {
-			if (bridgeConfig.getCommandSinkBindings().isEmpty()) {
-				for (var entry : sinkTransformerEndpoints.entrySet()) {
-					authoredSinkTransformers.put(entry.getKey(), java.util.Arrays.asList(entry.getValue()));
-				}
-			} else {
-				for (java.util.Map<String, Object> binding : bridgeConfig.getCommandSinkBindings()) {
-					String sinkId = String.valueOf(binding.get("sinkId"));
-					String dataSinkId = String.valueOf(binding.get("dataSinkId"));
-					String[] chain = sinkTransformerEndpoints.get(dataSinkId);
-					if (chain != null) authoredSinkTransformers.put(sinkId, java.util.Arrays.asList(chain));
-				}
 			}
 		}
 		if (requestLuaUri == null || commandSinkUri == null) {
@@ -141,22 +120,17 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 					bridgeConfig.getRouteId());
 			return;
 		}
-		String routeId = bridgeConfig.getRouteId() != null
-				? bridgeConfig.getRouteId() : "bridge-" + action;
-		String method = bridgeConfig.getRestMethod();
-		authoredSinkTransformers = nativeSinkTransformerChains(routeId, authoredSinkTransformers);
+		String routeId = bridgeConfig.getRouteId();
+		if (routeId == null || routeId.isBlank())
+			throw new IllegalArgumentException("bridge for " + action + " has no route id");
+		String method = "POST";
 
 		// 1. Interactive consumer (consolidated camel-rest surface), emitted
 		// from the DERIVED operation path. Camel merges the rest consumer and
 		// the direct route it targets into a single route; the direct route's
 		// id wins, so it carries the canonical bridge id.
 		org.apache.camel.model.rest.RestDefinition rest = routeBuilder.rest();
-		org.apache.camel.model.rest.RestDefinition restVerb;
-		if ("GET".equalsIgnoreCase(method)) {
-			restVerb = rest.get(restPath);
-		} else {
-			restVerb = rest.post(restPath);
-		}
+		org.apache.camel.model.rest.RestDefinition restVerb = rest.post(restPath);
 		String restRouteId = routeBuilder instanceof DmpRouteBuilder ? routeId + "-rest-consumer" : null;
 		if (restRouteId != null) restVerb.getVerbs().get(restVerb.getVerbs().size() - 1).setRouteId(restRouteId);
 		restVerb
@@ -164,18 +138,24 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 				.produces(CONTENT_TYPE_JSON)
 				.to("direct:" + routeId);
 
-		OperationContext operationContext = new OperationContext(
-				action, requestLuaUri, responseLuaUri, commandSinkUri,
-				bridgeConfig.getParameterTypes(),
-				bridgeConfig.getResponseTypes(), bridgeConfig.getCallerOutputOrder(),
-				bridgeConfig.getOperationSourceId(), bridgeConfig.getCommandSinkId(),
-				bridgeConfig.getCallerReplySinkId(), commandSourceIds, commandValuePaths,
-				bridgeConfig.isExplicitResponseMapping(), bridgeConfig.getParameterRequired(),
-				bridgeConfig.getResponseRequired(), bridgeConfig.getTargetOptions(),
-				java.util.Arrays.asList(requestTransformers),
-				authoredSinkTransformers, bridgeConfig.getCallerResponseTypes(),
-				bridgeConfig.getCallerInputTemplates(), bridgeConfig.getCallerOutputTemplates(),
-				bridgeConfig.getCallerInputSourcePaths(), bridgeConfig.getCallerReplyBindings());
+		OperationContext operationContext = OperationContext.builder(action, commandSinkUri)
+				.responseLuaUri(responseLuaUri)
+				.parameterTypes(bridgeConfig.getParameterTypes())
+				.responseTypes(bridgeConfig.getResponseTypes())
+				.callerResponseTypes(bridgeConfig.getCallerResponseTypes())
+				.callerOutputOrder(bridgeConfig.getCallerOutputOrder())
+				.callerInputTemplates(bridgeConfig.getCallerInputTemplates())
+				.callerOutputTemplates(bridgeConfig.getCallerOutputTemplates())
+				.callerInputSourcePaths(bridgeConfig.getCallerInputSourcePaths())
+				.callerReplyBindings(bridgeConfig.getCallerReplyBindings())
+				.callerReplySinkId(bridgeConfig.getCallerReplySinkId())
+				.commandSinkIds(commandSourceIds)
+				.commandSinkValuePaths(commandValuePaths)
+				.explicitResponseMapping(bridgeConfig.isExplicitResponseMapping())
+				.parameterRequired(bridgeConfig.getParameterRequired())
+				.responseRequired(bridgeConfig.getResponseRequired())
+				.targetOptions(bridgeConfig.getTargetOptions())
+				.build();
 		SyncOperationProcessor operation = new SyncOperationProcessor(routeBuilder.getContext(), operationContext,
 				commandValidation, new AffordanceValidation(bridgeConfig.getResponseSchema(),
 						"bridge output " + action), responseSourceBindings, responseSinkTargets, routeId);
@@ -213,10 +193,6 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		flow.process(operation::keepRequestSources)
 				.to(requestTransformers)
 				.process(operation::keepRequestResult);
-		// Per-sink transformer chains run on a copy of the request result (Content Enricher).
-		operation.sinkTransformerChains().forEach((sinkId, chain) -> {
-			if (!chain.isEmpty()) flow.enrich(chain.get(0), operation.keepSinkResult(sinkId));
-		});
 		// The device call: the connector's steps run in the command route on a copy of the
 		// exchange (Content Enricher), so caller headers never reach the device. The
 		// connector correlates the terminal reply (OPC UA Call, MQTT 5 correlation data, HTTP).
@@ -271,26 +247,6 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 
 	private void registerManagedResource(SyncOperationProcessor operation) {
 		if (routeBuilder instanceof DmpRouteBuilder managed) managed.registerManagedResource(operation);
-	}
-
-	private java.util.Map<String, java.util.List<String>> nativeSinkTransformerChains(
-			String routeId, java.util.Map<String, java.util.List<String>> chains) {
-		java.util.Map<String, java.util.List<String>> routes = new java.util.LinkedHashMap<>();
-		int index = 0;
-		for (var entry : chains.entrySet()) {
-			java.util.List<String> chain = entry.getValue();
-			if (chain.size() <= 1) {
-				routes.put(entry.getKey(), chain);
-				continue;
-			}
-			String chainRouteId = routeId + "-sink-chain-" + index++;
-			registerRouteId(chainRouteId);
-			routeBuilder.from("direct:" + chainRouteId)
-					.routeId(chainRouteId)
-					.to(chain.toArray(String[]::new));
-			routes.put(entry.getKey(), java.util.List.of("direct:" + chainRouteId));
-		}
-		return routes;
 	}
 
 	private AffordanceValidation commandValidation(java.util.List<String> sinkIds) {

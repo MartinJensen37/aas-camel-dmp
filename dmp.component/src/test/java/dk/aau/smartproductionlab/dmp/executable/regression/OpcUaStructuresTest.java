@@ -211,7 +211,7 @@ class OpcUaStructuresTest {
 			exchange.close();
 		});
 		aas.start();
-		var runtime = new DmpComponent(new RoutesConfiguration(), Duration.ofSeconds(4)) { };
+		var runtime = new DmpComponent(Duration.ofSeconds(4)) { };
 		try (var repository = new FakeAasRepository()) {
 			runtime.startComponent();
 			runtime.installBundle("structure", compile(repository, aas.getAddress().getPort(),
@@ -236,7 +236,7 @@ class OpcUaStructuresTest {
 			exchange.close();
 		});
 		aas.start();
-		var runtime = new DmpComponent(new RoutesConfiguration(), Duration.ofSeconds(4)) { };
+		var runtime = new DmpComponent(Duration.ofSeconds(4)) { };
 		try (var repository = new FakeAasRepository()) {
 			runtime.startComponent();
 			runtime.installBundle("field", compile(repository, aas.getAddress().getPort(),
@@ -267,7 +267,7 @@ class OpcUaStructuresTest {
 				exchange.close();
 			});
 			aas.start();
-			var runtime = new DmpComponent(new RoutesConfiguration(), Duration.ofSeconds(4)) { };
+			var runtime = new DmpComponent(Duration.ofSeconds(4)) { };
 			try (var repository = new FakeAasRepository()) {
 				runtime.startComponent();
 				// The AID says Speed is a string; the server's Recipe has a Double.
@@ -293,7 +293,7 @@ class OpcUaStructuresTest {
 			exchange.close();
 		});
 		aas.start();
-		var runtime = new DmpComponent(new RoutesConfiguration(), Duration.ofSeconds(4)) { };
+		var runtime = new DmpComponent(Duration.ofSeconds(4)) { };
 		try (var repository = new FakeAasRepository()) {
 			runtime.startComponent();
 			// Read (not observed) at the fixture's DefaultPollingInterval; a string is not parsed as JSON text.

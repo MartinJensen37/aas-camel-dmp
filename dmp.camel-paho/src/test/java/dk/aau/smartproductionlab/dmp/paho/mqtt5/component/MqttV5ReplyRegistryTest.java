@@ -3,8 +3,6 @@ package dk.aau.smartproductionlab.dmp.paho.mqtt5.component;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.camel.component.paho.mqtt5.PahoMqtt5Constants;
 import org.apache.camel.impl.DefaultCamelContext;
@@ -15,7 +13,7 @@ import org.junit.jupiter.api.Test;
 class MqttV5ReplyRegistryTest {
 	@Test
 	void duplicatesNeverShareFuturesAcrossOwnersOrRegistries() {
-		var wire = new MqttV5ReplyRegistry.WireState(System::nanoTime, 10, 60_000);
+		var wire = new MqttV5ReplyRegistry.WireState(10);
 		var first = new MqttV5ReplyRegistry(wire);
 		var second = new MqttV5ReplyRegistry(wire);
 		Object a = new Object();
@@ -32,7 +30,7 @@ class MqttV5ReplyRegistryTest {
 
 	@Test
 	void channelBrokerAndContextAreCheckedWithoutTrimmingAuthoredCorrelation() throws Exception {
-		var registry = new MqttV5ReplyRegistry(new MqttV5ReplyRegistry.WireState(System::nanoTime, 10, 60_000));
+		var registry = new MqttV5ReplyRegistry(new MqttV5ReplyRegistry.WireState(10));
 		Object owner = new Object();
 		try (var context = new DefaultCamelContext(); var otherContext = new DefaultCamelContext()) {
 			var pending = registry.register(owner, "broker", "reply", " authored ");
@@ -52,27 +50,25 @@ class MqttV5ReplyRegistryTest {
 	}
 
 	@Test
-	void cancellationAndCompletionFenceReuseUntilExpiryWithoutEvictingLiveFences() {
-		AtomicLong clock = new AtomicLong();
-		var registry = new MqttV5ReplyRegistry(new MqttV5ReplyRegistry.WireState(clock::get, 2, 100));
+	void cancellationIsPerOwnerAndAFinishedCallFreesItsReservation() {
+		var registry = new MqttV5ReplyRegistry(new MqttV5ReplyRegistry.WireState(2));
 		Object oldOwner = new Object();
 		Object newOwner = new Object();
 		var old = registry.register(oldOwner, "broker", "reply", "same");
 		var independent = registry.register(newOwner, "broker", "reply", "independent");
+		assertThrows(IllegalStateException.class, () -> registry.register(newOwner, "broker", "reply", "full"),
+				"capacity bounds the calls in flight");
 		registry.cancelOwner(oldOwner);
 		assertTrue(old.isCancelled());
 		assertFalse(independent.isDone(), "stopping one owner cannot cancel another");
 		assertFalse(registry.complete("broker", "reply", "same", "late old generation"));
-		assertThrows(IllegalStateException.class, () -> registry.register(newOwner, "broker", "reply", "same"));
-		assertThrows(IllegalStateException.class, () -> registry.register(newOwner, "broker", "reply", "fresh"));
-		registry.complete("broker", "reply", "independent", "ok");
-		assertThrows(IllegalStateException.class, () -> registry.register(newOwner, "broker", "reply", "independent"));
-		clock.set(TimeUnit.MILLISECONDS.toNanos(100));
 		var current = registry.register(newOwner, "broker", "reply", "same");
 		registry.unregister(oldOwner, "broker", "reply", "same", old);
-		assertEquals(1, registry.pendingCount(), "old cleanup must not remove the new generation");
+		assertEquals(2, registry.pendingCount(), "old cleanup must not remove the new call");
 		assertTrue(registry.complete("broker", "reply", "same", "current"));
 		assertEquals("current", current.getNow(null));
+		assertTrue(registry.complete("broker", "reply", "independent", "ok"));
+		assertEquals(0, registry.pendingCount());
 	}
 
 	private static org.apache.camel.Exchange reply(org.apache.camel.CamelContext context,

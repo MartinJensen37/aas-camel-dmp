@@ -94,7 +94,7 @@ class OptionalQualifierTest {
 		Map<String, SubmodelElement> inputs = new LinkedHashMap<>();
 		inputs.put("Uuid", property("Uuid", null));
 		inputs.put("Volume", property("Volume", "true"));
-		var processor = new OperationRequestProcessor("Dispensing", inputs);
+		var processor = new OperationRequestProcessor(inputs, Map.of("Dispensing", "$"));
 		Exchange given = new DefaultExchange(new DefaultCamelContext());
 		given.getMessage().setBody("{\"Uuid\":\"u-1\"}");
 		processor.process(given);

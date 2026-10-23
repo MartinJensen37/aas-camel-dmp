@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>
  * The blob arrives from the AIMC and is compiled once when the mapping is
- * compiled ({@code LuaCompiledSource}); per invocation (SPEC §7.5 — LuaJ
+ * compiled ({@code LuaCompiledSource}); per invocation (SPEC §8 — LuaJ
  * {@code Globals} are not thread-safe):
  * <ol>
  * <li>build a fresh sandboxed {@link Globals} with the whitelist</li>
@@ -74,7 +74,7 @@ public class LuaProducer extends DefaultProducer {
 
 	@Override
 	public void process(Exchange exchange) throws Exception {
-		// Only the sandbox is rebuilt per invocation (SPEC §7.5: LuaJ Globals are
+		// Only the sandbox is rebuilt per invocation (SPEC §8: LuaJ Globals are
 		// not thread-safe, and blobs may mutate their environment).
 		Globals globals = LuaSandbox.createGlobals();
 		LuaTimeoutHook.install(globals, endpoint.getTimeoutSeconds());
@@ -112,10 +112,8 @@ public class LuaProducer extends DefaultProducer {
 		Object javaResult = LuaJsonCodec.fromLua(result);
 		setBody(exchange, javaResult);
 
-		LOGGER.debug("lua {}: input-keys={} sourceKeys={} result={}",
-				endpoint.getDiagnosticIdentity(),
-				body == null ? "null" : (body instanceof Map<?, ?> m ? m.keySet() : body.getClass().getSimpleName()),
-				endpoint.getSourceKeys(), javaResult);
+		LOGGER.debug("lua {}: input-keys={} result={}", endpoint.getDiagnosticIdentity(),
+				((Map<?, ?>) body).keySet(), javaResult);
 
 		LOGGER.debug("Lua transformation '{}' applied to exchange {}", endpoint.getDiagnosticIdentity(), exchange.getExchangeId());
 	}
@@ -133,69 +131,12 @@ public class LuaProducer extends DefaultProducer {
 		return exchange.getMessage().getBody();
 	}
 
+	/** The input is the SourceId-keyed map the fan-in or the Operation request built. */
 	private LuaValue buildSources(Object body) {
-		if (endpoint.isKeyedInput()) {
-			if (!(body instanceof Map<?, ?> map) || map.keySet().stream().anyMatch(key -> !(key instanceof String))) {
-				throw new IllegalArgumentException("Keyed Lua input must be a SourceId-keyed map");
-			}
-			return LuaJsonCodec.toLua(body);
+		if (!(body instanceof Map<?, ?> map) || map.keySet().stream().anyMatch(key -> !(key instanceof String))) {
+			throw new IllegalArgumentException("Lua input must be a SourceId-keyed map");
 		}
-		LuaValue sources = LuaValue.tableOf();
-		String keys = endpoint.getSourceKeys();
-		if (keys == null || keys.trim().isEmpty() || "body".equalsIgnoreCase(keys.trim())) {
-			sources.set("body", LuaJsonCodec.toLua(disassemble(body)));
-			return sources;
-		}
-		String[] parts = keys.split(",");
-		if (parts.length == 1) {
-			// single SourceId: the whole payload IS that source's data message
-			// (AIMC contract: sources[SourceId] = the data from that source).
-			// The execution-policy merge envelope keys the payload by the
-			// SourceId — unwrap exactly that level (a legacy single-source
-			// body that is not the envelope passes through unchanged).
-			String key = parts[0].trim();
-			Object payload = body;
-			if (body instanceof Map<?, ?> map && map.size() == 1
-					&& map.containsKey(key)) {
-				payload = map.get(key);
-			}
-			// A valuePath (fine resolution, SPEC §6.5) disassembles the
-			// payload into exactly the leaf the mapping needs.
-			sources.set(key, LuaJsonCodec.toLua(disassemble(payload)));
-			return sources;
-		}
-		// comma-separated list: extract each key from the payload object
-		LuaValue payload = LuaJsonCodec.toLua(body);
-		for (String key : parts) {
-			key = key.trim();
-			if (!key.isEmpty()) {
-				sources.set(key, payload.get(key));
-			}
-		}
-		return sources;
-	}
-
-	/**
-	 * Source-side fine resolution (ADR-014 / SPEC §6.5): when a {@code valuePath}
-	 * is configured, reduces the incoming canonical payload to the pinned leaf
-	 * (disassembly) before it is placed under the {@code SourceId}; absent →
-	 * coarse (whole payload delivered). A pointer on a missing path is a clear
-	 * route error (SPEC §8.4 #8).
-	 */
-	private Object disassemble(Object body) {
-		String pointer = endpoint.getValuePath();
-		if (pointer == null || pointer.isBlank() || body == null) {
-			return body;
-		}
-		java.util.Optional<Object> leaf = dk.aau.smartproductionlab.dmp.core.util.JsonPointer.extract(body, pointer);
-		if (leaf.isEmpty()) {
-			throw new IllegalArgumentException("Lua source valuePath '" + pointer
-					+ "' does not resolve in the incoming payload for script '" + endpoint.getDiagnosticIdentity() + "'");
-		}
-		// a legit JSON-null leaf delivers a Java null under the SourceId;
-		// only a MISSING path is a route error (SPEC §8.4 #8, T1.12)
-		Object value = leaf.get();
-		return value == dk.aau.smartproductionlab.dmp.core.util.JsonPointer.JSON_NULL ? null : value;
+		return LuaJsonCodec.toLua(body);
 	}
 
 	private void setBody(Exchange exchange, Object value) {

@@ -74,24 +74,6 @@ class MqttV5ProducerLifecycleTest {
 	}
 
 	@Test
-	void duplicateCorrelationIsRejectedBeforeASecondPublication() throws Exception {
-		try (var fixture = new Fixture()) {
-			fixture.transport.autoReply = false;
-			var first = fixture.producer();
-			var second = fixture.producer();
-			var waiting = fixture.executor.submit(() -> {
-				first.process(fixture.request("duplicate"));
-				return null;
-			});
-			assertTrue(fixture.transport.published.await(5, TimeUnit.SECONDS));
-			assertThrows(IllegalStateException.class, () -> second.process(fixture.request("duplicate")));
-			assertEquals(1, fixture.transport.publications.get());
-			fixture.transport.reply("duplicate", "{\"State\":\"SUCCESS\"}");
-			waiting.get(5, TimeUnit.SECONDS);
-		}
-	}
-
-	@Test
 	void lastOwnerRemovesRouteAndStoppingOneOwnerDoesNotCancelTheOther() throws Exception {
 		try (var fixture = new Fixture()) {
 			fixture.transport.autoReply = false;
@@ -122,9 +104,8 @@ class MqttV5ProducerLifecycleTest {
 			int endpointCount = fixture.context.getEndpoints().size();
 			fixture.transport.autoReply = true;
 			var replacement = fixture.producer();
-			assertThrows(IllegalStateException.class, () -> replacement.process(fixture.request("a")));
-			assertEquals(2, fixture.transport.publications.get(), "fenced generation must not publish");
 			replacement.process(fixture.request("new-generation"));
+			assertEquals(3, fixture.transport.publications.get());
 			assertNotEquals(oldRoute, fixture.replySubscriptionId());
 			replacement.stop();
 			assertEquals(0, fixture.replySubscriptionCount());
@@ -140,37 +121,33 @@ class MqttV5ProducerLifecycleTest {
 	}
 
 	@Test
-	void authoredHeadersArePreservedAndProgressRepliesRemainNonTerminal() throws Exception {
+	void everyRequestCarriesAFreshCorrelation() throws Exception {
 		try (var fixture = new Fixture()) {
 			var producer = fixture.producer();
-			var authored = fixture.request(" authored ");
-			producer.process(authored);
-			assertEquals(" authored ", authored.getMessage().getHeader("Correlation"));
-			assertTrue(fixture.transport.commands.containsKey(" authored "));
-			var minted = fixture.request(null);
-			producer.process(minted);
-			assertNotNull(minted.getMessage().getHeader("Correlation"));
-			assertEquals("{\"State\":\"SUCCESS\"}", minted.getMessage().getBody());
+			var first = fixture.request("first");
+			var second = fixture.request("second");
+			producer.process(first);
+			producer.process(second);
+			assertEquals(2, fixture.transport.commands.size(), "two requests, two correlations");
+			assertEquals("{\"State\":\"SUCCESS\"}", second.getMessage().getBody());
 		}
 	}
 
 	@Test
-	void publishFailureIsNotRetriedAndItsCorrelationIsFenced() throws Exception {
+	void publishFailureIsNotRetried() throws Exception {
 		try (var fixture = new Fixture()) {
 			var producer = fixture.producer();
 			fixture.transport.failPublishes.set(1);
 			assertThrows(Exception.class, () -> producer.process(fixture.request("failed-command")));
 			assertEquals(1, fixture.transport.publications.get());
 			assertEquals(0, fixture.endpoint.replies.pendingCount());
-			assertThrows(IllegalStateException.class, () -> producer.process(fixture.request("failed-command")));
-			assertEquals(1, fixture.transport.publications.get());
 			producer.process(fixture.request("next-command"));
 			assertEquals(2, fixture.transport.publications.get());
 		}
 	}
 
 	@Test
-	void timeoutFencesLateReplyAndDoesNotPublishAgain() throws Exception {
+	void timeoutDropsTheLateReplyAndDoesNotPublishAgain() throws Exception {
 		try (var fixture = new Fixture()) {
 			fixture.transport.autoReply = false;
 			fixture.endpoint.setReplyTimeout(0);
@@ -179,7 +156,6 @@ class MqttV5ProducerLifecycleTest {
 					() -> producer.process(fixture.request("timed-out")));
 			assertEquals("MQTT_REQUEST_TIMEOUT", failure.getConnectorCode());
 			fixture.transport.reply("timed-out", "late");
-			assertThrows(IllegalStateException.class, () -> producer.process(fixture.request("timed-out")));
 			assertEquals(1, fixture.transport.publications.get());
 			assertEquals(0, fixture.endpoint.replies.pendingCount());
 		}
@@ -334,7 +310,7 @@ class MqttV5ProducerLifecycleTest {
 			context.addComponent("probe", transport);
 			context.start();
 			endpoint = context.getEndpoint("paho-mqtt5-inout:command?brokerUrl=tcp://" + UUID.randomUUID()
-					+ ":1883&clientId=test&replyTopic=reply&replyTimeout=2&correlationHeader=Correlation",
+					+ ":1883&clientId=test&replyTopic=reply&replyTimeout=2",
 					MqttV5Endpoint.class);
 		}
 
@@ -348,10 +324,10 @@ class MqttV5ProducerLifecycleTest {
 			return producer;
 		}
 
-		Exchange request(String correlation) {
+		/** A request the probe can answer by {@code label}; the correlation itself is a fresh UUID. */
+		Exchange request(String label) {
 			var request = new DefaultExchange(context, ExchangePattern.InOut);
-			request.getMessage().setBody(Map.of("value", 1));
-			if (correlation != null) request.getMessage().setHeader("Correlation", correlation);
+			request.getMessage().setBody(Map.of("value", 1, "label", label));
 			return request;
 		}
 
@@ -388,6 +364,8 @@ class MqttV5ProducerLifecycleTest {
 		final CountDownLatch startEntered = new CountDownLatch(1);
 		final Map<String, Processor> subscribers = new ConcurrentHashMap<>();
 		final Map<String, MqttProperties> commands = new ConcurrentHashMap<>();
+		/** Request label -> the correlation its command carried. */
+		final Map<String, String> correlations = new ConcurrentHashMap<>();
 		volatile CountDownLatch readyGate;
 		volatile CountDownLatch published = new CountDownLatch(1);
 		volatile boolean autoReply = true;
@@ -435,6 +413,9 @@ class MqttV5ProducerLifecycleTest {
 									PahoMqtt5Constants.CAMEL_PAHO_MSG_PROPERTIES, MqttProperties.class);
 							String correlation = new String(properties.getCorrelationData(), StandardCharsets.UTF_8);
 							commands.put(correlation, properties);
+							var label = java.util.regex.Pattern.compile("\"label\":\"([^\"]*)\"")
+									.matcher(new String((byte[]) exchange.getMessage().getBody(), StandardCharsets.UTF_8));
+							if (label.find()) correlations.put(label.group(1), correlation);
 							publications.incrementAndGet();
 							published.countDown();
 							if (failPublishes.getAndUpdate(n -> Math.max(0, n - 1)) > 0) {
@@ -449,11 +430,13 @@ class MqttV5ProducerLifecycleTest {
 			};
 		}
 
-		void reply(String correlation, String payload) throws Exception {
+		/** Answers the command of the request labelled {@code label} (or with that correlation). */
+		void reply(String label, String payload) throws Exception {
 			var reply = new DefaultExchange(getCamelContext());
 			reply.getMessage().setBody(payload);
 			reply.getMessage().setHeader(PahoMqtt5Constants.MQTT_TOPIC, "reply");
-			reply.getMessage().setHeader(PahoMqtt5Constants.CAMEL_PAHO_MSG_PROPERTIES, commands.get(correlation));
+			reply.getMessage().setHeader(PahoMqtt5Constants.CAMEL_PAHO_MSG_PROPERTIES,
+					commands.get(correlations.getOrDefault(label, label)));
 			subscribers.get("reply").process(reply);
 		}
 	}

@@ -46,10 +46,15 @@ class OperationReplyProcessorTest {
 
 	/** A response mapping whose Operation declares {@code types} as its outputs, in that order. */
 	private static OperationContext context(Map<String, String> types) {
-		return new OperationContext("Occupy", "req.lua", "res.lua", "mock:cmd",
-				Map.of(), Map.of(), List.copyOf(types.keySet()), "Occupy", "Occupy", OUTPUTS,
-				List.of("Occupy"), Map.of(), true, List.of(), List.of(), Map.of(),
-				List.of("req.lua"), Map.of(), types);
+		return OperationContext.builder("Occupy", "mock:cmd")
+				.responseLuaUri("res.lua")
+				.callerResponseTypes(types)
+				.callerOutputOrder(List.copyOf(types.keySet()))
+				.callerInputSourcePaths(Map.of("Occupy", "$"))
+				.callerReplySinkId(OUTPUTS)
+				.commandSinkIds(List.of("Occupy"))
+				.explicitResponseMapping(true)
+				.build();
 	}
 
 	/** The response Lua's result: the outputs under the Operation's SinkId. */
@@ -98,17 +103,19 @@ class OperationReplyProcessorTest {
 	void wholeCommandPayloadIsNotUnwrappedByItsOwnMemberName() {
 		Map<String, Object> command = OperationPayloads.assembleCommand(
 				Map.of("Expected", Map.of("Expected", "inner", "sibling", 1L)),
-				List.of("Expected"), Map.of(), "Expected");
+				List.of("Expected"), Map.of());
 		assertEquals(Map.of("Expected", "inner", "sibling", 1L), command);
 	}
 
 	@Test
 	void withoutAResponseMappingTheDeviceReplyIsNeverMatchedByName() {
 		// The reply has exactly the declared output names; it still is no caller output.
-		OperationContext ctx = new OperationContext("Occupy", "req.lua", null, "mock:cmd",
-				Map.of(), Map.of(), List.of("Uuid", "State"), "Occupy", "Occupy", null,
-				List.of("Occupy"), Map.of(), false, List.of(), List.of(), Map.of(),
-				List.of("req.lua"), Map.of(), Map.of("Uuid", "xs:string", "State", "xs:string"));
+		OperationContext ctx = OperationContext.builder("Occupy", "mock:cmd")
+				.callerResponseTypes(Map.of("Uuid", "xs:string", "State", "xs:string"))
+				.callerOutputOrder(List.of("Uuid", "State"))
+				.callerInputSourcePaths(Map.of("Occupy", "$"))
+				.commandSinkIds(List.of("Occupy"))
+				.build();
 		for (boolean basyx : List.of(false, true)) {
 			Exchange exchange = exchangeWith(Map.of("Uuid", "1", "State", "SUCCESS"));
 			exchange.setProperty(OperationPayloads.BASYX_DELEGATION_BODY, basyx);
@@ -121,9 +128,12 @@ class OperationReplyProcessorTest {
 	@Test
 	void anInvokeOnlyOperationAnswersWithNoOutputs() {
 		// A response mapping that only fans out (no ResponseSink selects the Operation).
-		OperationContext ctx = new OperationContext("Halt", "req.lua", "res.lua", "mock:cmd",
-				Map.of(), Map.of(), List.of(), "Halt", "Halt", null, List.of("Halt"), Map.of(), true,
-				List.of(), List.of(), Map.of());
+		OperationContext ctx = OperationContext.builder("Halt", "mock:cmd")
+				.responseLuaUri("res.lua")
+				.callerInputSourcePaths(Map.of("Halt", "$"))
+				.commandSinkIds(List.of("Halt"))
+				.explicitResponseMapping(true)
+				.build();
 		Exchange exchange = exchangeWith(Map.of("LastHalt", "SUCCESS"));
 		exchange.setProperty(OperationPayloads.BASYX_DELEGATION_BODY, true);
 		new OperationReplyProcessor(ctx).process(exchange);
@@ -140,11 +150,14 @@ class OperationReplyProcessorTest {
 
 	@Test
 	void multipleResponseSinksAssembleOneCallerOperationReply() {
-		OperationContext context = new OperationContext("Occupy", "req.lua", "res.lua", "mock:cmd",
-				Map.of(), Map.of(), List.of("Position"), "Occupy", "Occupy", null,
-				List.of("Occupy"), Map.of(), true, List.of(), List.of(), Map.of(),
-				List.of("req.lua"), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(),
-				Map.of("x-sink", "$.Position.x", "y-sink", "$.Position.y"));
+		OperationContext context = OperationContext.builder("Occupy", "mock:cmd")
+				.responseLuaUri("res.lua")
+				.callerOutputOrder(List.of("Position"))
+				.callerInputSourcePaths(Map.of("Occupy", "$"))
+				.callerReplyBindings(Map.of("x-sink", "$.Position.x", "y-sink", "$.Position.y"))
+				.commandSinkIds(List.of("Occupy"))
+				.explicitResponseMapping(true)
+				.build();
 		Exchange exchange = exchangeWith(Map.of("x-sink", 1L, "y-sink", 2L));
 		new OperationReplyProcessor(context).process(exchange);
 		assertEquals(Map.of("Position", Map.of("x", 1L, "y", 2L)), exchange.getMessage().getBody());
@@ -155,11 +168,15 @@ class OperationReplyProcessorTest {
 		Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> outputs = new java.util.LinkedHashMap<>();
 		outputs.put("State", OptionalQualifierTest.property("State", null));
 		outputs.put("Outcome", OptionalQualifierTest.property("Outcome", "true"));
-		OperationContext context = new OperationContext("Occupy", "req.lua", "res.lua", "mock:cmd",
-				Map.of(), Map.of(), List.copyOf(outputs.keySet()), "Occupy", "Occupy", null,
-				List.of("Occupy"), Map.of(), true, List.of(), List.of(), Map.of(),
-				List.of("req.lua"), Map.of(), Map.of(), Map.of(), outputs, Map.of(),
-				Map.of("state-sink", "$.State", "outcome-sink", "$.Outcome"));
+		OperationContext context = OperationContext.builder("Occupy", "mock:cmd")
+				.responseLuaUri("res.lua")
+				.callerOutputOrder(List.copyOf(outputs.keySet()))
+				.callerOutputTemplates(outputs)
+				.callerInputSourcePaths(Map.of("Occupy", "$"))
+				.callerReplyBindings(Map.of("state-sink", "$.State", "outcome-sink", "$.Outcome"))
+				.commandSinkIds(List.of("Occupy"))
+				.explicitResponseMapping(true)
+				.build();
 		Exchange answered = exchangeWith(Map.of("state-sink", "SUCCESS"));
 		new OperationReplyProcessor(context).process(answered);
 		assertEquals(Map.of("State", "SUCCESS"), answered.getMessage().getBody());
@@ -170,10 +187,15 @@ class OperationReplyProcessorTest {
 
 	/** A response mapping whose Operation declares the output templates {@code outputs}. */
 	private static OperationContext withTemplates(Map<String, org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement> outputs) {
-		return new OperationContext("Occupy", "req.lua", "res.lua", "mock:cmd",
-				Map.of(), Map.of(), List.copyOf(outputs.keySet()), "Occupy", "Occupy", OUTPUTS,
-				List.of("Occupy"), Map.of(), true, List.of(), List.of(), Map.of(),
-				List.of("req.lua"), Map.of(), Map.of(), Map.of(), outputs);
+		return OperationContext.builder("Occupy", "mock:cmd")
+				.responseLuaUri("res.lua")
+				.callerOutputOrder(List.copyOf(outputs.keySet()))
+				.callerOutputTemplates(outputs)
+				.callerInputSourcePaths(Map.of("Occupy", "$"))
+				.callerReplySinkId(OUTPUTS)
+				.commandSinkIds(List.of("Occupy"))
+				.explicitResponseMapping(true)
+				.build();
 	}
 
 	@Test
@@ -253,10 +275,16 @@ class OperationReplyProcessorTest {
 	}
 
 	private static OperationContext separateTypes(Map<String, String> callerTypes, List<String> order) {
-		return new OperationContext("Invoke", "req.lua", "res.lua", "mock:cmd",
-				Map.of(), Map.of("Count", "integer", "DeviceFlag", "string"), order,
-				"Request", "Command", "Reply", List.of("Command"), Map.of(), true,
-				List.of(), List.of(), Map.of(), List.of("req.lua"), Map.of(), callerTypes);
+		return OperationContext.builder("Invoke", "mock:cmd")
+				.responseLuaUri("res.lua")
+				.responseTypes(Map.of("Count", "integer", "DeviceFlag", "string"))
+				.callerResponseTypes(callerTypes)
+				.callerOutputOrder(order)
+				.callerInputSourcePaths(Map.of("Request", "$"))
+				.callerReplySinkId("Reply")
+				.commandSinkIds(List.of("Command"))
+				.explicitResponseMapping(true)
+				.build();
 	}
 
 	@Test

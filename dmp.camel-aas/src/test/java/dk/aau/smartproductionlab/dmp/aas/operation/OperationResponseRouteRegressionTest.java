@@ -71,10 +71,10 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 					bridge.setRouteId("r0-" + id);
 					var data = bridge.getTriggerData();
 					data.put("restPath", "/r0/" + id);
-					data.put("restMethod", "POST");
 					data.put("action", "Invoke");
-					data.put("operationSourceId", "Request");
-					data.put("commandSinkId", "Command");
+					data.put("callerInputSourcePaths", Map.of("Request", "$"));
+					data.put("commandSinkIds", List.of("command"));
+					data.put("commandSinkBindings", List.of(Map.of("sinkId", "Command", "dataSinkId", "command")));
 					// "native" has no response mapping: the call answers with no outputs.
 					data.put("explicitResponseMapping", !"native".equals(id));
 					data.put("callerOutputOrder", "whole".equals(id) ? List.of("Reply", "sibling", "values")

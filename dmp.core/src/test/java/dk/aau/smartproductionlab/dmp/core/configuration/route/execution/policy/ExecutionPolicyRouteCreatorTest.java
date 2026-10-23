@@ -349,7 +349,7 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 	}
 
 	@Test
-	void managedBuilderRejectsMissingAndDuplicateAuthoredRouteIdsWithoutChangingLegacyIds() {
+	void managedBuilderRejectsMissingAndDuplicateAuthoredRouteIds() {
 		RouteConfiguration missingId = route(null, List.of("source"), List.of());
 		RoutesConfiguration missingBundle = ordinaryBundle(missingId, "source", "async-source", "unused-sync");
 		assertThrows(IllegalArgumentException.class,
@@ -367,10 +367,6 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 		operationRoute.setRouteTrigger("unsupported-managed-trigger");
 		assertThrows(IllegalArgumentException.class, () -> DmpRouteBuilder.forManagedBundle(
 				ordinaryBundle(operationRoute, "source", "async-source", "unused-sync"), policyFactories()));
-
-		RouteConfiguration legacy = route(null, List.of(), List.of());
-		new DmpRouteBuilder(ordinaryBundle(legacy, "source", "async-source", "unused-sync"), policyFactories());
-		assertEquals("route1", legacy.getRouteId());
 	}
 
 	private static DmpRouteBuilder managedBuilder(String routeId, String asyncId, String syncId) {

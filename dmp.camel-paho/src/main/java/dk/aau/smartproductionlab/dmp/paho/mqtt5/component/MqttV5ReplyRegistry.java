@@ -27,15 +27,14 @@ package dk.aau.smartproductionlab.dmp.paho.mqtt5.component;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.function.LongSupplier;
 
 /**
  * The pending-reply registry shared by the {@code paho-mqtt5-inout:}
  * producers (register + await) and the {@code paho-mqtt5:} reply-consumer
  * routes' {@link MqttV5ReplyMatcher}s (complete). Each endpoint in a context
- * owns a registry. Wire reservations span registries because identical data
- * on the same broker/reply channel cannot distinguish their callers.
+ * owns a registry. Reservations span registries because identical data on the
+ * same broker/reply channel cannot distinguish their callers. Correlations are
+ * fresh UUIDs, so a finished call frees its reservation at once.
  *
  * @author aas-camel-dmp
  */
@@ -44,9 +43,8 @@ final class MqttV5ReplyRegistry {
 	/** Scheduling margin beyond the endpoint's replyTimeout. */
 	static final long WAIT_MARGIN_MILLIS = 1_000L;
 
-	/** Authored IDs cannot prove generations indefinitely; reject reuse during this fence. */
-	static final long FENCE_MILLIS = 60_000L;
-	private static final WireState WIRE = new WireState(System::nanoTime, 8_192, FENCE_MILLIS);
+	/** In-flight calls JVM-wide. */
+	private static final WireState WIRE = new WireState(8_192);
 	private final WireState wire;
 
 	MqttV5ReplyRegistry() {
@@ -59,13 +57,11 @@ final class MqttV5ReplyRegistry {
 
 	CompletableFuture<String> register(Object owner, String broker, String topic, String correlation) {
 		synchronized (wire) {
-			wire.expire();
 			Key key = new Key(broker, topic, correlation);
-			if (wire.pending.containsKey(key) || wire.fences.containsKey(key)) {
-				throw new IllegalStateException("MQTT correlation is already pending or fenced on the reply channel");
+			if (wire.pending.containsKey(key)) {
+				throw new IllegalStateException("MQTT correlation is already pending on the reply channel");
 			}
-			// Reserve room for the eventual fence; never evict an unexpired fence.
-			if (wire.pending.size() + wire.fences.size() >= wire.capacity) {
+			if (wire.pending.size() >= wire.capacity) {
 				throw new IllegalStateException("MQTT reply reservation capacity exhausted");
 			}
 			CompletableFuture<String> future = new CompletableFuture<>();
@@ -80,7 +76,7 @@ final class MqttV5ReplyRegistry {
 			Key key = new Key(broker, topic, correlation);
 			Pending pending = wire.pending.get(key);
 			if (pending != null && pending.registry == this && pending.owner == owner && pending.future == future) {
-				wire.retire(key);
+				wire.pending.remove(key);
 			}
 		}
 	}
@@ -90,7 +86,7 @@ final class MqttV5ReplyRegistry {
 			Key key = new Key(broker, topic, correlation);
 			Pending pending = wire.pending.get(key);
 			if (pending == null || pending.registry != this) return false;
-			wire.retire(key);
+			wire.pending.remove(key);
 			return pending.future.complete(payload);
 		}
 	}
@@ -100,7 +96,7 @@ final class MqttV5ReplyRegistry {
 			for (Key key : java.util.List.copyOf(wire.pending.keySet())) {
 				Pending pending = wire.pending.get(key);
 				if (pending.registry == this && pending.owner == owner) {
-					wire.retire(key);
+					wire.pending.remove(key);
 					pending.future.cancel(false);
 				}
 			}
@@ -116,29 +112,13 @@ final class MqttV5ReplyRegistry {
 	private record Key(String broker, String topic, String correlation) { }
 	private record Pending(MqttV5ReplyRegistry registry, Object owner, CompletableFuture<String> future) { }
 
-	/** Bounded, monotonic-time wire fences. Expired entries are pruned on access. */
+	/** The pending calls, bounded. */
 	static final class WireState {
 		private final Map<Key, Pending> pending = new HashMap<>();
-		private final Map<Key, Long> fences = new HashMap<>();
-		private final LongSupplier clock;
 		private final int capacity;
-		private final long fenceNanos;
 
-		WireState(LongSupplier clock, int capacity, long fenceMillis) {
-			this.clock = clock;
+		WireState(int capacity) {
 			this.capacity = capacity;
-			this.fenceNanos = TimeUnit.MILLISECONDS.toNanos(fenceMillis);
-		}
-
-		private void expire() {
-			long now = clock.getAsLong();
-			fences.values().removeIf(deadline -> now - deadline >= 0);
-		}
-
-		private void retire(Key key) {
-			expire();
-			pending.remove(key);
-			fences.put(key, clock.getAsLong() + fenceNanos);
 		}
 	}
 }

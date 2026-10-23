@@ -38,7 +38,6 @@ class ManagedRuntimeSettingsTest {
 				Map.entry("DMP_MANAGED_KAFKA_BROKERS", "kafka-a:9092,kafka-b:9092"),
 				Map.entry("DMP_MANAGED_CONTROL_TOPIC", "aas-control"),
 				Map.entry("DMP_MANAGED_CONTROL_GROUP_ID", "dmp-control"),
-				Map.entry("DMP_MANAGED_DATA_PLANE_GROUP_IDS", "data-a,data-b"),
 				Map.entry("DMP_MANAGED_MAX_MAPPINGS", "256"),
 				Map.entry("DMP_MANAGED_MAX_INVALIDATIONS", "512"),
 				Map.entry("DMP_MANAGED_MAX_PARALLEL_READS", "3"));

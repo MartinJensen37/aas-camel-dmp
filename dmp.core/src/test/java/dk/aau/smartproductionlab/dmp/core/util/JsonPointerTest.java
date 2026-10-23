@@ -36,7 +36,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link JsonPointer} (SPEC §6.5.1): object keys, 0-based array
+ * Unit tests for {@link JsonPointer} (SPEC §5.4): object keys, 0-based array
  * indices, RFC 6901 and JSONPath-ish syntax, missing-path semantics.
  */
 class JsonPointerTest {
@@ -103,14 +103,6 @@ class JsonPointerTest {
 	}
 
 	@Test
-	void leafKeyReturnsLastObjectKey() {
-		assertEquals("SetPoint", JsonPointer.parse("$.SetPoint").leafKey());
-		assertEquals("mode", JsonPointer.parse("$.ProcessQueue.mode").leafKey());
-		assertEquals("id", JsonPointer.parse("$.WorkOrders[0].id").leafKey());
-		assertEquals("", JsonPointer.parse("").leafKey());
-	}
-
-	@Test
 	void malformedExpressionThrows() {
 		assertTrue(assertThrows(() -> JsonPointer.parse("$.a[")));
 	}
@@ -132,7 +124,7 @@ class JsonPointerTest {
 
 	@Test
 	void pathishEscapesDecodeToo() {
-		// T1.12: ~0/~1 previously decoded only in RFC-style syntax
+		// ~0/~1 previously decoded only in RFC-style syntax
 		Map<String, Object> data = Map.of("a/b", 1, "m~n", 2);
 		assertEquals(Optional.of(1), JsonPointer.extract(data, "$.a~1b"));
 		assertEquals(Optional.of(2), JsonPointer.extract(data, "$.m~0n"));
@@ -146,7 +138,7 @@ class JsonPointerTest {
 
 	@Test
 	void nullLeafIsPresentButNull() {
-		// T1.12: a JSON null leaf must not be indistinguishable from a missing path
+		// a JSON null leaf must not be indistinguishable from a missing path
 		Map<String, Object> inner = new HashMap<>();
 		inner.put("value", null);
 		Map<String, Object> data = new HashMap<>();

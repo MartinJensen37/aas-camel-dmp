@@ -24,11 +24,6 @@
  ******************************************************************************/
 package dk.aau.smartproductionlab.dmp.lua.sandbox;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
-
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaClosure;
 import org.luaj.vm2.LuaValue;
@@ -36,13 +31,13 @@ import org.luaj.vm2.Prototype;
 import org.luaj.vm2.compiler.LuaC;
 
 /**
- * A Lua blob compiled ONCE (SPEC §7.4/§7.5 optimization, M7.1).
+ * A Lua blob compiled ONCE (SPEC §8).
  *
  * <p>
  * The expensive part of running an AIMC blob is compiling the source into
  * LuaJ bytecode (LuaC parse + Prototype). The blob is identical for every
- * incoming message of a route, so the DMP compiles it a single time per
- * route and reuses the resulting {@link Prototype}.
+ * evaluation of a mapping, so the DMP compiles it a single time and reuses
+ * the resulting {@link Prototype}.
  *
  * <p>
  * LuaJ {@code Globals} are not thread-safe and blobs may mutate their
@@ -51,7 +46,7 @@ import org.luaj.vm2.compiler.LuaC;
  * bound to it:
  *
  * <pre>{@code
- * CompiledLuaScript compiled = loader.loadCompiled(path);
+ * CompiledLuaScript compiled = CompiledLuaScript.compile(source, name);
  * Globals globals = LuaSandbox.createGlobals();
  * LuaTimeoutHook.install(globals, timeout);
  * CompiledLuaScript.runChunk(compiled.prototype(), globals); // defines aimc_main
@@ -66,13 +61,10 @@ import org.luaj.vm2.compiler.LuaC;
  */
 public final class CompiledLuaScript {
 
-	/** Content hash — the loader uses it to detect blob changes (recompile). */
-	private final String sha256;
 	private final Prototype prototype;
 
-	private CompiledLuaScript(Prototype prototype, String sha256) {
+	private CompiledLuaScript(Prototype prototype) {
 		this.prototype = prototype;
-		this.sha256 = sha256;
 	}
 
 	/** Compiles a blob into a reusable prototype. */
@@ -87,15 +79,11 @@ public final class CompiledLuaScript {
 			throw new IllegalArgumentException(
 					"Lua blob '" + chunkName + "' did not compile to a closure");
 		}
-		return new CompiledLuaScript(((LuaClosure) chunk).p, sha256(source.getBytes(StandardCharsets.UTF_8)));
+		return new CompiledLuaScript(((LuaClosure) chunk).p);
 	}
 
 	public Prototype prototype() {
 		return prototype;
-	}
-
-	public String sha256() {
-		return sha256;
 	}
 
 	/**
@@ -104,14 +92,5 @@ public final class CompiledLuaScript {
 	 */
 	public static void runChunk(Prototype prototype, Globals globals) {
 		new LuaClosure(prototype, globals).call();
-	}
-
-	private static String sha256(byte[] bytes) {
-		try {
-			MessageDigest digest = MessageDigest.getInstance("SHA-256");
-			return HexFormat.of().formatHex(digest.digest(bytes));
-		} catch (NoSuchAlgorithmException e) {
-			throw new IllegalStateException("SHA-256 unavailable", e);
-		}
 	}
 }

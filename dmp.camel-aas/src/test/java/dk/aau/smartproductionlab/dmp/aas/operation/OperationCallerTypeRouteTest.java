@@ -39,7 +39,6 @@ class OperationCallerTypeRouteTest {
 					+ "return { Reply = { Count = string.format('%03d', sources.Device.Count), "
 					+ "Display = sources.Device.Count / 2, Flag = sources.Device.DeviceFlag == 'true' } } end")
 					.getBytes(StandardCharsets.UTF_8), "caller-types", 4096));
-			lua.setKeyedInput(true);
 			lua.bind(camel);
 			try {
 				camel.addRoutes(new RouteBuilder() {
@@ -57,8 +56,9 @@ class OperationCallerTypeRouteTest {
 						var data = bridge.getTriggerData();
 						data.put("restPath", "/caller-types");
 						data.put("action", "Invoke");
-						data.put("operationSourceId", "Request");
-						data.put("commandSinkId", "Command");
+						data.put("callerInputSourcePaths", Map.of("Request", "$"));
+						data.put("commandSinkIds", List.of("command"));
+						data.put("commandSinkBindings", List.of(Map.of("sinkId", "Command", "dataSinkId", "command")));
 						data.put("callerReplySinkId", "Reply");
 						data.put("explicitResponseMapping", true);
 						data.put("responseTransformer", "response");

@@ -64,7 +64,7 @@ import dk.aau.smartproductionlab.dmp.management.repository.PublishedModels;
 
 class ManagedBridgeLifecycleTest {
 	private static final class Runtime extends DmpComponent {
-		Runtime() { super(new RoutesConfiguration(), Duration.ofSeconds(4)); }
+		Runtime() { super(Duration.ofSeconds(4)); }
 		org.apache.camel.CamelContext context() { return camelContext; }
 		void listener(int port) throws Exception {
 			camelContext.addRoutes(new org.apache.camel.builder.RouteBuilder() {
@@ -254,7 +254,7 @@ class ManagedBridgeLifecycleTest {
 
 	@Test
 	void operationRestReservationsAndProcessorResourcesRetireAndReaddIndependently() {
-		DmpComponent dmp = new DmpComponent(new RoutesConfiguration());
+		DmpComponent dmp = new DmpComponent();
 		try {
 			dmp.startComponent();
 			var first = dmp.installBundle("operation-A", operation("operation-A", "/managed/A"));
@@ -282,7 +282,7 @@ class ManagedBridgeLifecycleTest {
 	void authoredOperationFixturesInstallIndependentlyWithoutPythonOrGeneratedDescriptors() throws Exception {
 		String[] cases={"opcua-method","http-operation","grouped-action"};
 		var repository=new FakeAasRepository();
-		DmpComponent dmp=new DmpComponent(new RoutesConfiguration());
+		DmpComponent dmp=new DmpComponent();
 		try {
 			var client=repository.client();
 			dmp.startComponent();
@@ -356,10 +356,11 @@ class ManagedBridgeLifecycleTest {
 		ProtocolBridgeRouteConfiguration operation = new ProtocolBridgeRouteConfiguration(base);
 		operation.setRouteId(routeId);
 		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.REST_PATH, path);
-		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.REST_METHOD, "POST");
 		operation.getTriggerData().put("action", "Action");
-		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_ID, "command");
+		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.CALLER_INPUT_SOURCE_PATHS, Map.of("Action", "$"));
 		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_IDS, List.of("command"));
+		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_BINDINGS,
+				List.of(Map.of("sinkId", "command", "dataSinkId", "command")));
 		// The whole device reply is the ResponseSource reply; it is both the Operation's output
 		// reply (caller SinkId reply) and the value written to the reply sink.
 		operation.getTriggerData().put(ProtocolBridgeRouteConfiguration.EXPLICIT_RESPONSE_MAPPING, true);

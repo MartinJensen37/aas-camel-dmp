@@ -75,8 +75,6 @@ public class OpcuaDataSinkConfiguration extends DataSinkConfiguration {
 
         if (!this.configuration.containsKey("allowedSecurityPolicies"))
             this.configuration.put("allowedSecurityPolicies", "None");
-        if (!this.configuration.containsKey("requestedPublishingInterval"))
-            this.configuration.put("requestedPublishingInterval", "1000");
     }
 
 	public String getServerUrl() {

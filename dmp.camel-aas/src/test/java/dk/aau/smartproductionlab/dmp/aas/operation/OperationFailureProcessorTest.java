@@ -91,7 +91,11 @@ class OperationFailureProcessorTest {
 			System.setErr(capture);
 			var exchange = new DefaultExchange(camel);
 			exchange.setProperty(Exchange.EXCEPTION_CAUGHT, failure);
-			var context = new OperationContext(SECRET, "direct:request", null, URI);
+			var context = OperationContext.builder(SECRET, URI)
+				.callerInputSourcePaths(Map.of(SECRET, "$"))
+				.callerReplySinkId(SECRET)
+				.commandSinkIds(List.of(SECRET))
+				.build();
 			new OperationFailureProcessor(context, configuredStatus).process(exchange);
 			assertEquals(expectedStatus, exchange.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE));
 			assertEquals(true, exchange.getProperty(OperationPayloads.OPERATION_DELEGATION_FAILED));

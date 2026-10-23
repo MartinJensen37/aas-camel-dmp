@@ -46,7 +46,7 @@ class AASOrdinarySinkContractTest {
 				@Override
 				public void configure() {
 					FanOut.apply(from("direct:ordinary"), configuration, route, new String[0],
-							new String[] {sink.getConnectionURI()}, Map.of(), "ordinary");
+							new String[] {sink.getConnectionURI()}, "ordinary");
 				}
 			});
 			context.start();

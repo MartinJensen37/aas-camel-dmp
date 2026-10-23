@@ -33,12 +33,9 @@ import dk.aau.smartproductionlab.dmp.core.util.JsonCodec;
 import dk.aau.smartproductionlab.dmp.core.util.JsonPointer;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.PayloadAssembler;
 import java.math.BigInteger;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
@@ -57,7 +54,6 @@ public final class OperationPayloads {
 	/** Exchange property marking a BaSyx OperationVariable[] caller. */
 	public static final String BASYX_DELEGATION_BODY = "basyxDelegationBody";
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(OperationPayloads.class);
 	private OperationPayloads() {
 	}
 
@@ -309,22 +305,10 @@ public final class OperationPayloads {
 		return JsonCodec.toJson(body);
 	}
 
-	/**
-	 * Unwrap the action (SinkId) key from a transformed Lua payload; if absent
-	 * (or not JSON), fall back to the payload as-is.
-	 */
-	public static Map<String, Object> unwrap(Object payload, String action) {
-		if (payload instanceof Map) {
-			return unwrapMap(payload, action);
-		}
-		LOGGER.warn("operation '{}': Lua result is not a SinkId object", action);
-		return new HashMap<>();
-	}
-
 	/** Builds one declared affordance payload from the Lua values keyed by SinkId. */
 	public static Map<String, Object> assembleCommand(Object transformed,
-			java.util.List<String> sinkIds, Map<String, String> valuePaths, String legacySinkId) {
-		if (sinkIds == null || sinkIds.isEmpty()) return unwrap(transformed, legacySinkId);
+			java.util.List<String> sinkIds, Map<String, String> valuePaths) {
+		if (sinkIds == null || sinkIds.isEmpty()) throw new IllegalArgumentException("an action command needs its SinkIds");
 		Object payload = PayloadAssembler.assemble(keyedValues(transformed), sinkIds, valuePaths);
 		if (!(payload instanceof Map<?, ?> map)) {
 			throw new IllegalArgumentException("whole-affordance command must be an object");
@@ -354,14 +338,6 @@ public final class OperationPayloads {
 		return values;
 	}
 
-	public static Object requireCommandSinkValue(Object payload, String sinkId) {
-		Map<String, Object> values = keyedValues(payload);
-		if (!values.containsKey(sinkId)) {
-			throw new IllegalArgumentException("request mapping omitted command SinkId " + sinkId);
-		}
-		return values.get(sinkId);
-	}
-
 	/** Requires Lua to emit the authored caller-reply SinkId; never return the whole SinkId map by accident. */
 	public static Object requireSinkValue(Object payload, String sinkId) {
 		if (!(payload instanceof Map<?, ?> map) || !map.containsKey(sinkId)) {
@@ -381,16 +357,6 @@ public final class OperationPayloads {
 			if (values.containsKey(name)) selected.put(name, values.get(name));
 		}
 		return selected;
-	}
-
-	@SuppressWarnings("unchecked")
-	private static Map<String, Object> unwrapMap(Object payload, String action) {
-		Map<String, Object> map = (Map<String, Object>) payload;
-		Object inner = map.get(action);
-		if (inner instanceof Map) {
-			return new HashMap<>((Map<String, Object>) inner);
-		}
-		return new HashMap<>(map);
 	}
 
 	private static String numericString(Number number) {

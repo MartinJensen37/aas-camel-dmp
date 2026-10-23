@@ -467,10 +467,9 @@ public final class MappingReconciliationService implements AutoCloseable {
 			if (!candidate.desired().valid() || candidate.desired().bundle() == null) continue;
 			for (RouteConfiguration route : candidate.desired().bundle().configuration().getRoutes()) {
 				if (!"bridge".equals(route.getRouteTrigger()) || route.getTriggerData() == null) continue;
-				Object method = route.getTriggerData().get("restMethod");
 				Object path = route.getTriggerData().get("restPath");
-				if (method instanceof String verb && path instanceof String restPath && !restPath.isBlank()) {
-					String reservation = verb.toUpperCase(java.util.Locale.ROOT) + " " + restPath;
+				if (path instanceof String restPath && !restPath.isBlank()) {
+					String reservation = "POST " + restPath;
 					reservations.computeIfAbsent(reservation, ignored -> new ArrayList<>()).add(candidate.key());
 				}
 			}

@@ -36,7 +36,6 @@ import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaUserdata;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
-import org.luaj.vm2.lib.TwoArgFunction;
 import dk.aau.smartproductionlab.dmp.core.util.JsonCodec;
 import dk.aau.smartproductionlab.dmp.core.util.JsonPointer;
 
@@ -51,7 +50,7 @@ import dk.aau.smartproductionlab.dmp.core.util.JsonPointer;
  *
  * @author aas-camel-dmp
  */
-public final class LuaJsonCodec extends TwoArgFunction {
+public final class LuaJsonCodec {
 
 	/** Largest integer a Lua (double) number represents exactly: 2^53 - 1. */
 	private static final double MAX_EXACT_LUA_INTEGER = 9007199254740991.0;
@@ -71,12 +70,6 @@ public final class LuaJsonCodec extends TwoArgFunction {
 		json.set("array", new ArrayFunction());
 		json.set("object", new ObjectFunction());
 		globals.set("json", json);
-	}
-
-	@Override
-	public LuaValue call(LuaValue modname, LuaValue env) {
-		install(env);
-		return env.get("json");
 	}
 
 	/**

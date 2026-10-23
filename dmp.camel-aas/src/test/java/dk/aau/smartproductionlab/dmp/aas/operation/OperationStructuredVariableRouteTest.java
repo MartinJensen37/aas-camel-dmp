@@ -170,8 +170,9 @@ class OperationStructuredVariableRouteTest {
 						data.put("operationSubmodelId", "urn:cci");
 						data.put("operationPath", "Skills.Move.operation");
 						data.put("action", "Move");
-						data.put("operationSourceId", "Request");
-						data.put("commandSinkId", "Command");
+						data.put("callerInputSourcePaths", Map.of("Request", "$"));
+						data.put("commandSinkIds", List.of("command"));
+						data.put("commandSinkBindings", List.of(Map.of("sinkId", "Command", "dataSinkId", "command")));
 						data.put("callerReplySinkId", "Reply");
 						data.put("explicitResponseMapping", true);
 						data.put("responseTransformer", "response");
@@ -208,7 +209,6 @@ class OperationStructuredVariableRouteTest {
 
 	private static LuaTransformerConfiguration lua(DefaultCamelContext camel, String id, String source) throws Exception {
 		var lua = new LuaTransformerConfiguration(id, LuaCompiledSource.fromBytes(source.getBytes(StandardCharsets.UTF_8), id, 4096));
-		lua.setKeyedInput(true);
 		lua.bind(camel);
 		return lua;
 	}

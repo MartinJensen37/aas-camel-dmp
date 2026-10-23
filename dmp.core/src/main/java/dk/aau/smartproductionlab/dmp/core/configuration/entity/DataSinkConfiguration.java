@@ -70,7 +70,7 @@ public abstract class DataSinkConfiguration extends RouteEntity {
 
 	/**
 	 * The AIMC SinkId this sink writes out of the transform's return object
-	 * (SPEC §6.4). Mirrors the source-side {@code sourceId}: the key whose
+	 * (SPEC §6). Mirrors the source-side {@code sourceId}: the key whose
 	 * value this sink consumes. Connector sinks may expose this as a value path.
 	 */
 	public String getSinkId() {
@@ -82,7 +82,7 @@ public abstract class DataSinkConfiguration extends RouteEntity {
 	}
 
 	/**
-	 * Sink-side fine resolution / assembly (ADR-014 / SPEC §6.5.4): a JSON
+	 * Sink-side fine resolution / assembly (ADR-014 / SPEC §5.4): a JSON
 	 * Pointer (e.g. {@code $.SetPoint}) at which the {@code SinkId} value is
 	 * placed in the outgoing payload after the transform. Absent → coarse
 	 * (write the whole {@code SinkId} value as-is). The management node pins it

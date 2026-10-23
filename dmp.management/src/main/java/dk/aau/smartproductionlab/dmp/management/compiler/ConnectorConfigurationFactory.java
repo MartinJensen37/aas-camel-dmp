@@ -227,10 +227,7 @@ public final class ConnectorConfigurationFactory {
 					try {
 						String id = entityId(mapping, "transform", 0);
 						LuaCompiledSource compiled = compiledLua(blob.bytes(), mapping.identity());
-						LuaTransformerConfiguration lua=new LuaTransformerConfiguration(id,compiled);
-						lua.setSourceKeys(String.join(",",mapping.sources().stream().map(EndpointPlan::id).toList()));
-						lua.setKeyedInput(true);
-						transformers.add(lua);
+						transformers.add(new LuaTransformerConfiguration(id,compiled));
 					} catch (RuntimeException failure) {
 						issue(issues, mapping, "MappingConfigurations/value/" + mapping.listIndex() + "/Transformation",
 								"Lua source cannot be compiled: " + failure.getMessage());
@@ -415,7 +412,6 @@ public final class ConnectorConfigurationFactory {
 		if(restPath==null) { issue(issues,mapping,root+"/Sources","CCI Operation needs an invocationDelegation qualifier whose URL names the DMP path");return; }
 		Map<String,Object> trigger=new LinkedHashMap<>();
 		trigger.put(ProtocolBridgeRouteConfiguration.REST_PATH,restPath);
-		trigger.put(ProtocolBridgeRouteConfiguration.REST_METHOD,"POST");
 		trigger.put("action",action);
 		// The Operation's AAS identity (submodel ID, idShort path), passed to Lua as meta.invocation.
 		List<Key> operationKeys=operationKeys(operation);
@@ -424,9 +420,6 @@ public final class ConnectorConfigurationFactory {
 			trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_PATH,String.join(".",
 					operationKeys.subList(1,operationKeys.size()).stream().map(Key::getValue).toList()));
 		}
-		trigger.put(ProtocolBridgeRouteConfiguration.OPERATION_SOURCE_ID,
-				isWholeOperation(operation) ? operation.id() : action);
-		List<String> requestSourceIds=new ArrayList<>();
 		Map<String,String> callerInputSourcePaths=new LinkedHashMap<>();
 		for(EndpointPlan endpoint:mapping.sources()) if(operationModel(endpoint)!=null) {
 			if(isWholeOperation(endpoint)) callerInputSourcePaths.put(endpoint.id(), "$");
@@ -436,13 +429,8 @@ public final class ConnectorConfigurationFactory {
 				else callerInputSourcePaths.put(endpoint.id(),valuePath);
 			}
 		}
-		if(callerInputSourcePaths.isEmpty()) requestSourceIds.add(operation.id());
-		else requestSourceIds.addAll(callerInputSourcePaths.keySet());
 		trigger.put(ProtocolBridgeRouteConfiguration.CALLER_INPUT_SOURCE_PATHS,Map.copyOf(callerInputSourcePaths));
-		fanIn.forEach(extra -> requestSourceIds.add(extra.id()));
-		trigger.put("requestSourceIds",List.copyOf(requestSourceIds));
 		trigger.put(ProtocolBridgeRouteConfiguration.FAN_IN_SOURCES,List.copyOf(fanInBindings));
-		trigger.put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_ID,mapping.sinks().get(0).id());
 		trigger.put(ProtocolBridgeRouteConfiguration.COMMAND_SINK_IDS,List.of(commandSink.getUniqueId()));
 		List<Map<String,Object>> bindings=new ArrayList<>();
 		for(EndpointPlan sink:mapping.sinks()) {
@@ -458,9 +446,6 @@ public final class ConnectorConfigurationFactory {
 		trigger.put("parameterRequired",parameterRequired);
 		trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_TYPES,responseTypes);
 		trigger.put("responseRequired",responseRequired);
-		List<String> responseOrder=cci!=null
-				? Aas.nonNull(cci.getOutputVariables()).stream().map(variable -> variable.getValue()==null?null:variable.getValue().getIdShort())
-						.filter(Objects::nonNull).toList() : List.of();
 		Map<String,String> callerTypes=new LinkedHashMap<>();
 		Map<String,String> inputTemplates=new LinkedHashMap<>();
 		Map<String,String> outputTemplates=new LinkedHashMap<>();
@@ -502,9 +487,6 @@ public final class ConnectorConfigurationFactory {
 		trigger.put("callerResponseTypes",Map.copyOf(callerTypes));
 		trigger.put(ProtocolBridgeRouteConfiguration.CALLER_INPUT_TEMPLATES,Map.copyOf(inputTemplates));
 		trigger.put(ProtocolBridgeRouteConfiguration.CALLER_OUTPUT_TEMPLATES,Map.copyOf(outputTemplates));
-		if(!responseOrder.isEmpty()) {
-			trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_ORDER,responseOrder);
-		}
 		if(!callerOrder.isEmpty())trigger.put("callerOutputOrder",List.copyOf(callerOrder));
 		if(response!=null) trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_SCHEMA,schema(Presence.of(response)));
 		// The caller's outputs are only what the response mapping makes of the reply; nothing is
@@ -529,23 +511,13 @@ public final class ConnectorConfigurationFactory {
 		}
 		byte[] requestBytes=mapping.transformation().value().bytes();
 		addLua(transformers,requestTransformerId,requestBytes,mapping.identity()+":request",mapping,root+"/Transformation",issues);
-		if(!transformers.isEmpty()) {
-			LuaTransformerConfiguration requestLua=(LuaTransformerConfiguration)transformers.get(0);
-			requestLua.setSourceKeys(String.join(",",requestSourceIds));requestLua.setKeyedInput(true);
-		}
 		List<String> transformerIds=new ArrayList<>();
 		if(!transformers.isEmpty()) transformerIds.add(requestTransformerId);
 		if(mapping.responseTransformation().present() && mapping.responseTransformation().value()!=null) {
 			String responseTransformerId=entityId(mapping,"response-transform",0);
 			addLua(transformers,responseTransformerId,mapping.responseTransformation().value().bytes(),
 					mapping.identity()+":response",mapping,root+"/ResponseTransformation",issues);
-			if(issues.size()==issueStart) {
-				LuaTransformerConfiguration responseLua=(LuaTransformerConfiguration)transformers.get(transformers.size()-1);
-				responseLua.setSourceKeys(String.join(",",((List<?>)trigger.get(
-						ProtocolBridgeRouteConfiguration.RESPONSE_SOURCE_BINDINGS)).stream().map(binding -> String.valueOf(((Map<?,?>)binding).get("sourceId"))).toList()));
-				responseLua.setKeyedInput(true);
-				trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_TRANSFORMER,responseTransformerId);
-			}
+			if(issues.size()==issueStart) trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_TRANSFORMER,responseTransformerId);
 		}
 		if(issues.size()!=issueStart) return;
 		output.addDatasources(fanInReads);
@@ -825,9 +797,6 @@ public final class ConnectorConfigurationFactory {
 		addLua(transformers,id,mapping.responseTransformation().value().bytes(),mapping.identity()+":response",
 				mapping,root+"/ResponseTransformation",issues);
 		if(transformers.size()==before)return;
-		LuaTransformerConfiguration lua=(LuaTransformerConfiguration)transformers.get(transformers.size()-1);
-		lua.setSourceKeys(String.join(",",sourceBindings.stream().map(binding -> String.valueOf(binding.get("sourceId"))).toList()));
-		lua.setKeyedInput(true);
 		trigger.put(RouteConfiguration.RESPONSE_TRANSFORMER,id);
 	}
 

@@ -40,112 +40,21 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for the canonical OPC UA payload form (SPEC §10.6).
+ * Unit tests for the JSON value of OPC UA built-in values (SPEC §5.2).
  */
 class OpcUaCanonicalTest {
 
 	@Test
-	void doubleValueYieldsCanonicalMapWithValueStatusTimestamp() {
-		DataValue dataValue = new DataValue(new Variant(42.5), StatusCode.GOOD,
-				new DateTime(Instant.parse("2026-01-02T03:04:05Z")), null);
-
-		Map<String, Object> canonical = OpcUaCanonical.toCanonical(dataValue, "ns=2;s=State");
-
-		assertEquals("ns=2;s=State", canonical.get("nodeId"));
-		assertEquals(42.5, canonical.get("value"));
-		assertEquals(0L, canonical.get("status"));
-		assertEquals("2026-01-02T03:04:05Z", canonical.get("timestamp"));
-	}
-
-	@Test
-	void nodeIdIsOmittedWhenNull() {
-		DataValue dataValue = new DataValue(new Variant("idle"), StatusCode.GOOD, null, null);
-
-		Map<String, Object> canonical = OpcUaCanonical.toCanonical(dataValue, null);
-
-		assertFalse(canonical.containsKey("nodeId"));
-		assertEquals("idle", canonical.get("value"));
-	}
-
-	@Test
-	void badStatusCodeIsPreserved() {
-		DataValue dataValue = new DataValue(new Variant(0), new StatusCode(StatusCodes.Bad_NoData), null, null);
-
-		Map<String, Object> canonical = OpcUaCanonical.toCanonical(dataValue, null);
-
-		assertEquals((long) StatusCodes.Bad_NoData, canonical.get("status"));
-	}
-
-	@Test
-	void booleanValueIsPreserved() {
-		DataValue dataValue = new DataValue(new Variant(true), StatusCode.GOOD, null, null);
-
-		Map<String, Object> canonical = OpcUaCanonical.toCanonical(dataValue, null);
-
-		assertEquals(Boolean.TRUE, canonical.get("value"));
+	void scalarsKeepTheirJsonType() {
+		assertEquals(42.5, OpcUaCanonical.jsonValue(42.5));
+		assertEquals("idle", OpcUaCanonical.jsonValue("idle"));
+		assertEquals(Boolean.TRUE, OpcUaCanonical.jsonValue(true));
+		assertNull(OpcUaCanonical.jsonValue(null));
 	}
 
 	@Test
 	void byteArrayValueBecomesBase64() {
-		DataValue dataValue = new DataValue(new Variant(new byte[] { 1, 2, 3 }), StatusCode.GOOD, null, null);
-
-		Map<String, Object> canonical = OpcUaCanonical.toCanonical(dataValue, null);
-
-		assertEquals("AQID", canonical.get("value"));
-	}
-
-	@Test
-	void canonicalJsonIsParseableAndComplete() throws Exception {
-		DataValue dataValue = new DataValue(new Variant(7), StatusCode.GOOD,
-				new DateTime(Instant.parse("2026-01-02T03:04:05Z")), null);
-
-		String json = OpcUaCanonical.toCanonicalJson(dataValue, "ns=2;s=Counter");
-
-		@SuppressWarnings("unchecked")
-		Map<String, Object> parsed = new com.fasterxml.jackson.databind.ObjectMapper()
-				.readValue(json, Map.class);
-		assertEquals("ns=2;s=Counter", parsed.get("nodeId"));
-		assertEquals(7, parsed.get("value"));
-		assertEquals(0, parsed.get("status"));
-		assertEquals("2026-01-02T03:04:05Z", parsed.get("timestamp"));
-	}
-
-	@Test
-	void toVariantWrapsScalarAndNull() {
-		assertEquals(42.5, OpcUaCanonical.toVariant(42.5).getValue());
-		assertEquals("start", OpcUaCanonical.toVariant("start").getValue());
-		assertTrue(OpcUaCanonical.toVariant(null).isNull());
-	}
-
-	@Test
-	void sourceTimeTakesPrecedenceOverServerTime() {
-		Instant source = Instant.parse("2026-01-02T03:04:05Z");
-		Instant server = Instant.parse("2026-05-06T07:08:09Z");
-		DataValue dataValue = new DataValue(new Variant(1), StatusCode.GOOD,
-				new DateTime(source), new DateTime(server));
-
-		Map<String, Object> canonical = OpcUaCanonical.toCanonical(dataValue, null);
-
-		assertEquals("2026-01-02T03:04:05Z", canonical.get("timestamp"));
-	}
-
-	@Test
-	void serverTimeUsedWhenSourceTimeInvalid() {
-		DataValue dataValue = new DataValue(new Variant(1), StatusCode.GOOD, DateTime.NULL_VALUE,
-				new DateTime(Instant.parse("2026-05-06T07:08:09Z")));
-
-		Map<String, Object> canonical = OpcUaCanonical.toCanonical(dataValue, null);
-
-		assertEquals("2026-05-06T07:08:09Z", canonical.get("timestamp"));
-	}
-
-	@Test
-	void nullVariantYieldsNullValue() {
-		DataValue dataValue = new DataValue(Variant.NULL_VALUE, StatusCode.GOOD, null, null);
-
-		Map<String, Object> canonical = OpcUaCanonical.toCanonical(dataValue, null);
-
-		assertNull(canonical.get("value"));
+		assertEquals("AQID", OpcUaCanonical.jsonValue(new byte[] { 1, 2, 3 }));
 	}
 
 	@Test

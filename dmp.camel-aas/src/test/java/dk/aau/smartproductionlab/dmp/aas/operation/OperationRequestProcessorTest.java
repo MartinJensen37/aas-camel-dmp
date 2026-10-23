@@ -55,16 +55,15 @@ class OperationRequestProcessorTest {
 				var lua = new LuaTransformerConfiguration("request-collision", LuaCompiledSource.fromBytes(
 						("function aimc_main(sources) return { Command = sources['" + sourceId + "'] } end")
 								.getBytes(StandardCharsets.UTF_8), "request-collision", 4096));
-				lua.setKeyedInput(true);
 				lua.bind(camel);
 				try {
 					camel.addRoutes(new RouteBuilder() {
 						@Override public void configure() {
-							from("direct:request-boundary").process(new OperationRequestProcessor(sourceId))
+							from("direct:request-boundary").process(new OperationRequestProcessor(Map.of(), Map.of(sourceId, "$")))
 									.process(exchange -> boundary.set(JsonCodec.copyValue(exchange.getMessage().getBody())))
 									.to(lua.getConnectionURI())
 									.process(exchange -> exchange.getMessage().setBody(OperationPayloads.assembleCommand(
-											exchange.getMessage().getBody(), List.of("Command"), Map.of(), "Command")))
+											exchange.getMessage().getBody(), List.of("Command"), Map.of())))
 									.to("direct:device");
 							from("direct:device").process(exchange -> {
 								sends.incrementAndGet();
@@ -97,7 +96,7 @@ class OperationRequestProcessorTest {
 					"[{\"value\":{\"idShort\":\"Invoke\",\"value\":1}}]", List.of(1L, 2L), null)) {
 				var exchange = new DefaultExchange(camel);
 				exchange.getMessage().setBody(JsonCodec.toJson(value));
-				new OperationRequestProcessor("Invoke").process(exchange);
+				new OperationRequestProcessor(Map.of(), Map.of("Invoke", "$")).process(exchange);
 				Map<String, Object> expected = new LinkedHashMap<>();
 				expected.put("Invoke", value);
 				assertEquals(expected, exchange.getMessage().getBody());
@@ -109,7 +108,7 @@ class OperationRequestProcessorTest {
 	void basyxUuidInoutputRetainsItsExactLexicalValueAtTheRequestBoundary() throws Exception {
 		var exchange = new DefaultExchange(new DefaultCamelContext());
 		exchange.getMessage().setBody("[{\"value\":{\"modelType\":\"Property\",\"idShort\":\"Uuid\",\"valueType\":\"xs:string\",\"value\":\"00000000-0000-0000-0000-000000000001\"}}]");
-		new OperationRequestProcessor("Invoke").process(exchange);
+		new OperationRequestProcessor(Map.of(), Map.of("Invoke", "$")).process(exchange);
 		assertEquals(Map.of("Invoke", Map.of("Uuid", "00000000-0000-0000-0000-000000000001")),
 				exchange.getMessage().getBody());
 		assertEquals(true, exchange.getProperty(OperationPayloads.BASYX_DELEGATION_BODY));
@@ -119,7 +118,7 @@ class OperationRequestProcessorTest {
 	void multipleOperationVariableSourcesProjectFromOneCallerRequest() throws Exception {
 		var exchange = new DefaultExchange(new DefaultCamelContext());
 		exchange.getMessage().setBody("{\"Position\":{\"x\":1,\"y\":2}}");
-		new OperationRequestProcessor("Move", Map.of(), Map.of("source-x", "$.Position.x", "source-y", "$.Position.y"))
+		new OperationRequestProcessor(Map.of(), Map.of("source-x", "$.Position.x", "source-y", "$.Position.y"))
 				.process(exchange);
 		assertEquals(Map.of("source-x", 1L, "source-y", 2L), exchange.getMessage().getBody());
 	}
@@ -128,7 +127,7 @@ class OperationRequestProcessorTest {
 	void wholeOperationSourceTakesTheRequestAsItIs() throws Exception {
 		var exchange = new DefaultExchange(new DefaultCamelContext());
 		exchange.getMessage().setBody("\"now\"");
-		new OperationRequestProcessor("Halt", Map.of(), Map.of("Halt", "$")).process(exchange);
+		new OperationRequestProcessor(Map.of(), Map.of("Halt", "$")).process(exchange);
 		assertEquals(Map.of("Halt", "now"), exchange.getMessage().getBody(),
 				"a request that is not an object reaches its whole-Operation source as it is");
 	}
@@ -137,8 +136,7 @@ class OperationRequestProcessorTest {
 	void omittedOptionalInputGivesItsSourceNoValue() throws Exception {
 		var exchange = new DefaultExchange(new DefaultCamelContext());
 		exchange.getMessage().setBody("{\"Speed\":3}");
-		new OperationRequestProcessor("Move",
-				Map.of("Speed", OptionalQualifierTest.property("Speed", null),
+		new OperationRequestProcessor(Map.of("Speed", OptionalQualifierTest.property("Speed", null),
 						"Ramp", OptionalQualifierTest.property("Ramp", "true")),
 				Map.of("speed", "$.Speed", "ramp", "$.Ramp")).process(exchange);
 		assertEquals(Map.of("speed", 3L), exchange.getMessage().getBody());

@@ -23,7 +23,7 @@ import dk.aau.smartproductionlab.dmp.core.util.JsonPointer;
 import dk.aau.smartproductionlab.dmp.core.util.TransformerMeta;
 
 /**
- * Fan-in: the mirror image of {@link FanOut} (SPEC §6.4).
+ * Fan-in: the mirror image of {@link FanOut} (SPEC §6).
  *
  * <p>Both halves of a mapping share one shape and one vocabulary:
  *
@@ -309,7 +309,7 @@ public final class FanIn implements ManagedRouteResource {
 	 * Decodes incoming text/bytes only when content type or the declared JSON
 	 * schema identifies a JSON payload, then applies the source's {@code valuePath}.
 	 * An absent pointer keeps the whole typed value; a pointer on a missing path
-	 * is a clear route error (SPEC §8.4 #8).
+	 * is a clear route error (SPEC §5.4).
 	 */
 	private Object disassemble(Exchange exchange, String dataSourceId) {
 		DataSourceConfiguration config = routesConfiguration.getDatasources().get(dataSourceId);

@@ -40,10 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.camel.CamelContext;
 import org.apache.camel.Endpoint;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.health.HealthCheckRegistry;
 import org.apache.camel.impl.DefaultCamelContext;
-import org.apache.camel.impl.health.DefaultHealthCheckRegistry;
-import org.apache.camel.impl.health.RoutesHealthCheckRepository;
 import org.apache.camel.model.Model;
 import org.apache.camel.model.RouteDefinition;
 import org.apache.camel.model.rest.RestDefinition;
@@ -56,15 +53,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Core Dmp component which can run the updater if routes configuration is
- * provided
+ * The DMP's Camel context and the managed bundles (one per mapping) installed in it.
  *
  * @author haque, fischer, danish
  *
  */
 public class DmpComponent {
 	private static Logger logger = LoggerFactory.getLogger(DmpComponent.class);
-	private DmpRouteBuilder orchestrator;
 	private final Map<String, RouteCreatorFactory> routeCreatorFactories;
 	private final Map<String, ManagedBundle> managedBundles = new HashMap<>();
 	private final Map<String, AtomicLong> generations = new ConcurrentHashMap<>();
@@ -222,21 +217,20 @@ public class DmpComponent {
 
 	protected CamelContext camelContext;
 
-	public DmpComponent(RoutesConfiguration configuration) {
-		this(configuration, Duration.ofSeconds(10));
+	public DmpComponent() {
+		this(Duration.ofSeconds(10));
 	}
 
-	public DmpComponent(RoutesConfiguration configuration, Duration drainTimeout) {
+	public DmpComponent(Duration drainTimeout) {
 		if (drainTimeout == null || drainTimeout.isNegative() || drainTimeout.isZero()) {
 			throw new IllegalArgumentException("positive bundle drain timeout is required");
 		}
 		this.drainTimeout = drainTimeout;
 		camelContext = new DefaultCamelContext();
 		routeCreatorFactories = getRouteCreatorFactoryMapDefault();
-		orchestrator = new DmpRouteBuilder(configuration, routeCreatorFactories);
 	}
 
-	/** Legacy one-shot installation; replacement requires a fresh-definition factory. */
+	/** One-shot installation of a definition that is never replaced; replacement needs a fresh-definition factory. */
 	public synchronized ManagedBundle installBundle(String bundleId, RoutesConfiguration configuration) {
 		if (managedBundles.containsKey(bundleId)) throw new IllegalStateException("bundle already installed: " + bundleId);
 		return installBundle(stageBundle(bundleId, nextBundleGeneration(bundleId), () -> configuration, false));
@@ -901,38 +895,20 @@ public class DmpComponent {
 
 	public synchronized void startRoutes() {
 		try {
-			configureHealthCheck();
-			camelContext.addRoutes(orchestrator);
+			for (DmpRuntimeExtension extension : java.util.ServiceLoader
+					.load(DmpRuntimeExtension.class, Thread.currentThread().getContextClassLoader())) {
+				extension.configure(camelContext);
+			}
 			camelContext.start();
-			logger.info("Updater started");
+			logger.info("DMP Camel context started");
 		} catch (Exception e) {
 			try {
 				if (camelContext != null && !camelContext.isStopped()) camelContext.stop();
 			} catch (Exception cleanupFailure) {
 				e.addSuppressed(cleanupFailure);
 			}
-			Set<ManagedRouteResource> resources = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-			resources.addAll(orchestrator.getManagedResources());
-			closeResources(resources, e);
 			throw new IllegalStateException("DMP Camel context failed to start", e);
 		}
-	}
-
-	private void configureHealthCheck() throws Exception {
-		camelContext.setLoadHealthChecks(true);
-		// Camel 4.x: setExtension() was removed; use the context plugin API instead
-		camelContext.getCamelContextExtension().addContextPlugin(HealthCheckRegistry.class,
-				configureHealthCheckRegistry());
-		for (DmpRuntimeExtension extension : java.util.ServiceLoader
-				.load(DmpRuntimeExtension.class, Thread.currentThread().getContextClassLoader())) {
-			extension.configure(camelContext);
-		}
-	}
-
-	private HealthCheckRegistry configureHealthCheckRegistry() {
-		HealthCheckRegistry registry = new DefaultHealthCheckRegistry();
-		registry.register(new RoutesHealthCheckRepository());
-		return registry;
 	}
 
 	/**
@@ -957,10 +933,6 @@ public class DmpComponent {
 			throw error;
 		}
 		camelContext.stop();
-		Set<ManagedRouteResource> resources = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-		resources.addAll(orchestrator.getManagedResources());
-		closeResources(resources, failures);
-		if (!failures.isEmpty()) throw new IllegalStateException("unable to retire standalone resources", failures.get(0));
-		logger.info("Updater stopped");
+		logger.info("DMP Camel context stopped");
 	}
 }

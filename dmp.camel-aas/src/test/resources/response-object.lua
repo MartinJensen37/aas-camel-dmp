@@ -1,9 +1,5 @@
 function aimc_main(sources)
-    local reply = sources["body"]
-    if reply["Restart"] ~= nil then
-        reply = reply["Restart"]
-    end
-    local result = { Restart = reply }
+    local result = { Restart = sources["Restart"] }
     for index = 0, 130 do
         result["Audit" .. index] = "done"
     end

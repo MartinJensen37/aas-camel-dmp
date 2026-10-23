@@ -59,7 +59,7 @@ class OperationConnectorsTest {
 	private String operationUri;
 
 	private static final class Runtime extends DmpComponent {
-		Runtime() { super(new RoutesConfiguration(), Duration.ofSeconds(4)); }
+		Runtime() { super(Duration.ofSeconds(4)); }
 		void listener(int port) throws Exception {
 			camelContext.addRoutes(new RouteBuilder() {
 				@Override public void configure() {
