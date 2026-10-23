@@ -116,7 +116,7 @@ This is the only full discovery. There is no periodic repair.
 
 ### 4.3 Value feed
 
-AAS Property sources without a `PollingInterval` are event-sourced: each
+AAS Property sources without a positive polling interval (§5.1) are event-sourced: each
 change event carries the new value. Values come from a separate feed (Kafka:
 per-process consumer group at the latest offset, no commits; MQTT: clean
 session), started only while such sources exist, so a backlog is never replayed
@@ -156,7 +156,7 @@ block the mappings that reference them.
 ```
 AssetInterfacesMappingConfiguration
 └── MappingConfigurations[]
-    ├── DefaultPollingInterval   (optional, seconds; fallback for Read sources)
+    ├── DefaultPollingInterval   (optional, seconds; fallback for Read sources; 0 = none)
     ├── ExecutionSemantics
     │   └── TriggerSourceIds[]   (optional; SourceIds whose updates execute the mapping)
     ├── Transformation           (Blob, Lua)
@@ -177,6 +177,12 @@ The IDTA template defines `DefaultPollingInterval`, `Transformation`,
 Unknown fields, retired declarations (`writeDelegation`, JSONata semantic IDs,
 `queryLanguage`, `executionPolicy`) and behaviour-bearing qualifiers are
 rejected, not ignored.
+
+A source's polling interval is its own `PollingInterval`, else the mapping's
+`DefaultPollingInterval`; 0 counts as none. Without a positive one the source
+is event-based: it is observed, or the mapping is blocked where its binding can
+only read it (a property that is not observable, Modbus, SNMP, an AAS
+collection, a TimeSeries segment). The DMP assumes no interval of its own.
 
 ### 5.2 AID bindings
 
@@ -201,7 +207,7 @@ the form serves:
 
 | Mapping role | Needs | Interaction |
 | --- | --- | --- |
-| Source on a property | `observeproperty` or `readproperty` | Observe when the property is observable and the connector observes (MQTT, OPC UA monitored item, HTTP `subprotocol`, Modbus polling); else Read (with the effective polling interval; 5 s without one) |
+| Source on a property | `observeproperty` or `readproperty` | Observe when the property is observable and the connector observes (MQTT, OPC UA monitored item, HTTP `subprotocol`); else Read at the source's polling interval (§5.1), and blocked without one |
 | Source on an event | `subscribeevent` | Observe |
 | Sink on a property | `writeproperty` | Write |
 | Sink on an action | `invokeaction` | Invoke (bridge mappings only) |
@@ -255,7 +261,7 @@ serve `observeproperty` (a property, e.g. `observable` true) or
 
 Values are decoded as the form's `contentType` (JSON). A failed request or
 broken stream is retried with backoff (1 s doubling to 30 s); values in the
-gap are lost. An observed source takes no PollingInterval; `websub` (an
+gap are lost. An observed source takes no PollingInterval (0 counts as none); `websub` (an
 inbound callback) is not supported.
 
 **MQTT.** The topic is the resolved `href`'s path without its leading `/`,
@@ -264,7 +270,7 @@ percent-decoded: AID writes a topic with a leading `/` as `.//topic` and the
 binding): `subscribe` to read and observe, `publish` to write and invoke; a
 form whose packet contradicts the mapping role blocks it. An MQTT property is
 read by subscription, so a source needs it observable or retained
-(`mqv_retain`); a PollingInterval on it is rejected. `mqv_qos` and
+(`mqv_retain`); a PollingInterval other than 0 on it is rejected. `mqv_qos` and
 `mqv_retain` apply to the subscription and the publication. An action with
 `mqv_responseTopic` is an MQTT 5 request/reply (§7.1); an action without it
 and without an `output` only invokes. Payloads are JSON.
@@ -291,8 +297,8 @@ form into a PLC4X tag:
   forms on the interface's `EndpointMetadata`) set the driver's payload
   byte order, `modv_timeout` its request timeout, the unit ID its unit
   identifier. `modv_pollingTime`, the device's maximum polling rate, is a
-  source's polling interval when the AIMC gives none and a lower limit for
-  the one it gives. Observing a Modbus property polls.
+  lower limit for the source's polling interval, never an interval of its
+  own: a Modbus source is read, so it needs a polling interval (§5.1).
 - Forms may declare `application/octet-stream`.
 
 OPC UA follows OPC 10101 (the OPC UA binding for WoT):
@@ -389,9 +395,9 @@ no such payloads.
 | Reference target | Interaction |
 | --- | --- |
 | Operation as Source | Accept invocation (bridge mapping) |
-| Property Source with `PollingInterval` | Read (`GET` of the element) |
+| Property Source with a polling interval (§5.1) | Read (`GET` of the element) |
 | Property Source without one | Observe through the value feed (§4.3) |
-| Collection/list Source | Read; requires an explicit interval |
+| Collection/list Source | Read; requires a polling interval |
 | Property/collection Sink | Write (`PATCH …/$value`) |
 | Operation as Sink | Rejected (no chained actions) |
 | TimeSeries LinkedSegment as Sink | One InfluxDB point per evaluation (§5.5) |

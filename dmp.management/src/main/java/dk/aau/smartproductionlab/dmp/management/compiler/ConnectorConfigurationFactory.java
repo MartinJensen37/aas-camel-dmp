@@ -177,10 +177,11 @@ public final class ConnectorConfigurationFactory {
 			List<DataSinkConfiguration> sinks = new ArrayList<>();
 			List<String> sourceIds = new ArrayList<>();
 			List<String> sinkIds = new ArrayList<>();
+			Map<DataSourceConfiguration,Integer> sourcePositions = new java.util.IdentityHashMap<>();
 			for (int i = 0; i < mapping.sources().size(); i++) {
 				EndpointPlan endpoint = mapping.sources().get(i);
 				DataSourceConfiguration source = source(endpoint, mapping, i, plan, routeId, runtime, issues);
-				if (source != null) { sources.add(source); sourceIds.add(source.getUniqueId()); }
+				if (source != null) { sources.add(source); sourceIds.add(source.getUniqueId()); sourcePositions.put(source, i); }
 			}
 			for (int i = 0; i < mapping.sinks().size(); i++) {
 				EndpointPlan endpoint = mapping.sinks().get(i);
@@ -188,18 +189,20 @@ public final class ConnectorConfigurationFactory {
 				if(sink!=null)payloadBinding(sink,endpoint,mapping,issues);
 				if (sink != null) { sinks.add(sink); sinkIds.add(sink.getUniqueId()); }
 			}
-			// IDTA AIMC: DefaultPollingInterval must be positive for sources that are read, and is
-			// ignored for asynchronous ones; it is judged only when a read source falls back to it.
-			boolean fallback = sources.stream().anyMatch(source -> "sync".equalsIgnoreCase(source.getDelivery()) && source.getPollingIntervalMs()<=0);
+			// A read source is polled at its PollingInterval, else at the mapping's DefaultPollingInterval
+			// (IDTA AIMC; ignored for asynchronous sources). Without a positive one (none, or 0) the source
+			// is event-based, and one its binding can only read blocks the mapping: no interval is assumed.
+			java.util.function.Predicate<DataSourceConfiguration> unpaced = source ->
+					"sync".equalsIgnoreCase(source.getDelivery()) && source.getPollingIntervalMs()<=0;
+			java.util.function.Predicate<DataSourceConfiguration> ownInterval = source ->
+					mapping.sources().get(sourcePositions.get(source)).pollingInterval().present();
+			boolean fallback = sources.stream().anyMatch(unpaced.and(ownInterval.negate()));
 			OptionalLong pollingMillis = fallback ? pollingMillis(mapping, issues) : OptionalLong.empty();
-			if (pollingMillis.isPresent()) sources.stream()
-					.filter(source -> "sync".equalsIgnoreCase(source.getDelivery()) && source.getPollingIntervalMs()<=0)
-					.forEach(source -> {
-						source.setDelivery("sync");
-						source.setPollingIntervalMs(pollingMillis.getAsLong());
-					});
-			sources.stream().filter(source -> "sync".equalsIgnoreCase(source.getDelivery()) && source.getPollingIntervalMs()<=0)
-					.forEach(source -> source.setPollingIntervalMs(5000));
+			if (pollingMillis.isPresent()) sources.stream().filter(unpaced.and(ownInterval.negate()))
+					.forEach(source -> source.setPollingIntervalMs(pollingMillis.getAsLong()));
+			sources.stream().filter(unpaced).forEach(source -> issue(issues, mapping,
+					endpointPath(mapping, "Sources", sourcePositions.get(source)),
+					"the source can only be read, not observed; it needs a positive PollingInterval or DefaultPollingInterval"));
 			if (mapping.qualifiers().stream().anyMatch(ConnectorConfigurationFactory::behaviorQualifier)) issue(issues, mapping,
 					"MappingConfigurations/value/" + mapping.listIndex() + "/qualifiers",
 					"mapping qualifier semantics are not represented by the runtime route API");
@@ -851,7 +854,7 @@ public final class ConnectorConfigurationFactory {
 						issue(issues,mapping,path+"/forms/subprotocol","an HTTP event is subscribed through subprotocol longpoll or sse");
 					if(read && "property".equals(kind) && observed && !operations.contains(AidForms.OBSERVE))
 						issue(issues,mapping,path+"/forms/op","the form's subprotocol observes, but the form does not serve observeproperty (op, observable)");
-					if(observed && mapping.sources().contains(endpoint) && endpoint.pollingInterval().present())
+					if(observed && mapping.sources().contains(endpoint) && polled(endpoint))
 						issue(issues,mapping,path,"an observed HTTP source is not polled; remove its PollingInterval");
 				}
 				for(SubmodelElement child:Aas.children(form.element()))if("response".equals(child.getIdShort()))
@@ -875,7 +878,7 @@ public final class ConnectorConfigurationFactory {
 					if(mapping.sources().contains(endpoint) && "property".equals(kind) && !operations.contains(AidForms.OBSERVE)
 							&& !Boolean.TRUE.equals(mqttRetain(form,mapping,path,new ArrayList<>())))
 						issue(issues,mapping,path,"an MQTT property is read by subscription: declare it observable, or retained (mqv_retain)");
-					if(mapping.sources().contains(endpoint) && endpoint.pollingInterval().present())
+					if(mapping.sources().contains(endpoint) && polled(endpoint))
 						issue(issues,mapping,path,"MQTT polling cannot be implemented as fresh Read");
 				}
 				if(family!=WireModel.ProtocolFamily.HTTP && family!=WireModel.ProtocolFamily.IOLINK
@@ -1081,16 +1084,24 @@ public final class ConnectorConfigurationFactory {
 		return result;
 	}
 
+	/** Whether a source authors a PollingInterval other than 0 (0 is event-based, like none). */
+	private static boolean polled(EndpointPlan endpoint) {
+		if (!endpoint.pollingInterval().present()) return false;
+		try { return Double.parseDouble(String.valueOf(endpoint.pollingInterval().value())) != 0; }
+		catch (NumberFormatException invalid) { return true; }
+	}
+
 	private static OptionalLong endpointPollingMillis(WireModel.Presence<String> presence,
 			MappingPlan mapping, int position, List<Issue> issues) {
 		Object value = presence.value();
 		double seconds;
 		try { seconds = value instanceof Number number ? number.doubleValue() : Double.parseDouble(String.valueOf(value)); }
 		catch (RuntimeException invalid) {
-			issue(issues, mapping, endpointPath(mapping,"Sources",position)+"/PollingInterval", "expected a positive numeric interval in authored seconds");
+			issue(issues, mapping, endpointPath(mapping,"Sources",position)+"/PollingInterval", "expected a numeric interval in authored seconds");
 			return OptionalLong.empty();
 		}
-		if (!Double.isFinite(seconds) || seconds <= 0 || seconds * 1000d > Long.MAX_VALUE || seconds * 1000d < 1) {
+		if (seconds == 0) return OptionalLong.empty();
+		if (!Double.isFinite(seconds) || seconds < 0 || seconds * 1000d > Long.MAX_VALUE || seconds * 1000d < 1) {
 			issue(issues, mapping, endpointPath(mapping,"Sources",position)+"/PollingInterval", "poll interval is outside the positive runtime millisecond range");
 			return OptionalLong.empty();
 		}
@@ -1216,9 +1227,10 @@ public final class ConnectorConfigurationFactory {
 		if(elementPath==null)return null;
 		String submodelEndpoint=submodelEndpoint(target.resolved().submodel().getId(),runtime,mapping,path,issues);
 		if(submodelEndpoint==null)return null;
-		if(target.resolved().element() instanceof Property && !endpoint.pollingInterval().present()
-				&& pollingMillis(mapping,new ArrayList<>()).isEmpty()) {
-			// Without a usable PollingInterval (none, or a default of 0) a Property follows the repository's change events.
+		OptionalLong interval=endpoint.pollingInterval().present()
+				? endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues) : pollingMillis(mapping,new ArrayList<>());
+		if(target.resolved().element() instanceof Property && interval.isEmpty()) {
+			// Without a positive PollingInterval (none, or 0) a Property follows the repository's change events.
 			String idShortPath=AasReferenceResolver.idShortPath(Aas.keys(endpoint.reference()));
 			AasEventDataSourceConfiguration source=new AasEventDataSourceConfiguration(entityId(mapping,"source",position),
 					target.resolved().submodel().getId(),idShortPath,submodelEndpoint+"/submodel-elements/"
@@ -1234,10 +1246,7 @@ public final class ConnectorConfigurationFactory {
 		source.setElementType(Aas.modelType(target.resolved().element()));
 		source.setSchema(schemaFromAasElement(target.resolved().element(),mapping,path,issues));
 		source.setDelivery("sync");
-		if(endpoint.pollingInterval().present()) {
-			OptionalLong interval=endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues);
-			if(interval.isPresent())source.setPollingIntervalMs(interval.getAsLong());
-		}
+		if(endpoint.pollingInterval().present() && interval.isPresent())source.setPollingIntervalMs(interval.getAsLong());
 		return hasIssue(issues,mapping)?null:source;
 	}
 
@@ -1829,12 +1838,11 @@ public final class ConnectorConfigurationFactory {
 				plc.base().host(),plc.base().port(),plc.driver(),plc.base().servicePath(),plc.options(),tags);
 		source.setSourceId(endpoint.id()); source.setDelivery("sync"); source.setSchema(schemaForAidTarget(target,mapping,path,issues));
 		setValuePath(source,target);
-		// modv_pollingTime is the device's maximum polling rate: the interval when the AIMC gives
-		// none, and a lower limit for the one it gives.
-		if(endpoint.pollingInterval().present()) {
-			OptionalLong interval=endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues);
-			if(interval.isPresent())source.setPollingIntervalMs(plc.pollingMs()==null?interval.getAsLong():Math.max(interval.getAsLong(),plc.pollingMs()));
-		} else if(plc.pollingMs()!=null) source.setPollingIntervalMs(plc.pollingMs());
+		// modv_pollingTime is the device's maximum polling rate: a lower limit for the AIMC's interval
+		// (its own or the mapping's DefaultPollingInterval), never an interval of its own.
+		OptionalLong interval=endpoint.pollingInterval().present()
+				? endpointPollingMillis(endpoint.pollingInterval(),mapping,position,issues) : pollingMillis(mapping,new ArrayList<>());
+		if(interval.isPresent())source.setPollingIntervalMs(plc.pollingMs()==null?interval.getAsLong():Math.max(interval.getAsLong(),plc.pollingMs()));
 		return hasIssue(issues,mapping)?null:source;
 	}
 
@@ -2066,11 +2074,12 @@ public final class ConnectorConfigurationFactory {
 		try { seconds = value instanceof Number number ? number.doubleValue() : Double.parseDouble(String.valueOf(value)); }
 		catch (RuntimeException invalid) {
 			issue(issues, mapping, "MappingConfigurations/value/" + mapping.listIndex() + "/DefaultPollingInterval",
-					"expected a positive numeric interval in authored seconds");
+					"expected a numeric interval in authored seconds");
 			return OptionalLong.empty();
 		}
+		if (seconds == 0) return OptionalLong.empty();
 		double millis = seconds * 1000d;
-		if (!Double.isFinite(seconds) || seconds <= 0 || millis > Long.MAX_VALUE || millis < 1) {
+		if (!Double.isFinite(seconds) || seconds < 0 || millis > Long.MAX_VALUE || millis < 1) {
 			issue(issues, mapping, "MappingConfigurations/value/" + mapping.listIndex() + "/DefaultPollingInterval",
 					"poll interval is outside the runtime millisecond range");
 			return OptionalLong.empty();

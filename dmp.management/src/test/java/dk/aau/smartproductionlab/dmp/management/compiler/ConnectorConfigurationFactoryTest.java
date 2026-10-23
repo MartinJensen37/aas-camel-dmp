@@ -74,10 +74,10 @@ class ConnectorConfigurationFactoryTest {
 	@Test
 	void emitsOneStableOwnedConfigurationPerMapping() {
 		var first=mappingPlan("map-one",0,
-				new EndpointPlan("source-one",reference(),target(WireModel.ProtocolFamily.HTTP,"GET",Presence.absent())),
+				new EndpointPlan("source-one",reference(),target(WireModel.ProtocolFamily.HTTP,"GET",Presence.absent()),Presence.of("1")),
 				new EndpointPlan("sink-one",reference(),target(WireModel.ProtocolFamily.HTTP,"POST",Presence.absent())));
 		var second=mappingPlan("map-two",1,
-				new EndpointPlan("source-two",reference(),target(WireModel.ProtocolFamily.HTTP,"GET",Presence.absent())),
+				new EndpointPlan("source-two",reference(),target(WireModel.ProtocolFamily.HTTP,"GET",Presence.absent()),Presence.of("1")),
 				new EndpointPlan("sink-two",reference(),target(WireModel.ProtocolFamily.HTTP,"POST",Presence.absent())));
 		var plan=new Plan("urn:owner/submodels/AIMC",List.of(first,second));
 		var bundles=factory.createBundles(plan,null);
@@ -133,7 +133,7 @@ class ConnectorConfigurationFactoryTest {
 
 	@Test
 	void resolvesRelativeHttpFormsAgainstTheirAuthoredEndpointBase() {
-		var source=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
+		var source=polledEndpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
 				"http://api.example:8080/api/v1/","temperature",Map.of(),"GET"));
 		var sink=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,
 				"http://api.example:8080/api/v1/","alarm",Map.of(),"POST"));
@@ -150,7 +150,7 @@ class ConnectorConfigurationFactoryTest {
 		assertTrue(httpSink.getConnectionURI().contains("httpMethod=POST"));
 
 		// RFC 3986: a path-absolute href replaces the base path; a write without htv_methodName is a PUT (WoT default).
-		var absolute=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
+		var absolute=polledEndpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
 				"http://api.example:8080/api/v1/","/temperature",Map.of(),null));
 		var put=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,
 				"http://api.example:8080/api/v1/","alarm",Map.of(),null));
@@ -168,11 +168,11 @@ class ConnectorConfigurationFactoryTest {
 
 	@Test
 	void projectsOpcUaNodeAndModbusTagDetailsFromTypedBindingTerms() {
-		var uaSource = endpointPlan("ua-read", protocolTarget(WireModel.ProtocolFamily.OPCUA,
+		var uaSource = polledEndpointPlan("ua-read", protocolTarget(WireModel.ProtocolFamily.OPCUA,
 				"opc.tcp://ua.example:4840/milo", "/?id=ns=2;s=Temperature", Map.of(), null));
 		var uaSink = endpointPlan("ua-write", protocolTarget(WireModel.ProtocolFamily.OPCUA,
 				"opc.tcp://ua.example:4840/milo", "/?id=ns=2;s=Temperature", Map.of(), null));
-		var modbusSource = endpointPlan("mb-read", protocolTarget(WireModel.ProtocolFamily.MODBUS,
+		var modbusSource = polledEndpointPlan("mb-read", protocolTarget(WireModel.ProtocolFamily.MODBUS,
 				"modbus+tcp://plc.example:502", "/2/0", Map.of("modv_entity", "Coil"), null));
 		var modbusSink = endpointPlan("mb-write", protocolTarget(WireModel.ProtocolFamily.MODBUS,
 				"modbus+tcp://plc.example:502", "/2/0", Map.of("modv_entity", "Coil"), null));
@@ -206,7 +206,7 @@ class ConnectorConfigurationFactoryTest {
 
 	@Test
 	void translatesWotModbusFormsIntoPlc4xTags() {
-		var source=endpointPlan("level",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502",
+		var source=polledEndpointPlan("level",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502",
 				"/7/10?quantity=4",Map.of("modv_function","readHoldingRegisters","modv_type","xsd:int",
 						"modv_mostSignificantWord","false","modv_timeout","500","modv_pollingTime","250"),null));
 		var sink=endpointPlan("setpoint",protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502",
@@ -217,14 +217,14 @@ class ConnectorConfigurationFactoryTest {
 		assertEquals("holding-register:11:DINT[2]",read.getTags().get(0).getValue(),"four registers are two 32-bit values");
 		assertEquals(Map.of("default-unit-identifier","7","default-payload-byte-order","LITTLE_ENDIAN_BYTE_SWAP","request-timeout","500"),
 				read.getOptions().stream().collect(java.util.stream.Collectors.toMap(o -> o.getName(),o -> o.getValue())));
-		assertEquals(250,read.getPollingIntervalMs(),"modv_pollingTime is the polling interval without an AIMC one");
+		assertEquals(1000,read.getPollingIntervalMs(),"the AIMC interval, above modv_pollingTime");
 		var write=assertInstanceOf(Plc4xDataSinkConfiguration.class,result.configuration().getDatasinks().values().iterator().next());
 		assertEquals("holding-register:21:UINT",write.getTags().get(0).getValue());
 	}
 
 	@Test
 	void anOpcUaFormNamesItsNodeByHrefNodeIdElseByBrowsePath() {
-		var byPath=endpointPlan("level",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840",
+		var byPath=polledEndpointPlan("level",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840",
 				"/",Map.of("uav_browsePath","/Root/Objects/2:Tank/2:Level"),null));
 		var byId=endpointPlan("out",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840",
 				"/?id=ns=2;s=Out",Map.of("uav_browsePath","/Root/Objects/2:Tank/2:Out"),null));
@@ -329,7 +329,7 @@ class ConnectorConfigurationFactoryTest {
 
 	@Test
 	void snmpFormsCompileToCheckedGetsAndTypedSets() {
-		var read=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://10.0.0.5:161/","1.3.6.1.2.1.1.3.0",Map.of(),null));
+		var read=polledEndpointPlan("read",protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://10.0.0.5:161/","1.3.6.1.2.1.1.3.0",Map.of(),null));
 		var write=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.SNMP,"snmp://private@10.0.0.5",
 				"/1.3.6.1.4.1.9999.1.0",Map.of("snmpv_pduType","snmpv:SetRequestPDU","snmpv_version","SNMPv1"),null));
 		var result=factory.create(new Plan(List.of(mappingWithEndpoints(read,write))),"route");
@@ -353,7 +353,7 @@ class ConnectorConfigurationFactoryTest {
 
 	@Test
 	void staticHttpHeadersAreBoundAndInvalidOnesRejected() {
-		var poll=endpointPlan("read",httpWithHeaders("GET",null,header("X-Api-Key","s3cret")));
+		var poll=polledEndpointPlan("read",httpWithHeaders("GET",null,header("X-Api-Key","s3cret")));
 		var write=endpointPlan("write",httpWithHeaders("PUT",null,header("Authorization","Bearer token-1")));
 		var result=factory.create(new Plan(List.of(mappingWithEndpoints(poll,write))),"route");
 		assertTrue(result.issues().isEmpty(),result.issues().toString());
@@ -451,7 +451,7 @@ class ConnectorConfigurationFactoryTest {
 
 	@Test
 	void mapsIolinkRestBindingsThroughTheHttpConnector() {
-		var source=endpointPlan("input",protocolTarget(WireModel.ProtocolFamily.IOLINK,
+		var source=polledEndpointPlan("input",protocolTarget(WireModel.ProtocolFamily.IOLINK,
 				"http://iolink.example:8080/api", "/input",Map.of(),"GET"));
 		var sink=endpointPlan("output",protocolTarget(WireModel.ProtocolFamily.IOLINK,
 				"http://iolink.example:8080/api", "/output",Map.of(),"POST"));
@@ -513,6 +513,20 @@ class ConnectorConfigurationFactoryTest {
 				"urn:owner/submodels/Variables".getBytes(StandardCharsets.UTF_8));
 		assertEquals("http://aas.example:8081/submodels/"+encoded+"/submodel-elements/Status.State",ds.getEventFilter().get("readUrl"));
 		assertEquals(Map.of("type","string"),ds.getSchema());
+	}
+
+	@Test
+	void anAasPropertySourceWithAPollingIntervalOfZeroFollowsRepositoryEvents() {
+		var collection=AasFixtures.collection("Status",property("State","RUNNING"));
+		var target=new DirectTarget(new AasReferenceResolver.ResolvedElement(
+				AasFixtures.submodel("urn:owner/submodels/Variables","Variables"),collection.getValue().get(0)));
+		var reference=AasFixtures.reference("Submodel","urn:owner/submodels/Variables","SubmodelElementCollection","Status","Property","State");
+		var plan=new Plan(List.of(withDefaultPollingInterval(mappingPlan("aas-event",0,new EndpointPlan("PackMLState",reference,target,Presence.of("0")),
+				new EndpointPlan("OccupationState",reference,target)),"2")));
+		var result=factory.create(plan,"route",new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://aas.example:8081")));
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		assertInstanceOf(dk.aau.smartproductionlab.dmp.aas.configuration.AasEventDataSourceConfiguration.class,
+				result.configuration().getDatasources().values().iterator().next());
 	}
 
 	@Test
@@ -609,11 +623,41 @@ class ConnectorConfigurationFactoryTest {
 		assertEquals("async",configured.getDelivery());assertEquals(0,configured.getPollingIntervalMs());
 	}
 
+	@Test void aSourceWithoutAPositiveIntervalIsEventBasedAndOneThatCanOnlyBeReadIsBlocked() {
+		var get=protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"GET");
+		var sink=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"POST"));
+		var modbus=protocolTarget(WireModel.ProtocolFamily.MODBUS,"modbus+tcp://plc.example:502","/7/10",
+				Map.of("modv_entity","HoldingRegister","modv_pollingTime","250"),null);
+		for(var unpaced:List.of(mappingPlan("none",0,endpointPlan("read",get),sink),
+				withDefaultPollingInterval(mappingPlan("zero-default",0,endpointPlan("read",get),sink),"0.0"),
+				withDefaultPollingInterval(mappingPlan("zero-own",0,new EndpointPlan("read",reference(),get,Presence.of("0")),sink),"2"),
+				mappingPlan("modbus",0,endpointPlan("read",modbus),sink))) {
+			var result=factory.createBundles(new Plan(List.of(unpaced)),null);
+			assertTrue(result.bundles().isEmpty(),unpaced.identity()+" assumes no interval");
+			assertTrue(result.issues().stream().anyMatch(issue -> issue.path().endsWith("/Sources/value/0")
+					&& issue.message().contains("can only be read")),String.valueOf(result.issues()));
+		}
+		var paced=factory.create(new Plan(List.of(withDefaultPollingInterval(mappingPlan("default",0,endpointPlan("read",get),sink),"2"))),"route");
+		assertTrue(paced.issues().isEmpty(),String.valueOf(paced.issues()));
+		assertEquals(2000,paced.configuration().getDatasources().values().iterator().next().getPollingIntervalMs());
+
+		var mqtt=new EndpointPlan("state",reference(),protocolTarget(WireModel.ProtocolFamily.MQTT,"mqtt://broker.example:1883","/state",
+				Map.of("mqv_retain","true"),null),Presence.of("0"));
+		var observed=factory.create(new Plan(List.of(mappingPlan("mqtt",0,mqtt,sink))),"route");
+		assertTrue(observed.issues().isEmpty(),"a PollingInterval of 0 observes: "+observed.issues());
+		assertEquals("async",observed.configuration().getDatasources().values().iterator().next().getDelivery());
+	}
+
+	private static MappingPlan withDefaultPollingInterval(MappingPlan map,String seconds) {
+		return new MappingPlan(map.identity(),map.listIndex(),map.sources(),map.sinks(),Presence.of(seconds),
+				map.transformation(),map.responseSources(),map.responseSinks(),map.responseTransformation(),map.triggerSourceIds(),map.qualifiers());
+	}
+
 	@Test void authoredUnknownProtocolOptionsBlockOnlyTheirMapping() {
 		var bad=endpointPlan("bad",protocolTarget(WireModel.ProtocolFamily.OPCUA,"opc.tcp://ua.example:4840/service", "ns=2;s=Value",
 				Map.of("uav_securityPolicy","unsupported"),null));
 		var invalid=mappingPlan("blocked",0,bad,bad);
-		var valid=mappingPlan("valid",1,endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"GET")),
+		var valid=mappingPlan("valid",1,polledEndpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"GET")),
 				endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"POST")));
 		var result=factory.createBundles(new Plan(List.of(invalid,valid)),null);
 		assertEquals(1,result.bundles().size());assertEquals("valid",result.bundles().get(0).mappingIdentity());
@@ -622,7 +666,7 @@ class ConnectorConfigurationFactoryTest {
 	}
 
 	private static Plan credentialsPlan(String password) {
-		var source=endpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
+		var source=polledEndpointPlan("read",protocolTarget(WireModel.ProtocolFamily.HTTP,
 				"http://alice:"+password+"@api.example:8080", "/state",Map.of(),"GET"));
 		var sink=endpointPlan("write",protocolTarget(WireModel.ProtocolFamily.HTTP,"http://api.example:8080","/state",Map.of(),"POST"));
 		return new Plan(List.of(mappingPlan("credentials",0,source,sink)));
@@ -1011,7 +1055,7 @@ class ConnectorConfigurationFactoryTest {
 		Presence<WireModel.Blob> transformation = withLua
 				? Presence.of(new WireModel.Blob("function aimc_main(sources) return sources end".getBytes(StandardCharsets.UTF_8), "text/x-lua"))
 				: Presence.absent();
-		return new MappingPlan("logical-map", 3, List.of(source), List.of(sink), Presence.absent(),
+		return new MappingPlan("logical-map", 3, List.of(source), List.of(sink), Presence.of("1"),
 				transformation, Presence.absent(), Presence.absent(), Presence.absent(), Presence.absent(), List.of());
 	}
 
@@ -1046,6 +1090,11 @@ class ConnectorConfigurationFactoryTest {
 
 	private static EndpointPlan endpointPlan(String id,AidTarget target) {
 		return new EndpointPlan(id,reference(),target);
+	}
+
+	/** A source read every second. */
+	private static EndpointPlan polledEndpointPlan(String id,AidTarget target) {
+		return new EndpointPlan(id,reference(),target,Presence.of("1"));
 	}
 
 	private static MappingPlan mappingWithEndpoints(EndpointPlan source,EndpointPlan sink) {

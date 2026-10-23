@@ -171,10 +171,6 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 		if (routeBuilder instanceof DmpRouteBuilder managed) managed.registerIngressRouteId(routeId);
 	}
 
-	/** Backward-compatible cadence for device Read sources lacking authored intervals. */
-	static final long DEFAULT_DEVICE_POLL_MS = Long.getLong("dmp.policy.defaultSyncPollMs", 5000L);
-
-
 	/** Per-source poll ceiling for one sync read. */
 	public static final long SYNC_POLL_TIMEOUT_MS = Long.getLong("dmp.policy.syncPollTimeoutMs", 5000L);
 
@@ -182,9 +178,12 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 		return ("policy-" + routeId + "-" + endpointId).replaceAll("[^A-Za-z0-9_.-]", "-");
 	}
 
+	/** A read source is polled only at an authored interval; none is assumed. */
 	private static long effectivePollingIntervalMs(DataSourceConfiguration config) {
 		long authored = config.getPollingIntervalMs();
-		return authored > 0 ? authored : DEFAULT_DEVICE_POLL_MS;
+		if (authored <= 0) throw new IllegalArgumentException("read source " + config.getUniqueId()
+				+ " has no polling interval; it needs a positive PollingInterval or DefaultPollingInterval");
+		return authored;
 	}
 
 	/**

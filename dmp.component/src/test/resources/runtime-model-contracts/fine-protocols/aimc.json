@@ -142,7 +142,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "f9c5de5774bf55299dd1f459f411298b"
+          "value": "DefaultPollingInterval"
          }
         ]
        },
@@ -226,7 +226,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "e9176372f21c52ef88283753c067bf5d"
+          "value": "c566b46b0b725bc0bb0bf7aa1aa9fe0b"
          }
         ]
        },
@@ -247,7 +247,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "f9221a5595d05444b8bdb2882c2c2f81"
+          "value": "e9176372f21c52ef88283753c067bf5d"
          }
         ]
        },
@@ -268,7 +268,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "cb0602dd974e50ecaf72b53e512fbccc"
+          "value": "f9221a5595d05444b8bdb2882c2c2f81"
          }
         ]
        },
@@ -289,7 +289,7 @@
         "keys": [
          {
           "type": "GlobalReference",
-          "value": "dd8eb2d6210358ceab6ff3123bc5bcee"
+          "value": "cb0602dd974e50ecaf72b53e512fbccc"
          }
         ]
        },
@@ -313,6 +313,27 @@
      ],
      "modelType": "SubmodelElementCollection",
      "value": [
+      {
+       "idShort": "DefaultPollingInterval",
+       "description": [
+        {
+         "language": "en",
+         "text": "The DefaultPollingInterval defines the default time interval in seconds for fetching new data from the synchronous data sources defined in this MappingConfiguration. It must be greater than zero for synchronous protocols (e.g. HTTP) that need polling and is ignored for asynchronous protocols (e.g. MQTT)."
+        }
+       ],
+       "modelType": "Property",
+       "semanticId": {
+        "type": "ExternalReference",
+        "keys": [
+         {
+          "type": "GlobalReference",
+          "value": "https://admin-shell.io/idta/AssetInterfacesMappingConfiguration/2/0/MappingConfiguration/DefaultPollingInterval"
+         }
+        ]
+       },
+       "value": "2.5",
+       "valueType": "xs:double"
+      },
       {
        "idShort": "Transformation",
        "description": [
@@ -414,7 +435,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "32368209ee065b6891580fa9dc145a15"
+              "value": "f9c5de5774bf55299dd1f459f411298b"
              }
             ]
            },
@@ -580,7 +601,7 @@
             "keys": [
              {
               "type": "GlobalReference",
-              "value": "d61683af5f6d5b618184956c959f9e19"
+              "value": "5635c1d814fa530c9e7a64b48608b40d"
              }
             ]
            },
