@@ -35,6 +35,7 @@ import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RoutesConfigu
 import dk.aau.smartproductionlab.dmp.core.configuration.entity.DataSinkConfiguration;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.AffordanceValidation;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.FanIn;
+import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.ResponseSinkTargets;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.ConnectorInvocationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,8 +98,8 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 		java.util.Map<String, String[]> sinkTransformerEndpoints = RouteCreatorHelper.getDataSinkMappingById(
 				routesConfiguration, bridgeConfig.getDatasinkMappingConfiguration(), bridgeConfig.getRouteId());
 		AffordanceValidation commandValidation = commandValidation(commandSinkIds);
-		java.util.List<java.util.Map<String, Object>> responseSinkTargets =
-				resolveResponseSinkTargets(bridgeConfig);
+		java.util.List<java.util.Map<String, Object>> responseSinkTargets = ResponseSinkTargets.resolve(
+				routeBuilder, routesConfiguration, bridgeConfig.getRouteId(), bridgeConfig.getResponseSinkBindings());
 		java.util.List<java.util.Map<String, Object>> responseSourceBindings =
 				bridgeConfig.getResponseSourceBindings();
 		java.util.List<String> commandSourceIds = bridgeConfig.getCommandSinkBindings().isEmpty()
@@ -331,44 +332,6 @@ public class ProtocolBridgeRouteCreator implements RouteCreator {
 			routes.put(entry.getKey(), java.util.List.of("direct:" + chainRouteId));
 		}
 		return routes;
-	}
-
-	private java.util.List<java.util.Map<String, Object>> resolveResponseSinkTargets(
-			ProtocolBridgeRouteConfiguration config) {
-		java.util.List<java.util.Map<String, Object>> targets = new java.util.ArrayList<>();
-		int aasRouteIndex = 0;
-		for (java.util.Map<String, Object> binding : config.getResponseSinkBindings()) {
-			String dataSinkId = String.valueOf(binding.get("dataSinkId"));
-			String endpoint = RouteCreatorHelper.getDataSinkEndpoint(routesConfiguration,
-					dataSinkId, config.getRouteId());
-			java.util.Map<String, Object> target = new java.util.LinkedHashMap<>(binding);
-			if (Boolean.TRUE.equals(binding.get("aas"))) {
-				String sinkId = String.valueOf(binding.get("sinkId"));
-				String adapterRouteId = (config.getRouteId() + "-aas-response-" + aasRouteIndex++)
-						.replaceAll("[^A-Za-z0-9_.-]", "-");
-				registerRouteId(adapterRouteId);
-				String adapterUri = "direct:" + adapterRouteId;
-				routeBuilder.from(adapterUri)
-						.routeId(adapterRouteId)
-						.process(exchange -> {
-							java.util.Map<String, Object> envelope = new java.util.LinkedHashMap<>();
-							envelope.put(sinkId, exchange.getMessage().getBody());
-							exchange.getMessage().setBody(envelope);
-						})
-						.to(endpoint);
-				target.put("endpoint", adapterUri);
-				// An AAS endpoint writes one element per destination; its own valuePath
-				// extracts SinkId from the connector envelope above.
-				target.put("payloadGroup", null);
-				target.put("valuePath", null);
-				target.put("jsonPayload", false);
-			} else {
-				target.put("endpoint", endpoint);
-			}
-			target.remove("aas");
-			targets.add(java.util.Collections.unmodifiableMap(target));
-		}
-		return java.util.List.copyOf(targets);
 	}
 
 	private AffordanceValidation commandValidation(java.util.List<String> sinkIds) {

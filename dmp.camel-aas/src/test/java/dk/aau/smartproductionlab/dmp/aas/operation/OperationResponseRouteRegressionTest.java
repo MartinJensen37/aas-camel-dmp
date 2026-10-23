@@ -211,6 +211,8 @@ class OperationResponseRouteRegressionTest extends CamelTestSupport {
 			assertEquals(200, result.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE));
 			assertEquals(Map.of("Reply", Map.of("x", 1L), "sibling", 2L, "values", List.of("original")),
 					JsonCodec.parseJson(result.getMessage().getBody(String.class)));
+			// One writer per mapping: the second write waits for the first.
+			releaseWrites.countDown();
 			assertTrue(writes.await(2, TimeUnit.SECONDS));
 			assertEquals(List.of("original"), tree.get("values"));
 			assertEquals(tree, result.getMessage().getHeader("payload"));

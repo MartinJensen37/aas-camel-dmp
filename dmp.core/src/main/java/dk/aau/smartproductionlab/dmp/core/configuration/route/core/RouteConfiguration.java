@@ -33,6 +33,11 @@ import java.util.Map;
  * @author Dmp authors, jungjan
  */
 public class RouteConfiguration {
+
+	/** Trigger data of a mapping's response half (DMP extensions ResponseSources/-Transformation/-Sinks). */
+	public static final String RESPONSE_TRANSFORMER = "responseTransformer";
+	public static final String RESPONSE_SOURCE_BINDINGS = "responseSourceBindings";
+	public static final String RESPONSE_SINK_BINDINGS = "responseSinkBindings";
 	private String trigger;
 	private String routeId;
 	private List<String> datasources = new ArrayList<>();
@@ -113,6 +118,36 @@ public class RouteConfiguration {
 			throw new IllegalArgumentException("ExecutionSemantics.TriggerSourceIds must contain unique strings");
 		}
 		return ids;
+	}
+
+	/** The response half's Lua transformer id (ResponseTransformation), or null. */
+	public String getResponseTransformer() {
+		Object value = triggerData == null ? null : triggerData.get(RESPONSE_TRANSFORMER);
+		return value == null ? null : String.valueOf(value);
+	}
+
+	/** ResponseSources: each {@code sourceId} with what it projects ({@code sinkId} and {@code valuePath}). */
+	public List<Map<String, Object>> getResponseSourceBindings() {
+		return mapList(RESPONSE_SOURCE_BINDINGS);
+	}
+
+	/** ResponseSinks: each {@code sinkId} with its {@code dataSinkId} and payload binding. */
+	public List<Map<String, Object>> getResponseSinkBindings() {
+		return mapList(RESPONSE_SINK_BINDINGS);
+	}
+
+	private List<Map<String, Object>> mapList(String key) {
+		Object value = triggerData == null ? null : triggerData.get(key);
+		if (!(value instanceof List<?> list)) return List.of();
+		List<Map<String, Object>> out = new java.util.ArrayList<>();
+		for (Object item : list) {
+			if (item instanceof Map<?, ?> map) {
+				Map<String, Object> entry = new java.util.LinkedHashMap<>();
+				map.forEach((k, v) -> entry.put(String.valueOf(k), v));
+				out.add(java.util.Collections.unmodifiableMap(entry));
+			}
+		}
+		return List.copyOf(out);
 	}
 
 	public void setTriggerData(Map<String, Object> triggerData) {

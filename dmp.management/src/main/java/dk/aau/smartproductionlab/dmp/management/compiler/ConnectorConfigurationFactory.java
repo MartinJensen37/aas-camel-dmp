@@ -206,10 +206,6 @@ public final class ConnectorConfigurationFactory {
 			if (mapping.qualifiers().stream().anyMatch(ConnectorConfigurationFactory::behaviorQualifier)) issue(issues, mapping,
 					"MappingConfigurations/value/" + mapping.listIndex() + "/qualifiers",
 					"mapping qualifier semantics are not represented by the runtime route API");
-			if (mapping.responseSources().present() || mapping.responseSinks().present()
-					|| mapping.responseTransformation().present()) issue(issues, mapping,
-					"MappingConfigurations/value/" + mapping.listIndex() + "/response",
-					"response routes are not represented by this ordinary execution-policy route factory");
 			if (mapping.triggerSourceIds().present() && (mapping.triggerSourceIds().value() == null
 					|| mapping.triggerSourceIds().value().isEmpty())) issue(issues, mapping,
 					"MappingConfigurations/value/" + mapping.listIndex() + "/ExecutionSemantics/TriggerSourceIds",
@@ -236,19 +232,26 @@ public final class ConnectorConfigurationFactory {
 				}
 			}
 
+			Map<String, Object> triggerData = new LinkedHashMap<>();
+			List<DataSinkConfiguration> responseDestinations = new ArrayList<>();
+			if (mapping.responseSources().present() || mapping.responseSinks().present()
+					|| mapping.responseTransformation().present())
+				compileOrdinaryResponse(mapping, plan, routeId, runtime, triggerData, responseDestinations, transformers, issues);
+
 			// A mapping is atomic: never return a route with only a subset of its endpoints.
 			if (issues.size() != issueStart) continue;
 			output.addDatasources(sources);
 			output.addDatasinks(sinks);
+			output.addDatasinks(responseDestinations);
 			output.addTransformers(transformers);
+			// The route's transformers are the request side's; the response Lua is named in the trigger data.
+			Object responseTransformer = triggerData.get(RouteConfiguration.RESPONSE_TRANSFORMER);
 			RouteConfiguration route = new RouteConfiguration(ExecutionPolicyRouteConfiguration.ROUTE_TRIGGER,
-					sourceIds, transformers.stream().map(DataTransformerConfiguration::getUniqueId).toList(), sinkIds);
+					sourceIds, transformers.stream().map(DataTransformerConfiguration::getUniqueId)
+							.filter(id -> !id.equals(responseTransformer)).toList(), sinkIds);
 			route.setRouteId(routeId + ":" + mapping.listIndex());
-			if (mapping.triggerSourceIds().present()) {
-				Map<String, Object> triggerData = new LinkedHashMap<>();
-				triggerData.put("triggerSourceIds", mapping.triggerSourceIds().value());
-				route.setTriggerData(triggerData);
-			}
+			if (mapping.triggerSourceIds().present()) triggerData.put("triggerSourceIds", mapping.triggerSourceIds().value());
+			if (!triggerData.isEmpty()) route.setTriggerData(triggerData);
 			output.addRoute(new ExecutionPolicyRouteConfiguration(route));
 		}
 		return new Result(output, issues);
@@ -682,16 +685,7 @@ public final class ConnectorConfigurationFactory {
 			boolean callerOutputs,List<String> requiredOutputs,Plan plan,String routeId,RuntimeSettings runtime,Map<String,Object> trigger,
 			List<DataSinkConfiguration> destinations,List<Issue> issues) {
 		String path="MappingConfigurations/value/"+mapping.listIndex()+"/response";
-		// ResponseSources, ResponseTransformation and ResponseSinks are one unit: the sources name
-		// the reply's values, the transformation maps them, the sinks receive the result.
-		if(!mapping.responseTransformation().present() || mapping.responseTransformation().value()==null)
-			issue(issues,mapping,path,"a response mapping requires a ResponseTransformation");
-		if(!mapping.responseSources().present() || mapping.responseSources().value()==null
-				|| mapping.responseSources().value().isEmpty())
-			issue(issues,mapping,path,"a response mapping requires ResponseSources naming the reply's values");
-		if(!mapping.responseSinks().present() || mapping.responseSinks().value()==null
-				|| mapping.responseSinks().value().isEmpty())
-			issue(issues,mapping,path,"a response mapping requires ResponseSinks receiving its result");
+		requireResponseUnit(mapping,path,issues);
 		List<Map<String,Object>> sourceBindings=new ArrayList<>();
 		Set<String> sourcePaths=new LinkedHashSet<>();
 		if(mapping.responseSources().present()) {
@@ -741,20 +735,8 @@ public final class ConnectorConfigurationFactory {
 					}
 					continue;
 				}
-				DataSinkConfiguration sink=sink(endpoint,mapping,RESPONSE_SINK_POSITION+i,plan,routeId,runtime,issues);
-				if(sink==null)continue;
-				payloadBinding(sink,endpoint,mapping,issues);
-				destinations.add(sink);
-				Map<String,Object> binding=new LinkedHashMap<>();binding.put("sinkId",endpoint.id());
-				binding.put("dataSinkId",sink.getUniqueId());binding.put("schema",sink.getSchema());
-				boolean aas=endpoint.target() instanceof DirectTarget;
-				binding.put("aas",aas);binding.put("jsonPayload",!aas && (sink instanceof HttpDataSinkConfiguration || sink instanceof MqttDataSinkConfiguration));
-				if(!aas && endpoint.target() instanceof AidTarget target) {
-					binding.put("valuePath",jsonPointer(target.resolved().schemaPath()));
-					binding.put("payloadGroup",sink.getPayloadGroup());
-					binding.put("payloadSchema",sink.getPayloadSchema());
-				}
-				sinkBindings.add(binding);
+				Map<String,Object> binding=responseSinkBinding(endpoint,mapping,i,plan,routeId,runtime,destinations,issues);
+				if(binding!=null)sinkBindings.add(binding);
 			}
 		}
 		if(callerId==null && requiredOutputs.stream().anyMatch(name -> !callerBindings.containsValue("$."+name)))issue(issues,mapping,path,
@@ -764,6 +746,117 @@ public final class ConnectorConfigurationFactory {
 		if(callerId!=null)trigger.put(ProtocolBridgeRouteConfiguration.CALLER_REPLY_SINK_ID,callerId);
 		trigger.put(ProtocolBridgeRouteConfiguration.CALLER_REPLY_BINDINGS,Map.copyOf(callerBindings));
 		trigger.put(ProtocolBridgeRouteConfiguration.RESPONSE_SINK_BINDINGS,List.copyOf(sinkBindings));
+	}
+
+	/**
+	 * ResponseSources, ResponseTransformation and ResponseSinks are one unit: the sources name the reply's
+	 * values, the transformation maps them, the sinks receive the result.
+	 */
+	private static void requireResponseUnit(MappingPlan mapping,String path,List<Issue> issues) {
+		if(!mapping.responseTransformation().present() || mapping.responseTransformation().value()==null)
+			issue(issues,mapping,path,"a response mapping requires a ResponseTransformation");
+		if(!mapping.responseSources().present() || mapping.responseSources().value()==null
+				|| mapping.responseSources().value().isEmpty())
+			issue(issues,mapping,path,"a response mapping requires ResponseSources naming the reply's values");
+		if(!mapping.responseSinks().present() || mapping.responseSinks().value()==null
+				|| mapping.responseSinks().value().isEmpty())
+			issue(issues,mapping,path,"a response mapping requires ResponseSinks receiving its result");
+	}
+
+	/** A ResponseSink written by the DMP (an AAS element, a TimeSeries segment, a device property), or null. */
+	private Map<String,Object> responseSinkBinding(EndpointPlan endpoint,MappingPlan mapping,int position,Plan plan,
+			String routeId,RuntimeSettings runtime,List<DataSinkConfiguration> destinations,List<Issue> issues) {
+		DataSinkConfiguration sink=sink(endpoint,mapping,RESPONSE_SINK_POSITION+position,plan,routeId,runtime,issues);
+		if(sink==null)return null;
+		payloadBinding(sink,endpoint,mapping,issues);
+		destinations.add(sink);
+		Map<String,Object> binding=new LinkedHashMap<>();binding.put("sinkId",endpoint.id());
+		binding.put("dataSinkId",sink.getUniqueId());binding.put("schema",sink.getSchema());
+		boolean aas=endpoint.target() instanceof DirectTarget;
+		binding.put("aas",aas);binding.put("jsonPayload",!aas && (sink instanceof HttpDataSinkConfiguration || sink instanceof MqttDataSinkConfiguration));
+		if(!aas && endpoint.target() instanceof AidTarget target) {
+			binding.put("valuePath",jsonPointer(target.resolved().schemaPath()));
+			binding.put("payloadGroup",sink.getPayloadGroup());
+			binding.put("payloadSchema",sink.getPayloadSchema());
+		}
+		return binding;
+	}
+
+	/**
+	 * An ordinary mapping's response half (SPEC §6): each ResponseSource projects the value one of the mapping's
+	 * Sinks was sent, or a member of it; the ResponseSinks receive the ResponseTransformation's result. No
+	 * Operation is answered: only the mapping an Operation triggers answers it.
+	 */
+	private void compileOrdinaryResponse(MappingPlan mapping,Plan plan,String routeId,RuntimeSettings runtime,
+			Map<String,Object> trigger,List<DataSinkConfiguration> destinations,List<DataTransformerConfiguration> transformers,
+			List<Issue> issues) {
+		String root="MappingConfigurations/value/"+mapping.listIndex();
+		String path=root+"/response";
+		requireResponseUnit(mapping,path,issues);
+		List<Map<String,Object>> sourceBindings=new ArrayList<>();
+		if(mapping.responseSources().value()!=null) for(EndpointPlan endpoint:mapping.responseSources().value()) {
+			Map<String,Object> binding=writtenValueBinding(endpoint,mapping.sinks());
+			if(binding==null)issue(issues,mapping,path,"ResponseSource "+endpoint.id()
+					+" must select one of the mapping's Sinks, or a member of it: its value is what that Sink was sent");
+			else sourceBindings.add(binding);
+		}
+		trigger.put(RouteConfiguration.RESPONSE_SOURCE_BINDINGS,List.copyOf(sourceBindings));
+		List<Map<String,Object>> sinkBindings=new ArrayList<>();
+		if(mapping.responseSinks().value()!=null) for(int i=0;i<mapping.responseSinks().value().size();i++) {
+			EndpointPlan endpoint=mapping.responseSinks().value().get(i);
+			if(operationModel(endpoint)!=null) {
+				issue(issues,mapping,path,"ResponseSink "+endpoint.id()+" selects an Operation; only the mapping it triggers answers it");continue;
+			}
+			Map<String,Object> binding=responseSinkBinding(endpoint,mapping,i,plan,routeId,runtime,destinations,issues);
+			if(binding!=null)sinkBindings.add(binding);
+		}
+		trigger.put(RouteConfiguration.RESPONSE_SINK_BINDINGS,List.copyOf(sinkBindings));
+		if(!mapping.responseTransformation().present() || mapping.responseTransformation().value()==null)return;
+		String id=entityId(mapping,"response-transform",0);
+		int before=transformers.size();
+		addLua(transformers,id,mapping.responseTransformation().value().bytes(),mapping.identity()+":response",
+				mapping,root+"/ResponseTransformation",issues);
+		if(transformers.size()==before)return;
+		LuaTransformerConfiguration lua=(LuaTransformerConfiguration)transformers.get(transformers.size()-1);
+		lua.setSourceKeys(String.join(",",sourceBindings.stream().map(binding -> String.valueOf(binding.get("sourceId"))).toList()));
+		lua.setKeyedInput(true);
+		trigger.put(RouteConfiguration.RESPONSE_TRANSFORMER,id);
+	}
+
+	/** The Sink whose sent value a ResponseSource selects, the most specific when Sinks nest; null when none or two. */
+	private static Map<String,Object> writtenValueBinding(EndpointPlan source,List<EndpointPlan> sinks) {
+		EndpointPlan match=null;List<String> member=null;boolean ambiguous=false;
+		for(EndpointPlan sink:sinks) {
+			List<String> remainder=memberPath(sink,source);
+			if(remainder==null)continue;
+			if(match==null || remainder.size()<member.size()) { match=sink;member=remainder;ambiguous=false; }
+			else if(remainder.size()==member.size())ambiguous=true;
+		}
+		if(match==null || ambiguous)return null;
+		Map<String,Object> binding=new LinkedHashMap<>();
+		binding.put("sourceId",source.id());binding.put("sinkId",match.id());binding.put("valuePath",jsonPointer(member));
+		return binding;
+	}
+
+	/** The path from a Sink's target down to the source's, or null when the source does not lie within it. */
+	private static List<String> memberPath(EndpointPlan sink,EndpointPlan source) {
+		if(sink.target() instanceof AidTarget written && source.target() instanceof AidTarget selected) {
+			if(!sameAction(written,selected))return null;
+			return remainder(written.resolved().schemaPath(),selected.resolved().schemaPath());
+		}
+		boolean series=sink.target() instanceof SeriesTarget;
+		if(series!=source.target() instanceof SeriesTarget || !series && !(sink.target() instanceof DirectTarget && source.target() instanceof DirectTarget))
+			return null;
+		List<Key> sinkKeys=Aas.keys(sink.reference()),sourceKeys=Aas.keys(source.reference());
+		if(sourceKeys.size()<sinkKeys.size() || series && sourceKeys.size()!=sinkKeys.size())return null;
+		for(int i=0;i<sinkKeys.size();i++)
+			if(!Objects.equals(sinkKeys.get(i).getValue(),sourceKeys.get(i).getValue())
+					|| !Objects.equals(Aas.keyType(sinkKeys.get(i)),Aas.keyType(sourceKeys.get(i))))return null;
+		return sourceKeys.subList(sinkKeys.size(),sourceKeys.size()).stream().map(Key::getValue).toList();
+	}
+
+	private static List<String> remainder(List<String> prefix,List<String> path) {
+		return path.size()>=prefix.size() && path.subList(0,prefix.size()).equals(prefix) ? path.subList(prefix.size(),path.size()) : null;
 	}
 
 	private static void validateCapabilities(MappingPlan mapping,List<Issue> issues) {

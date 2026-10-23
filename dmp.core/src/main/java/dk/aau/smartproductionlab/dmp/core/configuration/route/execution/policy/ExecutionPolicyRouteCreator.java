@@ -36,6 +36,7 @@ import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteConfigur
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RouteCreatorHelper;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.FanIn;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.FanOut;
+import dk.aau.smartproductionlab.dmp.core.configuration.route.pipeline.ResponseHalf;
 import dk.aau.smartproductionlab.dmp.core.configuration.route.core.RoutesConfiguration;
 import dk.aau.smartproductionlab.dmp.core.routebuilder.DmpRouteBuilder;
 import org.slf4j.Logger;
@@ -109,8 +110,24 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 				.routeId(routeId)
 				.filter(fanIn.gatePredicate())
 				.process(fanIn.merge());
-		FanOut.apply(cycle, routesConfiguration, routeConfig,
-				dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
+		ResponseHalf response = ResponseHalf.of(routeBuilder, routesConfiguration, routeConfig, routeId);
+		if (response == null) {
+			FanOut.apply(cycle, routesConfiguration, routeConfig,
+					dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
+		} else {
+			// The response half runs after the sinks, also when the evaluation failed, and inside the
+			// evaluation: its writes finish before the next evaluation starts.
+			cycle.process(response::keepRequestSources);
+			var attempt = cycle.doTry();
+			FanOut.apply(attempt, routesConfiguration, routeConfig,
+					dataTransformerEndpoints, dataSinkEndpoints, datasinkMapping, routeId);
+			attempt.process(response::succeeded).enrich(response.uri(), ResponseHalf::keepOriginal);
+			attempt.doCatch(Exception.class)
+					.process(response::failed)
+					.enrich(response.uri(), ResponseHalf::keepOriginal)
+					.process(ResponseHalf::rethrow)
+					.end();
+		}
 
 		Map<Acquisition, List<String>> acquisitions = new LinkedHashMap<>();
 		for (String endpointId : routeConfig.getDatasources()) {

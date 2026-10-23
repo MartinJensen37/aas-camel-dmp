@@ -8,7 +8,7 @@ import java.util.Map;
 
 /**
  * The shape of Lua's global {@code meta} (SPEC §8): {@code sources} and {@code sinks} keyed by SourceId and SinkId,
- * and, in an Operation's transformations, {@code invocation}. A source carries the {@code time} its value was
+ * and {@code invocation}, the evaluation or Operation call the transformation belongs to. A source carries the {@code time} its value was
  * acquired, a sink the {@code kind} of connector it writes through (the scheme of its endpoint, e.g. {@code aas},
  * {@code dmp-influxdb2}).
  */
@@ -27,6 +27,46 @@ public final class TransformerMeta {
 	/** A source acquired at {@code time}. */
 	public static Map<String, Object> source(Instant time) {
 		return Map.of("time", time.toString());
+	}
+
+	/** A new invocation: its {@code id} and the time it {@code started}. */
+	public static Map<String, Object> invocation(Instant started) {
+		Map<String, Object> invocation = new LinkedHashMap<>();
+		invocation.put("id", java.util.UUID.randomUUID().toString());
+		invocation.put("started", started.toString());
+		return invocation;
+	}
+
+	/** The invocation once it ended: {@code durationMs} since it started, its {@code outcome} and, if it failed, the {@code error}. */
+	public static Map<String, Object> finished(Map<String, Object> invocation, String outcome, Map<String, Object> error) {
+		Map<String, Object> finished = new LinkedHashMap<>(invocation);
+		Object started = invocation.get("started");
+		if (started != null && !finished.containsKey("durationMs"))
+			finished.put("durationMs", java.time.Duration.between(Instant.parse(String.valueOf(started)), Instant.now()).toMillis());
+		finished.put("outcome", outcome);
+		if (error != null) finished.put("error", error);
+		return finished;
+	}
+
+	/**
+	 * {@code meta.invocation.error}: the connector's code and category where it has them (also as the cause of a
+	 * failure that reports several sinks), and the message.
+	 */
+	public static Map<String, Object> error(Throwable failure, String defaultCode) {
+		Map<String, Object> error = new LinkedHashMap<>();
+		dk.aau.smartproductionlab.dmp.core.configuration.route.core.ConnectorInvocationException cause = null;
+		for (Throwable current = failure; current != null && cause == null; current = current.getCause())
+			if (current instanceof dk.aau.smartproductionlab.dmp.core.configuration.route.core.ConnectorInvocationException connector)
+				cause = connector;
+		if (cause != null) {
+			var connector = cause;
+			error.put("code", connector.getConnectorCode());
+			error.put("category", connector.getCategory().name());
+		} else {
+			error.put("code", failure == null ? defaultCode : failure.getClass().getSimpleName());
+		}
+		error.put("message", failure == null || failure.getMessage() == null ? "" : failure.getMessage());
+		return error;
 	}
 
 	/** A sink writing through {@code endpointUri}. */

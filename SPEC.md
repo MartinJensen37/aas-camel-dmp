@@ -35,8 +35,9 @@ graph.
 | Mapping | One `MappingConfiguration`. Identity is (AIMC id, mapping identity). |
 | SourceId / SinkId | Keys of the Lua input table and the Lua result table. |
 | Bundle | The set of Camel routes, endpoints and registry bindings owned by one mapping. |
-| Ordinary mapping | Data mapping: sources → Lua → sinks. |
-| Bridge mapping | Mapping whose single source is an AAS Operation: caller → Lua → device action → reply. |
+| Ordinary mapping | Mapping its sources trigger: sources → Lua → sinks (§6). |
+| Bridge mapping | Mapping an AAS Operation call triggers: caller → Lua → device action or write → reply (§7). |
+| Response half | ResponseSources → ResponseTransformation → ResponseSinks after a mapping's sinks, in either kind of mapping (DMP extensions). |
 
 ## 3. Architecture
 
@@ -162,7 +163,7 @@ AssetInterfacesMappingConfiguration
     ├── Transformation           (Blob, Lua)
     ├── Sources[]  : Source (Reference), SourceId, PollingInterval?
     ├── Sinks[]    : Sink (Reference), SinkId
-    │   DMP extensions, bridge mappings only (§7):
+    │   DMP extensions, the response half (§6, §7):
     ├── ResponseSources[] : Source (Reference), SourceId
     ├── ResponseTransformation   (Blob, Lua)
     └── ResponseSinks[]   : Sink (Reference), SinkId
@@ -503,6 +504,7 @@ submodels (a segment directly below the submodel) are not supported yet.
 
 ```
 Sources[] ──► latest-value cache ──► aimc_main(sources) ──► per-SinkId dispatch ──► Sinks[]
+                                     ResponseSinks[] ◄── response Lua ◄── ResponseSources[] (what the Sinks were sent)
 ```
 
 - Each source has its own consumer (Observe) or poller (Read) and contributes
@@ -525,6 +527,22 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
 - Sinks are dispatched sequentially in authored order; each starts from restored
   headers and body. A SinkId missing from the Lua result is an error for that
   sink; it is not silently skipped.
+- **Response half** (optional). ResponseSources, a ResponseTransformation and
+  ResponseSinks are authored together, as in a bridge mapping (§7 step 5).
+  After the sinks, each ResponseSource projects the value one of the mapping's
+  Sinks was sent: it selects that Sink's target, or a member of it (the most
+  specific Sink when Sinks nest; none, or two equally specific, block the
+  mapping). A Sink's write is acknowledged as its connector acknowledges it
+  (§7.1: the PLC4X write response, the OPC UA Write status, the HTTP response;
+  MQTT only the broker). `aimc_main(sources, requestSources)` receives the
+  ResponseSources and what the request Lua received; its values for the
+  ResponseSinks (AAS elements, TimeSeries segments, device properties) are
+  written in order, best effort, before the next evaluation starts. When the
+  evaluation fails (the request Lua or a sink), the response half still runs,
+  with no ResponseSources and `meta.invocation.outcome` `Failed` with the
+  `error` (a sink's own code and category); the evaluation still fails. A
+  ResponseSink on an Operation blocks the mapping: only the mapping an
+  Operation triggers answers it.
 - `DMP_AFFORDANCE_VALIDATION=ON` validates inbound values and outbound payloads
   against the AID schemas (invalid inbound values are dropped, invalid outbound
   payloads are not sent); `REPORT` only logs; `OFF` (default) skips validation.
@@ -617,9 +635,10 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
    MQTT action without a response topic returns on the broker's
    acknowledgement (e.g. Halt).
 6. `ResponseSinks` that address AAS elements receive their SinkId value
-   asynchronously through a bounded Wire Tap (2 workers, 128 queued jobs, abort
-   on overflow). These writes are best effort and never change the caller's
-   reply.
+   asynchronously through a bounded Wire Tap: one writer per mapping and 128
+   queued jobs (abort on overflow), so they are written in the order the calls
+   finished and never overtake each other. These writes are best effort and
+   never change the caller's reply.
 7. Failures return structured errors: `DMP_DEVICE_TIMEOUT` (504),
    `DMP_DEVICE_ERROR`/`DMP_DEVICE_TRANSPORT_ERROR` (502),
    `DMP_COMMAND_VALIDATION_FAILED`, `DMP_RESPONSE_VALIDATION_FAILED`,
@@ -697,7 +716,7 @@ end
   | --- | --- |
   | `meta.sources.<SourceId>.time` | When the source's current value was acquired (ISO-8601 UTC) |
   | `meta.sinks.<SinkId>.kind` | The connector the sink writes through: its endpoint scheme (`aas`, `dmp-influxdb2`, `paho-mqtt5`, …); `operation` for a ResponseSink answering the caller |
-  | `meta.invocation` | An Operation's transformations only: `id`, `started`, `caller` (`basyx` or `rest`), the Operation's `skill`, `aas`, `submodel`, `path`, `restPath`; in the response also `durationMs` and `outcome` (`Succeeded`, `Failed` with `error`, §7 step 8) |
+  | `meta.invocation` | The evaluation or call: `id`, `started`; an Operation's also `caller` (`basyx` or `rest`) and the Operation's `skill`, `aas`, `submodel`, `path`, `restPath`; in the response also `durationMs` and `outcome` (`Succeeded`, `Failed` with `error`, §6, §7 step 8) |
 
   `meta.sources` and `meta.sinks` are always tables. Lua can use them for
   explicit logging: `Time = meta.sources.State.time`,

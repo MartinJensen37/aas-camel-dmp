@@ -422,9 +422,9 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 
 	@Test
 	void realLuaReceivesAndReturnsAJsonObjectForProjectedMapReplies() throws Exception {
-		AUDIT_ENTERED = new CountDownLatch(2);
+		AUDIT_ENTERED = new CountDownLatch(1);
 		AUDIT_RELEASE = new CountDownLatch(1);
-		AUDIT_COMPLETED = new CountDownLatch(130);
+		AUDIT_COMPLETED = new CountDownLatch(129);
 		AUDIT_WRITES.set(0);
 		StringBuilder body = new StringBuilder();
 		long started = System.nanoTime();
@@ -439,7 +439,7 @@ class ProtocolBridgeRouteCreatorTest extends CamelTestSupport {
 			AUDIT_RELEASE.countDown();
 		}
 		assertTrue(AUDIT_COMPLETED.await(3, TimeUnit.SECONDS));
-		assertEquals(130, AUDIT_WRITES.get(), "one best-effort response write should be rejected at capacity");
+		assertEquals(129, AUDIT_WRITES.get(), "the writer and its queue of 128 take 129 writes; the other two are rejected");
 	}
 
 	@Test

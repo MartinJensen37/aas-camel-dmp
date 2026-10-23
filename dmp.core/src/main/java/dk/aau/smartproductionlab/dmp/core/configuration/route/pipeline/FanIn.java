@@ -257,7 +257,8 @@ public final class FanIn implements ManagedRouteResource {
 			Map<String, java.time.Instant> times = exchange.getProperty(ACCEPTED_TIMES_PROPERTY, Map.class);
 			Map<String, Object> sources = new LinkedHashMap<>();
 			if (times != null) times.forEach((id, time) -> sources.put(id, TransformerMeta.source(time)));
-			exchange.setProperty(DataTransformerConfiguration.META, TransformerMeta.of(sources, sinkMeta, null));
+			exchange.setProperty(DataTransformerConfiguration.META, TransformerMeta.of(sources, sinkMeta,
+					TransformerMeta.invocation(java.time.Instant.now())));
 		};
 	}
 

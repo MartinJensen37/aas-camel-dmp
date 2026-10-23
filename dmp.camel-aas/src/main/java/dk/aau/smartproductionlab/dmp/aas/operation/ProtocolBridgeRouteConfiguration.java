@@ -42,7 +42,7 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public static final String ROUTE_TRIGGER = "bridge";
 	public static final String REST_PATH = "restPath";
 	public static final String REST_METHOD = "restMethod";
-	public static final String RESPONSE_TRANSFORMER = "responseTransformer";
+	public static final String RESPONSE_TRANSFORMER = RouteConfiguration.RESPONSE_TRANSFORMER;
 	/** DECLARED command parameter types (AID input DataSchema: name → JSON type). */
 	public static final String PARAMETER_TYPES = "parameterTypes";
 	/** DECLARED reply field types (AID output DataSchema: name → JSON type). */
@@ -62,8 +62,8 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public static final String COMMAND_SINK_IDS = "commandSinkIds";
 	public static final String COMMAND_SINK_BINDINGS = "commandSinkBindings";
 	public static final String RESPONSE_SCHEMA = "responseSchema";
-	public static final String RESPONSE_SOURCE_BINDINGS = "responseSourceBindings";
-	public static final String RESPONSE_SINK_BINDINGS = "responseSinkBindings";
+	public static final String RESPONSE_SOURCE_BINDINGS = RouteConfiguration.RESPONSE_SOURCE_BINDINGS;
+	public static final String RESPONSE_SINK_BINDINGS = RouteConfiguration.RESPONSE_SINK_BINDINGS;
 	public static final String EXPLICIT_RESPONSE_MAPPING = "explicitResponseMapping";
 	public static final String DEFAULT_REST_METHOD = "POST";
 
@@ -89,10 +89,6 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 	public String getAction() {
 		Object value = getTriggerData().get("action");
 		return value == null ? null : String.valueOf(value);
-	}
-
-	public String getResponseTransformer() {
-		return (String) getTriggerData().get(RESPONSE_TRANSFORMER);
 	}
 
 	/** DECLARED command parameter types (name → JSON-schema type); never null. */
@@ -232,14 +228,6 @@ public class ProtocolBridgeRouteConfiguration extends RouteConfiguration {
 
 	public boolean isExplicitResponseMapping() {
 		return Boolean.TRUE.equals(getTriggerData().get(EXPLICIT_RESPONSE_MAPPING));
-	}
-
-	public java.util.List<java.util.Map<String, Object>> getResponseSourceBindings() {
-		return mapList(RESPONSE_SOURCE_BINDINGS);
-	}
-
-	public java.util.List<java.util.Map<String, Object>> getResponseSinkBindings() {
-		return mapList(RESPONSE_SINK_BINDINGS);
 	}
 
 	private java.util.List<java.util.Map<String, Object>> mapList(String key) {

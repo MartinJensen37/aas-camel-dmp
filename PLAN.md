@@ -21,6 +21,12 @@ and the P3/P5 work logs) is in the git history.
   implemented as specified. Lua receives AAS elements
   in one typed value form (SPEC §5.3) and OPC UA values without an envelope,
   checked against the AID (SPEC §5.2).
+- One mapping model with two triggers (2026-10-23): a mapping is triggered by
+  its sources (ordinary, SPEC §6) or by an Operation call (bridge, §7), and
+  either kind may have a response half (ResponseSources projecting what its
+  Sinks were sent, or an action's reply). Sources without a positive polling
+  interval are event-based; a mapping evaluates one at a time; an Operation's
+  ResponseSinks have one writer. Actions stay reachable from Operations only.
 - TimeSeries LinkedSegments on InfluxDB 2 (SPEC §5.5): Sinks write one
   acknowledged point per row, Sources poll the latest row, both within the
   segment's period; the series' Record is the row shape.

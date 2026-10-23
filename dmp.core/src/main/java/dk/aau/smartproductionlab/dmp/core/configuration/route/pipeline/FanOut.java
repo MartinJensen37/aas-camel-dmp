@@ -94,6 +94,10 @@ public final class FanOut {
 	private static final String DISPATCH_OUTCOMES_PROPERTY = "dmp.dispatchOutcomes";
 	private static final String CURRENT_DISPATCH_JOB = "dmp.currentDispatchJob";
 	private static final String DISPATCH_ENDPOINT_HEADER = "dmp.dispatchEndpoint";
+	/** Exchange property carrying each SinkId's value as staged for its sink (a response's ResponseSources). */
+	private static final String SINK_VALUES_PROPERTY = "dmp.sinkValues";
+	/** Exchange property holding the first sink failure, the cause of the fan-out's own. */
+	private static final String FIRST_FAILURE_PROPERTY = "dmp.firstSinkFailure";
 
 	private FanOut() {
 	}
@@ -191,6 +195,8 @@ public final class FanOut {
 			exchange.setProperty(GROUP_PAYLOADS_PROPERTY, new LinkedHashMap<String, Map<String, Object>>());
 			exchange.setProperty(GROUP_FAILURES_PROPERTY, new java.util.HashSet<String>());
 			exchange.setProperty(DISPATCH_JOBS_PROPERTY, new ArrayList<DispatchJob>());
+			exchange.setProperty(SINK_VALUES_PROPERTY, new LinkedHashMap<String, Object>());
+			exchange.setProperty(FIRST_FAILURE_PROPERTY, new java.util.concurrent.atomic.AtomicReference<Exception>());
 			exchange.setProperty(BRANCH_BASE_PROPERTIES,
 					copyProperties(exchange.getProperties()));
 			exchange.setProperty(BRANCH_BASE_HEADERS, copyMap(exchange.getMessage().getHeaders()));
@@ -240,6 +246,9 @@ public final class FanOut {
 			attempt.process(e -> {
 						Object member = e.getMessage().getBody();
 						memberValidators.get(configId).outgoing(member == JsonPointer.JSON_NULL ? null : member);
+						DataSinkConfiguration sinkConfig = routesConfiguration.getDatasinks().get(configId);
+						if (sinkConfig != null && sinkConfig.getSinkId() != null)
+							sinkValues(e).put(sinkConfig.getSinkId(), JsonCodec.copyValue(member));
 						if (group != null) {
 							if (sendGroup && groupFailures(e).contains(group)) {
 								throw new IllegalArgumentException("payloadGroup " + group + " has a failed member");
@@ -271,6 +280,7 @@ public final class FanOut {
 							groupFailures(e).add(group);
 						}
 						sinkFailures(e).add(endpoint);
+						firstFailure(e).compareAndSet(null, e.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class));
 						LOGGER.warn("route {}: sink {} ({}) failed",
 								routeId, configId, endpoint, e);
 					})
@@ -342,6 +352,25 @@ public final class FanOut {
 	private record DispatchOutcome(DispatchJob job, Exception failure) { }
 
 	@SuppressWarnings("unchecked")
+	private static java.util.concurrent.atomic.AtomicReference<Exception> firstFailure(Exchange exchange) {
+		return (java.util.concurrent.atomic.AtomicReference<Exception>) exchange.getProperty(FIRST_FAILURE_PROPERTY);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> sinkValues(Exchange exchange) {
+		return (Map<String, Object>) exchange.getProperty(SINK_VALUES_PROPERTY);
+	}
+
+	/**
+	 * After the fan-out: each SinkId's value as it was sent (a member of an assembled payload is its own
+	 * value), for the ResponseSources that project it. Empty before the fan-out.
+	 */
+	public static Map<String, Object> writtenValues(Exchange exchange) {
+		Map<String, Object> values = sinkValues(exchange);
+		return values == null ? Map.of() : java.util.Collections.unmodifiableMap(values);
+	}
+
+	@SuppressWarnings("unchecked")
 	private static List<DispatchJob> dispatchJobs(Exchange exchange) {
 		return (List<DispatchJob>) exchange.getProperty(DISPATCH_JOBS_PROPERTY);
 	}
@@ -358,6 +387,7 @@ public final class FanOut {
 			DispatchOutcome outcome = (DispatchOutcome) value;
 			if (outcome.failure() == null) continue;
 			sinkFailures(exchange).add(outcome.job().endpoint());
+			firstFailure(exchange).compareAndSet(null, outcome.failure());
 			LOGGER.warn("route {}: sink {} ({}) failed",
 					outcome.job().routeId(), outcome.job().configId(), outcome.job().endpoint(), outcome.failure());
 		}
@@ -387,6 +417,8 @@ public final class FanOut {
 		exchange.removeProperty(GROUP_PAYLOADS_PROPERTY);
 		exchange.removeProperty(GROUP_FAILURES_PROPERTY);
 		exchange.removeProperty(DISPATCH_JOBS_PROPERTY);
+		exchange.removeProperty(SINK_VALUES_PROPERTY);
+		exchange.removeProperty(FIRST_FAILURE_PROPERTY);
 		exchange.removeProperty(BRANCH_BASE_PROPERTIES);
 		exchange.removeProperty(BRANCH_BASE_HEADERS);
 	}
@@ -402,6 +434,7 @@ public final class FanOut {
 		return RESULT_PROPERTY.equals(key) || SINK_PAYLOADS_PROPERTY.equals(key)
 				|| SINK_FAILURES_PROPERTY.equals(key) || GROUP_PAYLOADS_PROPERTY.equals(key)
 				|| GROUP_FAILURES_PROPERTY.equals(key) || DISPATCH_JOBS_PROPERTY.equals(key)
+				|| SINK_VALUES_PROPERTY.equals(key) || FIRST_FAILURE_PROPERTY.equals(key)
 				|| BRANCH_BASE_PROPERTIES.equals(key)
 				|| BRANCH_BASE_HEADERS.equals(key);
 	}
@@ -497,7 +530,7 @@ public final class FanOut {
 		if (failures.isEmpty()) {
 			return;
 		}
-		throw new IllegalStateException("fan-out could not deliver to sinks: " + failures);
+		throw new IllegalStateException("fan-out could not deliver to sinks: " + failures, firstFailure(exchange).get());
 	}
 
 	/** The same shaping step, over an arbitrary (possibly transformed) value. */

@@ -26,14 +26,17 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Best-effort response writes: prepares a job per Lua-selected response value (device-affordance
- * members grouped into one payload) and contributes the route steps that write them detached
- * (a bounded Wire Tap into a write route), so the caller's reply never waits for them.
+ * members grouped into one payload) and contributes the route steps that write them. An
+ * Operation's are detached (a bounded Wire Tap into a write route, one writer per mapping so
+ * writes land in the order the calls finished), so the caller's reply never waits for them; an
+ * ordinary mapping's are written in order before its next evaluation ({@link #ordered}).
  */
 public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 	/** Header naming the endpoint of one detached response write. */
 	public static final String WRITE_ENDPOINT_HEADER = "DmpResponseWriteEndpoint";
 	private static final String ADMITTED = "dmp.response.admitted";
-	public static final int DEFAULT_WORKERS = 2;
+	/** One writer: a mapping's detached writes never overtake each other. */
+	public static final int DEFAULT_WORKERS = 1;
 	public static final int DEFAULT_QUEUE_CAPACITY = 128;
 	private static final Logger LOGGER = LoggerFactory.getLogger(ResponseSinkFanOutProcessor.class);
 	private final CamelContext camelContext;
@@ -57,6 +60,12 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 		this(context, correlationId, rawBindings, DEFAULT_WORKERS, DEFAULT_QUEUE_CAPACITY);
 	}
 
+	/** Response writes made in order within the evaluation ({@link #configureOrderedDispatch}); no executor. */
+	public static ResponseSinkFanOutProcessor ordered(CamelContext context, String correlationId,
+			List<Map<String, Object>> rawBindings) {
+		return new ResponseSinkFanOutProcessor(context, correlationId, rawBindings, 0, 0);
+	}
+
 	ResponseSinkFanOutProcessor(CamelContext context, String correlationId,
 			List<Map<String, Object>> rawBindings, int workers, int queueCapacity) {
 		this.camelContext = context;
@@ -69,7 +78,7 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 		profile.setTimeUnit(TimeUnit.SECONDS);
 		profile.setMaxQueueSize(queueCapacity);
 		profile.setRejectedPolicy(ThreadPoolRejectedPolicy.Abort);
-		LOGGER.info("mapping {} response sink writes use bounded executor (workers={}, queueCapacity={}, rejection=Abort)",
+		if (workers > 0) LOGGER.info("mapping {} response sink writes use bounded executor (workers={}, queueCapacity={}, rejection=Abort)",
 				correlationId, workers, queueCapacity);
 		this.correlationId = correlationId;
 		List<SinkBinding> resolvedBindings = new ArrayList<>();
@@ -95,7 +104,7 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 			}
 		}
 		this.bindings = List.copyOf(resolvedBindings);
-		this.responseExecutor = context.getExecutorServiceManager().newThreadPool(
+		this.responseExecutor = workers <= 0 ? null : context.getExecutorServiceManager().newThreadPool(
 				this, "response-sink-writes-" + correlationId, profile);
 	}
 
@@ -112,6 +121,20 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 				.onPrepare(ResponseSinkFanOutProcessor::prepareDetachedExchange)
 				.executorService(responseExecutor);
 		enqueue.doCatch(Exception.class)
+				.process(this::recordRejection)
+				.end();
+		jobs.end();
+	}
+
+	/**
+	 * Steps that write every job of the body through {@code writeUri}, one after another, before the route
+	 * continues. A failed write is counted and logged by the write route; the evaluation goes on.
+	 */
+	public void configureOrderedDispatch(ProcessorDefinition<?> route, String writeUri) {
+		var jobs = route.split(org.apache.camel.builder.Builder.body());
+		var write = jobs.doTry();
+		write.process(this::admit).to(writeUri);
+		write.doCatch(Exception.class)
 				.process(this::recordRejection)
 				.end();
 		jobs.end();
@@ -159,7 +182,7 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 
 	private void recordFailure(Exchange exchange) {
 		long failures = failedWrites.incrementAndGet();
-		LOGGER.warn("mapping {} response sink group {} failed; caller reply is unchanged (failed={})",
+		LOGGER.warn("mapping {} response sink group {} failed; the call or evaluation is unchanged (failed={})",
 				correlationId, exchange.getProperty(SINK_LABEL), failures);
 	}
 
@@ -265,7 +288,7 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 		if (Boolean.TRUE.equals(exchange.getProperty(ADMITTED))) pendingWrites.decrementAndGet();
 		DispatchJob job = (DispatchJob) exchange.getMessage().getBody();
 		long rejected = rejectedWrites.incrementAndGet();
-		LOGGER.warn("mapping {} response sink group {} rejected by bounded executor; caller reply continues (rejected={})",
+		LOGGER.warn("mapping {} response sink group {} rejected (queue full or draining); the mapping continues (rejected={})",
 				correlationId, job.sinkLabel(), rejected);
 	}
 
@@ -279,7 +302,7 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 	@Override
 	public void close() throws Exception {
 		drain(java.time.Duration.ofSeconds(6));
-		camelContext.getExecutorServiceManager().shutdown(responseExecutor);
+		if (responseExecutor != null) camelContext.getExecutorServiceManager().shutdown(responseExecutor);
 		closed = true;
 	}
 
@@ -288,6 +311,7 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 		synchronized (lifecycleLock) {
 			if (closed) return;
 			acceptingWrites = false;
+			if (responseExecutor == null) return;
 			responseExecutor.shutdown();
 		}
 		long nanos = timeout.toNanos();
@@ -309,7 +333,7 @@ public final class ResponseSinkFanOutProcessor implements ManagedRouteResource {
 
 	@Override public Map<String, Long> metrics() {
 		return Map.of("pendingExtraWrites", (long) pendingWrites.get(), "rejectedExtraWrites", rejectedWrites.get(),
-				"failedExtraWrites", failedWrites.get(), "extraWriteExecutors", closed ? 0L : 1L);
+				"failedExtraWrites", failedWrites.get(), "extraWriteExecutors", closed || responseExecutor == null ? 0L : 1L);
 	}
 
 	public java.util.concurrent.ExecutorService responseExecutor() {

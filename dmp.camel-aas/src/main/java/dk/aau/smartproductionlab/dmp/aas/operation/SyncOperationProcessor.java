@@ -333,14 +333,7 @@ public class SyncOperationProcessor implements ManagedRouteResource {
 	public void prepareFailureResponse(Exchange exchange) {
 		Throwable failure = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class);
 		if (failure == null) failure = exchange.getException();
-		Map<String, Object> error = new java.util.LinkedHashMap<>();
-		if (failure instanceof dk.aau.smartproductionlab.dmp.core.configuration.route.core.ConnectorInvocationException connector) {
-			error.put("code", connector.getConnectorCode());
-			error.put("category", connector.getCategory().name());
-		} else {
-			error.put("code", failure == null ? "DMP_OPERATION_FAILED" : failure.getClass().getSimpleName());
-		}
-		error.put("message", failure == null || failure.getMessage() == null ? "" : failure.getMessage());
+		Map<String, Object> error = TransformerMeta.error(failure, "DMP_OPERATION_FAILED");
 		Object requestSources = exchange.getProperty(REQUEST_SOURCES);
 		exchange.setProperty(DataTransformerConfiguration.REQUEST_SOURCES,
 				requestSources == null ? new java.util.LinkedHashMap<String, Object>() : requestSources);

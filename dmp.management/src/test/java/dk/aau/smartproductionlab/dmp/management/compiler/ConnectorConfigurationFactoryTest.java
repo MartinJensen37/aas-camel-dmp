@@ -516,6 +516,59 @@ class ConnectorConfigurationFactoryTest {
 	}
 
 	@Test
+	void anOrdinaryMappingProjectsWhatItsSinkWasSentIntoItsResponse() {
+		var status=AasFixtures.collection("Status",property("Setpoint","0"),property("LastWrite",""));
+		var submodel=AasFixtures.submodel("urn:owner/submodels/Variables","Variables");
+		java.util.function.Function<String,EndpointPlan> element=name -> new EndpointPlan(name,
+				AasFixtures.reference("Submodel","urn:owner/submodels/Variables","SubmodelElementCollection","Status","Property",name),
+				new DirectTarget(new AasReferenceResolver.ResolvedElement(submodel,
+						status.getValue().stream().filter(member -> member.getIdShort().equals(name)).findFirst().orElseThrow())));
+		var state=endpointPlan("state",protocolTarget(WireModel.ProtocolFamily.MQTT,"mqtt://broker.example:1883","/state",Map.of("mqv_retain","true"),null));
+		var setpoint=element.apply("Setpoint");
+		var written=new EndpointPlan("Written",setpoint.reference(),setpoint.target());
+		var lastWrite=element.apply("LastWrite");
+		var lua=Presence.of(new WireModel.Blob("function aimc_main(sources) return { LastWrite = sources.Written } end"
+				.getBytes(StandardCharsets.UTF_8),"text/x-lua"));
+		var runtime=new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://aas.example:8081"));
+		var mapping=new MappingPlan("logged",0,List.of(state),List.of(setpoint),Presence.absent(),Presence.absent(),
+				Presence.of(List.of(written)),Presence.of(List.of(lastWrite)),lua,Presence.absent(),List.of());
+		var result=factory.create(new Plan(List.of(mapping)),"route",runtime);
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var route=result.configuration().getRoutes().get(0);
+		var binding=route.getResponseSourceBindings().get(0);
+		assertEquals("Written",binding.get("sourceId"));
+		assertEquals("Setpoint",binding.get("sinkId"),"the ResponseSource projects the value Setpoint was sent");
+		assertEquals(null,binding.get("valuePath"));
+		assertEquals("LastWrite",route.getResponseSinkBindings().get(0).get("sinkId"));
+		assertTrue(route.getResponseTransformer()!=null && !route.getTransformers().contains(route.getResponseTransformer()),
+				"the response Lua is the response half's, not a request transformer");
+		assertEquals(1,route.getDatasinks().size(),"ResponseSinks are not written by the request half");
+
+		// a member of a collection the mapping writes: the member of what was sent
+		var whole=new EndpointPlan("Status",AasFixtures.reference("Submodel","urn:owner/submodels/Variables","SubmodelElementCollection","Status"),
+				new DirectTarget(new AasReferenceResolver.ResolvedElement(submodel,status)));
+		var nested=new MappingPlan("nested",0,List.of(state),List.of(whole),Presence.absent(),Presence.absent(),
+				Presence.of(List.of(written)),Presence.of(List.of(lastWrite)),lua,Presence.absent(),List.of());
+		var member=factory.create(new Plan(List.of(nested)),"route",runtime);
+		assertTrue(member.issues().isEmpty(),member.issues().toString());
+		var memberBinding=member.configuration().getRoutes().get(0).getResponseSourceBindings().get(0);
+		assertEquals("Status",memberBinding.get("sinkId"));
+		assertEquals("$.Setpoint",memberBinding.get("valuePath"));
+
+		var reads=new EndpointPlan("Reads",state.reference(),state.target());
+		var notASink=new MappingPlan("logged",0,List.of(state),List.of(setpoint),Presence.absent(),Presence.absent(),
+				Presence.of(List.of(reads)),Presence.of(List.of(lastWrite)),lua,Presence.absent(),List.of());
+		var rejected=factory.create(new Plan(List.of(notASink)),"route",runtime);
+		assertTrue(rejected.issues().stream().anyMatch(issue -> issue.message().contains("must select one of the mapping's Sinks")),
+				rejected.issues().toString());
+		var withoutLua=new MappingPlan("logged",0,List.of(state),List.of(setpoint),Presence.absent(),Presence.absent(),
+				Presence.of(List.of(written)),Presence.of(List.of(lastWrite)),Presence.absent(),Presence.absent(),List.of());
+		var incomplete=factory.create(new Plan(List.of(withoutLua)),"route",runtime);
+		assertTrue(incomplete.issues().stream().anyMatch(issue -> issue.message().contains("requires a ResponseTransformation")),
+				incomplete.issues().toString());
+	}
+
+	@Test
 	void anAasPropertySourceWithAPollingIntervalOfZeroFollowsRepositoryEvents() {
 		var collection=AasFixtures.collection("Status",property("State","RUNNING"));
 		var target=new DirectTarget(new AasReferenceResolver.ResolvedElement(
