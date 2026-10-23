@@ -5,6 +5,7 @@ package dk.aau.smartproductionlab.dmp.plc4x.component;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,9 @@ class DmpPlc4xComponentTest {
 					() -> camel.createProducerTemplate().sendBody(uri(port, "Start", "coil:1"), true));
 			var cause = assertInstanceOf(ConnectorInvocationException.class, failure.getCause());
 			assertEquals(ConnectorInvocationException.Category.TRANSPORT, cause.getCategory());
+			assertEquals("PLC4X_WRITE_FAILED", cause.getConnectorCode());
+			assertTrue(String.valueOf(cause.getDetails().get("cause")).contains("Connection refused"),
+					"the failure names its cause: " + cause.getDetails());
 		}
 	}
 

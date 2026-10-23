@@ -155,11 +155,6 @@ the stations needs the InfluxDB, since the skill mappings write their log
 - The Python `OperationDelegation` service is removed (2026-10-21); every
   operation runs through the DMP. ARSO is a side project and out of scope.
 
-### 4. Small fixes
-
-- A failed PLC4X request is reported as "the device could not be reached"
-  without its cause.
-
 ## Deferred (keep in mind)
 
 - **CAN** (AID 1.2 Annex E.2). Not IP-based: receiving it needs a CAN

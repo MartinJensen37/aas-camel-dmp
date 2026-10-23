@@ -4,6 +4,7 @@ package dk.aau.smartproductionlab.dmp.plc4x.component;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -115,17 +116,29 @@ public class DmpPlc4xEndpoint extends Plc4XEndpoint {
 					code + "_TIMEOUT", "the device did not answer in time", Map.of());
 		} catch (InterruptedException interrupted) {
 			Thread.currentThread().interrupt();
-			throw transport(code);
+			throw transport(code, interrupted);
 		} catch (ConnectorInvocationException typed) {
 			throw typed;
+		} catch (ExecutionException failed) {
+			throw transport(code, failed.getCause() != null ? failed.getCause() : failed);
 		} catch (Exception failure) {
-			throw transport(code);
+			throw transport(code, failure);
 		}
 	}
 
-	private static ConnectorInvocationException transport(String code) {
+	private static ConnectorInvocationException transport(String code, Throwable failure) {
 		return new ConnectorInvocationException(ConnectorInvocationException.Category.TRANSPORT,
-				code + "_FAILED", "the device could not be reached", Map.of());
+				code + "_FAILED", "the device could not be reached", Map.of("cause", causalMessage(failure)));
+	}
+
+	/** The failure and its causes, outermost first: PLC4X wraps the socket error in a connection exception. */
+	private static String causalMessage(Throwable failure) {
+		StringBuilder text = new StringBuilder();
+		for (Throwable current = failure; current != null; current = current.getCause()) {
+			if (!text.isEmpty()) text.append(" <- ");
+			text.append(current.getClass().getSimpleName()).append(": ").append(current.getMessage());
+		}
+		return text.toString();
 	}
 
 	private static ConnectorInvocationException configuration(String message) {
