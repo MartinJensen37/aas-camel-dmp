@@ -56,6 +56,9 @@ import org.junit.jupiter.api.Test;
  */
 class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 
+	private static final java.util.concurrent.atomic.AtomicInteger RUNNING = new java.util.concurrent.atomic.AtomicInteger();
+	private static final java.util.concurrent.atomic.AtomicInteger MOST_CONCURRENT = new java.util.concurrent.atomic.AtomicInteger();
+
 	static final class FixedSource extends DataSourceConfiguration {
 		private final String uri;
 
@@ -134,7 +137,10 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 								eventLeft,
 								eventRight,
 								// sync-only route: the poller drives everything
-								new FixedSource("sOnly", "S", "sync", "seda:inSOnly")),
+								new FixedSource("sOnly", "S", "sync", "seda:inSOnly"),
+								// two async sources arriving on threads of their own
+								new FixedSource("serialA", "A", "async", "direct:inSerialA"),
+								new FixedSource("serialB", "B", "async", "direct:inSerialB")),
 						List.of(),
 						List.of(new FixedSink("outAny", "mock:anyOut"),
 								new FixedSink("outNull", "mock:nullOut"),
@@ -142,7 +148,8 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 								new FixedSink("outPeriodic", "mock:periodicOut"),
 								new FixedSink("outShared", "mock:sharedOut"),
 								new FixedSink("outSharedEvents", "mock:sharedEventsOut"),
-								new FixedSink("outSyncOnly", "mock:syncOnlyOut")),
+								new FixedSink("outSyncOnly", "mock:syncOnlyOut"),
+								new FixedSink("outSerial", "direct:serialSink")),
 						List.of());
 
 				add(route("onAny", List.of("stateA"), List.of("outAny")), routes);
@@ -153,6 +160,12 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 				add(route("differentCadence", List.of("fastCadence", "slowCadence"), List.of()), routes);
 				add(route("sharedEvents", List.of("eventLeft", "eventRight"), List.of("outSharedEvents")), routes);
 				add(route("syncOnly", List.of("sOnly"), List.of("outSyncOnly")), routes);
+				add(route("serial", List.of("serialA", "serialB"), List.of("outSerial")), routes);
+				// a slow sink that counts the evaluations writing at the same time
+				from("direct:serialSink").process(exchange -> {
+					MOST_CONCURRENT.accumulateAndGet(RUNNING.incrementAndGet(), Math::max);
+					try { Thread.sleep(20); } finally { RUNNING.decrementAndGet(); }
+				}).to("mock:serialOut");
 			}
 
 			private void add(RouteConfiguration route, RoutesConfiguration routes) {
@@ -163,6 +176,27 @@ class ExecutionPolicyRouteCreatorTest extends CamelTestSupport {
 
 
 	private static Map<?, ?> sourcesOf(Object body) { return (Map<?, ?>) body; }
+
+	@Test
+	void evaluationsOfOneMappingRunOneAtATimeOnTheLatestValues() throws Exception {
+		MockEndpoint out = getMockEndpoint("mock:serialOut");
+		int updates = 10;
+		out.expectedMessageCount(1 + 2 * updates);
+		template.sendBody("direct:inSerialA", "a0");
+		template.sendBody("direct:inSerialB", "b0");
+		var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+		try {
+			var a = pool.submit(() -> { for (int i = 1; i <= updates; i++) template.sendBody("direct:inSerialA", "a" + i); });
+			var b = pool.submit(() -> { for (int i = 1; i <= updates; i++) template.sendBody("direct:inSerialB", "b" + i); });
+			a.get(); b.get();
+		} finally {
+			pool.shutdownNow();
+		}
+		out.assertIsSatisfied(10000);
+		assertEquals(1, MOST_CONCURRENT.get(), "a mapping evaluates once at a time");
+		Map<?, ?> last = sourcesOf(out.getExchanges().get(out.getExchanges().size() - 1).getMessage().getBody());
+		assertEquals(Map.of("A", "a" + updates, "B", "b" + updates), last, "the last evaluation writes the latest values");
+	}
 
 	@Test
 	void asyncOnlyRouteFiresOnEveryArrivalOnceComplete() throws Exception {

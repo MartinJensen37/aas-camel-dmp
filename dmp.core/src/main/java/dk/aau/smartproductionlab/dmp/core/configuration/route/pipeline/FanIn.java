@@ -61,12 +61,18 @@ public final class FanIn implements ManagedRouteResource {
 	private final Map<String, AffordanceValidation> validators = new LinkedHashMap<>();
 	/** Lua's meta.sinks: each SinkId with the kind of connector it writes through. */
 	private final Map<String, Object> sinkMeta = new LinkedHashMap<>();
+	/** One evaluation of the mapping at a time, so a later one never writes older state. */
+	private final java.util.concurrent.locks.ReentrantLock evaluation = new java.util.concurrent.locks.ReentrantLock(true);
+	private volatile org.apache.camel.ProducerTemplate producer;
 
 	@Override
-	public void bind(org.apache.camel.CamelContext context) { }
+	public void bind(org.apache.camel.CamelContext context) { producer = context.createProducerTemplate(); }
 
 	@Override
-	public void close() { cache.clear(); }
+	public void close() {
+		cache.clear();
+		if (producer != null) producer.stop();
+	}
 
 	public FanIn(RouteConfiguration routeConfig, RoutesConfiguration routesConfiguration) {
 		this(routeConfig, routesConfiguration, AffordanceValidation.configuredMode());
@@ -127,8 +133,9 @@ public final class FanIn implements ManagedRouteResource {
 					value == JsonPointer.JSON_NULL ? null : value)) {
 				return;
 			}
-		exchange.setProperty(ACCEPTED_SNAPSHOT_PROPERTY, cache.acceptAndSnapshot(sourceId, value));
-			exchange.setProperty(ACCEPTED_TIMES_PROPERTY, cache.times());
+			SourceCache.Snapshot accepted = cache.acceptAndSnapshot(sourceId, value);
+			exchange.setProperty(ACCEPTED_SNAPSHOT_PROPERTY, accepted.values());
+			exchange.setProperty(ACCEPTED_TIMES_PROPERTY, accepted.times());
 			exchange.setProperty(CONTRIBUTION_PROPERTY, true);
 		};
 	}
@@ -188,6 +195,27 @@ public final class FanIn implements ManagedRouteResource {
 		}
 		Object sourceId = exchange.getMessage().getHeader(SOURCE_ID_HEADER);
 		return sourceId != null && selectedSourceIds.contains(String.valueOf(sourceId));
+	}
+
+	/**
+	 * Evaluates the mapping through its collector route, one evaluation at a time. The sources map
+	 * is snapshotted inside the lock, so an evaluation starts from a cache at least as new as the
+	 * one before it and its sinks never overwrite a newer evaluation's writes. Each source still
+	 * accepts its value on its own thread; a source waits only while another evaluation runs.
+	 */
+	public Processor evaluate(String collectUri) {
+		return exchange -> {
+			evaluation.lock();
+			try {
+				SourceCache.Snapshot current = cache.snapshot();
+				exchange.setProperty(ACCEPTED_SNAPSHOT_PROPERTY, current.values());
+				exchange.setProperty(ACCEPTED_TIMES_PROPERTY, current.times());
+				if (producer == null) producer = exchange.getContext().createProducerTemplate();
+				producer.send(collectUri, exchange);
+			} finally {
+				evaluation.unlock();
+			}
+		};
 	}
 
 	/**
@@ -371,16 +399,21 @@ public final class FanIn implements ManagedRouteResource {
 		/** When each source's latest value was accepted. */
 		private final Map<String, java.time.Instant> accepted = new LinkedHashMap<>();
 
-		synchronized KeyedSnapshot acceptAndSnapshot(String sourceId, Object value) {
+		/** The cached values with the times they were accepted, taken together. */
+		record Snapshot(KeyedSnapshot values, Map<String, java.time.Instant> times) { }
+
+		synchronized Snapshot acceptAndSnapshot(String sourceId, Object value) {
 			latest.put(sourceId, value == null ? JsonPointer.JSON_NULL : JsonCodec.copyValue(value));
 			accepted.put(sourceId, java.time.Instant.now());
+			return snapshot();
+		}
+
+		synchronized Snapshot snapshot() {
 			Map<String, Object> values = new LinkedHashMap<>();
 			latest.forEach((key, cachedValue) -> values.put(key,
 					cachedValue == JsonPointer.JSON_NULL ? null : cachedValue));
-			return KeyedSnapshot.of(values);
+			return new Snapshot(KeyedSnapshot.of(values), Map.copyOf(accepted));
 		}
-
-		synchronized Map<String, java.time.Instant> times() { return Map.copyOf(accepted); }
 
 		synchronized void clear() { latest.clear(); accepted.clear(); }
 	}

@@ -510,7 +510,12 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
 - The mapping evaluates when a triggering source updates **and every source has
   delivered at least once**. Without `TriggerSourceIds` every source triggers;
   with it, only the listed ones do and the rest refresh the cache only.
-- Lua runs once per evaluation against an immutable snapshot of the cache.
+- A mapping evaluates one at a time: an evaluation snapshots the cache when it
+  starts, runs Lua once against that immutable snapshot and dispatches its
+  sinks before the next one starts. A later evaluation therefore never starts
+  from an older cache, and its writes never precede an earlier one's. While an
+  evaluation runs, a source arriving on another thread waits; its value is
+  already in the cache. `meta.sources` times belong to the same snapshot.
 - Every mapping has consumers and producers of its own. Mappings may observe
   the same affordance or AAS element: each gets its own monitored item,
   subscription, listener or poll at its own authored interval, and never sees

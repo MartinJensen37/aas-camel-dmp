@@ -101,7 +101,8 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 		String collectUri = "direct:policy-" + routeId;
 
 		// Install the collector before source/timer ingress routes so it is ready
-		// before any source can contribute during dynamic route startup.
+		// before any source can contribute during dynamic route startup. Sources reach it
+		// through FanIn.evaluate, which runs one evaluation at a time on a fresh snapshot.
 		registerRouteId(routeId);
 		if (routeConfig.getDatasources().isEmpty()) registerIngressRouteId(routeId);
 		ProcessorDefinition<?> cycle = routeBuilder.from(collectUri)
@@ -138,7 +139,7 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 						.process(fanIn.disassemble(endpointIds))
 						.filter(fanIn::contributed)
 						.filter(exchange -> fanIn.selectedTrigger(exchange, triggerSourceIds))
-						.to(collectUri);
+						.process(fanIn.evaluate(collectUri));
 			} else {
 				// async source: the consumer feeds the cache and drives an
 				// evaluation on every arrival
@@ -155,7 +156,7 @@ public class ExecutionPolicyRouteCreator implements RouteCreator {
 						.process(fanIn.disassemble(endpointIds))
 						.filter(fanIn::contributed)
 						.filter(exchange -> fanIn.selectedTrigger(exchange, triggerSourceIds))
-						.to(collectUri);
+						.process(fanIn.evaluate(collectUri));
 			}
 		}
 
