@@ -25,6 +25,10 @@ public final class ResponseMappings {
 	 */
 	public static void respond(JsonObject mapping, String sourceId, String callerSinkId, String lua) {
 		JsonArray action = keys(child(mapping, "Sinks").getAsJsonArray("value").get(0).getAsJsonObject(), "Sink");
+		// The sink names the action's input (or a member of it); the reply is the action's output.
+		int affordance = 0;
+		while (affordance < action.size() && !"actions".equals(action.get(affordance).getAsJsonObject().get("value").getAsString())) affordance++;
+		while (action.size() > affordance + 2) action.remove(action.size() - 1);
 		action.add(key("SubmodelElementCollection", "output"));
 		JsonArray operation = keys(child(mapping, "Sources").getAsJsonArray("value").get(0).getAsJsonObject(), "Source");
 		none(mapping);

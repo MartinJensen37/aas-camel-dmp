@@ -361,6 +361,11 @@ public final class ConnectorConfigurationFactory {
 				issue(issues,mapping,root+"/Sinks/"+sink.id(),"command binding must address the same exact AID action as the CCI Operation");
 				continue;
 			}
+			// The request writes the action's input; its output is the reply, named by the ResponseSources.
+			if(target.resolved().part()!=AasReferenceResolver.SchemaPart.INPUT) {
+				issue(issues,mapping,root+"/Sinks/"+sink.id(),"a command Sink addresses the action's input DataSchema, or a member of it");
+				continue;
+			}
 			if(actionTarget==null) actionTarget=target;
 			else if(!sameAction(actionTarget,target)) issue(issues,mapping,root+"/Sinks/"+sink.id(),
 					"grouped command members must share one AID action endpoint");
@@ -691,7 +696,7 @@ public final class ConnectorConfigurationFactory {
 			else for(EndpointPlan endpoint:mapping.responseSources().value()) {
 				// The reply of an action is its output; the reply of a property write is the written value.
 				if(!(endpoint.target() instanceof AidTarget target) || !sameAction(command,target)
-						|| !write && Aas.keys(endpoint.reference()).stream().noneMatch(key -> "output".equals(key.getValue()))) {
+						|| !write && target.resolved().part()!=AasReferenceResolver.SchemaPart.OUTPUT) {
 					issue(issues,mapping,path,write?"ResponseSource must select the written property or a member of it"
 							:"ResponseSource must select output of the exact command ACTION anchor");continue;
 				}

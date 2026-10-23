@@ -60,12 +60,19 @@ public final class AasReferenceResolver {
 			Operation operation, String operationPath) implements Resolution {
 		public ResolvedElement(Submodel submodel, SubmodelElement element) { this(submodel, element, null, null); }
 	}
+	/** Which data schema of the affordance a reference names: an action's {@code input} or {@code output}, or none. */
+	public enum SchemaPart { NONE, INPUT, OUTPUT }
+
 	public record AidTarget(WireModel.Interface owner, WireModel.Affordance affordance,
-			Presence<WireModel.DataSchema> schema, List<String> schemaPath, String submodelId) implements Resolution {
+			Presence<WireModel.DataSchema> schema, List<String> schemaPath, String submodelId, SchemaPart part) implements Resolution {
 		public AidTarget(WireModel.Interface owner,WireModel.Affordance affordance,Presence<WireModel.DataSchema> schema,List<String> schemaPath) {
-			this(owner,affordance,schema,schemaPath,null);
+			this(owner,affordance,schema,schemaPath,null,SchemaPart.NONE);
 		}
-		public AidTarget { schemaPath = List.copyOf(schemaPath); }
+		public AidTarget(WireModel.Interface owner,WireModel.Affordance affordance,Presence<WireModel.DataSchema> schema,
+				List<String> schemaPath,String submodelId) {
+			this(owner,affordance,schema,schemaPath,submodelId,SchemaPart.NONE);
+		}
+		public AidTarget { schemaPath = List.copyOf(schemaPath); part = part == null ? SchemaPart.NONE : part; }
 	}
 
 	/** What was read for one submodel. {@code header} carries the failure when the submodel is unusable. */
@@ -326,12 +333,13 @@ public final class AasReferenceResolver {
 				+ affordances.stream().map(value -> value.idShort().value()).toList() + ")");
 
 		Presence<WireModel.DataSchema> schema = affordance.schema();
+		SchemaPart part = SchemaPart.NONE;
 		if (index < keys.size() && "input".equals(keys.get(index).getValue())) {
 			if (!"SubmodelElementCollection".equals(Aas.keyType(keys.get(index)))) return invalid("AID input key type is invalid");
-			schema = affordance.input(); index++;
+			schema = affordance.input(); index++; part = SchemaPart.INPUT;
 		} else if (index < keys.size() && "output".equals(keys.get(index).getValue())) {
 			if (!"SubmodelElementCollection".equals(Aas.keyType(keys.get(index)))) return invalid("AID output key type is invalid");
-			schema = affordance.output(); index++;
+			schema = affordance.output(); index++; part = SchemaPart.OUTPUT;
 		}
 		List<String> schemaPath = new ArrayList<>();
 		while (index < keys.size()) {
@@ -359,7 +367,7 @@ public final class AasReferenceResolver {
 			schema = Presence.of(child);
 			schemaPath.add(token);
 		}
-		return found(new AidTarget(iface, affordance, schema, schemaPath, aid.submodel().getId()));
+		return found(new AidTarget(iface, affordance, schema, schemaPath, aid.submodel().getId(), part));
 	}
 
 	private static <T> Optional<T> findById(List<T> values, String id, java.util.function.Function<T,String> getId) {

@@ -706,6 +706,24 @@ class ConnectorConfigurationFactoryTest {
 		}
 	}
 
+	@Test void aCommandSinkAddressesTheActionsInput() {
+		var base=explicitResponsePlan("aid-command");
+		var original=base.mappings().get(0);
+		var command=(AidTarget)original.sinks().get(0).target();
+		for(var part:List.of(AasReferenceResolver.SchemaPart.NONE,AasReferenceResolver.SchemaPart.OUTPUT)) {
+			var target=command.resolved();
+			var retargeted=new AidTarget(new AasReferenceResolver.AidTarget(target.owner(),target.affordance(),target.schema(),
+					target.schemaPath(),target.submodelId(),part));
+			var mapping=new MappingPlan(original.identity(),original.listIndex(),original.sources(),
+					List.of(new EndpointPlan("Move",original.sinks().get(0).reference(),retargeted)),original.defaultPollingInterval(),
+					original.transformation(),original.responseSources(),original.responseSinks(),original.responseTransformation(),
+					original.triggerSourceIds(),original.qualifiers());
+			var result=factory.create(new Plan(base.aimcSubmodelId(),List.of(mapping)),"bridge");
+			assertTrue(result.issues().stream().anyMatch(issue -> issue.message().contains("addresses the action's input")),
+					part+": "+result.issues());
+		}
+	}
+
 	@Test void identicalRemoteActionShapeCannotSubstituteForExactResponseAnchor() {
 		var result=factory.create(explicitResponsePlan("aid-remote"),"bridge");
 		assertTrue(result.configuration().getRoutes().isEmpty());
@@ -828,11 +846,11 @@ class ConnectorConfigurationFactoryTest {
 		var typedAction=new WireModel.Affordance(action.kind(),action.idShort(),action.semanticId(),action.forms(),
 				action.schema(),action.input(),Presence.of(output),action.element());
 		var typedTarget=new AidTarget(new AasReferenceResolver.AidTarget(target.owner(),typedAction,target.schema(),
-				target.schemaPath(),target.submodelId()));
+				target.schemaPath(),target.submodelId(),target.part()));
 		// The Operation's output Count still comes from the response mapping, now on the typed action.
 		var responseSource=original.responseSources().value().get(0);
 		var typedCount=new AidTarget(new AasReferenceResolver.AidTarget(target.owner(),typedAction,Presence.of(integer),
-				List.of("Count"),target.submodelId()));
+				List.of("Count"),target.submodelId(),AasReferenceResolver.SchemaPart.OUTPUT));
 		var mapping=new MappingPlan(original.identity(),original.listIndex(),original.sources(),
 				List.of(new EndpointPlan(sink.id(),sink.reference(),typedTarget)),original.defaultPollingInterval(),
 				original.transformation(),Presence.of(List.of(new EndpointPlan(responseSource.id(),responseSource.reference(),typedCount))),
@@ -898,8 +916,8 @@ class ConnectorConfigurationFactoryTest {
 		var action=new WireModel.Affordance("action",Presence.of("Move"),Presence.absent(),base.resolved().affordance().forms(),
 				Presence.absent(),Presence.of(input),Presence.of(output),emptyElement());
 		var iface=base.resolved().owner();
-		var command=new AidTarget(new AasReferenceResolver.AidTarget(iface,action,Presence.of(input),List.of(),"aid-command"));
-		var response=new AidTarget(new AasReferenceResolver.AidTarget(iface,action,Presence.of(count),List.of("Count"),responseAnchor));
+		var command=new AidTarget(new AasReferenceResolver.AidTarget(iface,action,Presence.of(input),List.of(),"aid-command",AasReferenceResolver.SchemaPart.INPUT));
+		var response=new AidTarget(new AasReferenceResolver.AidTarget(iface,action,Presence.of(count),List.of("Count"),responseAnchor,AasReferenceResolver.SchemaPart.OUTPUT));
 		var commandEndpoint=new EndpointPlan("Move",actionReference("aid-command","input"),command);
 		var responseSource=new EndpointPlan("Body,&#",actionReference(responseAnchor,"output"),response);
 		var extraBase=protocolTarget(WireModel.ProtocolFamily.HTTP,"http://extra.example:8080","/state",Map.of(),"POST");
@@ -962,10 +980,10 @@ class ConnectorConfigurationFactoryTest {
 		var replySchema=dataSchema("integer",Map.of());
 		var action=new WireModel.Affordance("action",Presence.of("Move"),Presence.absent(),base.resolved().affordance().forms(),
 				Presence.absent(),Presence.of(input),Presence.of(dataSchema("object",Map.of("Count",replySchema))),emptyElement());
-		var command=new AidTarget(new AasReferenceResolver.AidTarget(base.resolved().owner(),action,Presence.of(input),List.of(),"aid-command"));
+		var command=new AidTarget(new AasReferenceResolver.AidTarget(base.resolved().owner(),action,Presence.of(input),List.of(),"aid-command",AasReferenceResolver.SchemaPart.INPUT));
 		var commandEndpoint=new EndpointPlan("Move",actionReference("aid-command","input"),command);
 		var response=new AidTarget(new AasReferenceResolver.AidTarget(base.resolved().owner(),action,
-				Presence.of(replySchema),List.of("Count"),"aid-command"));
+				Presence.of(replySchema),List.of("Count"),"aid-command",AasReferenceResolver.SchemaPart.OUTPUT));
 		var responseSource=new EndpointPlan("reply-count",actionReference("aid-command","output"),response);
 		return new MappingPlan("variable-operation",0,List.of(sourceX,sourceY),List.of(commandEndpoint),Presence.absent(),
 				Presence.of(new WireModel.Blob("function aimc_main(sources) return {Move={x=sources['x-source'],y=sources['y-source']}} end"

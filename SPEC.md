@@ -529,7 +529,15 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
 2. The mapping's sources are the Operation and, optionally, further AAS
    elements (fan-in, §7.1). Its sinks bind the Operation 1:1 to one affordance
    of the device's AID: the action of the same skill, or one whole property
-   (§7.1). Operation input, output and InOut
+   (§7.1). The two sides are addressed alike:
+
+   | | Request | Response |
+   |---|---|---|
+   | AAS side | Sources: Operation input/InOut variables (or the Operation), fan-in elements | ResponseSinks: Operation output/InOut variables (or the Operation), further AAS elements |
+   | Device side | Sinks: the action's `input` DataSchema, or members of it | ResponseSources: the action's `output` DataSchema, or members of it |
+
+   A Sink on the action itself or on its `output`, or a ResponseSource
+   outside its `output`, blocks the mapping. Operation input, output and InOut
    variables have unique idShorts and are one of:
    - a **Property** with a supported `valueType` → a typed scalar;
    - a **SubmodelElementCollection** of such variables (members uniquely
