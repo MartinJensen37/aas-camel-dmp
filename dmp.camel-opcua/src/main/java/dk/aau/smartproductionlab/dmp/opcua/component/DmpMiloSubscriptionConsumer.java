@@ -134,7 +134,10 @@ final class DmpMiloSubscriptionConsumer extends DefaultConsumer {
 		subscription = null;
 		subscribedClient = null;
 		if (current == null) return;
-		try { current.delete(); }
+		// Sent, not waited for: when the server has gone away (a module restarting), the blocking delete waits
+		// out the client's request timeout, consumer after consumer, and a route's stop overruns its shutdown
+		// timeout. A server that is there deletes it; one that is not drops it with the session.
+		try { current.deleteAsync(); }
 		catch (Exception ignored) { /* the session may already be gone */ }
 	}
 }
