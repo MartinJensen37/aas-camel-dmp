@@ -27,6 +27,8 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UShort;
 /** Reads server-declared method signatures through Camel's configured Milo endpoint. */
 public final class CamelOpcUaMethodMetadataProvider implements OpcUaMethodMetadataProvider {
 	private static final long REFRESH_NANOS = Duration.ofMinutes(5).toNanos();
+	/** How long a signature read waits for the connection while it (re)connects. */
+	private static final long CONNECT_WAIT_MS = 10_000;
 
 	private final ConcurrentMap<CacheKey, CacheEntry> cache = new ConcurrentHashMap<>();
 	private final BiFunction<CamelContext, String, MethodSignature> reader;
@@ -230,9 +232,20 @@ public final class CamelOpcUaMethodMetadataProvider implements OpcUaMethodMetada
 			throw new IllegalArgumentException("Milo command endpoint must configure a method: " + endpointUri);
 		}
 
+		// A read, so it may be made twice: a stale session (the server restarted) fails the first and
+		// has the connection connect anew, which the second waits for.
+		try {
+			return readSignature(endpoint, endpointUri);
+		} catch (IllegalStateException stale) {
+			return readSignature(endpoint, endpointUri);
+		}
+	}
+
+	private static MethodSignature readSignature(MiloClientEndpoint endpoint, String endpointUri) {
 		MiloClientConnection connection = endpoint.createConnection();
 		try {
-			OpcUaClient client = connection.getOpcUaClient();
+			OpcUaClient client = dk.aau.smartproductionlab.dmp.opcua.component.OpcUaConnections.awaitClient(connection, CONNECT_WAIT_MS);
+			if (client == null) throw new IllegalStateException("OPC UA client is not connected");
 			// The Method's NodeId, or its AID browse path.
 			var methodId = dk.aau.smartproductionlab.dmp.opcua.component.OpcUaBrowsePaths.resolve(client, endpoint.getMethod());
 			UaMethodNode method = (UaMethodNode) client.getAddressSpace().getNode(methodId);
@@ -241,6 +254,9 @@ public final class CamelOpcUaMethodMetadataProvider implements OpcUaMethodMetada
 			return new MethodSignature(definitions(inputs), definitions(outputs));
 		} catch (CompletionException e) {
 			throw new IllegalStateException("Unable to read OPC UA method metadata from " + endpointUri, e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("Interrupted reading OPC UA method metadata from " + endpointUri, e);
 		} catch (Exception e) {
 			throw new IllegalStateException("Unable to read OPC UA method metadata from " + endpointUri, e);
 		} finally {

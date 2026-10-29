@@ -55,7 +55,8 @@ public final class DmpMiloMethodProducer extends DefaultProducer {
 		Long timeout = exchange.getMessage().getHeader(CALL_TIMEOUT_HEADER, Long.class);
 		long timeoutMs = timeout == null || timeout <= 0 ? DEFAULT_TIMEOUT_MS : timeout;
 		try {
-			var client = connection == null ? null : connection.getOpcUaClient();
+			// Not sent yet: while the connection (re)connects, the Call waits for it (a third of its time at most).
+			var client = OpcUaConnections.awaitClient(connection, timeoutMs / 3);
 			if (client == null) throw new IllegalStateException("OPC UA client is not connected");
 			Variant[] arguments = encoded(pending, client);
 			// The owning Object: a NodeId, or a browse path (servers such as 4diac FORTE number their nodes anew at each start).
