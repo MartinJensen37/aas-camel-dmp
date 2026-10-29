@@ -1223,4 +1223,46 @@ class ConnectorConfigurationFactoryTest {
 	private static SubmodelElement emptyElement() {
 		return AasFixtures.collection(null);
 	}
+
+	@Test
+	void anOperationNamedOtherwiseIsBoundToTheOneActionItsSinksAddress() {
+		var base=explicitResponsePlan("aid-command").mappings().get(0);
+		// ARSO: Skills/<skill>/<command>/<command>, the Operation's parent named Start, the action Move.
+		var arso=AasFixtures.reference("Submodel","cci","SubmodelElementCollection","Skills","SubmodelElementCollection","Move",
+				"SubmodelElementCollection","Start","Operation","Start");
+		var source=base.sources().get(0);
+		var answers=new java.util.ArrayList<>(base.responseSinks().value());
+		answers.set(0,new EndpointPlan(answers.get(0).id(),arso,answers.get(0).target()));
+		var mapping=new MappingPlan(base.identity(),0,List.of(new EndpointPlan(source.id(),arso,source.target())),base.sinks(),
+				base.defaultPollingInterval(),base.transformation(),base.responseSources(),Presence.of(answers),
+				base.responseTransformation(),base.qualifiers());
+		var result=factory.create(new Plan("aimc",List.of(mapping)),"bridge",
+				new ConnectorConfigurationFactory.RuntimeSettings(URI.create("http://aas.example:8081")));
+		assertTrue(result.issues().isEmpty(),result.issues().toString());
+		var bridge=assertInstanceOf(ProtocolBridgeRouteConfiguration.class,result.configuration().getRoutes().get(0));
+		assertEquals("Move",bridge.getTriggerData().get("action"));
+	}
+
+	@Test
+	void anEndpointThatSelectsOnlyNoSecurityNeedsNoCredentials() {
+		var definitions = AasFixtures.collection("securityDefinitions",
+				AasFixtures.collection("nosec_sc", AasFixtures.property("scheme", "nosec")),
+				AasFixtures.collection("basic_sc", AasFixtures.property("scheme", "basic")));
+		assertTrue(ConnectorConfigurationFactory.onlyNoSecurity(security("nosec_sc"), definitions));
+		assertFalse(ConnectorConfigurationFactory.onlyNoSecurity(security("basic_sc"), definitions));
+		assertFalse(ConnectorConfigurationFactory.onlyNoSecurity(security("nosec_sc", "basic_sc"), definitions));
+		assertFalse(ConnectorConfigurationFactory.onlyNoSecurity(security("missing_sc"), definitions));
+		assertFalse(ConnectorConfigurationFactory.onlyNoSecurity(security("nosec_sc"), null));
+	}
+
+	private static SubmodelElement security(String... schemes) {
+		List<SubmodelElement> selected = new java.util.ArrayList<>();
+		for (String scheme : schemes)
+			selected.add(new org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultReferenceElement.Builder()
+					.value(AasFixtures.reference("Submodel", "aid", "SubmodelElementCollection", "interface",
+							"SubmodelElementCollection", "EndpointMetadata", "SubmodelElementCollection", "securityDefinitions",
+							"SubmodelElementCollection", scheme)).build());
+		return new DefaultSubmodelElementList.Builder().idShort("security")
+				.typeValueListElement(AasSubmodelElements.REFERENCE_ELEMENT).value(selected).build();
+	}
 }

@@ -578,7 +578,12 @@ Sources[] ──► latest-value cache ──► aimc_main(sources) ──► pe
 2. The mapping's sources are the Operation and, optionally, further AAS
    elements (fan-in, §7.1). Its sinks bind the Operation 1:1 to one affordance
    of the device's AID: the action of the same skill, or one whole property
-   (§7.1). The two sides are addressed alike:
+   (§7.1). The action of the same skill is the one named like the
+   Operation's parent (a CCI's `Skills/<skill>/operation` and the action
+   `<skill>`); where the AAS names them otherwise (ARSO's
+   `Skills/<skill>/<command>/<command>`, with an action per command of every
+   skill), it is the one action all the mapping's Sinks address. The two
+   sides are addressed alike:
 
    | | Request | Response |
    |---|---|---|
@@ -836,6 +841,11 @@ id can read it; the status itself stays without names and messages.
 - Secrets (repository authorization, Kafka SASL, MQTT credentials) come from
   environment variables and are never logged or exposed in status.
 - Repository access is read-only (GET); the DMP never writes models.
+- An interface's `EndpointMetadata/security` may select only `nosec`
+  schemes (AID 1.1 has every interface select one, `nosec_sc` when it has no
+  security); a selection of any other scheme blocks its mappings, since the
+  DMP holds no credentials from the AID. A form's own `security` selection
+  blocks its mappings (§5.2).
 
 ## 12. Decisions
 

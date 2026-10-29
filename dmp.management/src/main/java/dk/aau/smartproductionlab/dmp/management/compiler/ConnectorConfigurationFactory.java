@@ -344,7 +344,7 @@ public final class ConnectorConfigurationFactory {
 		for(EndpointPlan extra:fanIn)
 			if(!(extra.target() instanceof DirectTarget))
 				issue(issues,mapping,root+"/Sources/"+extra.id(),"an operation mapping fans in AAS elements only; the device is reached through its Sinks");
-		String action=operationAction(operation.reference());
+		String action=boundAction(operationAction(operation.reference()),mapping);
 		if(action==null || action.isBlank()) { issue(issues,mapping,root+"/Sources","Operation reference does not identify an exact parent skill/action");return; }
 		if(mapping.sinks().isEmpty()) { issue(issues,mapping,root+"/Sinks","bridge Operation requires at least one declared command binding");return; }
 		if(mapping.qualifiers().stream().anyMatch(ConnectorConfigurationFactory::behaviorQualifier)) issue(issues,mapping,root+"/qualifiers","mapping qualifiers are not represented by the bridge route schema");
@@ -651,6 +651,21 @@ public final class ConnectorConfigurationFactory {
 		List<Key> keys=Aas.keys(reference);
 		for(int i=keys.size()-1;i>0;i--)if("Operation".equals(Aas.keyType(keys.get(i))))return keys.get(i-1).getValue();
 		return null;
+	}
+
+	/**
+	 * The AID action an Operation is bound to: the one named like the Operation's parent (a CCI's
+	 * {@code Skills/<skill>/operation} and the action {@code <skill>}). Where the AAS names them otherwise,
+	 * e.g. ARSO's {@code Skills/<skill>/<command>/<command>} with an action per command of every skill, it is
+	 * the one action that all the mapping's Sinks address: the AIMC states the binding itself.
+	 */
+	private static String boundAction(String named,MappingPlan mapping) {
+		Set<String> addressed=new LinkedHashSet<>();
+		for(EndpointPlan sink:mapping.sinks())
+			if(sink.target() instanceof AidTarget target && "action".equalsIgnoreCase(target.resolved().affordance().kind()))
+				addressed.add(target.resolved().affordance().idShort().value());
+		return named!=null && !named.isBlank() && addressed.size()==1 && !addressed.contains(named)
+				? addressed.iterator().next() : named;
 	}
 
 	private static boolean sameAction(AidTarget left,AidTarget right) {
@@ -1012,11 +1027,30 @@ public final class ConnectorConfigurationFactory {
 				}
 			}
 			if(target.resolved().owner().endpointMetadata().value()!=null) {
-				for(SubmodelElement child:Aas.children(target.resolved().owner().endpointMetadata().value()))
-					if("security".equals(child.getIdShort()) && !Aas.children(child).isEmpty())
+				SubmodelElement metadata=target.resolved().owner().endpointMetadata().value();
+				for(SubmodelElement child:Aas.children(metadata))
+					if("security".equals(child.getIdShort()) && !Aas.children(child).isEmpty()
+							&& !onlyNoSecurity(child,Aas.child(metadata,"securityDefinitions")))
 						issue(issues,mapping,path,"authored endpoint security selection is not represented by connector credentials");
 			}
 		}
+	}
+
+	/**
+	 * Whether an endpoint's {@code security} selects only schemes without security: each entry references a
+	 * member of {@code securityDefinitions} whose {@code scheme} is {@code nosec}. AID 1.1 (§2.24-2.25) has an
+	 * interface select at least one scheme, {@code nosec_sc} when it has none, and that needs no credentials.
+	 */
+	static boolean onlyNoSecurity(SubmodelElement security,SubmodelElement definitions) {
+		if(definitions==null)return false;
+		for(SubmodelElement entry:Aas.children(security)) {
+			if(!(entry instanceof org.eclipse.digitaltwin.aas4j.v3.model.ReferenceElement reference) || reference.getValue()==null)return false;
+			List<org.eclipse.digitaltwin.aas4j.v3.model.Key> keys=Aas.keys(reference.getValue());
+			if(keys.isEmpty())return false;
+			SubmodelElement scheme=Aas.child(definitions,keys.get(keys.size()-1).getValue());
+			if(scheme==null || !"nosec".equals(Aas.value(Aas.child(scheme,"scheme"))))return false;
+		}
+		return true;
 	}
 
 	private static void payloadBinding(DataSinkConfiguration sink,EndpointPlan endpoint,MappingPlan mapping,List<Issue> issues) {
