@@ -77,6 +77,10 @@ public class OpcuaDataSourceConfiguration extends DataSourceConfiguration {
 
 		if (!this.configuration.containsKey("allowedSecurityPolicies"))
 			this.configuration.put("allowedSecurityPolicies", "None");
+		// The server is reached at the AID's base: the host a server reports in its endpoints (often its
+		// hostname, e.g. 4diac FORTE's) need not resolve where the DMP runs, such as in a container.
+		if (!this.configuration.containsKey("overrideHost"))
+			this.configuration.put("overrideHost", "true");
 		if (!this.configuration.containsKey("requestedPublishingInterval"))
 			this.configuration.put("requestedPublishingInterval", "1000");
 	}

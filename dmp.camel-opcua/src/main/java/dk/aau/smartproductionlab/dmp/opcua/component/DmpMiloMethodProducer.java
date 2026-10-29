@@ -58,7 +58,8 @@ public final class DmpMiloMethodProducer extends DefaultProducer {
 			var client = connection == null ? null : connection.getOpcUaClient();
 			if (client == null) throw new IllegalStateException("OPC UA client is not connected");
 			Variant[] arguments = encoded(pending, client);
-			var object = OpcUaBrowsePaths.resolve(client, endpoint.getNode());
+			// The owning Object: a NodeId, or a browse path (servers such as 4diac FORTE number their nodes anew at each start).
+			var object = endpoint.node(client);
 			var method = OpcUaBrowsePaths.resolve(client, endpoint.getMethod());
 			CallResponse response = client.callAsync(List.of(new CallMethodRequest(object, method, arguments)))
 					.get(timeoutMs, TimeUnit.MILLISECONDS);

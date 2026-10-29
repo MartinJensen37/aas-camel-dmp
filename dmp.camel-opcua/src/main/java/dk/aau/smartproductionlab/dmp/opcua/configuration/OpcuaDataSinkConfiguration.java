@@ -75,6 +75,10 @@ public class OpcuaDataSinkConfiguration extends DataSinkConfiguration {
 
         if (!this.configuration.containsKey("allowedSecurityPolicies"))
             this.configuration.put("allowedSecurityPolicies", "None");
+        // The server is reached at the AID's base, not at the host it reports in its endpoints (see
+        // OpcuaDataSourceConfiguration).
+        if (!this.configuration.containsKey("overrideHost"))
+            this.configuration.put("overrideHost", "true");
     }
 
 	public String getServerUrl() {

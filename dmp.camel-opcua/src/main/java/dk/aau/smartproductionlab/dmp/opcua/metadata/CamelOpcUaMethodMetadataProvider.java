@@ -225,8 +225,9 @@ public final class CamelOpcUaMethodMetadataProvider implements OpcUaMethodMetada
 		if (!(resolved instanceof MiloClientEndpoint endpoint)) {
 			throw new IllegalArgumentException("Command endpoint is not a Camel Milo client endpoint: " + endpointUri);
 		}
-		if (endpoint.getNode() == null || endpoint.getMethod() == null) {
-			throw new IllegalArgumentException("Milo command endpoint must configure both node and method: " + endpointUri);
+		// The signature is the Method's alone; its owning Object (a node or a browse path) is the Call's concern.
+		if (endpoint.getMethod() == null) {
+			throw new IllegalArgumentException("Milo command endpoint must configure a method: " + endpointUri);
 		}
 
 		MiloClientConnection connection = endpoint.createConnection();
